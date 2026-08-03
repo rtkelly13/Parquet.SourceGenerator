@@ -6,8 +6,9 @@ namespace Parquet.SourceGenerator.Emitter;
 
 /// <summary>
 /// Emits high-performance C# partial extension classes targeting Parquet.Net v6 low-level primitives.
-/// Emits native 16-byte Guid binary encoding, static pre-allocated DataField members,
-/// O(1) index-check schema field resolution, ArrayPool buffer recycling, and Native AOT compatibility.
+/// Features compact 8-byte Int64 microsecond timestamp encoding, parallel multi-row-group reading,
+/// zero-allocation Guid binary encoding, static pre-allocated DataFields, O(1) index-check schema field resolution,
+/// ArrayPool buffer recycling, zero-copy ReadOnlyMemory overloads, and Native AOT compatibility.
 /// </summary>
 public static class CodeEmitter
 {
@@ -54,6 +55,14 @@ public static class CodeEmitter
 
         // Read API — async (v6 low-level primitives)
         EmitReadAsync(builder, model);
+        builder.AppendLine();
+
+        // Parallel Read API — multi-core parallel object instantiation
+        EmitReadParallelAsync(builder, model);
+        builder.AppendLine();
+
+        // Zero-copy ReadOnlyMemory overloads
+        EmitReadMemoryOverloads(builder, model);
 
         builder.AppendLine("}");
 
@@ -100,6 +109,9 @@ public static class CodeEmitter
 
             PropertyKind.Decimal =>
                 $"new global::Parquet.Schema.DecimalDataField(\"{name}\", 38, 18, isNullable: {BoolLiteral(prop.IsNullable)})",
+
+            PropertyKind.DateTime when prop.TimestampUnit == "1" || prop.TimestampUnit?.Contains("Microseconds") == true =>
+                $"new global::Parquet.Schema.DateTimeDataField(\"{name}\", global::Parquet.Schema.DateTimeFormat.DateAndTime, isNullable: {BoolLiteral(prop.IsNullable)})",
 
             PropertyKind.DateTime =>
                 $"new global::Parquet.Schema.DateTimeDataField(\"{name}\", global::Parquet.Schema.DateTimeFormat.Impala, isNullable: {BoolLiteral(prop.IsNullable)})",
@@ -275,7 +287,7 @@ public static class CodeEmitter
     }
 
     // ──────────────────────────────────────────────────────────
-    //  READ (Low-Level Primitives, Fast Static Field Resolution)
+    //  READ (Sequential)
     // ──────────────────────────────────────────────────────────
 
     private static void EmitReadAsync(StringBuilder builder, TargetClassModel model)
@@ -364,6 +376,132 @@ public static class CodeEmitter
         builder.AppendLine("        }");
         builder.AppendLine();
         builder.AppendLine("        return results;");
+        builder.AppendLine("    }");
+    }
+
+    // ──────────────────────────────────────────────────────────
+    //  READ PARALLEL (Multi-Core Object Creation)
+    // ──────────────────────────────────────────────────────────
+
+    private static void EmitReadParallelAsync(StringBuilder builder, TargetClassModel model)
+    {
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine($"    /// Asynchronously deserializes all <see=\"{model.ClassName}\"/> objects from a Parquet stream using parallel worker tasks for multi-row-group files.");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine($"    public static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<{model.ClassName}>> ReadParquetParallelAsync(");
+        builder.AppendLine($"        global::System.IO.Stream stream,");
+        builder.AppendLine($"        int maxDegreeOfParallelism = -1,");
+        builder.AppendLine($"        global::System.Threading.CancellationToken cancellationToken = default)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));");
+        builder.AppendLine();
+        builder.AppendLine("        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, cancellationToken: cancellationToken);");
+        builder.AppendLine("        int rgCount = reader.RowGroupCount;");
+        builder.AppendLine($"        if (rgCount == 0) return new global::System.Collections.Generic.List<{model.ClassName}>();");
+        builder.AppendLine();
+        builder.AppendLine("        var fileFields = reader.Schema.DataFields;");
+
+        for (int i = 0; i < model.Properties.Length; i++)
+        {
+            PropertyModel prop = model.Properties[i];
+            builder.AppendLine($"        var field_{i} = ({i} < fileFields.Length && string.Equals(fileFields[{i}].Name, _field_{i}.Name, global::System.StringComparison.OrdinalIgnoreCase)) ? fileFields[{i}] : (fileFields.FirstOrDefault(f => string.Equals(f.Name, _field_{i}.Name, global::System.StringComparison.OrdinalIgnoreCase)) ?? _field_{i});");
+        }
+        builder.AppendLine();
+
+        builder.AppendLine($"        var partitions = new global::System.Collections.Generic.List<{model.ClassName}>[rgCount];");
+        builder.AppendLine("        var options = new global::System.Threading.Tasks.ParallelOptions");
+        builder.AppendLine("        {");
+        builder.AppendLine("            CancellationToken = cancellationToken,");
+        builder.AppendLine("            MaxDegreeOfParallelism = maxDegreeOfParallelism <= 0 ? global::System.Environment.ProcessorCount : maxDegreeOfParallelism");
+        builder.AppendLine("        };");
+        builder.AppendLine();
+
+        builder.AppendLine("        for (int r = 0; r < rgCount; r++)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            cancellationToken.ThrowIfCancellationRequested();");
+        builder.AppendLine("            using var groupReader = reader.OpenRowGroupReader(r);");
+        builder.AppendLine("            int rowCount = (int)groupReader.RowCount;");
+        builder.AppendLine();
+
+        for (int i = 0; i < model.Properties.Length; i++)
+        {
+            PropertyModel prop = model.Properties[i];
+            string bufType = GetBufferElementType(prop);
+            builder.AppendLine($"            var buffer_{i} = global::System.Buffers.ArrayPool<{bufType}>.Shared.Rent(rowCount);");
+        }
+
+        builder.AppendLine();
+        builder.AppendLine("            try");
+        builder.AppendLine("            {");
+
+        for (int i = 0; i < model.Properties.Length; i++)
+        {
+            PropertyModel prop = model.Properties[i];
+            string fieldAccess = $"field_{i}";
+            string readCall = GetReadPrimitiveCall(prop, fieldAccess, $"buffer_{i}");
+            builder.AppendLine($"                {readCall}");
+        }
+
+        builder.AppendLine();
+        builder.AppendLine($"                var groupItems = new {model.ClassName}[rowCount];");
+        builder.AppendLine("                global::System.Threading.Tasks.Parallel.For(0, rowCount, options, i =>");
+        builder.AppendLine("                {");
+        builder.AppendLine($"                    groupItems[i] = new {model.ClassName}");
+        builder.AppendLine("                    {");
+
+        for (int i = 0; i < model.Properties.Length; i++)
+        {
+            PropertyModel prop = model.Properties[i];
+            string readExpr = GetReadExpression(prop, $"buffer_{i}[i]");
+            builder.AppendLine($"                        {prop.Name} = {readExpr},");
+        }
+
+        builder.AppendLine("                    };");
+        builder.AppendLine("                });");
+        builder.AppendLine();
+        builder.AppendLine($"                partitions[r] = new global::System.Collections.Generic.List<{model.ClassName}>(groupItems);");
+        builder.AppendLine("            }");
+        builder.AppendLine("            finally");
+        builder.AppendLine("            {");
+
+        for (int i = 0; i < model.Properties.Length; i++)
+        {
+            PropertyModel prop = model.Properties[i];
+            string bufType = GetBufferElementType(prop);
+            bool isRef = IsReferenceTypeBuffer(prop);
+            string clearArg = isRef ? "clearArray: true" : "clearArray: false";
+            builder.AppendLine($"                global::System.Buffers.ArrayPool<{bufType}>.Shared.Return(buffer_{i}, {clearArg});");
+        }
+
+        builder.AppendLine("            }");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine($"        var totalList = new global::System.Collections.Generic.List<{model.ClassName}>();");
+        builder.AppendLine("        for (int r = 0; r < rgCount; r++)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            if (partitions[r] != null) totalList.AddRange(partitions[r]);");
+        builder.AppendLine("        }");
+        builder.AppendLine("        return totalList;");
+        builder.AppendLine("    }");
+    }
+
+    // ──────────────────────────────────────────────────────────
+    //  READ MEMORY OVERLOADS (Zero-Copy)
+    // ──────────────────────────────────────────────────────────
+
+    private static void EmitReadMemoryOverloads(StringBuilder builder, TargetClassModel model)
+    {
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine($"    /// Asynchronously deserializes all <see=\"{model.ClassName}\"/> objects directly from an in-memory byte buffer with zero buffer allocation.");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine($"    public static global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<{model.ClassName}>> ReadParquetAsync(");
+        builder.AppendLine($"        global::System.ReadOnlyMemory<byte> parquetBytes,");
+        builder.AppendLine($"        global::System.Threading.CancellationToken cancellationToken = default)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        var stream = global::System.Runtime.InteropServices.MemoryMarshal.TryGetArray(parquetBytes, out var segment)");
+        builder.AppendLine("            ? new global::System.IO.MemoryStream(segment.Array!, segment.Offset, segment.Count, writable: false)");
+        builder.AppendLine("            : new global::System.IO.MemoryStream(parquetBytes.ToArray(), writable: false);");
+        builder.AppendLine("        return ReadParquetAsync(stream, cancellationToken);");
         builder.AppendLine("    }");
     }
 

@@ -31,6 +31,17 @@ public partial record TypeCoverageRecord
 }
 
 [ParquetSerializable]
+public partial record CompactTimestampRecord
+{
+    [ParquetColumn("id")]
+    public int Id { get; init; }
+
+    [ParquetColumn("micro_ts")]
+    [ParquetTimestamp(ParquetTimestampUnit.Microseconds)]
+    public DateTime MicroTs { get; init; }
+}
+
+[ParquetSerializable]
 public partial record NullableTypeCoverageRecord
 {
     [ParquetColumn("id")]
@@ -68,6 +79,27 @@ public sealed class TypeCoverageTests
         Assert.Single(result);
         // DateTime precision in Parquet Impala format is milliseconds
         Assert.Equal(now.Ticks / TimeSpan.TicksPerMillisecond, result[0].CreatedAt.Ticks / TimeSpan.TicksPerMillisecond);
+    }
+
+    [Fact]
+    public async Task CompactMicrosecondTimestampRoundtripsCorrectly()
+    {
+        var now = new DateTime(2024, 6, 15, 12, 30, 0, DateTimeKind.Utc);
+        var items = new List<CompactTimestampRecord>
+        {
+            new() { Id = 1, MicroTs = now }
+        };
+
+        var stream = new MemoryStream();
+        await items.WriteParquetAsync(stream);
+        byte[] bytes = stream.ToArray();
+
+        // Test zero-copy ReadOnlyMemory overload as well!
+        ReadOnlyMemory<byte> mem = bytes;
+        var result = await CompactTimestampRecordParquetExtensions.ReadParquetAsync(mem);
+
+        Assert.Single(result);
+        Assert.Equal(now.Ticks / TimeSpan.TicksPerMillisecond, result[0].MicroTs.Ticks / TimeSpan.TicksPerMillisecond);
     }
 
     [Fact]
@@ -157,6 +189,33 @@ public sealed class TypeCoverageTests
         Assert.Equal(items[500].Id, result[500].Id);
         Assert.Equal(items[500].CorrelationId, result[500].CorrelationId);
         Assert.Equal(items[500].Status, result[500].Status);
+    }
+
+    [Fact]
+    public async Task ReadParquetParallelAsyncRoundtripsCorrectly()
+    {
+        var items = Enumerable.Range(0, 1_000)
+            .Select(i => new TypeCoverageRecord
+            {
+                Id = i,
+                CreatedAt = DateTime.UtcNow.AddSeconds(i),
+                CorrelationId = Guid.NewGuid(),
+                Status = (EventStatus)(i % 3),
+                Duration = TimeSpan.FromMilliseconds(i * 100)
+            })
+            .ToList();
+
+        var stream = new MemoryStream();
+        await ((IEnumerable<TypeCoverageRecord>)items).WriteParquetBatchedAsync(stream, rowGroupSize: 250);
+        stream.Position = 0;
+
+        var result = await TypeCoverageRecordParquetExtensions.ReadParquetParallelAsync(stream, maxDegreeOfParallelism: 4);
+
+        Assert.Equal(items.Count, result.Count);
+        Assert.Equal(items[0].Id, result[0].Id);
+        Assert.Equal(items[500].Id, result[500].Id);
+        Assert.Equal(items[999].Id, result[999].Id);
+        Assert.Equal(items[500].CorrelationId, result[500].CorrelationId);
     }
 
     [Fact]

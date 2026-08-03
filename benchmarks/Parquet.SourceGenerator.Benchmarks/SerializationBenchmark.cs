@@ -119,7 +119,7 @@ public class ScalingDeserializationBenchmark
             .ToList();
 
         using var stream = new MemoryStream();
-        data.WriteParquetAsync(stream).GetAwaiter().GetResult();
+        data.WriteParquetBatchedAsync(stream, rowGroupSize: 20_000).GetAwaiter().GetResult();
         _parquetBytes = stream.ToArray();
     }
 
@@ -136,13 +136,23 @@ public class ScalingDeserializationBenchmark
     }
 
     /// <summary>
-    /// Source generator deserializer — Native AOT compatible, ArrayPool buffers.
+    /// Source generator sequential deserializer — Native AOT compatible, ArrayPool buffers.
     /// </summary>
     [Benchmark]
     public async Task<List<ScaleEvent>> SourceGeneratorReadAsync()
     {
         using var stream = new MemoryStream(_parquetBytes);
         return await ScaleEventParquetExtensions.ReadParquetAsync(stream);
+    }
+
+    /// <summary>
+    /// Source generator parallel deserializer — multi-core object instantiation across row groups.
+    /// </summary>
+    [Benchmark]
+    public async Task<List<ScaleEvent>> SourceGeneratorReadParallelAsync()
+    {
+        using var stream = new MemoryStream(_parquetBytes);
+        return await ScaleEventParquetExtensions.ReadParquetParallelAsync(stream);
     }
 }
 
