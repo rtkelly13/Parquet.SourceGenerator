@@ -132,6 +132,36 @@ public sealed class TypeCoverageTests
     }
 
     [Fact]
+    public async Task AsyncEnumerableStreamingRoundtripsCorrectly()
+    {
+        static async IAsyncEnumerable<TypeCoverageRecord> GenerateAsyncStream()
+        {
+            for (int i = 0; i < 50; i++)
+            {
+                await Task.Yield();
+                yield return new TypeCoverageRecord
+                {
+                    Id = i,
+                    CreatedAt = DateTime.UtcNow,
+                    CorrelationId = Guid.NewGuid(),
+                    Status = (EventStatus)(i % 3),
+                    Duration = TimeSpan.FromMilliseconds(i * 50)
+                };
+            }
+        }
+
+        var stream = new MemoryStream();
+        await GenerateAsyncStream().WriteParquetAsync(stream, rowGroupSize: 10);
+        stream.Position = 0;
+
+        var result = await TypeCoverageRecordParquetExtensions.ReadParquetAsync(stream);
+
+        Assert.Equal(50, result.Count);
+        Assert.Equal(0, result[0].Id);
+        Assert.Equal(49, result[49].Id);
+    }
+
+    [Fact]
     public async Task GuidRoundtripsCorrectly()
     {
         var id = Guid.NewGuid();

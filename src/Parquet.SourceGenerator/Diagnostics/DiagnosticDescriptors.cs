@@ -3,51 +3,40 @@ using Microsoft.CodeAnalysis;
 namespace Parquet.SourceGenerator.Diagnostics;
 
 /// <summary>
-/// Roslyn compiler diagnostic descriptors emitted by Parquet.SourceGenerator.
+/// Defines Roslyn diagnostic rules for compile-time validation of [ParquetSerializable] types.
 /// </summary>
 public static class DiagnosticDescriptors
 {
     /// <summary>
-    /// Emitted when a type decorated with [ParquetSerializable] does not have an accessible parameterless constructor or primary record constructor.
+    /// PARQ001: Target type decorated with [ParquetSerializable] must be partial.
     /// </summary>
-    public static readonly DiagnosticDescriptor MissingAccessibleConstructor = new(
+    public static readonly DiagnosticDescriptor MustBePartial = new(
         id: "PARQ001",
-        title: "Missing accessible parameterless constructor",
-        messageFormat: "Type '{0}' decorated with [ParquetSerializable] must have an accessible parameterless constructor or primary constructor",
+        title: "Type decorated with [ParquetSerializable] must be partial",
+        messageFormat: "The type '{0}' is decorated with [ParquetSerializable] but is not declared as partial",
         category: "ParquetSourceGenerator",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
     /// <summary>
-    /// Emitted when a property type is not supported for automatic Parquet schema generation.
-    /// </summary>
-    public static readonly DiagnosticDescriptor UnsupportedPropertyType = new(
-        id: "PARQ002",
-        title: "Unsupported property type",
-        messageFormat: "Property '{0}' on type '{1}' has unsupported type '{2}' for Parquet serialization",
-        category: "ParquetSourceGenerator",
-        defaultSeverity: DiagnosticSeverity.Error,
-        isEnabledByDefault: true);
-
-    /// <summary>
-    /// Emitted when duplicate column names exist within the same target schema.
+    /// PARQ002: Duplicate Parquet column name detected.
     /// </summary>
     public static readonly DiagnosticDescriptor DuplicateColumnName = new(
-        id: "PARQ003",
-        title: "Duplicate column name in schema",
-        messageFormat: "Type '{0}' contains multiple properties bound to Parquet column name '{1}'",
+        id: "PARQ002",
+        title: "Duplicate Parquet column name detected",
+        messageFormat: "The Parquet column name '{0}' is specified multiple times on type '{1}'",
         category: "ParquetSourceGenerator",
-        defaultSeverity: DiagnosticSeverity.Warning,
+        defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
     /// <summary>
-    /// Emitted when ParquetDecimalAttribute scale is greater than precision.
+    /// PARQ003: No public serializable properties found.
     /// </summary>
-    public static readonly DiagnosticDescriptor InvalidDecimalScale = new(
-        id: "PARQ004",
-        title: "Invalid decimal precision/scale configuration",
-        messageFormat: "Property '{0}' on type '{1}' has invalid decimal configuration: precision ({2}) must be greater than scale ({3})",
+    public static readonly DiagnosticDescriptor NoPropertiesFound = new(
+        id: "PARQ003",
+        title: "No public serializable properties found",
+        messageFormat: "The type '{0}' is decorated with [ParquetSerializable] but has no public serializable properties or fields",
         category: "ParquetSourceGenerator",
-        defaultSeverity: DiagnosticSeverity.Error,
+        defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
 }

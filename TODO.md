@@ -24,6 +24,13 @@
   - [x] Ported from `ParquetSerializer` (expression-tree compiled) to Parquet.Net **low-level primitives** (`ParquetWriter.CreateAsync`, `ParquetReader.CreateAsync`, `groupWriter.WriteAsync`, `groupReader.ReadAsync`)
   - [x] Zero-reflection, **100% Native AOT Compatible** (`PublishAot=true` verified via `AotTest`)
   - [x] Batched streaming row group writer (`WriteParquetBatchedAsync`) for 100M+ scale
+  - [x] **`IAsyncEnumerable<T>` Streaming Support (`WriteParquetAsync`)**: Stream items asynchronously from `IAsyncEnumerable<T>` directly into chunked Parquet files.
+
+- [x] **Roslyn Compiler Diagnostics & Guardrails**
+  - [x] **`PARQ001`**: Report error if `[ParquetSerializable]` target type is not declared as `partial`.
+  - [x] **`PARQ002`**: Report error if duplicate `[ParquetColumn]` names are specified.
+  - [x] **`PARQ003`**: Report warning if target type has no valid public serializable properties.
+  - [x] **Roslyn Diagnostic Unit Tests**: Verified via `DiagnosticTests.cs` (20/20 test suite passing).
 
 - [x] **System.Text.Json Inspired Design Optimizations (ALL IMPLEMENTED & VERIFIED)**
   - [x] **Multi-RowGroup Concurrent Parallel Reading (`ReadParquetParallelAsync`)**: Parallel object instantiation across multi-core CPUs (**1.45x faster** on multi-row-group files).

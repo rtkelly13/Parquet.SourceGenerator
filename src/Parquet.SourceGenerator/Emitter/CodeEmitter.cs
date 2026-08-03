@@ -6,7 +6,7 @@ namespace Parquet.SourceGenerator.Emitter;
 
 /// <summary>
 /// Emits high-performance C# partial extension classes targeting Parquet.Net v6 low-level primitives.
-/// Features configurable ParquetSerializerOptions, compact 8-byte Int64 microsecond timestamp encoding,
+/// Features configurable ParquetSerializerOptions, IAsyncEnumerable streaming, compact 8-byte Int64 microsecond timestamp encoding,
 /// parallel multi-row-group reading, zero-allocation Guid binary encoding, static pre-allocated DataFields,
 /// O(1) index-check schema field resolution, ArrayPool buffer recycling, zero-copy ReadOnlyMemory overloads,
 /// and Native AOT compatibility.
@@ -52,6 +52,10 @@ public static class CodeEmitter
 
         // Batched streaming write — splits IEnumerable into fixed-size row groups
         EmitWriteBatchedAsync(builder, model);
+        builder.AppendLine();
+
+        // IAsyncEnumerable streaming write
+        EmitWriteAsyncEnumerable(builder, model);
         builder.AppendLine();
 
         // Read API — async (v6 low-level primitives)
@@ -280,6 +284,46 @@ public static class CodeEmitter
         builder.AppendLine("        await using var writer = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, cancellationToken: cancellationToken);");
         builder.AppendLine($"        var buffer = new global::System.Collections.Generic.List<{model.ClassName}>(targetChunkSize);");
         builder.AppendLine("        foreach (var item in items)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            cancellationToken.ThrowIfCancellationRequested();");
+        builder.AppendLine("            buffer.Add(item);");
+        builder.AppendLine("            if (buffer.Count == targetChunkSize)");
+        builder.AppendLine("            {");
+        builder.AppendLine("                await writer.WriteParquetRowGroupAsync(buffer, cancellationToken);");
+        builder.AppendLine("                buffer.Clear();");
+        builder.AppendLine("            }");
+        builder.AppendLine("        }");
+        builder.AppendLine("        if (buffer.Count > 0)");
+        builder.AppendLine("            await writer.WriteParquetRowGroupAsync(buffer, cancellationToken);");
+        builder.AppendLine("    }");
+    }
+
+    // ──────────────────────────────────────────────────────────
+    //  WRITE IAsyncEnumerable
+    // ──────────────────────────────────────────────────────────
+
+    private static void EmitWriteAsyncEnumerable(StringBuilder builder, TargetClassModel model)
+    {
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine($"    /// Streams <see=\"{model.ClassName}\"/> items asynchronously from an <see=\"global::System.Collections.Generic.IAsyncEnumerable{{{model.ClassName}}}\"/> sequence into a Parquet file in fixed-size row group batches.");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine($"    public static async global::System.Threading.Tasks.Task WriteParquetAsync(");
+        builder.AppendLine($"        this global::System.Collections.Generic.IAsyncEnumerable<{model.ClassName}> items,");
+        builder.AppendLine($"        global::System.IO.Stream stream,");
+        builder.AppendLine($"        int rowGroupSize = 50_000,");
+        builder.AppendLine($"        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,");
+        builder.AppendLine($"        global::System.Threading.CancellationToken cancellationToken = default)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        if (items == null) throw new global::System.ArgumentNullException(nameof(items));");
+        builder.AppendLine("        if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));");
+        builder.AppendLine("        if (rowGroupSize <= 0) throw new global::System.ArgumentOutOfRangeException(nameof(rowGroupSize));");
+        builder.AppendLine();
+        builder.AppendLine("        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;");
+        builder.AppendLine("        int targetChunkSize = options.RowGroupSize > 0 && options.RowGroupSize != 50_000 ? options.RowGroupSize : rowGroupSize;");
+        builder.AppendLine();
+        builder.AppendLine("        await using var writer = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, cancellationToken: cancellationToken);");
+        builder.AppendLine($"        var buffer = new global::System.Collections.Generic.List<{model.ClassName}>(targetChunkSize);");
+        builder.AppendLine("        await foreach (var item in items)");
         builder.AppendLine("        {");
         builder.AppendLine("            cancellationToken.ThrowIfCancellationRequested();");
         builder.AppendLine("            buffer.Add(item);");
