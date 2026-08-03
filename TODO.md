@@ -15,6 +15,17 @@
   - [x] Add C# test data generator (`test/Parquet.SourceGenerator.CLI/TestDataGenerator.cs`) using `Parquet.Net` v6 low-level primitives
   - [x] Cloned reference codebases placed in `code/other/` (`dotnet-runtime-reference`, `parquet-dotnet-reference`)
 
+- [x] **Open-Source Repository Expectations & Community Standards**
+  - [x] **MIT License & Embedding**: Updated `LICENSE` copyright range (`2022-2026 Ryan Kelly`) and embedded directly into `.nupkg` via `<PackageLicenseFile>` in `Directory.Build.props`.
+  - [x] **SourceLink Step-Through Debugging (`Microsoft.SourceLink.GitHub`)**: Added SourceLink support to `Directory.Build.props` enabling consumer IDE debugging.
+  - [x] **Automated Dependency Updates (`.github/dependabot.yml`)**: Dependabot configured for weekly NuGet package & GitHub Actions workflow updates.
+  - [x] **Contributing Guide (`CONTRIBUTING.md`)**: Complete guide for setup, building, testing, benchmarking, and submitting PRs.
+  - [x] **Contributor Code of Conduct (`CODE_OF_CONDUCT.md`)**: Standard Contributor Covenant v2.1.
+  - [x] **Security Disclosure Policy (`SECURITY.md`)**: Private security vulnerability reporting policy.
+  - [x] **Semantic Versioning Changelog (`CHANGELOG.md`)**: Documented v0.0.1 release features and performance wins.
+  - [x] **Structured Issue & PR Templates**: Added GitHub Bug Report (`bug_report.yml`), Feature Request (`feature_request.yml`), and PR checklist (`PULL_REQUEST_TEMPLATE.md`).
+  - [x] **Enhanced README Badges**: Integrated CI status, Benchmark baseline status, NuGet version, License, .NET, and Native AOT badges.
+
 - [x] **Roslyn Generator Modernization & Type Support**
   - [x] Roslyn `IIncrementalGenerator` implementation (`ParquetIncrementalGenerator`)
   - [x] Value-equatable `EquatableArray<T>` Roslyn pipeline caching (System.Text.Json design pattern)
