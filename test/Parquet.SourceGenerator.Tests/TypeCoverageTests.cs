@@ -103,6 +103,35 @@ public sealed class TypeCoverageTests
     }
 
     [Fact]
+    public async Task CustomOptionsRoundtripCorrectly()
+    {
+        var items = Enumerable.Range(0, 100).Select(i => new TypeCoverageRecord
+        {
+            Id = i,
+            CreatedAt = DateTime.UtcNow,
+            CorrelationId = Guid.NewGuid(),
+            Status = EventStatus.Active,
+            Duration = TimeSpan.FromSeconds(i)
+        }).ToList();
+
+        var options = new ParquetSerializerOptions
+        {
+            RowGroupSize = 25,
+            MaxDegreeOfParallelism = 2,
+            CompressionMethod = ParquetCompressionMethod.Snappy
+        };
+
+        var stream = new MemoryStream();
+        await items.WriteParquetBatchedAsync(stream, options: options);
+        stream.Position = 0;
+
+        var result = await TypeCoverageRecordParquetExtensions.ReadParquetParallelAsync(stream, options: options);
+
+        Assert.Equal(100, result.Count);
+        Assert.Equal(items[50].Id, result[50].Id);
+    }
+
+    [Fact]
     public async Task GuidRoundtripsCorrectly()
     {
         var id = Guid.NewGuid();
