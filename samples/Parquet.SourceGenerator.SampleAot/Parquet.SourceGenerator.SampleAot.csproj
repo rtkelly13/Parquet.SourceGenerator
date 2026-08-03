@@ -4,6 +4,7 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
     <PublishAot>true</PublishAot>
+    <IsPackable>false</IsPackable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <RootNamespace>Parquet.SourceGenerator.SampleAot</RootNamespace>
   </PropertyGroup>
