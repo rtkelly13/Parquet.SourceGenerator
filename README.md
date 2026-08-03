@@ -112,6 +112,8 @@ await events.WriteParquetBatchedAsync(stream, options: options);
 | **`PARQ001`** | **Error** | Target type decorated with `[ParquetSerializable]` must be declared as `partial`. |
 | **`PARQ002`** | **Error** | Duplicate `[ParquetColumn]` column names detected on model. |
 | **`PARQ003`** | **Warning** | Target type has no valid public serializable properties or fields. |
+| **`PARQ004`** | **Warning** | Non-public property decorated with `[ParquetColumn]` will be ignored. |
+| **`PARQ005`** | **Error** | Invalid `[ParquetDecimal]` precision or scale parameters (precision must be `>= scale` and `<= 38`). |
 
 ---
 

@@ -69,6 +69,48 @@ public sealed class DiagnosticTests
         Assert.Contains(diagnostics, d => d.Id == DiagnosticDescriptors.NoPropertiesFound.Id);
     }
 
+    [Fact]
+    public void NonPublicPropertyTriggersPARQ004()
+    {
+        string source = """
+            using Parquet.SourceGenerator;
+
+            [ParquetSerializable]
+            public partial class PrivatePropClass
+            {
+                [ParquetColumn("secret_id")]
+                private int SecretId { get; init; }
+
+                [ParquetColumn("id")]
+                public int Id { get; init; }
+            }
+            """;
+
+        var (diagnostics, _) = RunGenerator(source);
+
+        Assert.Contains(diagnostics, d => d.Id == DiagnosticDescriptors.NonPublicPropertyIgnored.Id);
+    }
+
+    [Fact]
+    public void InvalidDecimalPrecisionScaleTriggersPARQ005()
+    {
+        string source = """
+            using Parquet.SourceGenerator;
+
+            [ParquetSerializable]
+            public partial class InvalidDecimalClass
+            {
+                [ParquetColumn("amount")]
+                [ParquetDecimal(2, 5)]
+                public decimal Amount { get; init; }
+            }
+            """;
+
+        var (diagnostics, _) = RunGenerator(source);
+
+        Assert.Contains(diagnostics, d => d.Id == DiagnosticDescriptors.InvalidDecimalPrecisionScale.Id);
+    }
+
     private static (IReadOnlyList<Diagnostic> Diagnostics, IReadOnlyList<SyntaxTree> OutputTrees) RunGenerator(string source)
     {
         SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(source);

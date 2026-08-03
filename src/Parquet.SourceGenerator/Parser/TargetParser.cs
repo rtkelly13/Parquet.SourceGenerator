@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -77,8 +78,25 @@ public static class TargetParser
 
         foreach (ISymbol member in members)
         {
-            if (member.IsStatic || member.DeclaredAccessibility != Accessibility.Public)
+            if (member.IsStatic) continue;
+
+            // Rule PARQ004: Non-public property decorated with [ParquetColumn] warning
+            if (member.DeclaredAccessibility != Accessibility.Public)
+            {
+                bool hasColAttr = member.GetAttributes().Any(a =>
+                    a.AttributeClass?.ToDisplayString() == ColumnAttributeFullName ||
+                    a.AttributeClass?.ToDisplayString() == "Parquet.Attributes.ParquetColumnAttribute");
+
+                if (hasColAttr)
+                {
+                    Location loc = member.Locations.FirstOrDefault() ?? typeDeclaration.Identifier.GetLocation();
+                    diagnostics.Add(new DiagnosticInfo(
+                        DiagnosticDescriptors.NonPublicPropertyIgnored,
+                        loc,
+                        new[] { member.Name, className }));
+                }
                 continue;
+            }
 
             ITypeSymbol? memberType = null;
             if (member is IPropertySymbol propSymbol)
@@ -130,6 +148,16 @@ public static class TargetParser
                 {
                     precision = p;
                     scale = s;
+
+                    // Rule PARQ005: Decimal precision/scale validation
+                    if (p < s || p > 38 || p <= 0 || s < 0)
+                    {
+                        Location loc = member.Locations.FirstOrDefault() ?? typeDeclaration.Identifier.GetLocation();
+                        diagnostics.Add(new DiagnosticInfo(
+                            DiagnosticDescriptors.InvalidDecimalPrecisionScale,
+                            loc,
+                            new[] { member.Name, p.ToString(CultureInfo.InvariantCulture), s.ToString(CultureInfo.InvariantCulture) }));
+                    }
                 }
             }
 

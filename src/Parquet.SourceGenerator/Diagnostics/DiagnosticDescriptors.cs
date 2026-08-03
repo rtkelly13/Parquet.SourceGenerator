@@ -39,4 +39,26 @@ public static class DiagnosticDescriptors
         category: "ParquetSourceGenerator",
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
+
+    /// <summary>
+    /// PARQ004: Non-public property decorated with [ParquetColumn] will be ignored.
+    /// </summary>
+    public static readonly DiagnosticDescriptor NonPublicPropertyIgnored = new(
+        id: "PARQ004",
+        title: "Non-public property ignored",
+        messageFormat: "The property '{0}' on type '{1}' is decorated with [ParquetColumn] but is not public and will be ignored",
+        category: "ParquetSourceGenerator",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// PARQ005: Invalid ParquetDecimal precision or scale configuration.
+    /// </summary>
+    public static readonly DiagnosticDescriptor InvalidDecimalPrecisionScale = new(
+        id: "PARQ005",
+        title: "Invalid ParquetDecimal precision or scale",
+        messageFormat: "Invalid ParquetDecimal on property '{0}': precision ({1}) must be >= scale ({2}) and <= 38",
+        category: "ParquetSourceGenerator",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
 }
