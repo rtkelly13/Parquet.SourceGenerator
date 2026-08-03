@@ -2,9 +2,10 @@
 
 ## Core Architecture & Modernization Status
 
-- [x] **Infrastructure & SDK Upgrades**
+- [x] **Infrastructure & Target Framework Alignment**
   - [x] Upgrade `Parquet.Net` dependency from `3.9.1` to `6.0.3` (async-first API shift)
-  - [x] Target Framework updated to `.NET 8` (`net8.0`) across all projects
+  - [x] **Target Framework Alignment**: Configured `Parquet.SourceGenerator.Attributes` to target `netstandard2.0;netstandard2.1;net6.0;net7.0;net8.0`, matching `Parquet.Net`'s runtime target frameworks.
+  - [x] **Roslyn Analyzer Target Framework**: Configured `Parquet.SourceGenerator` analyzer DLL to target `netstandard2.0` (required for Roslyn 4.x compiler worker process integration across all .NET SDK versions).
   - [x] Fix `global.json` SDK constraint for modern .NET environments
   - [x] Add `Directory.Build.props` for centralized MSBuild settings and NuGet metadata
   - [x] Add `.editorconfig` for C# code style enforcement
