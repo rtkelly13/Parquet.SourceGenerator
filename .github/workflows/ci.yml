@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ main ]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   e2e-pr-check:
     name: Comprehensive E2E PR Verification (.NET 8 & 9 + Native AOT)
@@ -54,8 +58,8 @@ jobs:
       - name: Execute Native AOT Sample Pathway
         run: dotnet run --project samples/Parquet.SourceGenerator.SampleAot/Parquet.SourceGenerator.SampleAot.csproj --configuration Release
 
-      - name: Pack NuGet Packages
-        run: dotnet pack src/Parquet.SourceGenerator/Parquet.SourceGenerator.csproj --configuration Release --no-build --output ./artifacts
+      - name: Pack All NuGet Packages
+        run: dotnet pack Parquet.SourceGenertor.sln --configuration Release --no-build --output ./artifacts
 
       - name: Upload Test Coverage Artifacts
         uses: actions/upload-artifact@v4

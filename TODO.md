@@ -15,6 +15,13 @@
   - [x] Add C# test data generator (`test/Parquet.SourceGenerator.CLI/TestDataGenerator.cs`) using `Parquet.Net` v6 low-level primitives
   - [x] Cloned reference codebases placed in `code/other/` (`dotnet-runtime-reference`, `parquet-dotnet-reference`)
 
+- [x] **GitHub Repository Governance & PR Automation Guardrails**
+  - [x] **Linear History & Squash Merge Enforcement**: Documented GitHub branch protection rules enforcing linear history (`BRANCH_PROTECTION.md`).
+  - [x] **Automatic Branch Deletion**: Configured guidelines for automatic head branch deletion upon PR merge.
+  - [x] **PR Concurrency Cancellation**: Updated `.github/workflows/ci.yml` with workflow concurrency to cancel redundant PR test runs.
+  - [x] **PR Conventional Title Validation**: Created `.github/workflows/pr-title.yml` enforcing semantic PR titles (`feat:`, `fix:`, `perf:`).
+  - [x] **Solution-Wide Package Packing**: Updated CI and Release workflows to build, test, and pack both `Parquet.SourceGenerator` and `Parquet.SourceGenerator.Attributes` packages.
+
 - [x] **Open-Source Repository Expectations & Community Standards**
   - [x] **MIT License & Embedding**: Updated `LICENSE` copyright range (`2022-2026 Ryan Kelly`) and embedded directly into `.nupkg` via `<PackageLicenseFile>` in `Directory.Build.props`.
   - [x] **SourceLink Step-Through Debugging (`Microsoft.SourceLink.GitHub`)**: Added SourceLink support to `Directory.Build.props` enabling consumer IDE debugging.
