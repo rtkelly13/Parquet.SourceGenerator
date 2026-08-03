@@ -9,7 +9,7 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
-  <!-- Package Metadata -->
+  <!-- Package Metadata & SourceLink -->
   <PropertyGroup>
     <Authors>Ryan Kelly</Authors>
     <Copyright>Copyright (c) 2022-2026 Ryan Kelly</Copyright>
@@ -28,5 +28,6 @@
   <ItemGroup Condition="'$(IsPackable)' != 'false'">
     <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\" />
     <None Include="$(MSBuildThisFileDirectory)LICENSE" Pack="true" PackagePath="\" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
   </ItemGroup>
 </Project>

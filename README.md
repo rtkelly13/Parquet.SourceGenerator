@@ -120,6 +120,7 @@ await events.WriteParquetBatchedAsync(stream, options: options);
 Contributions are welcome! Please review our community guidelines:
 
 - 📖 **[Contributing Guide](CONTRIBUTING.md)**: Build setup, testing, and pull request guidelines.
+- 📜 **[Code of Conduct](CODE_OF_CONDUCT.md)**: Community behavior standards.
 - 🛡️ **[Security Policy](SECURITY.md)**: Security vulnerability disclosure process.
 - 📝 **[Changelog](CHANGELOG.md)**: Version history and feature release notes.
 
