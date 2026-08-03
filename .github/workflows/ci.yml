@@ -52,8 +52,8 @@ jobs:
       - name: Build solution (Release)
         run: dotnet build Parquet.SourceGenertor.sln --configuration Release --no-restore
 
-      - name: Run Full Test Suite with Code Coverage
-        run: dotnet test Parquet.SourceGenertor.sln --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage"
+      - name: Run Full Test Suite with Code Coverage Enforcement (>=80%)
+        run: dotnet test Parquet.SourceGenertor.sln --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --settings coverlet.runsettings
 
       - name: Execute Native AOT Sample Pathway
         run: dotnet run --project samples/Parquet.SourceGenerator.SampleAot/Parquet.SourceGenerator.SampleAot.csproj --configuration Release

@@ -15,6 +15,11 @@
   - [x] Add C# test data generator (`test/Parquet.SourceGenerator.CLI/TestDataGenerator.cs`) using `Parquet.Net` v6 low-level primitives
   - [x] Cloned reference codebases placed in `code/other/` (`dotnet-runtime-reference`, `parquet-dotnet-reference`)
 
+- [x] **Code Coverage Enforcement & Parquet.Net Contract Testing**
+  - [x] **80% Code Coverage Threshold Enforcement**: Created `coverlet.runsettings` enforcing >=80% line & branch coverage thresholds integrated into `.github/workflows/ci.yml`.
+  - [x] **Parquet.Net Contract Enforcement Suite**: Added null argument checks (`ArgumentNullException`) and bounds checks (`ArgumentOutOfRangeException` for `rowGroupSize <= 0`) across generated APIs.
+  - [x] **Internal Generator Unit Tests**: Added direct `CodeEmitter`, `TargetParser`, `EquatableArray<T>`, and `DiagnosticInfo` tests in `ParserAndEmitterTests.cs` (30/30 total tests passing).
+
 - [x] **GitHub Repository Governance & PR Automation Guardrails**
   - [x] **Linear History & Squash Merge Enforcement**: Documented GitHub branch protection rules enforcing linear history (`BRANCH_PROTECTION.md`).
   - [x] **Automatic Branch Deletion**: Configured guidelines for automatic head branch deletion upon PR merge.
