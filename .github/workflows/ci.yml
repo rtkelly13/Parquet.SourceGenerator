@@ -1,0 +1,61 @@
+name: CI & PR E2E Checks
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  e2e-pr-check:
+    name: Comprehensive E2E PR Verification (.NET 8 & 9 + Native AOT)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Setup .NET SDKs
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+
+      - name: Restore solution dependencies
+        run: dotnet restore Parquet.SourceGenertor.sln
+
+      - name: Verify C# Code Formatting
+        run: dotnet format --verify-no-changes --verbosity diagnostic
+
+      - name: Generate Python Test Datasets (PyArrow v1 & v2)
+        run: uv run scripts/generate_test_data.py
+
+      - name: Generate C# Test Datasets (Parquet.Net v3)
+        run: dotnet run --project test/Parquet.SourceGenerator.CLI/Parquet.SourceGenerator.CLI.csproj
+
+      - name: Build solution (Release)
+        run: dotnet build Parquet.SourceGenertor.sln --configuration Release --no-restore
+
+      - name: Run Full Integration & Unit Test Suite
+        run: dotnet test Parquet.SourceGenertor.sln --configuration Release --no-build --verbosity normal
+
+      - name: Execute Native AOT Sample Pathway
+        run: dotnet run --project samples/Parquet.SourceGenerator.SampleAot/Parquet.SourceGenerator.SampleAot.csproj --configuration Release
+
+      - name: Pack NuGet Packages
+        run: dotnet pack src/Parquet.SourceGenerator/Parquet.SourceGenerator.csproj --configuration Release --no-build --output ./artifacts
+
+      - name: Upload Build & Package Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages
+          path: ./artifacts/*.nupkg

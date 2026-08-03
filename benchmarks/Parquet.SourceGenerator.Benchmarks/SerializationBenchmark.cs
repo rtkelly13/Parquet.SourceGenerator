@@ -1,0 +1,195 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Running;
+using Parquet.Serialization;
+
+namespace Parquet.SourceGenerator.Benchmarks;
+
+[ParquetSerializable]
+public partial record ScaleEvent
+{
+    [ParquetColumn("id")]
+    public int Id { get; init; }
+
+    [ParquetColumn("val_a")]
+    public double ValA { get; init; }
+
+    [ParquetColumn("val_b")]
+    public long ValB { get; init; }
+
+    [ParquetColumn("is_valid")]
+    public bool IsValid { get; init; }
+}
+
+[ParquetSerializable]
+public partial record GuidEvent
+{
+    [ParquetColumn("id")]
+    public int Id { get; init; }
+
+    [ParquetColumn("correlation_id")]
+    public Guid CorrelationId { get; init; }
+
+    [ParquetColumn("timestamp")]
+    public DateTime Timestamp { get; init; }
+}
+
+[MemoryDiagnoser]
+[Orderer(BenchmarkDotNet.Order.SummaryOrderPolicy.FastestToSlowest)]
+[SuppressMessage("Naming", "CA1707:Identifiers should not contain underscores")]
+public class ScalingSerializationBenchmark
+{
+    private List<ScaleEvent> _data = null!;
+
+    [Params(1_000, 10_000, 100_000)]
+    public int Count { get; set; }
+
+    [GlobalSetup]
+    public void Setup()
+    {
+        _data = Enumerable.Range(0, Count)
+            .Select(i => new ScaleEvent
+            {
+                Id = i,
+                ValA = i * 3.14159,
+                ValB = i * 1000L,
+                IsValid = i % 2 == 0
+            })
+            .ToList();
+    }
+
+    /// <summary>
+    /// v6 ParquetSerializer baseline — uses Dremel shredding + compiled Expression trees.
+    /// NOT Native AOT compatible.
+    /// </summary>
+    [Benchmark(Baseline = true)]
+    public async Task ReflectionParquetSerializerV6Write()
+    {
+        using var stream = new MemoryStream();
+        await ParquetSerializer.SerializeAsync(_data, stream);
+    }
+
+    /// <summary>
+    /// Source generator — Native AOT compatible, zero reflection, ArrayPool buffers.
+    /// </summary>
+    [Benchmark]
+    public async Task SourceGeneratorWriteAsync()
+    {
+        using var stream = new MemoryStream();
+        await _data.WriteParquetAsync(stream);
+    }
+
+    /// <summary>
+    /// Source generator batched streaming — 100M+ scale.
+    /// </summary>
+    [Benchmark]
+    public async Task SourceGeneratorWriteBatchedAsync()
+    {
+        using var stream = new MemoryStream();
+        await _data.WriteParquetBatchedAsync(stream, rowGroupSize: 20_000);
+    }
+}
+
+[MemoryDiagnoser]
+[Orderer(BenchmarkDotNet.Order.SummaryOrderPolicy.FastestToSlowest)]
+[SuppressMessage("Naming", "CA1707:Identifiers should not contain underscores")]
+public class ScalingDeserializationBenchmark
+{
+    private byte[] _parquetBytes = null!;
+
+    [Params(1_000, 10_000, 100_000)]
+    public int Count { get; set; }
+
+    [GlobalSetup]
+    public void Setup()
+    {
+        var data = Enumerable.Range(0, Count)
+            .Select(i => new ScaleEvent
+            {
+                Id = i,
+                ValA = i * 3.14159,
+                ValB = i * 1000L,
+                IsValid = i % 2 == 0
+            })
+            .ToList();
+
+        using var stream = new MemoryStream();
+        data.WriteParquetAsync(stream).GetAwaiter().GetResult();
+        _parquetBytes = stream.ToArray();
+    }
+
+    /// <summary>
+    /// v6 ParquetSerializer baseline deserializer — compiled Expression trees.
+    /// NOT Native AOT compatible.
+    /// </summary>
+    [Benchmark(Baseline = true)]
+    public async Task<IList<ScaleEvent>> ReflectionParquetSerializerV6Read()
+    {
+        using var stream = new MemoryStream(_parquetBytes);
+        var result = await ParquetSerializer.DeserializeAsync<ScaleEvent>(stream);
+        return result.Data;
+    }
+
+    /// <summary>
+    /// Source generator deserializer — Native AOT compatible, ArrayPool buffers.
+    /// </summary>
+    [Benchmark]
+    public async Task<List<ScaleEvent>> SourceGeneratorReadAsync()
+    {
+        using var stream = new MemoryStream(_parquetBytes);
+        return await ScaleEventParquetExtensions.ReadParquetAsync(stream);
+    }
+}
+
+[MemoryDiagnoser]
+[Orderer(BenchmarkDotNet.Order.SummaryOrderPolicy.FastestToSlowest)]
+[SuppressMessage("Naming", "CA1707:Identifiers should not contain underscores")]
+public class GuidInterchangeBenchmark
+{
+    private List<GuidEvent> _guidData = null!;
+
+    [Params(10_000)]
+    public int Count { get; set; }
+
+    [GlobalSetup]
+    public void Setup()
+    {
+        _guidData = Enumerable.Range(0, Count)
+            .Select(i => new GuidEvent
+            {
+                Id = i,
+                CorrelationId = Guid.NewGuid(),
+                Timestamp = DateTime.UtcNow
+            })
+            .ToList();
+    }
+
+    [Benchmark(Baseline = true)]
+    public async Task ReflectionParquetSerializerGuidWrite()
+    {
+        using var stream = new MemoryStream();
+        await ParquetSerializer.SerializeAsync(_guidData, stream);
+    }
+
+    [Benchmark]
+    public async Task SourceGeneratorGuidWriteAsync()
+    {
+        using var stream = new MemoryStream();
+        await _guidData.WriteParquetAsync(stream);
+    }
+}
+
+internal static class Program
+{
+    private static void Main(string[] args)
+    {
+        BenchmarkRunner.Run<ScalingSerializationBenchmark>(args: args);
+        BenchmarkRunner.Run<ScalingDeserializationBenchmark>(args: args);
+        BenchmarkRunner.Run<GuidInterchangeBenchmark>(args: args);
+    }
+}

@@ -1,11 +1,20 @@
-﻿namespace Parquet.SourceGenerator.CLI;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
 
-partial class Program
+namespace Parquet.SourceGenerator.CLI;
+
+sealed partial class Program
 {
-    static void Main(string[] args)
+    static async Task Main(string[] args)
     {
-        HelloFrom("Generated Code");
+        if (args.Contains("--profile") || args.Contains("profile"))
+        {
+            await ProfileWorkload.ExecuteAsync();
+        }
+        else
+        {
+            await TestDataGenerator.GenerateAllAsync();
+        }
     }
-
-    static partial void HelloFrom(string name);
 }
