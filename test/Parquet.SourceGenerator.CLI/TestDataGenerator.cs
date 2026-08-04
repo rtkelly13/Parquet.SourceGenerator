@@ -64,7 +64,7 @@ public static class TestDataGenerator
     {
         const int count = 10_000;
         var ids = Enumerable.Range(0, count).ToArray();
-        
+
         var nullableInts = ids.Select(i => i % 5 == 0 ? (int?)null : i * 10).ToArray();
         var nullableDoubles = ids.Select(i => i % 5 == 0 ? (double?)null : (i * 3.14159) % 1000.0).ToArray();
         var nullableStrings = ids.Select(i => i % 5 == 0 ? null : $"str_val_{i}").ToArray();

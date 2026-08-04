@@ -43,8 +43,18 @@ jobs:
       - name: Audit Package Security & Vulnerabilities
         run: dotnet list package --vulnerable --include-transitive
 
+      # `whitespace` only, deliberately. Plain `dotnet format` also runs its style and analyzer
+      # phases, which build a Roslyn workspace via MSBuildWorkspace — and MSBuildWorkspace does not
+      # execute source generators. It logs "Found project reference without a matching metadata
+      # reference" for the generator project and then reports CS1503 against every call into the
+      # generated *ParquetExtensions API, because in its view that API does not exist. Those errors
+      # are artifacts of the tool, not defects in the code.
+      #
+      # Style and analyzer rules are enforced instead by the build below, via
+      # EnforceCodeStyleInBuild plus -warnaserror, which uses the real compilation where generators
+      # do run.
       - name: Verify C# Code Formatting
-        run: dotnet format --verify-no-changes --verbosity diagnostic
+        run: dotnet format whitespace --verify-no-changes --verbosity diagnostic
 
       - name: Generate Python Test Datasets (PyArrow v1 & v2)
         run: uv run scripts/generate_test_data.py
