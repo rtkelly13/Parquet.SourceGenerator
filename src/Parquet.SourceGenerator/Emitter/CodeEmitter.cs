@@ -366,7 +366,7 @@ public static class CodeEmitter
         for (int i = 0; i < model.Properties.Length; i++)
         {
             PropertyModel prop = model.Properties[i];
-            builder.AppendLine($"        var field_{i} = ({i} < fileFields.Length && string.Equals(fileFields[{i}].Name, _field_{i}.Name, global::System.StringComparison.OrdinalIgnoreCase)) ? fileFields[{i}] : (fileFields.FirstOrDefault(f => string.Equals(f.Name, _field_{i}.Name, global::System.StringComparison.OrdinalIgnoreCase)) ?? _field_{i});");
+            builder.AppendLine($"        var field_{i} = ({i} < fileFields.Length && string.Equals(fileFields[{i}].Name, _field_{i}.Name, global::System.StringComparison.OrdinalIgnoreCase)) ? fileFields[{i}] : (global::System.Linq.Enumerable.FirstOrDefault(fileFields, f => string.Equals(f.Name, _field_{i}.Name, global::System.StringComparison.OrdinalIgnoreCase)) ?? _field_{i});");
         }
         builder.AppendLine();
 
@@ -463,7 +463,7 @@ public static class CodeEmitter
         for (int i = 0; i < model.Properties.Length; i++)
         {
             PropertyModel prop = model.Properties[i];
-            builder.AppendLine($"        var field_{i} = ({i} < fileFields.Length && string.Equals(fileFields[{i}].Name, _field_{i}.Name, global::System.StringComparison.OrdinalIgnoreCase)) ? fileFields[{i}] : (fileFields.FirstOrDefault(f => string.Equals(f.Name, _field_{i}.Name, global::System.StringComparison.OrdinalIgnoreCase)) ?? _field_{i});");
+            builder.AppendLine($"        var field_{i} = ({i} < fileFields.Length && string.Equals(fileFields[{i}].Name, _field_{i}.Name, global::System.StringComparison.OrdinalIgnoreCase)) ? fileFields[{i}] : (global::System.Linq.Enumerable.FirstOrDefault(fileFields, f => string.Equals(f.Name, _field_{i}.Name, global::System.StringComparison.OrdinalIgnoreCase)) ?? _field_{i});");
         }
         builder.AppendLine();
 
