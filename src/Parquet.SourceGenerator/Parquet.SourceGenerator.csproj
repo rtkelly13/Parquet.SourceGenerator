@@ -10,6 +10,20 @@
     <RootNamespace>Parquet.SourceGenerator</RootNamespace>
 
     <DevelopmentDependency>true</DevelopmentDependency>
+
+    <!--
+      The generator ships ONLY as an analyzer, never as a library.
+
+      Without this, the default (true) puts Parquet.SourceGenerator.dll in lib/netstandard2.0/ as
+      well as in analyzers/dotnet/cs/ below — so consumers compile against the generator itself and
+      its Roslyn-facing internals (CodeEmitter, TargetParser, the model types) become part of their
+      compile scope. Worse, Microsoft.CodeAnalysis.CSharp is PrivateAssets="all", so that lib/
+      reference resolves against types the package never declares a dependency on.
+
+      NU5128 below is the "no lib/ref assemblies for the declared framework" warning, which is the
+      expected and correct state for an analyzer-only package once this is false.
+    -->
+    <IncludeBuildOutput>false</IncludeBuildOutput>
     <NoWarn>$(NoWarn);NU5128</NoWarn>
     <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);PackBuildOutputs</TargetsForTfmSpecificContentInPackage>
   </PropertyGroup>
@@ -19,8 +33,20 @@
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.3" PrivateAssets="all" />
   </ItemGroup>
 
+  <!--
+    Deliberately NOT PrivateAssets="all". The generated code refers to types that live in the
+    Attributes package ([ParquetSerializable], ParquetSerializerOptions, ...), so a consumer who
+    installs this package needs that one too. Suppressing the asset flow made the dependency
+    invisible in the produced .nupkg, leaving `dotnet add package Parquet.SourceGenerator` in a
+    state where every generated file fails to compile until the consumer works out for themselves
+    that a second package exists.
+
+    This is safe for analyzer loading: the generator never binds to the Attributes assembly, it
+    matches attributes by fully-qualified name against the semantic model (see TargetParser), so
+    Roslyn does not need Attributes.dll beside it in analyzers/dotnet/cs.
+  -->
   <ItemGroup>
-    <ProjectReference Include="..\Parquet.SourceGenerator.Attributes\Parquet.SourceGenerator.Attributes.csproj" PrivateAssets="all" />
+    <ProjectReference Include="..\Parquet.SourceGenerator.Attributes\Parquet.SourceGenerator.Attributes.csproj" />
   </ItemGroup>
 
   <Target Name="PackBuildOutputs">

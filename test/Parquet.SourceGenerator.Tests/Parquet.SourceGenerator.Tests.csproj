@@ -24,6 +24,13 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Parquet.SourceGenerator.Attributes\Parquet.SourceGenerator.Attributes.csproj" />
+    <!--
+      ReferenceOutputAssembly stays "true" here, unlike every other consumer in the repository.
+      This project unit-tests the generator's internals directly (CodeEmitter, TargetParser,
+      EquatableArray, DiagnosticInfo), so it genuinely needs the assembly as a compile reference in
+      addition to running it as an analyzer. Consumers only need the generated output, and use
+      "false".
+    -->
     <ProjectReference Include="..\..\src\Parquet.SourceGenerator\Parquet.SourceGenerator.csproj"
                       OutputItemType="Analyzer"
                       ReferenceOutputAssembly="true" />
