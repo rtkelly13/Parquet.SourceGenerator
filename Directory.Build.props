@@ -6,7 +6,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!--
+      Warnings are NOT errors in local builds. CI passes `-warnaserror` explicitly instead.
+      Enabling it here breaks the build for any contributor on a newer SDK the moment that SDK
+      ships a new analyzer, which is friction paid by everyone to catch problems CI already
+      catches once.
+    -->
   </PropertyGroup>
 
   <!-- Package Metadata & SourceLink -->

@@ -1,10 +1,10 @@
 name: Performance Benchmarks & Baseline Verification
 
+# Manual only. BenchmarkDotNet on shared GitHub runners is too noisy to gate merges on, and
+# nothing here compares results against a stored baseline yet — so running it on every push and
+# pull request cost minutes per PR and produced numbers no one could act on. Trigger it
+# deliberately when investigating performance.
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
   workflow_dispatch:
     inputs:
       filter:
@@ -14,8 +14,6 @@ on:
 
 permissions:
   contents: read
-  checks: write
-  pull-requests: write
 
 jobs:
   run-benchmarks:

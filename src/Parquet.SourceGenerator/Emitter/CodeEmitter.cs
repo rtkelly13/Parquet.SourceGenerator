@@ -81,7 +81,7 @@ public static class CodeEmitter
     private static void EmitSchema(StringBuilder builder, TargetClassModel model)
     {
         builder.AppendLine("    /// <summary>");
-        builder.AppendLine($"    /// Static compile-time <see=\"global::Parquet.Schema.ParquetSchema\"/> for <see=\"{model.ClassName}\"/>.");
+        builder.AppendLine($"    /// Static compile-time <c>Parquet.Schema.ParquetSchema</c> for <c>{model.ClassName}</c>.");
         builder.AppendLine("    /// </summary>");
         builder.AppendLine("    public static readonly global::Parquet.Schema.ParquetSchema Schema = new global::Parquet.Schema.ParquetSchema(");
 
@@ -239,7 +239,7 @@ public static class CodeEmitter
     private static void EmitWriteAsync(StringBuilder builder, TargetClassModel model)
     {
         builder.AppendLine("    /// <summary>");
-        builder.AppendLine($"    /// Asynchronously serializes all <see=\"{model.ClassName}\"/> items using Parquet.Net low-level primitives.");
+        builder.AppendLine($"    /// Asynchronously serializes all <c>{model.ClassName}</c> items using Parquet.Net low-level primitives.");
         builder.AppendLine("    /// </summary>");
         builder.AppendLine($"    public static async global::System.Threading.Tasks.Task WriteParquetAsync(");
         builder.AppendLine($"        this global::System.Collections.Generic.IReadOnlyCollection<{model.ClassName}> items,");
@@ -265,7 +265,7 @@ public static class CodeEmitter
     private static void EmitWriteBatchedAsync(StringBuilder builder, TargetClassModel model)
     {
         builder.AppendLine("    /// <summary>");
-        builder.AppendLine($"    /// Streams <see=\"{model.ClassName}\"/> items into a Parquet file in fixed-size row group batches using low-level primitives.");
+        builder.AppendLine($"    /// Streams <c>{model.ClassName}</c> items into a Parquet file in fixed-size row group batches using low-level primitives.");
         builder.AppendLine("    /// </summary>");
         builder.AppendLine($"    public static async global::System.Threading.Tasks.Task WriteParquetBatchedAsync(");
         builder.AppendLine($"        this global::System.Collections.Generic.IEnumerable<{model.ClassName}> items,");
@@ -305,7 +305,7 @@ public static class CodeEmitter
     private static void EmitWriteAsyncEnumerable(StringBuilder builder, TargetClassModel model)
     {
         builder.AppendLine("    /// <summary>");
-        builder.AppendLine($"    /// Streams <see=\"{model.ClassName}\"/> items asynchronously from an <see=\"global::System.Collections.Generic.IAsyncEnumerable{{{model.ClassName}}}\"/> sequence into a Parquet file in fixed-size row group batches.");
+        builder.AppendLine($"    /// Streams <c>{model.ClassName}</c> items asynchronously from an <c>IAsyncEnumerable&lt;{model.ClassName}&gt;</c> sequence into a Parquet file in fixed-size row group batches.");
         builder.AppendLine("    /// </summary>");
         builder.AppendLine($"    public static async global::System.Threading.Tasks.Task WriteParquetAsync(");
         builder.AppendLine($"        this global::System.Collections.Generic.IAsyncEnumerable<{model.ClassName}> items,");
@@ -345,7 +345,7 @@ public static class CodeEmitter
     private static void EmitReadAsync(StringBuilder builder, TargetClassModel model)
     {
         builder.AppendLine("    /// <summary>");
-        builder.AppendLine($"    /// Asynchronously deserializes all <see=\"{model.ClassName}\"/> objects using Parquet.Net low-level primitives.");
+        builder.AppendLine($"    /// Asynchronously deserializes all <c>{model.ClassName}</c> objects using Parquet.Net low-level primitives.");
         builder.AppendLine("    /// Fast O(1) index-check schema resolution and ArrayPool buffer recycling.");
         builder.AppendLine("    /// </summary>");
         builder.AppendLine($"    public static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<{model.ClassName}>> ReadParquetAsync(");
@@ -441,7 +441,7 @@ public static class CodeEmitter
     private static void EmitReadParallelAsync(StringBuilder builder, TargetClassModel model)
     {
         builder.AppendLine("    /// <summary>");
-        builder.AppendLine($"    /// Asynchronously deserializes all <see=\"{model.ClassName}\"/> objects from a Parquet stream using parallel worker tasks for multi-row-group files.");
+        builder.AppendLine($"    /// Asynchronously deserializes all <c>{model.ClassName}</c> objects from a Parquet stream using parallel worker tasks for multi-row-group files.");
         builder.AppendLine("    /// </summary>");
         builder.AppendLine($"    public static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<{model.ClassName}>> ReadParquetParallelAsync(");
         builder.AppendLine($"        global::System.IO.Stream stream,");
@@ -551,7 +551,7 @@ public static class CodeEmitter
     private static void EmitReadMemoryOverloads(StringBuilder builder, TargetClassModel model)
     {
         builder.AppendLine("    /// <summary>");
-        builder.AppendLine($"    /// Asynchronously deserializes all <see=\"{model.ClassName}\"/> objects directly from an in-memory byte buffer with zero buffer allocation.");
+        builder.AppendLine($"    /// Asynchronously deserializes all <c>{model.ClassName}</c> objects directly from an in-memory byte buffer with zero buffer allocation.");
         builder.AppendLine("    /// </summary>");
         builder.AppendLine($"    public static global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<{model.ClassName}>> ReadParquetAsync(");
         builder.AppendLine($"        global::System.ReadOnlyMemory<byte> parquetBytes,");

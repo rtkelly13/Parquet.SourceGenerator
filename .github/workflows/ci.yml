@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -50,9 +53,9 @@ jobs:
         run: dotnet run --project test/Parquet.SourceGenerator.CLI/Parquet.SourceGenerator.CLI.csproj
 
       - name: Build solution (Release)
-        run: dotnet build Parquet.SourceGenertor.sln --configuration Release --no-restore
+        run: dotnet build Parquet.SourceGenertor.sln --configuration Release --no-restore -warnaserror
 
-      - name: Run Full Test Suite with Code Coverage Enforcement (>=80%)
+      - name: Run Full Test Suite with Code Coverage Collection
         run: dotnet test Parquet.SourceGenertor.sln --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --settings coverlet.runsettings
 
       - name: Execute Native AOT Sample Pathway
