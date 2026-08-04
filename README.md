@@ -1,37 +1,61 @@
 # Parquet.SourceGenerator
 
-[![Build & E2E Status](https://github.com/ryankelly/Parquet.SourceGenerator/actions/workflows/ci.yml/badge.svg)](https://github.com/ryankelly/Parquet.SourceGenerator/actions/workflows/ci.yml)
-[![Benchmark Baseline](https://github.com/ryankelly/Parquet.SourceGenerator/actions/workflows/benchmarks.yml/badge.svg)](https://github.com/ryankelly/Parquet.SourceGenerator/actions/workflows/benchmarks.yml)
-[![NuGet Version](https://img.shields.io/nuget/v/Parquet.SourceGenerator.svg)](https://www.nuget.org/packages/Parquet.SourceGenerator)
+[![Build & E2E Status](https://github.com/rtkelly13/Parquet.SourceGenerator/actions/workflows/ci.yml/badge.svg)](https://github.com/rtkelly13/Parquet.SourceGenerator/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![.NET](https://img.shields.io/badge/.NET-8.0-purple.svg)]()
-[![Native AOT](https://img.shields.io/badge/Native%20AOT-100%25%20Compatible-blue.svg)]()
 
-High-performance, zero-reflection, Native AOT-compatible C# Roslyn Source Generator targeting [Parquet.Net](https://github.com/aloneguid/parquet-dotnet) v6 low-level primitives.
+A zero-reflection C# Roslyn source generator that emits Parquet serializers and deserializers at
+compile time, targeting [Parquet.Net](https://github.com/aloneguid/parquet-dotnet) low-level
+primitives.
 
 ---
 
-## ⚡ Key Features & Performance Gains
+## ⚠️ Status: pre-release, not yet published
 
-- 🚀 **Zero Reflection & Native AOT Ready**: 100% safe for `.NET 8` Native AOT compilation (`PublishAot=true`).
-- ⚡ **2.22x Serialization Speedup**: Achieves **2.22x faster** writing times (**3.07 ms** vs **6.97 ms** for 100k rows) compared to compiled expression tree baselines.
-- 💾 **-56.7% Memory Reduction**: Streaming row group chunking reduces GC managed memory allocations by **56.7%** (**5.57 MB** vs **12.87 MB**).
-- 🔀 **Multi-Core Parallel Reader (`ReadParquetParallelAsync`)**: Parallel object creation across CPU cores (**1.45x faster** on multi-row-group files).
-- 🆔 **Native 16-byte `Guid` Binary Encoding**: Direct `ArrayPool<Guid>` struct column buffer transfer with **zero string heap allocations** (**1.58x faster**, **-39.1% memory**).
-- ⏱️ **Compact 8-Byte Int64 Timestamps**: Support for `[ParquetTimestamp(ParquetTimestampUnit.Microseconds)]` (**33% smaller column footprint**).
-- 🔄 **`IAsyncEnumerable<T>` Streaming**: Asynchronously stream items directly into chunked Parquet row groups without intermediate list allocations.
-- ⚙️ **Configurable `ParquetSerializerOptions` API**: Configure `RowGroupSize`, `MaxDegreeOfParallelism`, `CompressionMethod`, and timestamp defaults centrally.
-- 📦 **Expanded Data Type Support**: `Guid`, `DateTime`, `TimeSpan`, `Enum`, `Decimal`, `byte[]`, `string`, primitive types, and `Nullable<T>`.
+This is early work and has not been released. Treat the API as unstable.
+
+- **Not on NuGet.** There is no published package yet; build from source.
+- **Not benchmarked.** The design avoids reflection and should compare well against
+  expression-tree serialization, but no benchmark results have been published. Run the suite
+  yourself (see [Contributing](CONTRIBUTING.md)) rather than trusting a number here.
+- **Native AOT is untested.** The generated code is reflection-free by construction, which is a
+  precondition for AOT rather than a verification of it. CI does not yet run `dotnet publish`
+  against the AOT toolchain.
+
+### Known limitations
+
+| Area | Status |
+|:--- |:--- |
+| `ParquetSerializerOptions.CompressionMethod` | Accepted but **not applied** — setting it has no effect |
+| `ParquetTimestampUnit.Nanoseconds` | Declared but **not implemented** — falls back to the default |
+| Nested collections (`List<T>`, dictionaries) | **Unsupported**; unsupported property types currently fail at runtime rather than compile time |
+| Column ordering without explicit `Order` | Alphabetical, **not** declaration order |
+
+---
+
+## ✨ Features
+
+- **Zero reflection**: schema, serializers and deserializers are emitted at compile time.
+- **Low-level Parquet.Net primitives**: writes via `ParquetWriter`/row-group writers rather than
+  the reflection-based `ParquetSerializer`.
+- **Row-group streaming**: `WriteParquetBatchedAsync` writes in fixed-size row groups, so large
+  sequences never need to be materialized in full.
+- **`IAsyncEnumerable<T>` streaming**: stream items straight into chunked row groups.
+- **Parallel reader**: `ReadParquetParallelAsync` distributes object construction across row
+  groups.
+- **Type support**: `Guid`, `DateTime`, `TimeSpan`, `Enum`, `decimal`, `byte[]`, `string`,
+  primitives, and `Nullable<T>`.
+- **Compile-time diagnostics**: `PARQ001`–`PARQ005` (see below).
 
 ---
 
 ## 📦 Installation
 
-Install the generator and attributes packages via NuGet:
+No published package yet. Build from source:
 
 ```bash
-dotnet add package Parquet.SourceGenerator.Attributes
-dotnet add package Parquet.SourceGenerator
+git clone https://github.com/rtkelly13/Parquet.SourceGenerator.git
+cd Parquet.SourceGenerator
+dotnet build Parquet.SourceGenertor.sln --configuration Release
 ```
 
 ---
@@ -86,7 +110,7 @@ List<UserEvent> events = await UserEventParquetExtensions.ReadParquetAsync(strea
 // Multi-core parallel read across row groups
 List<UserEvent> parallelEvents = await UserEventParquetExtensions.ReadParquetParallelAsync(stream, maxDegreeOfParallelism: 4);
 
-// Zero-copy read from in-memory byte buffer
+// Read from an in-memory byte buffer
 ReadOnlyMemory<byte> buffer = File.ReadAllBytes("events.parquet");
 List<UserEvent> memEvents = await UserEventParquetExtensions.ReadParquetAsync(buffer);
 ```
@@ -96,12 +120,14 @@ List<UserEvent> memEvents = await UserEventParquetExtensions.ReadParquetAsync(bu
 var options = new ParquetSerializerOptions
 {
     RowGroupSize = 25_000,
-    MaxDegreeOfParallelism = 8,
-    CompressionMethod = ParquetCompressionMethod.Snappy
+    MaxDegreeOfParallelism = 8
 };
 
 await events.WriteParquetBatchedAsync(stream, options: options);
 ```
+
+> `CompressionMethod` exists on `ParquetSerializerOptions` but is not yet applied — see
+> [Known limitations](#known-limitations).
 
 ---
 
@@ -125,6 +151,8 @@ Contributions are welcome! Please review our community guidelines:
 - 📜 **[Code of Conduct](CODE_OF_CONDUCT.md)**: Community behavior standards.
 - 🛡️ **[Security Policy](SECURITY.md)**: Security vulnerability disclosure process.
 - 📝 **[Changelog](CHANGELOG.md)**: Version history and feature release notes.
+- 🏗️ **[Design documentation](docs/INDEX.md)**: Architecture, attribute API, generator pipeline,
+  and testing strategy.
 
 ---
 

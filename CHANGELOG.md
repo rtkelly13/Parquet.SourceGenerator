@@ -6,15 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
-## [0.0.1] - 2026-08-03
+## [Unreleased]
+
+Nothing has been released yet. There is no tag and no published package; this section becomes the
+first release entry when one is cut.
 
 ### Added
-- **Roslyn Incremental Source Generator**: Statically compiles zero-reflection Parquet serializers and deserializers targeting Parquet.Net v6 low-level primitives.
-- **Native AOT Compatibility**: 100% reflection-free execution safe for `.NET 8` Native AOT (`PublishAot=true`).
-- **Native 16-byte `Guid` Binary Encoding**: Direct `ArrayPool<Guid>` struct column buffer transfer (**1.58x faster**, **-39.1% memory**).
-- **Multi-Core Parallel Reader (`ReadParquetParallelAsync`)**: Multi-threaded object creation across multi-row-group Parquet files (**1.45x faster**).
-- **`IAsyncEnumerable<T>` Streaming**: Asynchronously stream items directly into chunked Parquet row groups.
-- **Compact 8-Byte Int64 Timestamps**: Support for `[ParquetTimestamp(ParquetTimestampUnit.Microseconds)]` (**33% size reduction**).
-- **Configurable `ParquetSerializerOptions`**: Centralized configuration for `RowGroupSize`, `MaxDegreeOfParallelism`, `CompressionMethod`, and timestamps.
-- **Compiler Diagnostic Rules (`PARQ001` - `PARQ003`)**: Compile-time validation for partial types, duplicate column names, and missing properties.
-- **Automated GitHub Actions Guardrails**: Continuous Integration and BenchmarkDotNet baseline tracking workflows.
+- **Roslyn incremental source generator**: compiles zero-reflection Parquet serializers and
+  deserializers against Parquet.Net low-level primitives.
+- **Reflection-free generated code**, a precondition for Native AOT. Not yet verified against the
+  AOT toolchain in CI.
+- **`Guid` columns** written as native 16-byte values via pooled struct buffers rather than
+  strings.
+- **Parallel reader (`ReadParquetParallelAsync`)**: distributes object construction across row
+  groups.
+- **`IAsyncEnumerable<T>` streaming** directly into chunked row groups.
+- **Microsecond `Int64` timestamps** via `[ParquetTimestamp(ParquetTimestampUnit.Microseconds)]`.
+- **`ParquetSerializerOptions`** for `RowGroupSize` and `MaxDegreeOfParallelism`.
+  `CompressionMethod` is present on the type but not yet applied.
+- **Compiler diagnostics `PARQ001`–`PARQ005`**: partial-type enforcement, duplicate column names,
+  no serializable members, ignored non-public members, and invalid decimal precision/scale.
+- **CI workflow** building, testing and packing the solution. Benchmarks run on demand.
+
+### Known gaps
+- `ParquetSerializerOptions.CompressionMethod` is not applied.
+- `ParquetTimestampUnit.Nanoseconds` is declared but not implemented.
+- Nested collections are unsupported, and unsupported property types fail at runtime rather than
+  producing a compile-time diagnostic.
+- No performance measurements have been published.
