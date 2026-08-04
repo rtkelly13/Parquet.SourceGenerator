@@ -58,6 +58,17 @@ cd Parquet.SourceGenerator
 dotnet build Parquet.SourceGenertor.sln --configuration Release
 ```
 
+Once a version is published, two packages are needed:
+
+```bash
+dotnet add package Parquet.SourceGenerator   # the generator; pulls in the attributes package
+dotnet add package Parquet.Net               # the generated code calls into Parquet.Net directly
+```
+
+`Parquet.SourceGenerator.Attributes` arrives as a dependency of the generator, so it does not need
+installing separately. `Parquet.Net` does: the generated readers and writers are built on its
+low-level primitives, and neither package can declare it for you without pinning you to a version.
+
 ---
 
 ## 📖 Quick Start Example
