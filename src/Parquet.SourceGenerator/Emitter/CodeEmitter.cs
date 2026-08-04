@@ -42,6 +42,12 @@ public static class CodeEmitter
         EmitStaticFields(builder, model);
         builder.AppendLine();
 
+        if (model.Properties.Length > 0)
+        {
+            EmitResolveSchemaField(builder);
+            builder.AppendLine();
+        }
+
         // Streaming row group writer — low level primitives, 100M+ scale, Native AOT compatible
         EmitWriteRowGroupAsync(builder, model);
         builder.AppendLine();
@@ -362,11 +368,14 @@ public static class CodeEmitter
         builder.AppendLine();
         builder.AppendLine("        var fileFields = reader.Schema.DataFields;");
 
-        // Fast O(1) schema field resolution using pre-allocated static DataFields
-        for (int i = 0; i < model.Properties.Length; i++)
+        // Schema field resolution against the file's actual fields (see ResolveSchemaField).
+        if (model.Properties.Length > 0)
         {
-            PropertyModel prop = model.Properties[i];
-            builder.AppendLine($"        var field_{i} = ({i} < fileFields.Length && string.Equals(fileFields[{i}].Name, _field_{i}.Name, global::System.StringComparison.OrdinalIgnoreCase)) ? fileFields[{i}] : (global::System.Linq.Enumerable.FirstOrDefault(fileFields, f => string.Equals(f.Name, _field_{i}.Name, global::System.StringComparison.OrdinalIgnoreCase)) ?? _field_{i});");
+            builder.AppendLine("        global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;");
+            for (int i = 0; i < model.Properties.Length; i++)
+            {
+                builder.AppendLine($"        var field_{i} = ResolveSchemaField(fileFields, {i}, _field_{i}, ref fieldsByName);");
+            }
         }
         builder.AppendLine();
 
@@ -460,10 +469,13 @@ public static class CodeEmitter
         builder.AppendLine();
         builder.AppendLine("        var fileFields = reader.Schema.DataFields;");
 
-        for (int i = 0; i < model.Properties.Length; i++)
+        if (model.Properties.Length > 0)
         {
-            PropertyModel prop = model.Properties[i];
-            builder.AppendLine($"        var field_{i} = ({i} < fileFields.Length && string.Equals(fileFields[{i}].Name, _field_{i}.Name, global::System.StringComparison.OrdinalIgnoreCase)) ? fileFields[{i}] : (global::System.Linq.Enumerable.FirstOrDefault(fileFields, f => string.Equals(f.Name, _field_{i}.Name, global::System.StringComparison.OrdinalIgnoreCase)) ?? _field_{i});");
+            builder.AppendLine("        global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;");
+            for (int i = 0; i < model.Properties.Length; i++)
+            {
+                builder.AppendLine($"        var field_{i} = ResolveSchemaField(fileFields, {i}, _field_{i}, ref fieldsByName);");
+            }
         }
         builder.AppendLine();
 
@@ -710,6 +722,47 @@ public static class CodeEmitter
             else
                 return $"await groupReader.ReadAsync<{structType}>({fieldAccess}, new global::System.Memory<{structType}>({bufName}, 0, rowCount), cancellationToken: cancellationToken);";
         }
+    }
+
+    private static void EmitResolveSchemaField(StringBuilder builder)
+    {
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine("    /// Resolves one generated schema field against the fields actually present in the file.");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    private static global::Parquet.Schema.DataField ResolveSchemaField(");
+        builder.AppendLine("        global::Parquet.Schema.DataField[] fileFields,");
+        builder.AppendLine("        int index,");
+        builder.AppendLine("        global::Parquet.Schema.DataField expected,");
+        builder.AppendLine("        ref global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? byName)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        // Ordered schemas resolve on a single index check: no hashing, no delegate, no allocation.");
+        builder.AppendLine("        // Every file this generator writes lands here, as does any file whose column order matches.");
+        builder.AppendLine("        if ((uint)index < (uint)fileFields.Length");
+        builder.AppendLine("            && string.Equals(fileFields[index].Name, expected.Name, global::System.StringComparison.OrdinalIgnoreCase))");
+        builder.AppendLine("        {");
+        builder.AppendLine("            return fileFields[index];");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        // Only a file whose column order differs reaches here. The name index is built at most once");
+        builder.AppendLine("        // per read and reused for every subsequent miss, so even a fully reordered schema costs O(n)");
+        builder.AppendLine("        // in total rather than a linear scan per field.");
+        builder.AppendLine("        if (byName is null)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            byName = new global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>(");
+        builder.AppendLine("                fileFields.Length, global::System.StringComparer.OrdinalIgnoreCase);");
+        builder.AppendLine("            for (int i = 0; i < fileFields.Length; i++)");
+        builder.AppendLine("            {");
+        builder.AppendLine("                // First occurrence wins if a file carries duplicate column names. Dictionary.TryAdd is");
+        builder.AppendLine("                // not available to netstandard2.0 consumers, hence the explicit containment check.");
+        builder.AppendLine("                if (!byName.ContainsKey(fileFields[i].Name))");
+        builder.AppendLine("                {");
+        builder.AppendLine("                    byName.Add(fileFields[i].Name, fileFields[i]);");
+        builder.AppendLine("                }");
+        builder.AppendLine("            }");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        return byName.TryGetValue(expected.Name, out var match) ? match : expected;");
+        builder.AppendLine("    }");
     }
 
     private static string BoolLiteral(bool value) => value ? "true" : "false";
