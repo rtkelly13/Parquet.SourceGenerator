@@ -14,6 +14,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # The job name is the check name that branch protection matches on, so it is deliberately short,
+  # lowercase, and free of characters that are easy to mistype or that GitHub HTML-escapes when a
+  # doc is rendered. Treat it as an identifier: renaming it silently breaks any ruleset requiring it.
   build:
     name: build
     runs-on: ubuntu-latest
