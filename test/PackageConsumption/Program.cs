@@ -5,6 +5,13 @@
 // missing dependency on the Attributes package, or the generator assembly leaking into lib/ — this
 // file stops compiling or stops running, and CI fails at the step after `dotnet pack`.
 
+// Usings are explicit rather than relying on ImplicitUsings. This project deliberately does not
+// inherit the repository's Directory.Build.props, so nothing here should depend on a setting that
+// happens to be switched on elsewhere in the tree.
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
 using Parquet.SourceGenerator;
 
 namespace PackageConsumption;
