@@ -13,8 +13,8 @@ permissions:
   pull-requests: read
 
 jobs:
-  validate-title:
-    name: Validate PR Conventional Commit Title
+  pr-title:
+    name: pr-title
     runs-on: ubuntu-latest
     steps:
       - name: Validate PR Title Format

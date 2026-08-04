@@ -14,8 +14,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  e2e-pr-check:
-    name: Comprehensive E2E PR Verification (.NET 8 & 9 + Native AOT)
+  build:
+    name: build
     runs-on: ubuntu-latest
 
     steps:
