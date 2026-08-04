@@ -1,0 +1,62 @@
+name: Performance Benchmarks & Baseline Verification
+
+# Manual only. BenchmarkDotNet on shared GitHub runners is too noisy to gate merges on, and
+# nothing here compares results against a stored baseline yet — so running it on every push and
+# pull request cost minutes per PR and produced numbers no one could act on. Trigger it
+# deliberately when investigating performance.
+on:
+  workflow_dispatch:
+    inputs:
+      filter:
+        description: 'BenchmarkDotNet filter pattern'
+        required: false
+        default: '*'
+
+permissions:
+  contents: read
+
+jobs:
+  run-benchmarks:
+    name: Run BenchmarkDotNet Performance Suite
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore benchmarks/Parquet.SourceGenerator.Benchmarks/Parquet.SourceGenerator.Benchmarks.csproj
+
+      - name: Build benchmarks (Release)
+        run: dotnet build benchmarks/Parquet.SourceGenerator.Benchmarks/Parquet.SourceGenerator.Benchmarks.csproj --configuration Release --no-restore
+
+      - name: Execute BenchmarkDotNet Suite
+        run: |
+          dotnet run -c Release --project benchmarks/Parquet.SourceGenerator.Benchmarks/Parquet.SourceGenerator.Benchmarks.csproj --no-build -- --filter "${{ github.event.inputs.filter || '*' }}"
+
+      - name: Append Benchmark Summary to Job Summary
+        run: |
+          echo "## 📊 BenchmarkDotNet Performance Baseline Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          for f in BenchmarkDotNet.Artifacts/results/*-report-github.md; do
+            if [ -f "$f" ]; then
+              echo "### $(basename "$f")" >> $GITHUB_STEP_SUMMARY
+              cat "$f" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
+      - name: Upload Benchmark Results Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: |
+            BenchmarkDotNet.Artifacts/results/*.csv
+            BenchmarkDotNet.Artifacts/results/*.html
+            BenchmarkDotNet.Artifacts/results/*.md
+            BenchmarkDotNet.Artifacts/results/*.json

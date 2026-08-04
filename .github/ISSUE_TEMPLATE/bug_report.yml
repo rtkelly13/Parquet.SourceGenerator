@@ -1,0 +1,39 @@
+name: 🐛 Bug Report
+description: Create a report to help us improve Parquet.SourceGenerator
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for taking the time to fill out this bug report!
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Describe the bug concisely.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal Reproduction Code
+      description: Provide a minimal C# code snippet decorated with [ParquetSerializable] that reproduces the issue.
+      render: csharp
+    validations:
+      required: true
+  - type: input
+    id: dotnet-version
+    attributes:
+      label: .NET SDK Version
+      description: e.g., .NET 8.0.416
+    validations:
+      required: true
+  - type: dropdown
+    id: aot
+    attributes:
+      label: Is Native AOT enabled?
+      options:
+        - "No (JIT)"
+        - "Yes (PublishAot=true)"
+    validations:
+      required: true

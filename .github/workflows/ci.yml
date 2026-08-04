@@ -1,0 +1,87 @@
+name: CI & PR E2E Checks
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e-pr-check:
+    name: Comprehensive E2E PR Verification (.NET 8 & 9 + Native AOT)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Setup .NET SDKs
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+
+      - name: Restore solution dependencies
+        run: dotnet restore Parquet.SourceGenertor.sln
+
+      - name: Audit Package Security & Vulnerabilities
+        run: dotnet list package --vulnerable --include-transitive
+
+      # `whitespace` only, deliberately. Plain `dotnet format` also runs its style and analyzer
+      # phases, which build a Roslyn workspace via MSBuildWorkspace — and MSBuildWorkspace does not
+      # execute source generators. It logs "Found project reference without a matching metadata
+      # reference" for the generator project and then reports CS1503 against every call into the
+      # generated *ParquetExtensions API, because in its view that API does not exist. Those errors
+      # are artifacts of the tool, not defects in the code.
+      #
+      # Style and analyzer rules are enforced instead by the build below, via
+      # EnforceCodeStyleInBuild plus -warnaserror, which uses the real compilation where generators
+      # do run.
+      - name: Verify C# Code Formatting
+        run: dotnet format whitespace --verify-no-changes --verbosity diagnostic
+
+      - name: Generate Python Test Datasets (PyArrow v1 & v2)
+        run: uv run scripts/generate_test_data.py
+
+      - name: Generate C# Test Datasets (Parquet.Net v3)
+        run: dotnet run --project test/Parquet.SourceGenerator.CLI/Parquet.SourceGenerator.CLI.csproj
+
+      - name: Build solution (Release)
+        run: dotnet build Parquet.SourceGenertor.sln --configuration Release --no-restore -warnaserror
+
+      - name: Run Full Test Suite with Code Coverage Collection
+        run: dotnet test Parquet.SourceGenertor.sln --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --settings coverlet.runsettings
+
+      - name: Execute Native AOT Sample Pathway
+        run: dotnet run --project samples/Parquet.SourceGenerator.SampleAot/Parquet.SourceGenerator.SampleAot.csproj --configuration Release
+
+      - name: Pack All NuGet Packages
+        run: dotnet pack Parquet.SourceGenertor.sln --configuration Release --no-build --output ./artifacts
+
+      - name: Upload Test Coverage Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-coverage
+          path: test/Parquet.SourceGenerator.Tests/TestResults/*/coverage.cobertura.xml
+
+      - name: Upload Build & Package Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages
+          path: ./artifacts/*.nupkg

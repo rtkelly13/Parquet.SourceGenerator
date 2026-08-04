@@ -1,0 +1,42 @@
+root = true
+
+[*]
+end_of_line = lf
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+indent_style = space
+indent_size = 4
+
+[*.{yml,yaml,json}]
+indent_size = 2
+
+[*.cs]
+# C# style preferences.
+#
+# These are deliberately `suggestion`, not `warning`. `dotnet format` only rewrites rules at
+# `warning` or above by default, and CI runs `dotnet format --verify-no-changes`; at `warning`
+# these preferences turn every stylistic difference of opinion into a build failure rather than
+# an editor hint. Promote an individual rule to `warning` only once the tree already complies.
+csharp_using_directive_placement = outside_namespace:suggestion
+csharp_style_expression_bodied_methods = when_possible:suggestion
+csharp_style_expression_bodied_constructors = when_possible:suggestion
+csharp_style_expression_bodied_properties = when_possible:suggestion
+csharp_style_namespace_declarations = file_scoped:suggestion
+csharp_style_prefer_primary_constructors = true:suggestion
+
+# Pattern Matching & Types
+csharp_style_pattern_matching_over_as_with_null_check = true:suggestion
+csharp_style_pattern_matching_over_is_with_cast_check = true:suggestion
+csharp_style_prefer_switch_expression = true:suggestion
+csharp_style_var_for_built_in_types = false:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+
+# Formatting. `csharp_new_line_before_open_brace` must match the brace style actually used in
+# the tree (Allman — brace on its own line); the previous value of `none` described K&R and so
+# asked `dotnet format` to rewrite every file in the repository.
+dotnet_sort_system_directives_first = true
+csharp_new_line_before_open_brace = all
+csharp_new_line_before_else = true
+csharp_new_line_before_catch = true
+csharp_new_line_before_finally = true

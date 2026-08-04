@@ -1,0 +1,12 @@
+# Default owner for everything in this repository.
+# Required by the "Require review from Code Owners" branch protection rule documented in
+# .github/BRANCH_PROTECTION.md — that rule has no effect without this file.
+*                       @rtkelly13
+
+# The generator itself is the part most likely to break consumers silently.
+/src/                   @rtkelly13
+
+# Build, packaging and release automation.
+/.github/workflows/     @rtkelly13
+/Directory.Build.props  @rtkelly13
+/global.json            @rtkelly13

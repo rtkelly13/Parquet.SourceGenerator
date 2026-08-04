@@ -4,9 +4,11 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
     <IsPackable>false</IsPackable>
+    <RootNamespace>Parquet.SourceGenerator.Benchmarks</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" Version="0.13.12" />
     <PackageReference Include="Parquet.Net" Version="6.0.3" />
   </ItemGroup>
 

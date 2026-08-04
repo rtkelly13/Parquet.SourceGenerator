@@ -11,6 +11,20 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{48E53CE7-62C
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Parquet.SourceGenerator", "src\Parquet.SourceGenerator\Parquet.SourceGenerator.csproj", "{955C81CE-F684-4814-BF38-91510A868057}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Parquet.SourceGenerator.Attributes", "src\Parquet.SourceGenerator.Attributes\Parquet.SourceGenerator.Attributes.csproj", "{F6A2D7FD-BB83-43AA-AB34-82ED1F82A57F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Parquet.SourceGenerator.Tests", "test\Parquet.SourceGenerator.Tests\Parquet.SourceGenerator.Tests.csproj", "{F715C9E3-B516-4B10-B826-9E040BE09DEA}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "benchmarks", "benchmarks", "{9BCE0989-653D-4784-B2FF-B1610C0C4E98}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Parquet.SourceGenerator.Benchmarks", "benchmarks\Parquet.SourceGenerator.Benchmarks\Parquet.SourceGenerator.Benchmarks.csproj", "{FEA237FC-B3E5-4A8D-A4E0-039B50EF0939}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Parquet.SourceGenerator.AotTest", "test\Parquet.SourceGenerator.AotTest\Parquet.SourceGenerator.AotTest.csproj", "{C57F7DA2-1743-4979-9AEB-BEBDE044A844}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{BB06B243-1FA0-45B7-AEFE-FC21814AAFA4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Parquet.SourceGenerator.SampleAot", "samples\Parquet.SourceGenerator.SampleAot\Parquet.SourceGenerator.SampleAot.csproj", "{EEDDD128-2B30-41CD-B8B4-2DA0922F3AC6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -28,9 +42,34 @@ Global
 		{955C81CE-F684-4814-BF38-91510A868057}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{955C81CE-F684-4814-BF38-91510A868057}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{955C81CE-F684-4814-BF38-91510A868057}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F6A2D7FD-BB83-43AA-AB34-82ED1F82A57F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F6A2D7FD-BB83-43AA-AB34-82ED1F82A57F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F6A2D7FD-BB83-43AA-AB34-82ED1F82A57F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F6A2D7FD-BB83-43AA-AB34-82ED1F82A57F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F715C9E3-B516-4B10-B826-9E040BE09DEA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F715C9E3-B516-4B10-B826-9E040BE09DEA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F715C9E3-B516-4B10-B826-9E040BE09DEA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F715C9E3-B516-4B10-B826-9E040BE09DEA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FEA237FC-B3E5-4A8D-A4E0-039B50EF0939}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FEA237FC-B3E5-4A8D-A4E0-039B50EF0939}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FEA237FC-B3E5-4A8D-A4E0-039B50EF0939}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FEA237FC-B3E5-4A8D-A4E0-039B50EF0939}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C57F7DA2-1743-4979-9AEB-BEBDE044A844}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C57F7DA2-1743-4979-9AEB-BEBDE044A844}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C57F7DA2-1743-4979-9AEB-BEBDE044A844}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C57F7DA2-1743-4979-9AEB-BEBDE044A844}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EEDDD128-2B30-41CD-B8B4-2DA0922F3AC6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EEDDD128-2B30-41CD-B8B4-2DA0922F3AC6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EEDDD128-2B30-41CD-B8B4-2DA0922F3AC6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EEDDD128-2B30-41CD-B8B4-2DA0922F3AC6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{6957CD32-9E99-4118-999A-F96243550220} = {66F81CB2-ADCB-4080-9978-D583F699D750}
 		{955C81CE-F684-4814-BF38-91510A868057} = {48E53CE7-62CA-4871-9623-0215C5003E32}
+		{F6A2D7FD-BB83-43AA-AB34-82ED1F82A57F} = {48E53CE7-62CA-4871-9623-0215C5003E32}
+		{F715C9E3-B516-4B10-B826-9E040BE09DEA} = {66F81CB2-ADCB-4080-9978-D583F699D750}
+		{FEA237FC-B3E5-4A8D-A4E0-039B50EF0939} = {9BCE0989-653D-4784-B2FF-B1610C0C4E98}
+		{C57F7DA2-1743-4979-9AEB-BEBDE044A844} = {66F81CB2-ADCB-4080-9978-D583F699D750}
+		{EEDDD128-2B30-41CD-B8B4-2DA0922F3AC6} = {BB06B243-1FA0-45B7-AEFE-FC21814AAFA4}
 	EndGlobalSection
 EndGlobal
