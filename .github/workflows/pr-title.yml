@@ -13,8 +13,9 @@ permissions:
   pull-requests: read
 
 jobs:
-  validate-title:
-    name: Validate PR Conventional Commit Title
+  # Short, stable identifier — see the note in ci.yml. This is the name branch protection matches.
+  pr-title:
+    name: pr-title
     runs-on: ubuntu-latest
     steps:
       - name: Validate PR Title Format
