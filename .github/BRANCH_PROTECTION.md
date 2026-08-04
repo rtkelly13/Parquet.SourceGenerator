@@ -17,10 +17,16 @@ Navigate to **Settings → Branches → Add branch protection rule** for pattern
   - Dismiss stale pull request approvals when new commits are pushed
   - Require review from Code Owners
 - [x] **Require status checks to pass before merging**
-  - Status checks required — the name must match the **job** name exactly, or the check never
-    reports and every pull request is blocked indefinitely:
-    - `Comprehensive E2E PR Verification (.NET 8 & 9 + Native AOT)` (`ci.yml`)
-    - `Validate PR Conventional Commit Title` (`pr-title.yml`)
+  - Status checks required — these are **job** names, not workflow names. GitHub Actions reports a
+    check per job, so requiring a workflow name means the check never reports and every pull
+    request is blocked indefinitely with "required status checks are expected":
+    - `build` (`ci.yml`)
+    - `pr-title` (`pr-title.yml`)
+  - Both are deliberately short, lowercase identifiers. An earlier pair of long descriptive names
+    containing `&` and parentheses caused exactly the failure above, partly because copying them
+    out of rendered markdown picks up GitHub's HTML escaping. Treat these two strings as an API
+    between the workflows and the repository settings: renaming a job silently breaks the ruleset,
+    so change both together.
   - Do **not** require the benchmark workflow. It is `workflow_dispatch` only, so it would never
     report a status.
   - "Require branches to be up to date before merging" is deliberately omitted while there is a
