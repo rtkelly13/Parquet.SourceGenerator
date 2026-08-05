@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/logo.svg" alt="Parquet.SourceGenerator" width="104" height="104">
+</p>
+
 # Parquet.SourceGenerator Documentation Hub
 
 Welcome to the **Parquet.SourceGenerator** documentation repository. This folder contains the architectural specifications, API designs, implementation details, and project roadmap for building a production-grade, high-throughput C# Source Generator for the [Parquet.Net](https://github.com/aloneguid/parquet-dotnet) library.

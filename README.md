@@ -1,4 +1,8 @@
-# Parquet.SourceGenerator
+<p align="center">
+  <img src="docs/assets/logo.svg" alt="Parquet.SourceGenerator" width="132" height="132">
+</p>
+
+<h1 align="center">Parquet.SourceGenerator</h1>
 
 [![Build & E2E Status](https://github.com/rtkelly13/Parquet.SourceGenerator/actions/workflows/ci.yml/badge.svg)](https://github.com/rtkelly13/Parquet.SourceGenerator/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
