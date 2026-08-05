@@ -17,24 +17,104 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # The tag is the only source of the version. Directory.Build.props carries 0.0.1 as a
+      # development default, and without this the workflow published that number for every tag —
+      # so `v1.2.0` would have shipped as 0.0.1, and every release after the first would have been
+      # silently swallowed by --skip-duplicate, succeeding while publishing nothing.
+      - name: Derive version from tag
+        id: version
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "FAIL: tag '$GITHUB_REF_NAME' does not yield a valid version (got '$version')"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Publishing version $version from tag $GITHUB_REF_NAME"
+
+      # Checked before doing any work, so a missing secret fails in seconds rather than after a
+      # full build — and never reaches `nuget push` with an empty key.
+      - name: Check publish credentials are present
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          if [ -z "${NUGET_API_KEY:-}" ]; then
+            echo "FAIL: NUGET_API_KEY secret is not set"
+            exit 1
+          fi
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: 8.0.x
 
       - name: Restore dependencies
         run: dotnet restore Parquet.SourceGenertor.sln
 
+      # The integration tests assert these fixtures exist and fail without them. They were missing
+      # from this workflow, so the test step below could never have passed — this release path had
+      # never been executed.
+      - name: Generate Python Test Datasets (PyArrow v1 & v2)
+        run: uv run scripts/generate_test_data.py
+
+      - name: Generate C# Test Datasets (Parquet.Net v3)
+        run: dotnet run --project test/Parquet.SourceGenerator.CLI/Parquet.SourceGenerator.CLI.csproj
+
       - name: Build Solution (Release)
-        run: dotnet build Parquet.SourceGenertor.sln --configuration Release --no-restore
+        run: |
+          dotnet build Parquet.SourceGenertor.sln --configuration Release --no-restore \
+            -warnaserror -p:Version=${{ steps.version.outputs.version }}
 
       - name: Run Tests
         run: dotnet test Parquet.SourceGenertor.sln --configuration Release --no-build
 
       - name: Pack All Packages
-        run: dotnet pack Parquet.SourceGenertor.sln --configuration Release --no-build --output ./nupkgs
+        run: |
+          dotnet pack Parquet.SourceGenertor.sln --configuration Release --no-build \
+            --output ./nupkgs -p:Version=${{ steps.version.outputs.version }}
+
+      # The same layout assertions CI runs, because publishing a broken package is not undoable:
+      # NuGet does not allow re-uploading a version, so a bad one is permanent.
+      - name: Verify Package Layout
+        run: |
+          set -euo pipefail
+          version="${{ steps.version.outputs.version }}"
+          cd nupkgs
+          gen="Parquet.SourceGenerator.${version}.nupkg"
+          attrs="Parquet.SourceGenerator.Attributes.${version}.nupkg"
+
+          # Also confirms the version override reached the produced files.
+          test -f "$gen"   || { echo "FAIL: $gen not produced"; ls -la; exit 1; }
+          test -f "$attrs" || { echo "FAIL: $attrs not produced"; ls -la; exit 1; }
+
+          unzip -Z1 "$gen" | grep -q '^analyzers/dotnet/cs/Parquet\.SourceGenerator\.dll$' \
+            || { echo "FAIL: generator missing from analyzers/dotnet/cs/"; exit 1; }
+          if unzip -Z1 "$gen" | grep -q '^lib/'; then
+            echo "FAIL: generator package contains lib/ entries; it must be analyzer-only:"
+            unzip -Z1 "$gen" | grep '^lib/'; exit 1
+          fi
+          unzip -p "$gen" '*.nuspec' | grep -q 'id="Parquet.SourceGenerator.Attributes"' \
+            || { echo "FAIL: generator .nuspec does not depend on the Attributes package"; exit 1; }
+          for tfm in netstandard2.0 netstandard2.1 net8.0; do
+            unzip -Z1 "$attrs" | grep -q "^lib/$tfm/Parquet\.SourceGenerator\.Attributes\.dll$" \
+              || { echo "FAIL: attributes package missing lib/$tfm"; exit 1; }
+          done
+          echo "Package layout OK for $version."
 
       - name: Push to NuGet
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-        run: dotnet nuget push ./nupkgs/*.nupkg --api-key $NUGET_API_KEY --source https://api.nuget.org/v3/index.json --skip-duplicate
+        run: |
+          dotnet nuget push ./nupkgs/*.nupkg \
+            --api-key "$NUGET_API_KEY" \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate

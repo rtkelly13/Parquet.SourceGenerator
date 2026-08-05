@@ -1,5 +1,10 @@
 <Project>
   <PropertyGroup>
+    <!--
+      Development default only. Releases do not use this: release.yml derives the version from the
+      pushed tag and passes -p:Version, which overrides it. Bumping this number does not release
+      anything, and leaving it alone does not block a release.
+    -->
     <Version>0.0.1</Version>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
