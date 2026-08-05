@@ -48,15 +48,20 @@ namespace Parquet.SourceGenerator.Tests
         [Fact]
         public async Task BothGeneratedSerializersRoundtripIndependently()
         {
+            // Called in static form rather than as extension methods. The generated class lands in
+            // the model's own namespace, and extension methods are only found in *enclosing*
+            // namespaces — so from here, in the parent namespace, `list.WriteParquetAsync(...)` does
+            // not resolve. A `using` for each would work but the two types share a name, so the
+            // static call is the unambiguous way to exercise both in one file.
             using var salesStream = new System.IO.MemoryStream();
-            await new System.Collections.Generic.List<Sales.SharedName> { new() { OrderId = 42 } }
-                .WriteParquetAsync(salesStream);
+            await Sales.SharedNameParquetExtensions.WriteParquetAsync(
+                new System.Collections.Generic.List<Sales.SharedName> { new() { OrderId = 42 } }, salesStream);
             salesStream.Position = 0;
             var sales = await Sales.SharedNameParquetExtensions.ReadParquetAsync(salesStream);
 
             using var billingStream = new System.IO.MemoryStream();
-            await new System.Collections.Generic.List<Billing.SharedName> { new() { InvoiceId = 99 } }
-                .WriteParquetAsync(billingStream);
+            await Billing.SharedNameParquetExtensions.WriteParquetAsync(
+                new System.Collections.Generic.List<Billing.SharedName> { new() { InvoiceId = 99 } }, billingStream);
             billingStream.Position = 0;
             var billing = await Billing.SharedNameParquetExtensions.ReadParquetAsync(billingStream);
 
