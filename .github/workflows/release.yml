@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to release (e.g. 0.0.1 or v0.0.1; full versions only)'
+        description: 'Version to release (e.g. 0.0.1 or 1.0.0-rc.1)'
         required: true
         type: string
       dry_run:
@@ -28,19 +28,25 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Parse and validate version input
+      - name: Parse and validate SemVer input
         id: version
         run: |
-          set -euo pipefail
-          raw_version="${{ inputs.version }}"
-          version="${raw_version#v}"
-          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "FAIL: version input '$raw_version' must be a full version (MAJOR.MINOR.PATCH, no pre-release suffixes)"
-            exit 1
-          fi
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "tag=v$version" >> "$GITHUB_OUTPUT"
-          echo "Preparing release $version (tag v$version)"
+          python3 -c "
+          import sys, re
+          raw = sys.argv[1]
+          ver = raw[1:] if raw.startswith('v') else raw
+          pattern = r'^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$'
+          m = re.match(pattern, ver)
+          if not m:
+              print(f'FAIL: \"{raw}\" is not a valid SemVer 2.0.0 version string', file=sys.stderr)
+              sys.exit(1)
+          is_prerelease = 'true' if m.group(4) is not None else 'false'
+          with open(sys.argv[2], 'a') as f:
+              f.write(f'version={ver}\n')
+              f.write(f'tag=v{ver}\n')
+              f.write(f'is_prerelease={is_prerelease}\n')
+          print(f'SemVer OK: version={ver}, is_prerelease={is_prerelease}')
+          " "${{ inputs.version }}" "$GITHUB_OUTPUT"
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -119,8 +125,8 @@ jobs:
             --source https://api.nuget.org/v3/index.json \
             --skip-duplicate
 
-      - name: Tag Release and Push Tag to GitHub
-        if: ${{ !inputs.dry_run }}
+      - name: Tag Release and Push Tag to GitHub (Full Releases Only)
+        if: ${{ !inputs.dry_run && steps.version.outputs.is_prerelease == 'false' }}
         run: |
           set -euo pipefail
           tag="${{ steps.version.outputs.tag }}"

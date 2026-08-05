@@ -95,11 +95,11 @@ If you publish numbers anywhere, include the machine and runtime they came from.
 
 ## 🚀 Releasing
 
-Releases are initiated via GitHub Actions workflow dispatch (`release.yml`). The workflow builds, tests, packs, pushes the package to NuGet.org via Trusted Publishing, and automatically tags and pushes the release tag to Git.
+Releases are initiated via GitHub Actions workflow dispatch (`release.yml`). The workflow parses and validates any valid SemVer 2.0.0 version string, builds, tests, packs, and publishes the packages to NuGet.org via Trusted Publishing.
 
 To release:
 1. Go to **Actions** → **Release & Publish NuGet** → **Run workflow**.
-2. Input the version to release (e.g. `0.0.1` — full version numbers only).
+2. Input the version to release (e.g. `0.0.1` for a full release or `0.0.1-rc.1` for a pre-release).
 
 Alternatively, trigger via GitHub CLI:
 
@@ -107,10 +107,10 @@ Alternatively, trigger via GitHub CLI:
 gh workflow run release.yml -f version=0.0.1
 ```
 
-Two things worth knowing:
+Two key behavior rules:
 
-- **NuGet versions are permanent.** A version cannot be re-uploaded or replaced, only deprecated or unlisted.
-- **Full versions only.** The release workflow enforces `MAJOR.MINOR.PATCH` format and rejects pre-release suffixes.
+- **SemVer 2.0.0 validation:** The workflow verifies inputs against the SemVer specification.
+- **Git tag creation:** Full releases (e.g. `0.0.1`) are automatically tagged and pushed to GitHub (`v0.0.1`). Pre-release builds (e.g. `0.0.1-rc.1`) deploy to NuGet.org but do **not** create or push git tags.
 
 ---
 
