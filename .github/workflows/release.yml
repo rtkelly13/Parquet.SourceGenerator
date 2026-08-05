@@ -123,7 +123,8 @@ jobs:
           dotnet nuget push ./nupkgs/*.nupkg \
             --api-key "$NUGET_API_KEY" \
             --source https://api.nuget.org/v3/index.json \
-            --skip-duplicate
+            --skip-duplicate \
+            --no-symbols
 
       - name: Tag Release and Push Tag to GitHub (Full Releases Only)
         if: ${{ !inputs.dry_run && steps.version.outputs.is_prerelease == 'false' }}
