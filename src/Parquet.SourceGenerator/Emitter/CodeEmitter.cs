@@ -1,5 +1,6 @@
 using System;
 using System.Text;
+using Microsoft.CodeAnalysis;
 using Parquet.SourceGenerator.Models;
 
 namespace Parquet.SourceGenerator.Emitter;
@@ -111,36 +112,42 @@ public static class CodeEmitter
 
     private static string GetFieldCreationExpression(PropertyModel prop)
     {
-        string name = prop.ParquetColumnName;
+        // The column name comes from user source — `[ParquetColumn("...")]` — so it can contain
+        // anything a C# string literal can, including quotes and backslashes. Interpolating it raw
+        // into the emitted literal produced generated code that would not parse, and reported the
+        // error against the generated file rather than the attribute that caused it.
+        // FormatLiteral emits the surrounding quotes and escapes the contents, so callers below
+        // interpolate `name` without adding quotes of their own.
+        string name = SymbolDisplay.FormatLiteral(prop.ParquetColumnName, quote: true);
 
         return prop.Kind switch
         {
             PropertyKind.Decimal when prop.DecimalPrecision.HasValue && prop.DecimalScale.HasValue =>
-                $"new global::Parquet.Schema.DecimalDataField(\"{name}\", {prop.DecimalPrecision.Value}, {prop.DecimalScale.Value}, isNullable: {BoolLiteral(prop.IsNullable)})",
+                $"new global::Parquet.Schema.DecimalDataField({name}, {prop.DecimalPrecision.Value}, {prop.DecimalScale.Value}, isNullable: {BoolLiteral(prop.IsNullable)})",
 
             PropertyKind.Decimal =>
-                $"new global::Parquet.Schema.DecimalDataField(\"{name}\", 38, 18, isNullable: {BoolLiteral(prop.IsNullable)})",
+                $"new global::Parquet.Schema.DecimalDataField({name}, 38, 18, isNullable: {BoolLiteral(prop.IsNullable)})",
 
             PropertyKind.DateTime when prop.TimestampUnit == "1" || prop.TimestampUnit?.Contains("Microseconds") == true =>
-                $"new global::Parquet.Schema.DateTimeDataField(\"{name}\", global::Parquet.Schema.DateTimeFormat.DateAndTime, isNullable: {BoolLiteral(prop.IsNullable)})",
+                $"new global::Parquet.Schema.DateTimeDataField({name}, global::Parquet.Schema.DateTimeFormat.DateAndTime, isNullable: {BoolLiteral(prop.IsNullable)})",
 
             PropertyKind.DateTime =>
-                $"new global::Parquet.Schema.DateTimeDataField(\"{name}\", global::Parquet.Schema.DateTimeFormat.Impala, isNullable: {BoolLiteral(prop.IsNullable)})",
+                $"new global::Parquet.Schema.DateTimeDataField({name}, global::Parquet.Schema.DateTimeFormat.Impala, isNullable: {BoolLiteral(prop.IsNullable)})",
 
             PropertyKind.TimeSpan =>
-                $"new global::Parquet.Schema.TimeSpanDataField(\"{name}\", global::Parquet.Schema.TimeSpanFormat.MilliSeconds, isNullable: {BoolLiteral(prop.IsNullable)})",
+                $"new global::Parquet.Schema.TimeSpanDataField({name}, global::Parquet.Schema.TimeSpanFormat.MilliSeconds, isNullable: {BoolLiteral(prop.IsNullable)})",
 
             PropertyKind.Guid =>
-                $"new global::Parquet.Schema.DataField(\"{name}\", typeof(global::System.Guid), isNullable: {BoolLiteral(prop.IsNullable)})",
+                $"new global::Parquet.Schema.DataField({name}, typeof(global::System.Guid), isNullable: {BoolLiteral(prop.IsNullable)})",
 
             PropertyKind.Enum =>
-                $"new global::Parquet.Schema.DataField(\"{name}\", typeof({prop.EnumUnderlyingTypeName ?? "int"}), isNullable: {BoolLiteral(prop.IsNullable)})",
+                $"new global::Parquet.Schema.DataField({name}, typeof({prop.EnumUnderlyingTypeName ?? "int"}), isNullable: {BoolLiteral(prop.IsNullable)})",
 
             PropertyKind.ByteArray =>
-                $"new global::Parquet.Schema.DataField(\"{name}\", typeof(byte[]), isNullable: {BoolLiteral(prop.IsNullable)})",
+                $"new global::Parquet.Schema.DataField({name}, typeof(byte[]), isNullable: {BoolLiteral(prop.IsNullable)})",
 
             _ =>
-                $"new global::Parquet.Schema.DataField(\"{name}\", typeof({prop.TypeName.TrimEnd('?')}), isNullable: {BoolLiteral(prop.IsNullable)})",
+                $"new global::Parquet.Schema.DataField({name}, typeof({prop.TypeName.TrimEnd('?')}), isNullable: {BoolLiteral(prop.IsNullable)})",
         };
     }
 
