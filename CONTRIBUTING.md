@@ -44,16 +44,27 @@ dotnet run --project samples/Parquet.SourceGenerator.SampleAot/Parquet.SourceGen
 ```
 
 This exercises the generated code, but it does **not** verify Native AOT: `PublishAot` has no
-effect on `dotnet run`, which executes under CoreCLR. To actually put the AOT compiler through it
-you need a publish with a runtime identifier, plus the native toolchain (`clang`, `zlib`) on your
-machine:
+effect on `dotnet run`, which executes under CoreCLR.
+
+### 5. Verify Native AOT properly
+
+Putting the AOT compiler through it needs a publish with a runtime identifier, plus the native
+toolchain (`clang`, `zlib`) on your machine:
 
 ```bash
-dotnet publish samples/Parquet.SourceGenerator.SampleAot/Parquet.SourceGenerator.SampleAot.csproj \
-  --configuration Release -r linux-x64
+dotnet publish test/Parquet.SourceGenerator.AotTest/Parquet.SourceGenerator.AotTest.csproj \
+  --configuration Release -r linux-x64 -o ./aot-out
+./aot-out/Parquet.SourceGenerator.AotTest
 ```
 
-CI does not run this yet, so AOT compatibility is currently unverified.
+`AotTest` round-trips a Parquet stream through the generated serializer and throws on mismatch, so
+the native binary exiting `0` is the actual result. CI runs exactly this on every pull request, for
+`linux-x64`; other runtime identifiers are untested.
+
+Expect `IL2104` and `IL3053` warnings against `Parquet.dll` during the publish. They come from
+Parquet.Net, not from generated code, and are not currently treated as errors — the generated code
+is reflection-free but the library beneath it is not. If you add a step that trips new IL warnings
+attributed to *this* repo's assemblies, that is a real regression worth chasing.
 
 ---
 
