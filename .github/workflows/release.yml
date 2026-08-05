@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   publish:
@@ -33,16 +34,6 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "Publishing version $version from tag $GITHUB_REF_NAME"
 
-      # Checked before doing any work, so a missing secret fails in seconds rather than after a
-      # full build — and never reaches `nuget push` with an empty key.
-      - name: Check publish credentials are present
-        env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-        run: |
-          if [ -z "${NUGET_API_KEY:-}" ]; then
-            echo "FAIL: NUGET_API_KEY secret is not set"
-            exit 1
-          fi
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -110,9 +101,15 @@ jobs:
           done
           echo "Package layout OK for $version."
 
+      - name: Login to NuGet via OIDC (Trusted Publishing)
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{ secrets.NUGET_USER || 'rtkelly13' }}
+
       - name: Push to NuGet
         env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
         run: |
           dotnet nuget push ./nupkgs/*.nupkg \
             --api-key "$NUGET_API_KEY" \
