@@ -61,6 +61,11 @@ dotnet publish test/Parquet.SourceGenerator.AotTest/Parquet.SourceGenerator.AotT
 the native binary exiting `0` is the actual result. CI runs exactly this on every pull request, for
 `linux-x64`; other runtime identifiers are untested.
 
+Expect `IL2104` and `IL3053` warnings against `Parquet.dll` during the publish. They come from
+Parquet.Net, not from generated code, and are not currently treated as errors — the generated code
+is reflection-free but the library beneath it is not. If you add a step that trips new IL warnings
+attributed to *this* repo's assemblies, that is a real regression worth chasing.
+
 ---
 
 ## 📊 Running Benchmarks
