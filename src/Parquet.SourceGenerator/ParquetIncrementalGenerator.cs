@@ -37,7 +37,15 @@ public sealed class ParquetIncrementalGenerator : IIncrementalGenerator
             // Emit generated source code if target model is valid
             if (result.Model is not null)
             {
-                string hintName = $"{result.Model.ClassName}.ParquetSerializer.g.cs";
+                // Qualify the hint name with the namespace. AddSource requires hint names to be
+                // unique within a generator, and it throws rather than warning — so two
+                // [ParquetSerializable] types sharing a class name in different namespaces (an
+                // Order in Sales and one in Billing, say) took the whole generator down with
+                // CS8785, and every type it would have emitted disappeared with it.
+                string prefix = string.IsNullOrEmpty(result.Model.Namespace)
+                    ? result.Model.ClassName
+                    : $"{result.Model.Namespace}.{result.Model.ClassName}";
+                string hintName = $"{prefix}.ParquetSerializer.g.cs";
                 string sourceCode = CodeEmitter.EmitSource(result.Model);
                 spc.AddSource(hintName, sourceCode);
             }
