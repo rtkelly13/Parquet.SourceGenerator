@@ -1,6 +1,5 @@
 using System;
 using System.Text;
-using Microsoft.CodeAnalysis;
 using Parquet.SourceGenerator.Models;
 
 namespace Parquet.SourceGenerator.Emitter;
@@ -118,7 +117,7 @@ public static class CodeEmitter
         // error against the generated file rather than the attribute that caused it.
         // FormatLiteral emits the surrounding quotes and escapes the contents, so callers below
         // interpolate `name` without adding quotes of their own.
-        string name = SymbolDisplay.FormatLiteral(prop.ParquetColumnName, quote: true);
+        string name = Microsoft.CodeAnalysis.CSharp.SymbolDisplay.FormatLiteral(prop.ParquetColumnName, quote: true);
 
         return prop.Kind switch
         {
