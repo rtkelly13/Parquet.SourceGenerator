@@ -1,12 +1,20 @@
 name: Release & Publish NuGet
 
 on:
-  push:
-    tags:
-      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g. 0.0.1 or 1.0.0-rc.1)'
+        required: true
+        type: string
+      dry_run:
+        description: 'Pack and verify only — do not publish to NuGet or push tag'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
 
 jobs:
@@ -17,23 +25,28 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      # The tag is the only source of the version. Directory.Build.props carries 0.0.1 as a
-      # development default, and without this the workflow published that number for every tag —
-      # so `v1.2.0` would have shipped as 0.0.1, and every release after the first would have been
-      # silently swallowed by --skip-duplicate, succeeding while publishing nothing.
-      - name: Derive version from tag
+      - name: Parse and validate SemVer input
         id: version
         run: |
-          set -euo pipefail
-          version="${GITHUB_REF_NAME#v}"
-          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
-            echo "FAIL: tag '$GITHUB_REF_NAME' does not yield a valid version (got '$version')"
-            exit 1
-          fi
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "Publishing version $version from tag $GITHUB_REF_NAME"
-
+          python3 -c "
+          import sys, re
+          raw = sys.argv[1]
+          ver = raw[1:] if raw.startswith('v') else raw
+          pattern = r'^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$'
+          m = re.match(pattern, ver)
+          if not m:
+              print(f'FAIL: \"{raw}\" is not a valid SemVer 2.0.0 version string', file=sys.stderr)
+              sys.exit(1)
+          is_prerelease = 'true' if m.group(4) is not None else 'false'
+          with open(sys.argv[2], 'a') as f:
+              f.write(f'version={ver}\n')
+              f.write(f'tag=v{ver}\n')
+              f.write(f'is_prerelease={is_prerelease}\n')
+          print(f'SemVer OK: version={ver}, is_prerelease={is_prerelease}')
+          " "${{ inputs.version }}" "$GITHUB_OUTPUT"
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -51,9 +64,6 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore Parquet.SourceGenertor.sln
 
-      # The integration tests assert these fixtures exist and fail without them. They were missing
-      # from this workflow, so the test step below could never have passed — this release path had
-      # never been executed.
       - name: Generate Python Test Datasets (PyArrow v1 & v2)
         run: uv run scripts/generate_test_data.py
 
@@ -73,8 +83,6 @@ jobs:
           dotnet pack Parquet.SourceGenertor.sln --configuration Release --no-build \
             --output ./nupkgs -p:Version=${{ steps.version.outputs.version }}
 
-      # The same layout assertions CI runs, because publishing a broken package is not undoable:
-      # NuGet does not allow re-uploading a version, so a bad one is permanent.
       - name: Verify Package Layout
         run: |
           set -euo pipefail
@@ -83,7 +91,6 @@ jobs:
           gen="Parquet.SourceGenerator.${version}.nupkg"
           attrs="Parquet.SourceGenerator.Attributes.${version}.nupkg"
 
-          # Also confirms the version override reached the produced files.
           test -f "$gen"   || { echo "FAIL: $gen not produced"; ls -la; exit 1; }
           test -f "$attrs" || { echo "FAIL: $attrs not produced"; ls -la; exit 1; }
 
@@ -102,12 +109,14 @@ jobs:
           echo "Package layout OK for $version."
 
       - name: Login to NuGet via OIDC (Trusted Publishing)
+        if: ${{ !inputs.dry_run }}
         uses: NuGet/login@v1
         id: login
         with:
           user: ${{ secrets.NUGET_USER || 'rtkelly13' }}
 
       - name: Push to NuGet
+        if: ${{ !inputs.dry_run }}
         env:
           NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
         run: |
@@ -115,3 +124,13 @@ jobs:
             --api-key "$NUGET_API_KEY" \
             --source https://api.nuget.org/v3/index.json \
             --skip-duplicate
+
+      - name: Tag Release and Push Tag to GitHub (Full Releases Only)
+        if: ${{ !inputs.dry_run && steps.version.outputs.is_prerelease == 'false' }}
+        run: |
+          set -euo pipefail
+          tag="${{ steps.version.outputs.tag }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "$tag"
+          git push origin "$tag"
