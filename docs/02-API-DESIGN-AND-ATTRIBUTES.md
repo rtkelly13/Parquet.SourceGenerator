@@ -70,7 +70,7 @@ public sealed class ParquetIgnoreAttribute : Attribute
 ### Specialized Data Format Attributes
 
 #### `[ParquetTimestamp]`
-Specifies how `DateTime` / `DateTimeOffset` values are stored in Parquet (e.g. Milliseconds, Microseconds, Nanoseconds).
+Specifies how `DateTime` / `DateTimeOffset` values are stored in Parquet (Milliseconds or Microseconds; Parquet.Net has no nanosecond format, so that unit is not offered).
 
 #### `[ParquetDecimal]`
 Specifies explicit precision and scale for `decimal` properties.

@@ -63,8 +63,8 @@ public sealed class ParquetSerializerOptions
     /// </summary>
     public ParquetCompressionMethod CompressionMethod { get; set; } = ParquetCompressionMethod.Snappy;
 
-    /// <summary>
-    /// Gets or sets whether to use 8-byte Int64 microsecond timestamps by default instead of 12-byte Impala Int96 timestamps.
-    /// </summary>
-    public bool UseMicrosecondTimestamps { get; set; }
+    // UseMicrosecondTimestamps has been removed. It could never have worked: the schema is emitted
+    // at compile time into a `static readonly ParquetSchema Schema`, so no runtime flag can change
+    // a column's encoding. Per-property [ParquetTimestamp(ParquetTimestampUnit.Microseconds)] is
+    // the mechanism that actually does it, because it is visible to the generator.
 }

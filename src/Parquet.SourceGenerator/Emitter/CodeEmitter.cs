@@ -48,6 +48,9 @@ public static class CodeEmitter
             builder.AppendLine();
         }
 
+        EmitBuildFormatOptions(builder);
+        builder.AppendLine();
+
         // Streaming row group writer — low level primitives, 100M+ scale, Native AOT compatible
         EmitWriteRowGroupAsync(builder, model);
         builder.AppendLine();
@@ -128,7 +131,7 @@ public static class CodeEmitter
                 $"new global::Parquet.Schema.DecimalDataField({name}, 38, 18, isNullable: {BoolLiteral(prop.IsNullable)})",
 
             PropertyKind.DateTime when prop.TimestampUnit == "1" || prop.TimestampUnit?.Contains("Microseconds") == true =>
-                $"new global::Parquet.Schema.DateTimeDataField({name}, global::Parquet.Schema.DateTimeFormat.DateAndTime, isNullable: {BoolLiteral(prop.IsNullable)})",
+                $"new global::Parquet.Schema.DateTimeDataField({name}, global::Parquet.Schema.DateTimeFormat.DateAndTimeMicros, isNullable: {BoolLiteral(prop.IsNullable)})",
 
             PropertyKind.DateTime =>
                 $"new global::Parquet.Schema.DateTimeDataField({name}, global::Parquet.Schema.DateTimeFormat.Impala, isNullable: {BoolLiteral(prop.IsNullable)})",
@@ -265,7 +268,7 @@ public static class CodeEmitter
         builder.AppendLine();
         builder.AppendLine("        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;");
         builder.AppendLine();
-        builder.AppendLine("        await using var writer = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, cancellationToken: cancellationToken);");
+        builder.AppendLine("        await using var writer = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken);");
         builder.AppendLine("        await writer.WriteParquetRowGroupAsync(items, cancellationToken);");
         builder.AppendLine("    }");
     }
@@ -293,7 +296,7 @@ public static class CodeEmitter
         builder.AppendLine("        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;");
         builder.AppendLine("        int targetChunkSize = options.RowGroupSize > 0 && options.RowGroupSize != 50_000 ? options.RowGroupSize : rowGroupSize;");
         builder.AppendLine();
-        builder.AppendLine("        await using var writer = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, cancellationToken: cancellationToken);");
+        builder.AppendLine("        await using var writer = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken);");
         builder.AppendLine($"        var buffer = new global::System.Collections.Generic.List<{model.ClassName}>(targetChunkSize);");
         builder.AppendLine("        foreach (var item in items)");
         builder.AppendLine("        {");
@@ -333,7 +336,7 @@ public static class CodeEmitter
         builder.AppendLine("        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;");
         builder.AppendLine("        int targetChunkSize = options.RowGroupSize > 0 && options.RowGroupSize != 50_000 ? options.RowGroupSize : rowGroupSize;");
         builder.AppendLine();
-        builder.AppendLine("        await using var writer = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, cancellationToken: cancellationToken);");
+        builder.AppendLine("        await using var writer = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken);");
         builder.AppendLine($"        var buffer = new global::System.Collections.Generic.List<{model.ClassName}>(targetChunkSize);");
         builder.AppendLine("        await foreach (var item in items)");
         builder.AppendLine("        {");
@@ -768,6 +771,35 @@ public static class CodeEmitter
         builder.AppendLine("        }");
         builder.AppendLine();
         builder.AppendLine("        return byName.TryGetValue(expected.Name, out var match) ? match : expected;");
+        builder.AppendLine("    }");
+    }
+
+    private static void EmitBuildFormatOptions(StringBuilder builder)
+    {
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine("    /// Translates the generator's options into the Parquet.Net options the writer accepts.");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    private static global::Parquet.ParquetOptions BuildFormatOptions(");
+        builder.AppendLine("        global::Parquet.SourceGenerator.ParquetSerializerOptions options)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        return new global::Parquet.ParquetOptions");
+        builder.AppendLine("        {");
+        builder.AppendLine("            CompressionMethod = options.CompressionMethod switch");
+        builder.AppendLine("            {");
+        builder.AppendLine("                global::Parquet.SourceGenerator.ParquetCompressionMethod.None =>");
+        builder.AppendLine("                    global::Parquet.CompressionMethod.None,");
+        builder.AppendLine("                global::Parquet.SourceGenerator.ParquetCompressionMethod.Gzip =>");
+        builder.AppendLine("                    global::Parquet.CompressionMethod.Gzip,");
+        builder.AppendLine("                // Parquet.Net spells this one in caps.");
+        builder.AppendLine("                global::Parquet.SourceGenerator.ParquetCompressionMethod.Lz4 =>");
+        builder.AppendLine("                    global::Parquet.CompressionMethod.LZ4,");
+        builder.AppendLine("                global::Parquet.SourceGenerator.ParquetCompressionMethod.Brotli =>");
+        builder.AppendLine("                    global::Parquet.CompressionMethod.Brotli,");
+        builder.AppendLine("                global::Parquet.SourceGenerator.ParquetCompressionMethod.Zstd =>");
+        builder.AppendLine("                    global::Parquet.CompressionMethod.Zstd,");
+        builder.AppendLine("                _ => global::Parquet.CompressionMethod.Snappy,");
+        builder.AppendLine("            },");
+        builder.AppendLine("        };");
         builder.AppendLine("    }");
     }
 
