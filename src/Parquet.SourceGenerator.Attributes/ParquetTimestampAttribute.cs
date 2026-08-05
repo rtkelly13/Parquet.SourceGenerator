@@ -17,10 +17,10 @@ public enum ParquetTimestampUnit
     /// </summary>
     Microseconds,
 
-    /// <summary>
-    /// Nanoseconds since Unix epoch.
-    /// </summary>
-    Nanoseconds
+    // Nanoseconds is deliberately absent. Parquet.Net's DateTimeFormat tops out at
+    // DateAndTimeMicros, so there is no way to emit a nanosecond-precision column through it. The
+    // member used to exist and silently fell back to the default encoding, which is worse than not
+    // offering it: callers got a coarser column than they asked for with nothing to indicate it.
 }
 
 /// <summary>

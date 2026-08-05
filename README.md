@@ -32,8 +32,7 @@ This is early work and has not been released. Treat the API as unstable.
 
 | Area | Status |
 |:--- |:--- |
-| `ParquetSerializerOptions.CompressionMethod` | Accepted but **not applied** — setting it has no effect |
-| `ParquetTimestampUnit.Nanoseconds` | Declared but **not implemented** — falls back to the default |
+| Nanosecond timestamps | **Not offered.** Parquet.Net tops out at microseconds, so the enum member was removed rather than silently writing a coarser column |
 | Nested collections (`List<T>`, dictionaries) | **Unsupported**; unsupported property types currently fail at runtime rather than compile time |
 | Column ordering without explicit `Order` | Alphabetical, **not** declaration order |
 
@@ -138,14 +137,14 @@ List<UserEvent> memEvents = await UserEventParquetExtensions.ReadParquetAsync(bu
 var options = new ParquetSerializerOptions
 {
     RowGroupSize = 25_000,
-    MaxDegreeOfParallelism = 8
+    MaxDegreeOfParallelism = 8,
+    CompressionMethod = ParquetCompressionMethod.Zstd
 };
 
 await events.WriteParquetBatchedAsync(stream, options: options);
 ```
 
-> `CompressionMethod` exists on `ParquetSerializerOptions` but is not yet applied — see
-> [Known limitations](#known-limitations).
+`CompressionMethod` accepts `None`, `Snappy` (default), `Gzip`, `Lz4`, `Brotli` and `Zstd`.
 
 ---
 
