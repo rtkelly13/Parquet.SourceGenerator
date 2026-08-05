@@ -1,6 +1,8 @@
 # Default owner for everything in this repository.
-# Required by the "Require review from Code Owners" branch protection rule documented in
-# .github/BRANCH_PROTECTION.md — that rule has no effect without this file.
+#
+# Code Owner review is NOT required to merge — the ruleset sets require_code_owner_review: false
+# (see .github/BRANCH_PROTECTION.md). This file only causes reviewers to be requested
+# automatically, which is still worth having; it just does not gate anything.
 *                       @rtkelly13
 
 # The generator itself is the part most likely to break consumers silently.

@@ -17,9 +17,10 @@ This is early work and has not been released. Treat the API as unstable.
 - **Not benchmarked.** The design avoids reflection and should compare well against
   expression-tree serialization, but no benchmark results have been published. Run the suite
   yourself (see [Contributing](CONTRIBUTING.md)) rather than trusting a number here.
-- **Native AOT is untested.** The generated code is reflection-free by construction, which is a
-  precondition for AOT rather than a verification of it. CI does not yet run `dotnet publish`
-  against the AOT toolchain.
+- **Native AOT is verified in CI.** Every run publishes `Parquet.SourceGenerator.AotTest` with
+  `-r linux-x64`, which puts the ILCompiler through the generated code, then executes the resulting
+  native binary — it round-trips a Parquet stream and throws on mismatch. Verified for `linux-x64`
+  only; other runtime identifiers are untested.
 
 ### Known limitations
 

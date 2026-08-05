@@ -14,8 +14,9 @@ first release entry when one is cut.
 ### Added
 - **Roslyn incremental source generator**: compiles zero-reflection Parquet serializers and
   deserializers against Parquet.Net low-level primitives.
-- **Reflection-free generated code**, a precondition for Native AOT. Not yet verified against the
-  AOT toolchain in CI.
+- **Native AOT support**, verified on every CI run by publishing the AOT test project with
+  `-r linux-x64` and executing the resulting native binary. `linux-x64` only; other runtime
+  identifiers are untested.
 - **`Guid` columns** written as native 16-byte values via pooled struct buffers rather than
   strings.
 - **Parallel reader (`ReadParquetParallelAsync`)**: distributes object construction across row

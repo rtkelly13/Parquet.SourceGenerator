@@ -33,12 +33,13 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v3
 
-      - name: Setup .NET SDKs
+      # 8.0.x only. Nothing in the solution targets net9.0, and global.json pins the SDK to 8.0.400
+      # with rollForward: latestMinor, so a 9.0.x SDK would not have been selected even if something
+      # did. Installing it cost time on every run and implied a coverage this repo does not have.
+      - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: |
-            8.0.x
-            9.0.x
+          dotnet-version: 8.0.x
 
       - name: Restore solution dependencies
         run: dotnet restore Parquet.SourceGenertor.sln
@@ -71,8 +72,29 @@ jobs:
       - name: Run Full Test Suite with Code Coverage Collection
         run: dotnet test Parquet.SourceGenertor.sln --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --settings coverlet.runsettings
 
-      - name: Execute Native AOT Sample Pathway
+      - name: Execute Sample (CoreCLR)
         run: dotnet run --project samples/Parquet.SourceGenerator.SampleAot/Parquet.SourceGenerator.SampleAot.csproj --configuration Release
+
+      # The step above does NOT verify Native AOT: `dotnet run` executes under CoreCLR and ignores
+      # PublishAot entirely, so the pipeline claimed an AOT guarantee it never tested. This is the
+      # real thing — `publish -r` invokes the ILCompiler, which fails the build on trim/AOT
+      # violations, and then the produced binary is executed with no runtime installed for it to
+      # fall back to.
+      #
+      # AotTest is the right project to do it with: it round-trips through the generated serializer
+      # and throws on mismatch, so a native binary exiting 0 is a genuine end-to-end result. It has
+      # existed since the beginning and no workflow ever invoked it.
+      - name: Verify Native AOT (publish + run native binary)
+        run: |
+          set -euo pipefail
+          dotnet publish test/Parquet.SourceGenerator.AotTest/Parquet.SourceGenerator.AotTest.csproj \
+            --configuration Release -r linux-x64 -o ./aot-out
+          test -x ./aot-out/Parquet.SourceGenerator.AotTest \
+            || { echo "FAIL: no native executable produced"; ls -la ./aot-out; exit 1; }
+          # A native image has no .dll of the same name beside it to be run by the shared runtime;
+          # invoking the file directly is what proves this is the compiled binary and not an
+          # apphost shim.
+          ./aot-out/Parquet.SourceGenerator.AotTest
 
       - name: Pack All NuGet Packages
         run: dotnet pack Parquet.SourceGenertor.sln --configuration Release --no-build --output ./artifacts
