@@ -95,26 +95,22 @@ If you publish numbers anywhere, include the machine and runtime they came from.
 
 ## 🚀 Releasing
 
-The pushed tag is the version. Nothing else needs editing — in particular, do **not** bump
-`<Version>` in `Directory.Build.props`; that value is a development default and the release
-workflow overrides it with `-p:Version`.
+Releases are initiated via GitHub Actions workflow dispatch (`release.yml`). The workflow builds, tests, packs, pushes the package to NuGet.org via Trusted Publishing, and automatically tags and pushes the release tag to Git.
+
+To release:
+1. Go to **Actions** → **Release & Publish NuGet** → **Run workflow**.
+2. Input the version to release (e.g. `0.0.1` — full version numbers only).
+
+Alternatively, trigger via GitHub CLI:
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+gh workflow run release.yml -f version=0.0.1
 ```
-
-`release.yml` then derives `0.1.0` from the tag, rebuilds and tests from that commit, packs, checks
-the package layout, and pushes to NuGet.org. A tag that does not yield a valid `MAJOR.MINOR.PATCH`
-(optionally with a pre-release suffix) fails the run before anything is built.
 
 Two things worth knowing:
 
-- **NuGet versions are permanent.** A version cannot be re-uploaded or replaced, only deprecated or
-  unlisted. That is why the workflow verifies the package layout before pushing rather than relying
-  on the pull request run — and why publishing is worth being deliberate about.
-- Only tag a commit whose CI is green. The workflow re-runs the build and tests, but a tag is the
-  wrong place to discover a failure.
+- **NuGet versions are permanent.** A version cannot be re-uploaded or replaced, only deprecated or unlisted.
+- **Full versions only.** The release workflow enforces `MAJOR.MINOR.PATCH` format and rejects pre-release suffixes.
 
 ---
 
