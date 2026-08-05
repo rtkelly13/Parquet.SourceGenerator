@@ -113,7 +113,7 @@ jobs:
         uses: NuGet/login@v1
         id: login
         with:
-          user: ${{ secrets.NUGET_USER || 'rtkelly13' }}
+          user: ${{ secrets.NUGET_USER || 'rtk_13' }}
 
       - name: Push to NuGet
         if: ${{ !inputs.dry_run }}
