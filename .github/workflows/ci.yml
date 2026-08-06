@@ -88,12 +88,31 @@ jobs:
         run: |
           set -euo pipefail
           dotnet publish test/Parquet.SourceGenerator.AotTest/Parquet.SourceGenerator.AotTest.csproj \
-            --configuration Release -r linux-x64 -o ./aot-out
+            --configuration Release -r linux-x64 -o ./aot-out 2>&1 | tee aot-publish.log
+
           test -x ./aot-out/Parquet.SourceGenerator.AotTest \
             || { echo "FAIL: no native executable produced"; ls -la ./aot-out; exit 1; }
+
+          echo "::group::trim / AOT-analysis warnings reported during publish"
+          grep -E 'warning IL[0-9]+' aot-publish.log || echo "(none)"
+          echo "::endgroup::"
+
+          # Parquet.Net is not AOT-clean and we cannot fix that from here, so warnings attributed to
+          # Parquet.dll are tolerated. Warnings attributed to anything else mean this repository's
+          # own code — or the code it generates — has started depending on reflection or on metadata
+          # the trimmer will remove. That is a regression, and it is invisible without this check
+          # because IL warnings do not fail a build.
+          if grep -E 'warning IL[0-9]+' aot-publish.log | grep -v '/Parquet\.dll ' | grep -q .; then
+            echo "FAIL: trim/AOT warnings not attributable to Parquet.Net:"
+            grep -E 'warning IL[0-9]+' aot-publish.log | grep -v '/Parquet\.dll '
+            exit 1
+          fi
+
           # A native image has no .dll of the same name beside it to be run by the shared runtime;
           # invoking the file directly is what proves this is the compiled binary and not an
-          # apphost shim.
+          # apphost shim. The matrix inside covers every property kind, every read/write entry
+          # point and every compression codec, because AOT reflection failures surface at runtime
+          # rather than at compile time.
           ./aot-out/Parquet.SourceGenerator.AotTest
 
       - name: Pack All NuGet Packages
