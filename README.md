@@ -5,6 +5,7 @@
 <h1 align="center">Parquet.SourceGenerator</h1>
 
 [![Build & E2E Status](https://github.com/rtkelly13/Parquet.SourceGenerator/actions/workflows/ci.yml/badge.svg)](https://github.com/rtkelly13/Parquet.SourceGenerator/actions/workflows/ci.yml)
+[![NuGet](https://img.shields.io/nuget/v/Parquet.SourceGenerator.svg)](https://www.nuget.org/packages/Parquet.SourceGenerator)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A zero-reflection C# Roslyn source generator that emits Parquet serializers and deserializers at
@@ -13,11 +14,11 @@ primitives.
 
 ---
 
-## ⚠️ Status: pre-release, not yet published
+## ⚠️ Status: Early Release
 
-This is early work and has not been released. Treat the API as unstable.
+This is early work. Treat the API as evolving.
 
-- **Not on NuGet.** There is no published package yet; build from source.
+- **Available on NuGet.** Published as [`Parquet.SourceGenerator`](https://www.nuget.org/packages/Parquet.SourceGenerator).
 - **Not benchmarked.** The design avoids reflection and should compare well against
   expression-tree serialization, but no benchmark results have been published. Run the suite
   yourself (see [Contributing](CONTRIBUTING.md)) rather than trusting a number here.
@@ -60,24 +61,22 @@ This is early work and has not been released. Treat the API as unstable.
 
 ## 📦 Installation
 
-No published package yet. Build from source:
+Install `Parquet.SourceGenerator` and `Parquet.Net` into your project:
+
+```bash
+dotnet add package Parquet.SourceGenerator
+dotnet add package Parquet.Net
+```
+
+`Parquet.SourceGenerator.Attributes` arrives automatically as a dependency of the generator. `Parquet.Net` is required because the generated code targets its low-level primitives directly.
+
+To build from source:
 
 ```bash
 git clone https://github.com/rtkelly13/Parquet.SourceGenerator.git
 cd Parquet.SourceGenerator
 dotnet build Parquet.SourceGenertor.sln --configuration Release
 ```
-
-Once a version is published, two packages are needed:
-
-```bash
-dotnet add package Parquet.SourceGenerator   # the generator; pulls in the attributes package
-dotnet add package Parquet.Net               # the generated code calls into Parquet.Net directly
-```
-
-`Parquet.SourceGenerator.Attributes` arrives as a dependency of the generator, so it does not need
-installing separately. `Parquet.Net` does: the generated readers and writers are built on its
-low-level primitives, and neither package can declare it for you without pinning you to a version.
 
 ---
 
