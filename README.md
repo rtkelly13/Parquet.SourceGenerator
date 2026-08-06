@@ -1,6 +1,8 @@
-![Parquet.SourceGenerator](https://raw.githubusercontent.com/rtkelly13/Parquet.SourceGenerator/main/docs/assets/logo.svg)
+<p align="center">
+  <img src="docs/assets/logo.svg" alt="Parquet.SourceGenerator" width="132" height="132">
+</p>
 
-# Parquet.SourceGenerator
+<h1 align="center">Parquet.SourceGenerator</h1>
 
 [![Build & E2E Status](https://github.com/rtkelly13/Parquet.SourceGenerator/actions/workflows/ci.yml/badge.svg)](https://github.com/rtkelly13/Parquet.SourceGenerator/actions/workflows/ci.yml)
 [![NuGet](https://img.shields.io/nuget/v/Parquet.SourceGenerator.svg)](https://www.nuget.org/packages/Parquet.SourceGenerator)
