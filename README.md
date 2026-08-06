@@ -1,12 +1,10 @@
-<p align="center">
-  <img src="docs/assets/logo.svg" alt="Parquet.SourceGenerator" width="132" height="132">
-</p>
+![Parquet.SourceGenerator](https://raw.githubusercontent.com/rtkelly13/Parquet.SourceGenerator/main/docs/assets/logo.svg)
 
-<h1 align="center">Parquet.SourceGenerator</h1>
+# Parquet.SourceGenerator
 
 [![Build & E2E Status](https://github.com/rtkelly13/Parquet.SourceGenerator/actions/workflows/ci.yml/badge.svg)](https://github.com/rtkelly13/Parquet.SourceGenerator/actions/workflows/ci.yml)
 [![NuGet](https://img.shields.io/nuget/v/Parquet.SourceGenerator.svg)](https://www.nuget.org/packages/Parquet.SourceGenerator)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/rtkelly13/Parquet.SourceGenerator/blob/main/LICENSE)
 
 A zero-reflection C# Roslyn source generator that emits Parquet serializers and deserializers at
 compile time, targeting [Parquet.Net](https://github.com/aloneguid/parquet-dotnet) low-level
@@ -21,7 +19,7 @@ This is early work. Treat the API as evolving.
 - **Available on NuGet.** Published as [`Parquet.SourceGenerator`](https://www.nuget.org/packages/Parquet.SourceGenerator).
 - **Not benchmarked.** The design avoids reflection and should compare well against
   expression-tree serialization, but no benchmark results have been published. Run the suite
-  yourself (see [Contributing](CONTRIBUTING.md)) rather than trusting a number here.
+  yourself (see [Contributing](https://github.com/rtkelly13/Parquet.SourceGenerator/blob/main/CONTRIBUTING.md)) rather than trusting a number here.
 - **Native AOT is exercised in CI, with caveats.** Every run publishes
   `Parquet.SourceGenerator.AotTest` with `-r linux-x64`, which puts the ILCompiler through the
   generated code, then executes the resulting native binary — it round-trips a Parquet stream and
@@ -167,15 +165,15 @@ await events.WriteParquetBatchedAsync(stream, options: options);
 
 Contributions are welcome! Please review our community guidelines:
 
-- 📖 **[Contributing Guide](CONTRIBUTING.md)**: Build setup, testing, and pull request guidelines.
-- 📜 **[Code of Conduct](CODE_OF_CONDUCT.md)**: Community behavior standards.
-- 🛡️ **[Security Policy](SECURITY.md)**: Security vulnerability disclosure process.
-- 📝 **[Changelog](CHANGELOG.md)**: Version history and feature release notes.
-- 🏗️ **[Design documentation](docs/INDEX.md)**: Architecture, attribute API, generator pipeline,
+- 📖 **[Contributing Guide](https://github.com/rtkelly13/Parquet.SourceGenerator/blob/main/CONTRIBUTING.md)**: Build setup, testing, and pull request guidelines.
+- 📜 **[Code of Conduct](https://github.com/rtkelly13/Parquet.SourceGenerator/blob/main/CODE_OF_CONDUCT.md)**: Community behavior standards.
+- 🛡️ **[Security Policy](https://github.com/rtkelly13/Parquet.SourceGenerator/blob/main/SECURITY.md)**: Security vulnerability disclosure process.
+- 📝 **[Changelog](https://github.com/rtkelly13/Parquet.SourceGenerator/blob/main/CHANGELOG.md)**: Version history and feature release notes.
+- 🏗️ **[Design documentation](https://github.com/rtkelly13/Parquet.SourceGenerator/blob/main/docs/INDEX.md)**: Architecture, attribute API, generator pipeline,
   and testing strategy.
 
 ---
 
 ## 📄 License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the [MIT License](https://github.com/rtkelly13/Parquet.SourceGenerator/blob/main/LICENSE).
