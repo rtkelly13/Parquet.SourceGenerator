@@ -37,6 +37,11 @@ This is early work. Treat the API as evolving.
 |:--- |:--- |
 | Nanosecond timestamps | **Not offered.** Parquet.Net tops out at microseconds, so the enum member was removed rather than silently writing a coarser column |
 | Nested collections (`List<T>`, dictionaries) | **Unsupported**; unsupported property types currently fail at runtime rather than compile time |
+| `ReadParquetParallelAsync` | Reads row groups **sequentially**. One `ParquetReader` over one `Stream` cannot be read concurrently, so real decode parallelism needs a reader and stream per worker. `maxDegreeOfParallelism` is accepted but not honoured |
+| .NET Framework (net472) | **Unsupported.** Parquet.Net 5 and 6 ship `net8.0`/`net10.0` only; 4.25.0 is the last release with a `netstandard2.0` asset |
+
+> A full audit of behavioural gaps, with a remediation plan, is in
+> [docs/07-KNOWN-LIMITATIONS.md](https://github.com/rtkelly13/Parquet.SourceGenerator/blob/main/docs/07-KNOWN-LIMITATIONS.md).
 
 <!-- BENCHMARK_TABLE_START -->
 ## ⚡ Performance & Benchmarks
@@ -64,8 +69,9 @@ Zero-reflection C# source generation vs **`ParquetSerializer` v6** reflection ba
 - **Row-group streaming**: `WriteParquetBatchedAsync` writes in fixed-size row groups, so large
   sequences never need to be materialized in full.
 - **`IAsyncEnumerable<T>` streaming**: stream items straight into chunked row groups.
-- **Parallel reader**: `ReadParquetParallelAsync` distributes object construction across row
-  groups.
+- **Array-backed reader**: `ReadParquetParallelAsync` materialises into a single pre-sized array
+  indexed by row-group offset. It reads row groups *sequentially* — see
+  [Known limitations](#known-limitations).
 - **Type support**: `Guid`, `DateTime`, `TimeSpan`, `Enum`, `decimal`, `byte[]`, `string`,
   primitives, and `Nullable<T>`.
 - **Compile-time diagnostics**: `PARQ001`–`PARQ005` (see below).
@@ -140,8 +146,8 @@ using var stream = File.OpenRead("events.parquet");
 // Sequential read
 List<UserEvent> events = await UserEventParquetExtensions.ReadParquetAsync(stream);
 
-// Multi-core parallel read across row groups
-List<UserEvent> parallelEvents = await UserEventParquetExtensions.ReadParquetParallelAsync(stream, maxDegreeOfParallelism: 4);
+// Array-backed read (sequential today; maxDegreeOfParallelism is not yet honoured)
+List<UserEvent> parallelEvents = await UserEventParquetExtensions.ReadParquetParallelAsync(stream);
 
 // Read from an in-memory byte buffer
 ReadOnlyMemory<byte> buffer = File.ReadAllBytes("events.parquet");

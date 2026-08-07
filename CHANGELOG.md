@@ -20,12 +20,14 @@ first release entry when one is cut.
   covers the paths the test exercises rather than guaranteeing AOT safety in general.
 - **`Guid` columns** written as native 16-byte values via pooled struct buffers rather than
   strings.
-- **Parallel reader (`ReadParquetParallelAsync`)**: distributes object construction across row
-  groups.
+- **Array-backed reader (`ReadParquetParallelAsync`)**: materialises into a single pre-sized array
+  indexed by row-group offset. Reads row groups sequentially; `maxDegreeOfParallelism` is accepted
+  but not yet honoured.
 - **`IAsyncEnumerable<T>` streaming** directly into chunked row groups.
 - **Microsecond `Int64` timestamps** via `[ParquetTimestamp(ParquetTimestampUnit.Microseconds)]`.
-- **`ParquetSerializerOptions`** for `RowGroupSize`, `MaxDegreeOfParallelism` and
-  `CompressionMethod` (`None`, `Snappy`, `Gzip`, `Lz4`, `Brotli`, `Zstd`), all applied.
+- **`ParquetSerializerOptions`** for `RowGroupSize` and `CompressionMethod` (`None`, `Snappy`,
+  `Gzip`, `Lz4`, `Brotli`, `Zstd`). `MaxDegreeOfParallelism` is present but inert — see
+  `ReadParquetParallelAsync` above.
 - **Compiler diagnostics `PARQ001`–`PARQ005`**: partial-type enforcement, duplicate column names,
   no serializable members, ignored non-public members, and invalid decimal precision/scale.
 - **CI workflow** building, testing and packing the solution. Benchmarks run on demand.

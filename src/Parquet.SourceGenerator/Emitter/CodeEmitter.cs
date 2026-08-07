@@ -462,8 +462,22 @@ public static class CodeEmitter
     private static void EmitReadParallelAsync(StringBuilder builder, TargetClassModel model)
     {
         builder.AppendLine("    /// <summary>");
-        builder.AppendLine($"    /// Asynchronously deserializes all <c>{model.ClassName}</c> objects from a Parquet stream using parallel worker tasks for multi-row-group files.");
+        builder.AppendLine($"    /// Asynchronously deserializes all <c>{model.ClassName}</c> objects from a Parquet stream, materialising");
+        builder.AppendLine("    /// into a single pre-sized array indexed by row-group offset rather than growing a list.");
         builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    /// <remarks>");
+        builder.AppendLine("    /// <para>");
+        builder.AppendLine("    /// This reads row groups sequentially. A single <c>ParquetReader</c> over one <c>Stream</c> cannot be");
+        builder.AppendLine("    /// read concurrently — the reader seeks within the stream, so overlapping row-group reads corrupt");
+        builder.AppendLine("    /// each other. Genuine decode parallelism needs one reader and one stream per worker, which in turn");
+        builder.AppendLine("    /// needs a seekable, shareable source rather than an arbitrary <c>Stream</c>.");
+        builder.AppendLine("    /// </para>");
+        builder.AppendLine("    /// <para>");
+        builder.AppendLine("    /// <paramref name=\"maxDegreeOfParallelism\"/> is accepted for forward compatibility and is not yet");
+        builder.AppendLine("    /// honoured. Prefer <c>ReadParquetAsync</c> unless you specifically want the array-backed");
+        builder.AppendLine("    /// materialisation; the two return equivalent results.");
+        builder.AppendLine("    /// </para>");
+        builder.AppendLine("    /// </remarks>");
         builder.AppendLine($"    public static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<{model.ClassName}>> ReadParquetParallelAsync(");
         builder.AppendLine($"        global::System.IO.Stream stream,");
         builder.AppendLine($"        int maxDegreeOfParallelism = -1,");
@@ -472,8 +486,10 @@ public static class CodeEmitter
         builder.AppendLine("    {");
         builder.AppendLine("        if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));");
         builder.AppendLine();
+        // No `targetParallelism` local here any more. It was computed from maxDegreeOfParallelism
+        // and options.MaxDegreeOfParallelism and then never read — dead code that made the method
+        // look as though it dispatched work it never dispatched.
         builder.AppendLine("        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;");
-        builder.AppendLine("        int targetParallelism = options.MaxDegreeOfParallelism > 0 ? options.MaxDegreeOfParallelism : maxDegreeOfParallelism;");
         builder.AppendLine();
         builder.AppendLine("        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken);");
         builder.AppendLine("        int rgCount = reader.RowGroupCount;");

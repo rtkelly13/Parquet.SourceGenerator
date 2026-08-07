@@ -85,7 +85,7 @@ that assembly would have broken that one TFM and no other. Found while evaluatin
 
 ## 2. Correctness
 
-### 2.1 `ReadParquetParallelAsync` performs no parallel work 🔴
+### 2.1 `ReadParquetParallelAsync` performs no parallel work 🟠
 
 `CodeEmitter.EmitReadParallelAsync` computes `targetParallelism` and never reads it again. The
 emitted body is a sequential `for (int r = 0; r < rgCount; r++)` loop; the emitter contains no
@@ -95,10 +95,27 @@ and `ParquetSerializerOptions.MaxDegreeOfParallelism` are inert.
 The README ("Multi-core parallel read across row groups"), CHANGELOG ("distributes object
 construction across row groups") and the generated XML doc comment all claim otherwise.
 
-Either implement genuine parallelism or withdraw the claim and the parameter. Note that the
-sequential form appears to be a deliberate fix — a single `ParquetReader` over one `Stream` cannot
-be read concurrently — so real parallelism means decoupling column decode (sequential, stream-bound)
-from object materialisation (parallelisable).
+**Partially addressed.** The false claims are withdrawn — the emitted XML doc, README and CHANGELOG
+now say it reads sequentially and that `maxDegreeOfParallelism` is not honoured — and the dead
+`targetParallelism` local is gone. The behaviour is unchanged and the item stays open.
+
+Why it was not simply "made parallel": the sequential form is a deliberate fix. A single
+`ParquetReader` seeks within its `Stream`, so overlapping row-group reads corrupt one another. That
+leaves two designs:
+
+1. **Parallelise materialisation only** — decode each row group sequentially, then hand the
+   `new T { … }` loop to the thread pool. Cheap to build, but the parallelised part is a tight loop
+   of field copies while the sequential part does decompression and decoding. Amdahl's law caps the
+   win at a few percent, and it buys that with thread-pool hops and buffer-ownership transfer out of
+   the `ArrayPool` `finally`.
+2. **One reader and one stream per worker** — parallelises decode, which is where the cost actually
+   is. This is what a real parallel Parquet reader does, and it is the design worth building. It
+   requires a seekable, shareable source, so it cannot be offered on an arbitrary `Stream`; the
+   natural home is the `ReadOnlyMemory<byte>` overload (see 3.5), where each worker can cheaply get
+   its own view over the same buffer.
+
+Design 2 is the one to implement, scoped to the buffer and file overloads rather than the general
+`Stream` one.
 
 ### 2.2 The read path reallocates its result list on every row group ✅
 
