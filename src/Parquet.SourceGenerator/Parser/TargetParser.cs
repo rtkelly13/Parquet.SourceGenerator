@@ -75,7 +75,7 @@ public static class TargetParser
         var propertyModels = new List<PropertyModel>();
         var seenColumnNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         bool rejectedAnyMember = false;
-        IEnumerable<ISymbol> members = typeSymbol.GetMembers();
+        IEnumerable<ISymbol> members = GetSerializableMembers(typeSymbol);
 
         foreach (ISymbol member in members)
         {
@@ -280,6 +280,59 @@ public static class TargetParser
             IsValueType: typeSymbol.IsValueType) : null;
 
         return new TargetParserResult(model, new EquatableArray<DiagnosticInfo>(diagnostics.ToArray()));
+    }
+
+    /// <summary>
+    /// Collects the properties and fields of a type together with those it inherits.
+    /// </summary>
+    /// <remarks>
+    /// <c>GetMembers()</c> returns declared members only, so a type deriving from a base that
+    /// carried columns silently lost every one of them — no diagnostic, just missing columns.
+    /// <para>
+    /// Two deliberate choices. The walk stops at the first base type not declared in source, so a
+    /// model deriving from a framework type does not drag in <c>Exception.Data</c> and friends as
+    /// columns. And members are collected base-first, with a derived declaration replacing a
+    /// shadowed base one *in the base's position* — so adding an <c>override</c> or <c>new</c>
+    /// member changes which declaration is used without reordering the schema.
+    /// </para>
+    /// </remarks>
+    private static List<ISymbol> GetSerializableMembers(INamedTypeSymbol typeSymbol)
+    {
+        var chain = new List<INamedTypeSymbol>();
+        for (INamedTypeSymbol? current = typeSymbol;
+             current is not null && current.SpecialType == SpecialType.None;
+             current = current.BaseType)
+        {
+            chain.Add(current);
+
+            INamedTypeSymbol? next = current.BaseType;
+            if (next is null || next.DeclaringSyntaxReferences.IsEmpty)
+                break;
+        }
+
+        chain.Reverse();
+
+        var ordered = new List<ISymbol>();
+        var positionByName = new Dictionary<string, int>(StringComparer.Ordinal);
+
+        foreach (INamedTypeSymbol type in chain)
+        {
+            foreach (ISymbol member in type.GetMembers())
+            {
+                if (member is not IPropertySymbol && member is not IFieldSymbol)
+                    continue;
+
+                if (positionByName.TryGetValue(member.Name, out int existing))
+                    ordered[existing] = member;
+                else
+                {
+                    positionByName[member.Name] = ordered.Count;
+                    ordered.Add(member);
+                }
+            }
+        }
+
+        return ordered;
     }
 
     /// <summary>

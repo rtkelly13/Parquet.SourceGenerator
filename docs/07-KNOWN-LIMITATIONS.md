@@ -154,12 +154,17 @@ producing CS0200 inside generated code with no diagnostic pointing at the cause.
 extension class — which sits beside the type rather than inside it, so `private` and `protected`
 setters do not count — and a field must be neither `readonly` nor `const`.
 
-### 2.5 Inherited members are silently dropped 🔴
+### 2.5 Inherited members are silently dropped ✅
 
 `TargetParser` uses `typeSymbol.GetMembers()`, which returns declared members only. A
 `[ParquetSerializable]` type deriving from a base that carries columns loses every inherited member,
-with no warning. Walking `BaseType` (excluding `System.Object`, handling `new`/`override` shadowing)
-is required.
+with no warning.
+
+**Resolved** by walking `BaseType`. Two deliberate choices: the walk stops at the first base not
+declared in source, so a model deriving from a framework type does not acquire `Exception.Data` and
+friends as columns; and members are collected base-first with a derived declaration replacing a
+shadowed base one *in the base's position*, so adding an `override` changes which declaration is
+used without reordering the schema.
 
 ### 2.6 Nested and generic types are unhandled 🔴
 
@@ -307,7 +312,7 @@ Sequenced so that each step is independently shippable and the cheap high-impact
 | 4 | 2.8 | ✅ `PARQ006`, allowlist mirrored from Parquet.Net's `SupportedTypes` |
 | 5 | 2.3, 2.4 | ✅ `PARQ007` unassignable member, `PARQ008` no parameterless constructor |
 | 6 | 2.6 | `PARQ008` nested and generic type rejection |
-| 7 | 2.5 | Walk base types for inherited members |
+| 7 | 2.5 | ✅ Walk base types for inherited members |
 | 8 | 2.7, 2.9 | `DateTimeOffset` conversion; honour nullable annotations |
 | 9 | 3.4, 3.5, 3.6, 3.7 | `SchemaName`, memory overloads, attribute and options surface |
 | 10 | 4 | Reconcile documentation with behaviour |

@@ -46,6 +46,6 @@ first release entry when one is cut.
 - Nested collections, `DateTimeOffset` and positional records are unsupported. They are now
   rejected at compile time (`PARQ006`/`PARQ008`) rather than failing at runtime.
 - `ReadParquetParallelAsync` reads row groups sequentially; `maxDegreeOfParallelism` is inert.
-- Inherited members are not collected, and nested or generic target types are not handled.
+- Nested or generic target types are not handled.
 - .NET Framework is unsupported — Parquet.Net 5 and 6 ship `net8.0`/`net10.0` only.
 - See [docs/07-KNOWN-LIMITATIONS.md](docs/07-KNOWN-LIMITATIONS.md) for the full audit.
