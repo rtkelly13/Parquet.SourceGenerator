@@ -37,7 +37,6 @@ This is early work. Treat the API as evolving.
 |:--- |:--- |
 | Nanosecond timestamps | **Not offered.** Parquet.Net tops out at microseconds, so the enum member was removed rather than silently writing a coarser column |
 | Nested collections (`List<T>`, dictionaries) | **Unsupported**; unsupported property types currently fail at runtime rather than compile time |
-| Column ordering without explicit `Order` | **Declaration order** by default (override with explicit `Order = n`) |
 
 ---
 
