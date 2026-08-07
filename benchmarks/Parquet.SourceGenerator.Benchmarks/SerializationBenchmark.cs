@@ -167,7 +167,7 @@ public class GuidInterchangeBenchmark
 {
     private List<GuidEvent> _guidData = null!;
 
-    [Params(10_000)]
+    [Params(1_000, 10_000, 100_000)]
     public int Count { get; set; }
 
     [GlobalSetup]

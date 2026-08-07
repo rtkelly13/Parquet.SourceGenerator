@@ -1,4 +1,4 @@
-# Parquet.SourceGenerator
+﻿# Parquet.SourceGenerator
 
 A zero-reflection C# Roslyn source generator that emits Parquet serializers and deserializers at compile time, targeting [Parquet.Net](https://github.com/aloneguid/parquet-dotnet) low-level primitives.
 
@@ -92,7 +92,7 @@ Zero-reflection C# source generation vs **`ParquetSerializer` v6** reflection ba
 |:--- |:---:|:---:|:---:|:---:|:---:|
 | **File Serialization (Write)** | 100,000 items | 7.71 ms (12.63 MB) | **3.65 ms** (**7.02 MB**) | ⚡ **2.1x faster** | 📉 **44% less memory** |
 | **Streaming Batched Write** | 100,000 items | 7.71 ms (12.63 MB) | **4.41 ms** (**5.45 MB**) | ⚡ **1.8x faster** | 📉 **57% less memory** |
-| **File Deserialization (Read)** | 10,000 items | 2.90 ms (4.96 MB) | **1.44 ms** (**1.60 MB**) | ⚡ **2.0x faster** | 📉 **68% less memory** |
+| **File Deserialization (Read)** | 100,000 items | 5.05 ms (4.62 MB) | **6.29 ms** (**10.91 MB**) | 1.25x baseline | 2.36x alloc |
 | **Guid Serialization** | 10,000 items | 1.47 ms (2.95 MB) | **910.8 μs** (**1.81 MB**) | ⚡ **1.6x faster** | 📉 **39% less memory** |
 
 > 📌 **Note**: BenchmarkDotNet results captured on GitHub Actions. Detailed multi-scale reports (1K, 10K, 100K, 1M rows) are in [docs/BENCHMARKS.md](https://github.com/rtkelly13/Parquet.SourceGenerator/blob/main/docs/BENCHMARKS.md).
