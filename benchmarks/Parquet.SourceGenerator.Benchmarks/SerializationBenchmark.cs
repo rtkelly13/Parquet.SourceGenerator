@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Running;
 using Parquet.Serialization;
 
@@ -40,6 +41,7 @@ public partial record GuidEvent
 }
 
 [MemoryDiagnoser]
+[InProcess]
 [Orderer(BenchmarkDotNet.Order.SummaryOrderPolicy.FastestToSlowest)]
 [SuppressMessage("Naming", "CA1707:Identifiers should not contain underscores")]
 public class ScalingSerializationBenchmark
@@ -96,6 +98,7 @@ public class ScalingSerializationBenchmark
 }
 
 [MemoryDiagnoser]
+[InProcess]
 [Orderer(BenchmarkDotNet.Order.SummaryOrderPolicy.FastestToSlowest)]
 [SuppressMessage("Naming", "CA1707:Identifiers should not contain underscores")]
 public class ScalingDeserializationBenchmark
@@ -157,6 +160,7 @@ public class ScalingDeserializationBenchmark
 }
 
 [MemoryDiagnoser]
+[InProcess]
 [Orderer(BenchmarkDotNet.Order.SummaryOrderPolicy.FastestToSlowest)]
 [SuppressMessage("Naming", "CA1707:Identifiers should not contain underscores")]
 public class GuidInterchangeBenchmark
