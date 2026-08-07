@@ -480,8 +480,18 @@ public static class CodeEmitter
         builder.AppendLine("        int rgCount = reader.RowGroupCount;");
         builder.AppendLine($"        if (rgCount == 0) return new global::System.Collections.Generic.List<{model.ClassName}>();");
         builder.AppendLine();
+        builder.AppendLine("        int totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);");
+        builder.AppendLine($"        var resultArray = new {model.ClassName}[totalRows];");
+        builder.AppendLine("        var rowOffsets = new int[rgCount];");
+        builder.AppendLine("        int currentOffset = 0;");
+        builder.AppendLine("        for (int r = 0; r < rgCount; r++)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            rowOffsets[r] = currentOffset;");
+        builder.AppendLine("            currentOffset += (int)reader.RowGroups[r].RowCount;");
+        builder.AppendLine("        }");
+        builder.AppendLine();
         builder.AppendLine("        var fileFields = reader.Schema.DataFields;");
-
+        builder.AppendLine();
         if (model.Properties.Length > 0)
         {
             builder.AppendLine("        global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;");
@@ -491,20 +501,20 @@ public static class CodeEmitter
             }
         }
         builder.AppendLine();
-
-        builder.AppendLine($"        var partitions = new global::System.Collections.Generic.List<{model.ClassName}>[rgCount];");
         builder.AppendLine("        var parallelOpts = new global::System.Threading.Tasks.ParallelOptions");
         builder.AppendLine("        {");
         builder.AppendLine("            CancellationToken = cancellationToken,");
         builder.AppendLine("            MaxDegreeOfParallelism = targetParallelism <= 0 ? global::System.Environment.ProcessorCount : targetParallelism");
         builder.AppendLine("        };");
         builder.AppendLine();
-
-        builder.AppendLine("        for (int r = 0; r < rgCount; r++)");
-        builder.AppendLine("        {");
-        builder.AppendLine("            cancellationToken.ThrowIfCancellationRequested();");
-        builder.AppendLine("            using var groupReader = reader.OpenRowGroupReader(r);");
-        builder.AppendLine("            int rowCount = (int)groupReader.RowCount;");
+        builder.AppendLine("        await global::System.Threading.Tasks.Parallel.ForEachAsync(");
+        builder.AppendLine("            global::System.Linq.Enumerable.Range(0, rgCount),");
+        builder.AppendLine("            parallelOpts,");
+        builder.AppendLine("            async (r, ct) =>");
+        builder.AppendLine("            {");
+        builder.AppendLine("                using var groupReader = reader.OpenRowGroupReader(r);");
+        builder.AppendLine("                int rowCount = (int)groupReader.RowCount;");
+        builder.AppendLine("                int startIdx = rowOffsets[r];");
         builder.AppendLine();
 
         for (int i = 0; i < model.Properties.Length; i++)
@@ -527,10 +537,9 @@ public static class CodeEmitter
         }
 
         builder.AppendLine();
-        builder.AppendLine($"                var groupItems = new {model.ClassName}[rowCount];");
-        builder.AppendLine("                global::System.Threading.Tasks.Parallel.For(0, rowCount, parallelOpts, i =>");
+        builder.AppendLine("                for (int i = 0; i < rowCount; i++)");
         builder.AppendLine("                {");
-        builder.AppendLine($"                    groupItems[i] = new {model.ClassName}");
+        builder.AppendLine($"                    resultArray[startIdx + i] = new {model.ClassName}");
         builder.AppendLine("                    {");
 
         for (int i = 0; i < model.Properties.Length; i++)
@@ -541,9 +550,7 @@ public static class CodeEmitter
         }
 
         builder.AppendLine("                    };");
-        builder.AppendLine("                });");
-        builder.AppendLine();
-        builder.AppendLine($"                partitions[r] = new global::System.Collections.Generic.List<{model.ClassName}>(groupItems);");
+        builder.AppendLine("                }");
         builder.AppendLine("            }");
         builder.AppendLine("            finally");
         builder.AppendLine("            {");
@@ -558,14 +565,9 @@ public static class CodeEmitter
         }
 
         builder.AppendLine("            }");
-        builder.AppendLine("        }");
+        builder.AppendLine("        });");
         builder.AppendLine();
-        builder.AppendLine($"        var totalList = new global::System.Collections.Generic.List<{model.ClassName}>();");
-        builder.AppendLine("        for (int r = 0; r < rgCount; r++)");
-        builder.AppendLine("        {");
-        builder.AppendLine("            if (partitions[r] != null) totalList.AddRange(partitions[r]);");
-        builder.AppendLine("        }");
-        builder.AppendLine("        return totalList;");
+        builder.AppendLine($"        return new global::System.Collections.Generic.List<{model.ClassName}>(resultArray);");
         builder.AppendLine("    }");
     }
 
