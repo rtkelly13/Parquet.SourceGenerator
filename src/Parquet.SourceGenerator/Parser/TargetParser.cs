@@ -212,7 +212,6 @@ public static class TargetParser
 
         List<PropertyModel> orderedProperties = propertyModels
             .OrderBy(p => p.Order >= 0 ? p.Order : int.MaxValue)
-            .ThenBy(p => p.Name)
             .ToList();
 
         TargetClassModel? model = isPartial ? new TargetClassModel(
