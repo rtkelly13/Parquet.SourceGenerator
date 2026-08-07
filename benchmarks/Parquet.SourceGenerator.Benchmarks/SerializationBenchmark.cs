@@ -157,6 +157,21 @@ public class ScalingDeserializationBenchmark
         using var stream = new MemoryStream(_parquetBytes);
         return await ScaleEventParquetExtensions.ReadParquetParallelAsync(stream);
     }
+
+    /// <summary>
+    /// Source generator streaming deserializer — IAsyncEnumerable O(1) memory footprint.
+    /// </summary>
+    [Benchmark]
+    public async Task<int> SourceGeneratorReadStreamAsync()
+    {
+        using var stream = new MemoryStream(_parquetBytes);
+        int count = 0;
+        await foreach (var item in ScaleEventParquetExtensions.ReadParquetStreamAsync(stream))
+        {
+            count++;
+        }
+        return count;
+    }
 }
 
 [MemoryDiagnoser]
