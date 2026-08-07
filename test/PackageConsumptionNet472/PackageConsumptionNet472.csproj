@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Validates that Parquet.SourceGenerator.Attributes can be consumed on .NET Framework 4.7.2.
+
+    Parquet.Net itself does NOT support net472, so this project cannot reference it or exercise the
+    full generated serialiser. What it does prove is that a .NET Framework consumer can install the
+    generator package, apply [ParquetSerializable], and compile successfully — i.e. the attributes
+    assembly resolves correctly via its netstandard2.0 TFM.
+
+    Deliberately NOT part of Parquet.SourceGenertor.sln: it consumes the NuGet packages from
+    ../../artifacts, just like PackageConsumption does for .NET 8 / .NET 9.
+    CI builds it explicitly on the windows-latest matrix leg.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>PackageConsumptionNet472</RootNamespace>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Only reference the generator package (which transitively brings in Attributes).
+      Parquet.Net is NOT referenced because it does not support net472.
+    -->
+    <PackageReference Include="Parquet.SourceGenerator" Version="$(GeneratorPackageVersion)" />
+  </ItemGroup>
+
+</Project>

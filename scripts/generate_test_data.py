@@ -30,7 +30,7 @@ def ensure_output_dirs():
     for version_dir in VERSIONS.keys():
         path = os.path.join(BASE_OUTPUT_DIR, version_dir)
         os.makedirs(path, exist_ok=True)
-        print(f"📁 Version directory ready: {path}")
+        print(f"Version directory ready: {path}")
 
 
 def generate_01_small_flat_primitives(v_key, v_spec):
@@ -182,18 +182,18 @@ def generate_05_large_scale_flat(v_key, v_spec):
 
 
 def main():
-    print("🚀 Starting multi-version Parquet test data generation...")
+    print("Starting multi-version Parquet test data generation...")
     ensure_output_dirs()
     
     for v_key, v_spec in VERSIONS.items():
-        print(f"\n📦 Generating Datasets for Parquet Specification Version: {v_spec} ({v_key})")
+        print(f"\nGenerating Datasets for Parquet Specification Version: {v_spec} ({v_key})")
         generate_01_small_flat_primitives(v_key, v_spec)
         generate_02_medium_nullable_types(v_key, v_spec)
         generate_03_complex_decimals_guids(v_key, v_spec)
         generate_04_nested_lists_maps(v_key, v_spec)
         generate_05_large_scale_flat(v_key, v_spec)
 
-    print("\n🎉 Multi-version Parquet test data generation complete!")
+    print("\nMulti-version Parquet test data generation complete!")
 
 
 if __name__ == "__main__":
