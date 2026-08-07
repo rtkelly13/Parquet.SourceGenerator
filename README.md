@@ -38,6 +38,39 @@ This is early work. Treat the API as evolving.
 | Nanosecond timestamps | **Not offered.** Parquet.Net tops out at microseconds, so the enum member was removed rather than silently writing a coarser column |
 | Nested collections (`List<T>`, dictionaries) | **Unsupported**; unsupported property types currently fail at runtime rather than compile time |
 
+<!-- BENCHMARK_TABLE_START -->
+## ⚡ Performance & Benchmarks
+
+Automated BenchmarkDotNet performance baseline comparing **`Parquet.SourceGenerator`** against **`ParquetSerializer` v6** reflection baseline:
+
+| Benchmark / Method | Row Count | Execution Time | Speed Ratio | Allocated Memory | Memory Ratio |
+|:--- |:---:|:---:|:---:|:---:|:---:|
+| `SourceGeneratorRowGroupStreaming` | 1000 | `178.0 μs` | **0.81x** | `484.89 KB` | **0.84x** |
+| `ReflectionParquetConvertBatch` | 1000 | `219.4 μs` | 1.00x (Baseline) | `576.38 KB` | 1.00x (Baseline) |
+| `SourceGeneratorRowGroupStreaming` | 10000 | `2,033.3 μs` | **0.94x** | `4103.17 KB` | **0.84x** |
+| `ReflectionParquetConvertBatch` | 10000 | `2,162.8 μs` | 1.00x (Baseline) | `4896.03 KB` | 1.00x (Baseline) |
+| `SourceGeneratorRowGroupStreaming` | 100000 | `19,488.6 μs` | **0.87x** | `38620.92 KB` | **0.81x** |
+| `ReflectionParquetConvertBatch` | 100000 | `22,356.6 μs` | 1.00x (Baseline) | `47892.67 KB` | 1.00x (Baseline) |
+| `ReflectionParquetConvertBatch` | 1000000 | `22,452.8 μs` | 1.00x (Baseline) | `47893.25 KB` | 1.00x (Baseline) |
+| `SourceGeneratorRowGroupStreaming` | 1000000 | `173,629.4 μs` | **7.76x** | `367908.11 KB` | **7.68x** |
+| `SourceGeneratorWriteAsync` | 1000 | `38.32 μs` | **0.46x** | `43.56 KB` | **0.49x** |
+| `ReflectionParquetSerializerV6Write` | 1000 | `82.99 μs` | 1.00x (Baseline) | `89.72 KB` | 1.00x (Baseline) |
+| `SourceGeneratorWriteBatchedAsync` | 1000 | `91.97 μs` | **1.11x** | `202.83 KB` | **2.26x** |
+| `SourceGeneratorWriteAsync` | 10000 | `333.65 μs` | **0.38x** | `621.23 KB` | **0.47x** |
+| `SourceGeneratorWriteBatchedAsync` | 10000 | `540.83 μs` | **0.62x** | `866.16 KB` | **0.66x** |
+| `ReflectionParquetSerializerV6Write` | 10000 | `879.71 μs` | 1.00x (Baseline) | `1319.68 KB` | 1.00x (Baseline) |
+| `SourceGeneratorWriteAsync` | 100000 | `3,646.59 μs` | **0.47x** | `7183.96 KB` | **0.56x** |
+| `SourceGeneratorWriteBatchedAsync` | 100000 | `4,411.60 μs` | **0.57x** | `5582.38 KB` | **0.43x** |
+| `ReflectionParquetSerializerV6Write` | 100000 | `7,712.64 μs` | 1.00x (Baseline) | `12932.61 KB` | 1.00x (Baseline) |
+| `ReadSourceGenerator` | 1000 | `81.49 μs` | **0.28x** | `166.37 KB` | **0.27x** |
+| `WriteSourceGenerator` | 1000 | `242.05 μs` | **0.84x** | `534.25 KB` | **0.85x** |
+| `WriteReflectionParquetConvert` | 1000 | `287.22 μs` | 1.00x (Baseline) | `625.71 KB` | 1.00x (Baseline) |
+| `ReadSourceGenerator` | 10000 | `1,438.87 μs` | **0.50x** | `1642.05 KB` | **0.32x** |
+| `WriteSourceGenerator` | 10000 | `2,746.88 μs` | **0.95x** | `4452.77 KB` | **0.88x** |
+| `WriteReflectionParquetConvert` | 10000 | `2,900.20 μs` | 1.00x (Baseline) | `5074.49 KB` | 1.00x (Baseline) |
+
+<!-- BENCHMARK_TABLE_END -->
+
 ---
 
 ## ✨ Features

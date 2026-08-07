@@ -13,7 +13,8 @@ on:
         default: '*'
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
 
 jobs:
   run-benchmarks:
@@ -22,10 +23,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@v4
 
       - name: Setup .NET 8 SDK
-        uses: actions/setup-dotnet@39cd14951b08e74b54015e9e001cdefcf80e669f # v4.3.0
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
 
@@ -44,10 +45,19 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Generate Headline Benchmark Summary Table
+      - name: Generate Headline Benchmark Summary & Update READMEs
         run: |
-          python3 scripts/generate_benchmark_summary.py BenchmarkDotNet.Artifacts/results benchmark-summary.md
+          python3 scripts/generate_benchmark_summary.py BenchmarkDotNet.Artifacts/results benchmark-summary.md --update-readme
           cat benchmark-summary.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Create PR for Benchmark Updates (if changed)
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "docs(perf): update benchmark headline performance table in README"
+          branch: "docs/update-benchmark-table"
+          title: "docs(perf): update benchmark performance table in README"
+          body: "Automated benchmark run completed. This PR updates the headline performance table in `README.md` and `PACKAGE_README.md` with the latest metrics."
+          delete-branch: true
 
       - name: Upload Benchmark Results Artifacts
         uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
