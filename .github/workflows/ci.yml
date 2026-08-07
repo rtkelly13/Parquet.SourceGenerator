@@ -14,12 +14,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # The job name is the check name that branch protection matches on, so it is deliberately short,
-  # lowercase, and free of characters that are easy to mistype or that GitHub HTML-escapes when a
-  # doc is rendered. Treat it as an identifier: renaming it silently breaks any ruleset requiring it.
   build:
-    name: build
-    runs-on: ubuntu-latest
+    name: build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
 
     steps:
       - name: Checkout repository
@@ -33,13 +34,12 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v3
 
-      # 8.0.x only. Nothing in the solution targets net9.0, and global.json pins the SDK to 8.0.400
-      # with rollForward: latestMinor, so a 9.0.x SDK would not have been selected even if something
-      # did. Installing it cost time on every run and implied a coverage this repo does not have.
-      - name: Setup .NET SDK
+      - name: Setup .NET SDKs
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: |
+            8.0.x
+            9.0.x
 
       - name: Restore solution dependencies
         run: dotnet restore Parquet.SourceGenertor.sln
@@ -47,17 +47,8 @@ jobs:
       - name: Audit Package Security & Vulnerabilities
         run: dotnet list package --vulnerable --include-transitive
 
-      # `whitespace` only, deliberately. Plain `dotnet format` also runs its style and analyzer
-      # phases, which build a Roslyn workspace via MSBuildWorkspace — and MSBuildWorkspace does not
-      # execute source generators. It logs "Found project reference without a matching metadata
-      # reference" for the generator project and then reports CS1503 against every call into the
-      # generated *ParquetExtensions API, because in its view that API does not exist. Those errors
-      # are artifacts of the tool, not defects in the code.
-      #
-      # Style and analyzer rules are enforced instead by the build below, via
-      # EnforceCodeStyleInBuild plus -warnaserror, which uses the real compilation where generators
-      # do run.
       - name: Verify C# Code Formatting
+        if: matrix.os == 'ubuntu-latest'
         run: dotnet format whitespace --verify-no-changes --verbosity diagnostic
 
       - name: Generate Python Test Datasets (PyArrow v1 & v2)
@@ -75,16 +66,8 @@ jobs:
       - name: Execute Sample (CoreCLR)
         run: dotnet run --project samples/Parquet.SourceGenerator.SampleAot/Parquet.SourceGenerator.SampleAot.csproj --configuration Release
 
-      # The step above does NOT verify Native AOT: `dotnet run` executes under CoreCLR and ignores
-      # PublishAot entirely, so the pipeline claimed an AOT guarantee it never tested. This is the
-      # real thing — `publish -r` invokes the ILCompiler, which fails the build on trim/AOT
-      # violations, and then the produced binary is executed with no runtime installed for it to
-      # fall back to.
-      #
-      # AotTest is the right project to do it with: it round-trips through the generated serializer
-      # and throws on mismatch, so a native binary exiting 0 is a genuine end-to-end result. It has
-      # existed since the beginning and no workflow ever invoked it.
-      - name: Verify Native AOT (publish + run native binary)
+      - name: Verify Native AOT (Linux)
+        if: matrix.os == 'ubuntu-latest'
         run: |
           set -euo pipefail
           dotnet publish test/Parquet.SourceGenerator.AotTest/Parquet.SourceGenerator.AotTest.csproj \
@@ -97,29 +80,26 @@ jobs:
           grep -E 'warning IL[0-9]+' aot-publish.log || echo "(none)"
           echo "::endgroup::"
 
-          # Parquet.Net is not AOT-clean and we cannot fix that from here, so warnings attributed to
-          # Parquet.dll are tolerated. Warnings attributed to anything else mean this repository's
-          # own code — or the code it generates — has started depending on reflection or on metadata
-          # the trimmer will remove. That is a regression, and it is invisible without this check
-          # because IL warnings do not fail a build.
           if grep -E 'warning IL[0-9]+' aot-publish.log | grep -v '/Parquet\.dll ' | grep -q .; then
             echo "FAIL: trim/AOT warnings not attributable to Parquet.Net:"
             grep -E 'warning IL[0-9]+' aot-publish.log | grep -v '/Parquet\.dll '
             exit 1
           fi
 
-          # A native image has no .dll of the same name beside it to be run by the shared runtime;
-          # invoking the file directly is what proves this is the compiled binary and not an
-          # apphost shim. The matrix inside covers every property kind, every read/write entry
-          # point and every compression codec, because AOT reflection failures surface at runtime
-          # rather than at compile time.
           ./aot-out/Parquet.SourceGenerator.AotTest
+
+      - name: Verify Native AOT (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          dotnet publish test/Parquet.SourceGenerator.AotTest/Parquet.SourceGenerator.AotTest.csproj --configuration Release -r win-x64 -o ./aot-out
+          ./aot-out/Parquet.SourceGenerator.AotTest.exe
 
       - name: Pack All NuGet Packages
         run: dotnet pack Parquet.SourceGenertor.sln --configuration Release --no-build --output ./artifacts
 
-      # Packing proves the packages build, not that they work. These two steps consume them.
-      - name: Verify Package Layout
+      - name: Verify Package Layout (Linux)
+        if: matrix.os == 'ubuntu-latest'
         run: |
           set -euo pipefail
           cd artifacts
@@ -127,8 +107,6 @@ jobs:
           attrs=$(ls Parquet.SourceGenerator.Attributes.*.nupkg)
           echo "::group::$gen contents"; unzip -Z1 "$gen"; echo "::endgroup::"
 
-          # The generator must ship as an analyzer and must NOT ship as a library: a lib/ entry
-          # means consumers compile against the generator and its Roslyn-facing internals.
           unzip -Z1 "$gen" | grep -q '^analyzers/dotnet/cs/Parquet\.SourceGenerator\.dll$' \
             || { echo "FAIL: generator missing from analyzers/dotnet/cs/"; exit 1; }
           if unzip -Z1 "$gen" | grep -q '^lib/'; then
@@ -136,25 +114,18 @@ jobs:
             unzip -Z1 "$gen" | grep '^lib/'; exit 1
           fi
 
-          # Generated code references the attributes, so the dependency has to be declared.
           unzip -p "$gen" '*.nuspec' | grep -q 'id="Parquet.SourceGenerator.Attributes"' \
             || { echo "FAIL: generator .nuspec does not depend on the Attributes package"; exit 1; }
 
-          # The attributes package is a real runtime library and must carry assemblies.
           for tfm in netstandard2.0 netstandard2.1 net8.0 net9.0; do
             unzip -Z1 "$attrs" | grep -q "^lib/$tfm/Parquet\.SourceGenerator\.Attributes\.dll$" \
               || { echo "FAIL: attributes package missing lib/$tfm"; exit 1; }
           done
           echo "Package layout OK."
 
-      - name: Verify Package Consumption (installs the built packages on .NET 8 & .NET 9)
+      - name: Verify Package Consumption (.NET 8 & .NET 9)
         run: |
-          set -euo pipefail
-          version=$(ls artifacts/Parquet.SourceGenerator.[0-9]*.nupkg \
-            | sed -E 's/.*Parquet\.SourceGenerator\.([0-9][^/]*)\.nupkg/\1/')
-          echo "Consuming Parquet.SourceGenerator $version from the local feed (.NET 8 & .NET 9)"
-          # An isolated package directory stops an already-cached copy of this version from standing
-          # in for the freshly built one.
+          version=$(ls artifacts/Parquet.SourceGenerator.[0-9]*.nupkg | sed -E 's/.*Parquet\.SourceGenerator\.([0-9][^/]*)\.nupkg/\1/')
           dotnet run --project test/PackageConsumption/PackageConsumption.csproj \
             --framework net8.0 \
             --configuration Release \
@@ -167,13 +138,26 @@ jobs:
             -p:GeneratorPackageVersion="$version" \
             -p:RestorePackagesPath="$RUNNER_TEMP/consumption-packages-net9"
 
+      - name: Verify Package Consumption (Windows .NET Framework 4.7.2)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $version = (Get-ChildItem artifacts/Parquet.SourceGenerator.[0-9]*.nupkg | Select-Object -First 1).Name -replace 'Parquet\.SourceGenerator\.(.*)\.nupkg', '$1'
+          dotnet run --project test/PackageConsumption/PackageConsumption.csproj `
+            --framework net472 `
+            --configuration Release `
+            -p:GeneratorPackageVersion="$version" `
+            -p:RestorePackagesPath="$env:RUNNER_TEMP/consumption-packages-net472"
+
       - name: Upload Test Coverage Artifacts
+        if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
         with:
           name: code-coverage
           path: test/Parquet.SourceGenerator.Tests/TestResults/*/coverage.cobertura.xml
 
       - name: Upload Build & Package Artifacts
+        if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
         with:
           name: nuget-packages
