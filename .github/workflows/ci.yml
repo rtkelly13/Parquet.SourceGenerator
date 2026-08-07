@@ -141,24 +141,31 @@ jobs:
             || { echo "FAIL: generator .nuspec does not depend on the Attributes package"; exit 1; }
 
           # The attributes package is a real runtime library and must carry assemblies.
-          for tfm in netstandard2.0 netstandard2.1 net8.0; do
+          for tfm in netstandard2.0 netstandard2.1 net8.0 net9.0; do
             unzip -Z1 "$attrs" | grep -q "^lib/$tfm/Parquet\.SourceGenerator\.Attributes\.dll$" \
               || { echo "FAIL: attributes package missing lib/$tfm"; exit 1; }
           done
           echo "Package layout OK."
 
-      - name: Verify Package Consumption (installs the built packages)
+      - name: Verify Package Consumption (installs the built packages on .NET 8 & .NET 9)
         run: |
           set -euo pipefail
           version=$(ls artifacts/Parquet.SourceGenerator.[0-9]*.nupkg \
             | sed -E 's/.*Parquet\.SourceGenerator\.([0-9][^/]*)\.nupkg/\1/')
-          echo "Consuming Parquet.SourceGenerator $version from the local feed"
+          echo "Consuming Parquet.SourceGenerator $version from the local feed (.NET 8 & .NET 9)"
           # An isolated package directory stops an already-cached copy of this version from standing
           # in for the freshly built one.
           dotnet run --project test/PackageConsumption/PackageConsumption.csproj \
+            --framework net8.0 \
             --configuration Release \
             -p:GeneratorPackageVersion="$version" \
-            -p:RestorePackagesPath="$RUNNER_TEMP/consumption-packages"
+            -p:RestorePackagesPath="$RUNNER_TEMP/consumption-packages-net8"
+
+          dotnet run --project test/PackageConsumption/PackageConsumption.csproj \
+            --framework net9.0 \
+            --configuration Release \
+            -p:GeneratorPackageVersion="$version" \
+            -p:RestorePackagesPath="$RUNNER_TEMP/consumption-packages-net9"
 
       - name: Upload Test Coverage Artifacts
         uses: actions/upload-artifact@v4
