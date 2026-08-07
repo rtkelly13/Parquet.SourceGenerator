@@ -30,7 +30,7 @@ def ensure_output_dirs():
     for version_dir in VERSIONS.keys():
         path = os.path.join(BASE_OUTPUT_DIR, version_dir)
         os.makedirs(path, exist_ok=True)
-        print(f"📁 Version directory ready: {path}")
+        print(f"Version directory ready: {path}")
 
 
 def generate_01_small_flat_primitives(v_key, v_spec):
