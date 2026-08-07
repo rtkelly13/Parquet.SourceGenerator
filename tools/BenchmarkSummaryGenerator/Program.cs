@@ -98,8 +98,8 @@ public static class Program
         {
             new Scenario("File Serialization (Write)", "ReflectionParquetSerializerV6Write", "SourceGeneratorWriteAsync", 100_000),
             new Scenario("Streaming Batched Write", "ReflectionParquetSerializerV6Write", "SourceGeneratorWriteBatchedAsync", 100_000),
-            new Scenario("File Deserialization (Read)", "WriteReflectionParquetConvert", "ReadSourceGenerator", 10_000),
-            new Scenario("Guid Serialization", "ReflectionParquetSerializerGuidWrite", "SourceGeneratorGuidWriteAsync", 10_000),
+            new Scenario("File Deserialization (Read)", "ReflectionParquetSerializerV6Read", "SourceGeneratorReadAsync", 100_000),
+            new Scenario("Guid Serialization", "ReflectionParquetSerializerGuidWrite", "SourceGeneratorGuidWriteAsync", 100_000),
         };
 
         var sb = new StringBuilder();
