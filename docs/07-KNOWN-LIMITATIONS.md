@@ -128,7 +128,7 @@ Single-row-group files are unaffected. Multi-row-group files (exactly what `Writ
 produces) pay O(groups × rows) of copying. This is the most likely cause of the published benchmark
 showing reads at 1.25× the reflection baseline's time with 2.36× its allocations.
 
-### 2.3 Positional records emit uncompilable code 🔴
+### 2.3 Positional records emit uncompilable code ✅
 
 The emitter always materialises via object initializer (`new {ClassName} { Prop = … }`). A positional
 record synthesises a primary constructor and a copy constructor but **no parameterless constructor**,
@@ -138,14 +138,21 @@ so the emitted code fails with CS7036.
 example in `04-ROADMAP-AND-CONTRIBUTING.md` — is affected. No test covers a positional record; every
 test model declares property bodies.
 
-Fix requires either constructor-based materialisation when a primary constructor is present, or a
-diagnostic rejecting the shape.
+**Resolved** by `PARQ008`, which fires when a reference type has no accessible parameterless
+constructor — covering positional records and any class whose only constructors take arguments.
+Value types are exempt, since they always have one. Constructor-based materialisation was the richer
+alternative but is a much larger change; rejecting the shape with a message that names the fix is
+the honest interim.
 
-### 2.4 Get-only properties and readonly fields emit uncompilable code 🔴
+### 2.4 Get-only properties and readonly fields emit uncompilable code ✅
 
 `TargetParser` performs no settability check — there is no inspection of `SetMethod`, `IsReadOnly` or
 `IsRequired`. A `public int Id { get; }` is collected and then assigned in an object initializer,
 producing CS0200 inside generated code with no diagnostic pointing at the cause.
+
+**Resolved** by `PARQ007`. A property needs a set or init accessor reachable from the generated
+extension class — which sits beside the type rather than inside it, so `private` and `protected`
+setters do not count — and a field must be neither `readonly` nor `const`.
 
 ### 2.5 Inherited members are silently dropped 🔴
 
@@ -166,25 +173,34 @@ is required.
 
 Each needs either correct emission or a diagnostic.
 
-### 2.7 `DateTimeOffset` is claimed but does not round-trip 🔴
+### 2.7 `DateTimeOffset` is claimed but does not round-trip ✅
 
 `TargetParser.ClassifyKind` maps `System.DateTimeOffset` to `PropertyKind.DateTime`, which emits a
 `DateTimeDataField` whose CLR type is `DateTime`, while the write call is `WriteAsync<DateTimeOffset>`
 over `ReadOnlyMemory<DateTimeOffset>`. The types disagree, and the offset would be lost even if the
 call bound. There is no test coverage for `DateTimeOffset` anywhere in the repository.
 
-Either convert explicitly at the buffer boundary (documenting that the offset is normalised to UTC)
-or remove the mapping so it reports as unsupported.
+**Resolved** by removing the mapping, so `DateTimeOffset` now reports as `PARQ006`. Parquet.Net's
+`SupportedTypes` has no entry for it, and silently normalising to UTC would discard the offset
+without the caller asking for that. Callers who want it should store a `DateTime` plus an explicit
+offset column.
 
-### 2.8 Unsupported property types fail at runtime, not compile time 🟡
+### 2.8 Unsupported property types fail at runtime, not compile time ✅
 
 `ClassifyKind` funnels everything unrecognised into `PropertyKind.Primitive` and emits
 `typeof(X)` for Parquet.Net to reject at runtime. Affected: `List<T>` and other collections, nested
 POCOs, `char`, `sbyte`, `ushort`, `uint`, `ulong`, `DateOnly`, `TimeOnly`, `BigInteger`.
 
-This is the largest developer-experience gap. A `PARQ006` diagnostic driven by an explicit whitelist
-converts a confusing runtime exception into a squiggle on the offending property — and is a
-prerequisite for the classic backend, whose supported type set is narrower still.
+**Resolved** by `PARQ006`. The allowlist is mirrored from Parquet.Net 6's
+`Parquet.Encodings.SchemaEncoder.SupportedTypes` rather than invented, so the diagnostic can never
+fail a build that would otherwise have worked — an over-narrow list would have been worse than no
+list at all. Unresolved (error) types are skipped rather than reported, so the rule stays quiet
+while code is being typed.
+
+Correcting the original finding: `byte`, `sbyte`, `short`, `ushort`, `uint`, `ulong`, `DateOnly`,
+`TimeOnly` and `BigInteger` were listed here as failing, but Parquet.Net supports all of them and
+they work through the passthrough today. What genuinely has no representation is `char`,
+`DateTimeOffset`, arrays other than `byte[]`, collections, and nested user types.
 
 ### 2.9 Every reference-type column is forced nullable 🟠
 
@@ -288,8 +304,8 @@ Sequenced so that each step is independently shippable and the cheap high-impact
 | 1 | 2.2 | ✅ Removed the in-loop `Capacity` assignment |
 | 2 | 3.1, 3.2, 3.3 | ✅ Threaded options through reads; dropped the sentinel; `Default` is now per-access |
 | 3 | 2.1 | Implement real parallelism, or withdraw the claim and the parameter |
-| 4 | 2.8 | `PARQ006` unsupported-type diagnostic from an explicit whitelist |
-| 5 | 2.3, 2.4 | `PARQ007` unsettable member / positional-record handling |
+| 4 | 2.8 | ✅ `PARQ006`, allowlist mirrored from Parquet.Net's `SupportedTypes` |
+| 5 | 2.3, 2.4 | ✅ `PARQ007` unassignable member, `PARQ008` no parameterless constructor |
 | 6 | 2.6 | `PARQ008` nested and generic type rejection |
 | 7 | 2.5 | Walk base types for inherited members |
 | 8 | 2.7, 2.9 | `DateTimeOffset` conversion; honour nullable annotations |

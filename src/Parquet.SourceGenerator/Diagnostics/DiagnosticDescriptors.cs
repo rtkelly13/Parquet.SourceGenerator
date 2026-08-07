@@ -61,4 +61,54 @@ public static class DiagnosticDescriptors
         category: "ParquetSourceGenerator",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
+
+    /// <summary>
+    /// PARQ006: Property or field type has no Parquet column representation.
+    /// </summary>
+    /// <remarks>
+    /// The allowed set mirrors <c>Parquet.Encodings.SchemaEncoder.SupportedTypes</c>, so this only
+    /// rejects what Parquet.Net itself rejects. Without it, an unsupported type produced a schema
+    /// the library refused at runtime — a stack trace from inside Parquet.Net, a long way from the
+    /// property that caused it.
+    /// </remarks>
+    public static readonly DiagnosticDescriptor UnsupportedPropertyType = new(
+        id: "PARQ006",
+        title: "Unsupported Parquet property type",
+        messageFormat: "The member '{0}' on type '{2}' has type '{1}', which has no Parquet column representation. Remove it, mark it [ParquetIgnore], or change its type",
+        category: "ParquetSourceGenerator",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// PARQ007: Member cannot be assigned by the generated deserializer.
+    /// </summary>
+    /// <remarks>
+    /// The read path materialises through an object initializer, so every column needs a setter (or
+    /// <c>init</c>) reachable from the generated extension class. A get-only property or readonly
+    /// field previously produced CS0200/CS0191 inside generated code, with nothing pointing back at
+    /// the declaration responsible.
+    /// </remarks>
+    public static readonly DiagnosticDescriptor MemberNotAssignable = new(
+        id: "PARQ007",
+        title: "Parquet member is not assignable",
+        messageFormat: "The member '{0}' on type '{1}' cannot be assigned by the generated deserializer. Give it an accessible set or init accessor, or mark it [ParquetIgnore]",
+        category: "ParquetSourceGenerator",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// PARQ008: Reference type has no accessible parameterless constructor.
+    /// </summary>
+    /// <remarks>
+    /// Covers positional records (<c>record Person(int Id, string Name)</c>) and any class whose
+    /// only constructors take arguments. The generated reader uses an object initializer, which
+    /// needs one; without this the emitted code failed with CS7036.
+    /// </remarks>
+    public static readonly DiagnosticDescriptor NoParameterlessConstructor = new(
+        id: "PARQ008",
+        title: "Parquet type has no accessible parameterless constructor",
+        messageFormat: "The type '{0}' has no accessible parameterless constructor, so the generated deserializer cannot construct it. Add one, or declare the columns as settable members instead of primary constructor parameters",
+        category: "ParquetSourceGenerator",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
 }

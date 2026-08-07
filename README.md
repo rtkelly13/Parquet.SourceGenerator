@@ -36,7 +36,9 @@ This is early work. Treat the API as evolving.
 | Area | Status |
 |:--- |:--- |
 | Nanosecond timestamps | **Not offered.** Parquet.Net tops out at microseconds, so the enum member was removed rather than silently writing a coarser column |
-| Nested collections (`List<T>`, dictionaries) | **Unsupported**; unsupported property types currently fail at runtime rather than compile time |
+| Nested collections (`List<T>`, dictionaries) | **Unsupported** — reported at compile time as `PARQ006` |
+| `DateTimeOffset` | **Unsupported** — Parquet.Net has no representation for it; reported as `PARQ006`. Use `DateTime` plus a separate offset column |
+| Positional records (`record Person(int Id, string Name)`) | **Unsupported** — the reader needs a parameterless constructor; reported as `PARQ008`. Declare columns as settable members instead |
 | `ReadParquetParallelAsync` | Reads row groups **sequentially**. One `ParquetReader` over one `Stream` cannot be read concurrently, so real decode parallelism needs a reader and stream per worker. `maxDegreeOfParallelism` is accepted but not honoured |
 | .NET Framework (net472) | **Unsupported.** Parquet.Net 5 and 6 ship `net8.0`/`net10.0` only; 4.25.0 is the last release with a `netstandard2.0` asset |
 
@@ -74,7 +76,8 @@ Zero-reflection C# source generation vs **`ParquetSerializer` v6** reflection ba
   [Known limitations](#known-limitations).
 - **Type support**: `Guid`, `DateTime`, `TimeSpan`, `Enum`, `decimal`, `byte[]`, `string`,
   primitives, and `Nullable<T>`.
-- **Compile-time diagnostics**: `PARQ001`–`PARQ005` (see below).
+- **Compile-time diagnostics**: `PARQ001`–`PARQ008` (see below) — unsupported types, unassignable
+  members and unconstructable types are rejected at compile time rather than at runtime.
 
 ---
 
@@ -179,6 +182,9 @@ await events.WriteParquetBatchedAsync(stream, options: options);
 | **`PARQ003`** | **Warning** | Target type has no valid public serializable properties or fields. |
 | **`PARQ004`** | **Warning** | Non-public property decorated with `[ParquetColumn]` will be ignored. |
 | **`PARQ005`** | **Error** | Invalid `[ParquetDecimal]` precision or scale parameters (precision must be `>= scale` and `<= 38`). |
+| **`PARQ006`** | **Error** | Member type has no Parquet column representation. The allowed set mirrors Parquet.Net's own `SchemaEncoder.SupportedTypes`, so this rejects only what Parquet.Net rejects — `char`, `DateTimeOffset`, collections, arrays other than `byte[]`, nested types. |
+| **`PARQ007`** | **Error** | Member cannot be assigned by the generated deserializer — a get-only property or `readonly` field. |
+| **`PARQ008`** | **Error** | Type has no accessible parameterless constructor, so the generated reader cannot construct it. Covers positional records. |
 
 ---
 
