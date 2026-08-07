@@ -75,6 +75,10 @@ public static class CodeEmitter
         EmitReadParallelAsync(builder, model);
         builder.AppendLine();
 
+        // Streaming Read API — IAsyncEnumerable streaming
+        EmitReadStreamAsync(builder, model);
+        builder.AppendLine();
+
         // Zero-copy ReadOnlyMemory overloads
         EmitReadMemoryOverloads(builder, model);
 
@@ -566,8 +570,85 @@ public static class CodeEmitter
     }
 
     // ──────────────────────────────────────────────────────────
-    //  READ MEMORY OVERLOADS (Zero-Copy with options)
+    //  READ STREAMING (IAsyncEnumerable)
     // ──────────────────────────────────────────────────────────
+
+    private static void EmitReadStreamAsync(StringBuilder builder, TargetClassModel model)
+    {
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine($"    /// Asynchronously streams <c>{model.ClassName}</c> items row-group by row-group as an <see cref=\"global::System.Collections.Generic.IAsyncEnumerable{{T}}\"/>.");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine($"    public static async global::System.Collections.Generic.IAsyncEnumerable<{model.ClassName}> ReadParquetStreamAsync(");
+        builder.AppendLine($"        global::System.IO.Stream stream,");
+        builder.AppendLine($"        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,");
+        builder.AppendLine($"        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));");
+        builder.AppendLine();
+        builder.AppendLine("        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;");
+        builder.AppendLine();
+        builder.AppendLine("        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, cancellationToken: cancellationToken);");
+        builder.AppendLine("        var fileFields = reader.Schema.DataFields;");
+        builder.AppendLine();
+        if (model.Properties.Length > 0)
+        {
+            builder.AppendLine("        global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;");
+            for (int i = 0; i < model.Properties.Length; i++)
+            {
+                builder.AppendLine($"        var field_{i} = ResolveSchemaField(fileFields, {i}, _field_{i}, ref fieldsByName);");
+            }
+        }
+        builder.AppendLine();
+        builder.AppendLine("        for (int r = 0; r < reader.RowGroupCount; r++)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            cancellationToken.ThrowIfCancellationRequested();");
+        builder.AppendLine("            using var groupReader = reader.OpenRowGroupReader(r);");
+        builder.AppendLine("            int rowCount = (int)groupReader.RowCount;");
+        builder.AppendLine();
+        for (int i = 0; i < model.Properties.Length; i++)
+        {
+            PropertyModel prop = model.Properties[i];
+            string bufType = GetBufferElementType(prop);
+            builder.AppendLine($"            var buffer_{i} = global::System.Buffers.ArrayPool<{bufType}>.Shared.Rent(rowCount);");
+        }
+        builder.AppendLine();
+        builder.AppendLine("            try");
+        builder.AppendLine("            {");
+        for (int i = 0; i < model.Properties.Length; i++)
+        {
+            PropertyModel prop = model.Properties[i];
+            string fieldAccess = $"field_{i}";
+            string readCall = GetReadPrimitiveCall(prop, fieldAccess, $"buffer_{i}");
+            builder.AppendLine($"                {readCall}");
+        }
+        builder.AppendLine();
+        builder.AppendLine("                for (int i = 0; i < rowCount; i++)");
+        builder.AppendLine("                {");
+        builder.AppendLine($"                    yield return new {model.ClassName}");
+        builder.AppendLine("                    {");
+        for (int i = 0; i < model.Properties.Length; i++)
+        {
+            PropertyModel prop = model.Properties[i];
+            string readExpr = GetReadExpression(prop, $"buffer_{i}[i]");
+            builder.AppendLine($"                        {prop.Name} = {readExpr},");
+        }
+        builder.AppendLine("                    };");
+        builder.AppendLine("                }");
+        builder.AppendLine("            }");
+        builder.AppendLine("            finally");
+        builder.AppendLine("            {");
+        for (int i = 0; i < model.Properties.Length; i++)
+        {
+            PropertyModel prop = model.Properties[i];
+            string bufType = GetBufferElementType(prop);
+            bool isRef = IsReferenceTypeBuffer(prop);
+            string clearArg = isRef ? "clearArray: true" : "clearArray: false";
+            builder.AppendLine($"                global::System.Buffers.ArrayPool<{bufType}>.Shared.Return(buffer_{i}, {clearArg});");
+        }
+        builder.AppendLine("            }");
+        builder.AppendLine("        }");
+        builder.AppendLine("    }");
+    }
 
     private static void EmitReadMemoryOverloads(StringBuilder builder, TargetClassModel model)
     {
