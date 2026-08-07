@@ -47,6 +47,11 @@ Welcome to the **Parquet.SourceGenerator** documentation repository. This folder
    - Mathematical row generation formulas and null rules.
    - Python (`PyArrow` via `uv`) and C# (`Parquet.Net` via `dotnet run`) dataset generation tooling.
 
+8. **[07 - Known Limitations & Remediation Plan](./07-KNOWN-LIMITATIONS.md)**
+   - Audited gaps between intended design and observed behaviour, with severity markers.
+   - Parquet.Net version/TFM matrix and what a net472-capable backend actually requires.
+   - Sequenced remediation order; items are marked ✅ as they are closed.
+
 ---
 
 ## ⚡ Quick Summary of Intent
