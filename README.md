@@ -39,6 +39,7 @@ This is early work. Treat the API as evolving.
 | Nested collections (`List<T>`, dictionaries) | **Unsupported** — reported at compile time as `PARQ006` |
 | `DateTimeOffset` | **Unsupported** — Parquet.Net has no representation for it; reported as `PARQ006`. Use `DateTime` plus a separate offset column |
 | Positional records (`record Person(int Id, string Name)`) | **Unsupported** — the reader needs a parameterless constructor; reported as `PARQ008`. Declare columns as settable members instead |
+| Nested and generic target types | **Unsupported** — reported as `PARQ009` / `PARQ010` |
 | `ReadParquetParallelAsync` | Reads row groups **sequentially**. One `ParquetReader` over one `Stream` cannot be read concurrently, so real decode parallelism needs a reader and stream per worker. `maxDegreeOfParallelism` is accepted but not honoured |
 | .NET Framework (net472) | **Unsupported.** Parquet.Net 5 and 6 ship `net8.0`/`net10.0` only; 4.25.0 is the last release with a `netstandard2.0` asset |
 
@@ -76,7 +77,7 @@ Zero-reflection C# source generation vs **`ParquetSerializer` v6** reflection ba
   [Known limitations](#known-limitations).
 - **Type support**: `Guid`, `DateTime`, `TimeSpan`, `Enum`, `decimal`, `byte[]`, `string`,
   primitives, and `Nullable<T>`.
-- **Compile-time diagnostics**: `PARQ001`–`PARQ008` (see below) — unsupported types, unassignable
+- **Compile-time diagnostics**: `PARQ001`–`PARQ010` (see below) — unsupported types, unassignable
   members and unconstructable types are rejected at compile time rather than at runtime.
 
 ---
@@ -185,6 +186,8 @@ await events.WriteParquetBatchedAsync(stream, options: options);
 | **`PARQ006`** | **Error** | Member type has no Parquet column representation. The allowed set mirrors Parquet.Net's own `SchemaEncoder.SupportedTypes`, so this rejects only what Parquet.Net rejects — `char`, `DateTimeOffset`, collections, arrays other than `byte[]`, nested types. |
 | **`PARQ007`** | **Error** | Member cannot be assigned by the generated deserializer — a get-only property or `readonly` field. |
 | **`PARQ008`** | **Error** | Type has no accessible parameterless constructor, so the generated reader cannot construct it. Covers positional records. |
+| **`PARQ009`** | **Error** | Target type is nested. `[ParquetSerializable]` supports top-level types only. |
+| **`PARQ010`** | **Error** | Target type is generic. The emitted schema is a single static field and cannot vary by type argument. |
 
 ---
 

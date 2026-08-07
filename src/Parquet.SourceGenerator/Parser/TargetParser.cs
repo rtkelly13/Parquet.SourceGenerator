@@ -59,6 +59,27 @@ public static class TargetParser
                 new[] { typeSymbol.Name }));
         }
 
+        // Rules PARQ009 / PARQ010: shapes the emitter cannot express. Both previously produced code
+        // that did not compile — a bare unqualified name for a nested type, and a name stripped of
+        // its type parameters for a generic one.
+        bool isNested = typeSymbol.ContainingType is not null;
+        if (isNested)
+        {
+            diagnostics.Add(new DiagnosticInfo(
+                DiagnosticDescriptors.NestedTypeNotSupported,
+                typeDeclaration.Identifier.GetLocation(),
+                new[] { typeSymbol.Name, typeSymbol.ContainingType!.Name }));
+        }
+
+        bool isGeneric = typeSymbol.TypeParameters.Length > 0;
+        if (isGeneric)
+        {
+            diagnostics.Add(new DiagnosticInfo(
+                DiagnosticDescriptors.GenericTypeNotSupported,
+                typeDeclaration.Identifier.GetLocation(),
+                new[] { typeSymbol.Name }));
+        }
+
         string namespaceName = typeSymbol.ContainingNamespace.IsGlobalNamespace
             ? string.Empty
             : typeSymbol.ContainingNamespace.ToDisplayString();
@@ -269,7 +290,7 @@ public static class TargetParser
 
         // Emission is suppressed whenever a fatal diagnostic already explains the problem. Emitting
         // anyway buries that message under cascading errors from the generated file.
-        bool canEmit = isPartial && hasParameterlessConstructor && !rejectedAnyMember;
+        bool canEmit = isPartial && hasParameterlessConstructor && !rejectedAnyMember && !isNested && !isGeneric;
 
         TargetClassModel? model = canEmit ? new TargetClassModel(
             Namespace: namespaceName,

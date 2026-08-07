@@ -331,6 +331,70 @@ public sealed class DiagnosticTests
         Assert.DoesNotContain(diagnostics, d => d.Id == DiagnosticDescriptors.NoPropertiesFound.Id);
     }
 
+    [Fact]
+    public void NestedTypeTriggersPARQ009()
+    {
+        // The extension class is emitted at namespace scope and referred to the target by its bare
+        // name, which does not resolve from there.
+        string source = """
+            using Parquet.SourceGenerator;
+
+            public static partial class Container
+            {
+                [ParquetSerializable]
+                public partial class NestedRow
+                {
+                    [ParquetColumn("id")]
+                    public int Id { get; init; }
+                }
+            }
+            """;
+
+        var (diagnostics, _) = RunGenerator(source);
+
+        Assert.Contains(diagnostics, d => d.Id == DiagnosticDescriptors.NestedTypeNotSupported.Id);
+    }
+
+    [Fact]
+    public void GenericTypeTriggersPARQ010()
+    {
+        // The emitted schema is a single static readonly field, so it cannot vary per type argument.
+        string source = """
+            using Parquet.SourceGenerator;
+
+            [ParquetSerializable]
+            public partial class GenericRow<T>
+            {
+                [ParquetColumn("id")]
+                public int Id { get; init; }
+            }
+            """;
+
+        var (diagnostics, _) = RunGenerator(source);
+
+        Assert.Contains(diagnostics, d => d.Id == DiagnosticDescriptors.GenericTypeNotSupported.Id);
+    }
+
+    [Fact]
+    public void TopLevelNonGenericTypeTriggersNeitherShapeRule()
+    {
+        string source = """
+            using Parquet.SourceGenerator;
+
+            [ParquetSerializable]
+            public partial class PlainRow
+            {
+                [ParquetColumn("id")]
+                public int Id { get; init; }
+            }
+            """;
+
+        var (diagnostics, _) = RunGenerator(source);
+
+        Assert.DoesNotContain(diagnostics, d => d.Id == DiagnosticDescriptors.NestedTypeNotSupported.Id);
+        Assert.DoesNotContain(diagnostics, d => d.Id == DiagnosticDescriptors.GenericTypeNotSupported.Id);
+    }
+
     private static (IReadOnlyList<Diagnostic> Diagnostics, IReadOnlyList<SyntaxTree> OutputTrees) RunGenerator(string source)
     {
         SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(source);

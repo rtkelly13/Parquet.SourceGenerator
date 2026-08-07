@@ -28,9 +28,10 @@ first release entry when one is cut.
 - **`ParquetSerializerOptions`** for `RowGroupSize` and `CompressionMethod` (`None`, `Snappy`,
   `Gzip`, `Lz4`, `Brotli`, `Zstd`). `MaxDegreeOfParallelism` is present but inert — see
   `ReadParquetParallelAsync` above.
-- **Compiler diagnostics `PARQ001`–`PARQ008`**: partial-type enforcement, duplicate column names,
+- **Compiler diagnostics `PARQ001`–`PARQ010`**: partial-type enforcement, duplicate column names,
   no serializable members, ignored non-public members, invalid decimal precision/scale, unsupported
-  member types, unassignable members, and types with no parameterless constructor.
+  member types, unassignable members, types with no parameterless constructor, and nested or
+  generic target types.
 - **CI workflow** building, testing and packing the solution. Benchmarks run on demand.
 
 ### Fixed before release
@@ -46,6 +47,6 @@ first release entry when one is cut.
 - Nested collections, `DateTimeOffset` and positional records are unsupported. They are now
   rejected at compile time (`PARQ006`/`PARQ008`) rather than failing at runtime.
 - `ReadParquetParallelAsync` reads row groups sequentially; `maxDegreeOfParallelism` is inert.
-- Nested or generic target types are not handled.
+- Nested and generic target types are rejected (`PARQ009`/`PARQ010`) rather than supported.
 - .NET Framework is unsupported — Parquet.Net 5 and 6 ship `net8.0`/`net10.0` only.
 - See [docs/07-KNOWN-LIMITATIONS.md](docs/07-KNOWN-LIMITATIONS.md) for the full audit.

@@ -111,4 +111,37 @@ public static class DiagnosticDescriptors
         category: "ParquetSourceGenerator",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
+
+    /// <summary>
+    /// PARQ009: Nested target types are not supported.
+    /// </summary>
+    /// <remarks>
+    /// The extension class is emitted at namespace scope and refers to the target by its bare name,
+    /// which does not resolve for a nested type; the hint name is namespace + type name too, so two
+    /// same-named nested types in one namespace also collided. Rejected rather than half-supported
+    /// until the emitter carries the full containing-type path.
+    /// </remarks>
+    public static readonly DiagnosticDescriptor NestedTypeNotSupported = new(
+        id: "PARQ009",
+        title: "Nested type cannot be Parquet-serializable",
+        messageFormat: "The type '{0}' is nested inside '{1}'. [ParquetSerializable] supports top-level types only — move it to namespace scope",
+        category: "ParquetSourceGenerator",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// PARQ010: Generic target types are not supported.
+    /// </summary>
+    /// <remarks>
+    /// The emitted schema is a single <c>static readonly</c> field, so it cannot vary per type
+    /// argument, and the emitter wrote the type name without its parameters — producing code that
+    /// did not compile.
+    /// </remarks>
+    public static readonly DiagnosticDescriptor GenericTypeNotSupported = new(
+        id: "PARQ010",
+        title: "Generic type cannot be Parquet-serializable",
+        messageFormat: "The type '{0}' is generic. [ParquetSerializable] supports non-generic types only, because the emitted schema is a single static field and cannot vary by type argument",
+        category: "ParquetSourceGenerator",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
 }

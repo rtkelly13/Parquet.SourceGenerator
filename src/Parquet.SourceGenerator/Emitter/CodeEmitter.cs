@@ -664,15 +664,18 @@ public static class CodeEmitter
         builder.AppendLine("    /// <summary>");
         builder.AppendLine($"    /// Asynchronously deserializes all <c>{model.ClassName}</c> objects directly from an in-memory byte buffer with zero buffer allocation.");
         builder.AppendLine("    /// </summary>");
-        builder.AppendLine($"    public static global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<{model.ClassName}>> ReadParquetAsync(");
+        builder.AppendLine($"    public static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<{model.ClassName}>> ReadParquetAsync(");
         builder.AppendLine($"        global::System.ReadOnlyMemory<byte> parquetBytes,");
         builder.AppendLine($"        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,");
         builder.AppendLine($"        global::System.Threading.CancellationToken cancellationToken = default)");
         builder.AppendLine("    {");
-        builder.AppendLine("        var stream = global::System.Runtime.InteropServices.MemoryMarshal.TryGetArray(parquetBytes, out var segment)");
+        // The stream was previously created and handed off without ever being disposed (CA2000).
+        // Awaiting inside a `using` keeps ownership here, where it belongs, rather than leaving it
+        // to a caller who never sees the stream.
+        builder.AppendLine("        using var stream = global::System.Runtime.InteropServices.MemoryMarshal.TryGetArray(parquetBytes, out var segment)");
         builder.AppendLine("            ? new global::System.IO.MemoryStream(segment.Array!, segment.Offset, segment.Count, writable: false)");
         builder.AppendLine("            : new global::System.IO.MemoryStream(parquetBytes.ToArray(), writable: false);");
-        builder.AppendLine("        return ReadParquetAsync(stream, options, cancellationToken);");
+        builder.AppendLine("        return await ReadParquetAsync(stream, options, cancellationToken);");
         builder.AppendLine("    }");
     }
 

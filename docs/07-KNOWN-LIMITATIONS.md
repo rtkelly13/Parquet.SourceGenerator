@@ -166,7 +166,7 @@ friends as columns; and members are collected base-first with a derived declarat
 shadowed base one *in the base's position*, so adding an `override` changes which declaration is
 used without reordering the schema.
 
-### 2.6 Nested and generic types are unhandled 🔴
+### 2.6 Nested and generic types are unhandled ✅
 
 `ClassName` is `typeSymbol.Name`, so:
 
@@ -176,7 +176,12 @@ used without reordering the schema.
 - The `AddSource` hint name is namespace + class name only, so two same-named nested types under one
   namespace collide — the same class of failure the namespace-qualification fix addressed.
 
-Each needs either correct emission or a diagnostic.
+**Resolved** with diagnostics rather than emission: `PARQ009` for nested types, `PARQ010` for
+generic ones, and emission is suppressed for both. Supporting nested types is a genuine future
+feature — the emitter would need to carry the containing-type path and flatten it into the extension
+class name — but rejecting with a message that names the fix beats emitting code that does not
+compile. Generic types are a harder no: the schema is a single `static readonly` field and cannot
+vary by type argument.
 
 ### 2.7 `DateTimeOffset` is claimed but does not round-trip ✅
 
@@ -266,11 +271,15 @@ carried on `TargetClassModel` — and is never read by `CodeEmitter`. `TargetCla
 
 Either wire `SchemaName` into the emitted schema or remove it before it reaches a stable release.
 
-### 3.5 Memory overloads are asymmetric, and one leaks ⚪
+### 3.5 Memory overloads are asymmetric, and one leaks 🟠
 
 `ReadParquetAsync(ReadOnlyMemory<byte>)` constructs a `MemoryStream` it never disposes (CA2000).
 It is also the only memory overload — `ReadParquetParallelAsync` and `ReadParquetStreamAsync` have
 no equivalent.
+
+**Leak resolved**: the method now awaits inside a `using`, keeping ownership where the stream is
+created rather than handing it to a caller who never sees it. The asymmetry remains open, and is
+where the real parallel reader should land (see 2.1).
 
 ### 3.6 `[ParquetColumn]` cannot express order without a name 🟡
 
@@ -311,7 +320,7 @@ Sequenced so that each step is independently shippable and the cheap high-impact
 | 3 | 2.1 | Implement real parallelism, or withdraw the claim and the parameter |
 | 4 | 2.8 | ✅ `PARQ006`, allowlist mirrored from Parquet.Net's `SupportedTypes` |
 | 5 | 2.3, 2.4 | ✅ `PARQ007` unassignable member, `PARQ008` no parameterless constructor |
-| 6 | 2.6 | `PARQ008` nested and generic type rejection |
+| 6 | 2.6 | ✅ `PARQ009` nested, `PARQ010` generic |
 | 7 | 2.5 | ✅ Walk base types for inherited members |
 | 8 | 2.7, 2.9 | `DateTimeOffset` conversion; honour nullable annotations |
 | 9 | 3.4, 3.5, 3.6, 3.7 | `SchemaName`, memory overloads, attribute and options surface |
