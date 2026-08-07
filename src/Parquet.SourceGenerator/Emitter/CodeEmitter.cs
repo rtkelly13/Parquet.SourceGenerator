@@ -501,20 +501,12 @@ public static class CodeEmitter
             }
         }
         builder.AppendLine();
-        builder.AppendLine("        var parallelOpts = new global::System.Threading.Tasks.ParallelOptions");
+        builder.AppendLine("        for (int r = 0; r < rgCount; r++)");
         builder.AppendLine("        {");
-        builder.AppendLine("            CancellationToken = cancellationToken,");
-        builder.AppendLine("            MaxDegreeOfParallelism = targetParallelism <= 0 ? global::System.Environment.ProcessorCount : targetParallelism");
-        builder.AppendLine("        };");
-        builder.AppendLine();
-        builder.AppendLine("        await global::System.Threading.Tasks.Parallel.ForEachAsync(");
-        builder.AppendLine("            global::System.Linq.Enumerable.Range(0, rgCount),");
-        builder.AppendLine("            parallelOpts,");
-        builder.AppendLine("            async (r, ct) =>");
-        builder.AppendLine("            {");
-        builder.AppendLine("                using var groupReader = reader.OpenRowGroupReader(r);");
-        builder.AppendLine("                int rowCount = (int)groupReader.RowCount;");
-        builder.AppendLine("                int startIdx = rowOffsets[r];");
+        builder.AppendLine("            cancellationToken.ThrowIfCancellationRequested();");
+        builder.AppendLine("            using var groupReader = reader.OpenRowGroupReader(r);");
+        builder.AppendLine("            int rowCount = (int)groupReader.RowCount;");
+        builder.AppendLine("            int startIdx = rowOffsets[r];");
         builder.AppendLine();
 
         for (int i = 0; i < model.Properties.Length; i++)
@@ -565,7 +557,7 @@ public static class CodeEmitter
         }
 
         builder.AppendLine("            }");
-        builder.AppendLine("        });");
+        builder.AppendLine("        }");
         builder.AppendLine();
         builder.AppendLine($"        return new global::System.Collections.Generic.List<{model.ClassName}>(resultArray);");
         builder.AppendLine("    }");
