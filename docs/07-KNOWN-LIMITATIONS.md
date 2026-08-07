@@ -92,7 +92,7 @@ sequential form appears to be a deliberate fix — a single `ParquetReader` over
 be read concurrently — so real parallelism means decoupling column decode (sequential, stream-bound)
 from object materialisation (parallelisable).
 
-### 2.2 The read path reallocates its result list on every row group 🔴
+### 2.2 The read path reallocates its result list on every row group ✅
 
 `EmitReadAsync` constructs `results` with capacity equal to the *total* row count, then emits
 `results.Capacity = results.Count + rowCount;` inside the row-group loop. `List<T>.Capacity`
@@ -243,7 +243,7 @@ Sequenced so that each step is independently shippable and the cheap high-impact
 
 | # | Item | Change |
 |:---|:---|:---|
-| 1 | 2.2 | Remove the in-loop `Capacity` assignment |
+| 1 | 2.2 | ✅ Removed the in-loop `Capacity` assignment |
 | 2 | 3.1, 3.2, 3.3 | Thread options through reads; drop sentinels; freeze `Default` |
 | 3 | 2.1 | Implement real parallelism, or withdraw the claim and the parameter |
 | 4 | 2.8 | `PARQ006` unsupported-type diagnostic from an explicit whitelist |

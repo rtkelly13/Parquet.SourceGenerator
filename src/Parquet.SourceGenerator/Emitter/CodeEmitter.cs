@@ -421,7 +421,12 @@ public static class CodeEmitter
         }
 
         builder.AppendLine();
-        builder.AppendLine("                results.Capacity = results.Count + rowCount;");
+        // No Capacity assignment here. `results` is already constructed with capacity equal to the
+        // file's total row count, and List<T>.Capacity reallocates whenever the assigned value
+        // differs from the current backing array length — so setting it to the running total once
+        // per row group allocated a *smaller* array and copied into it, repeatedly, before the list
+        // grew back. Single-row-group files were unaffected; the multi-row-group files that
+        // WriteParquetBatchedAsync produces paid O(groups x rows) of copying for nothing.
         builder.AppendLine("                for (int i = 0; i < rowCount; i++)");
         builder.AppendLine("                {");
         builder.AppendLine($"                    results.Add(new {model.ClassName}");
