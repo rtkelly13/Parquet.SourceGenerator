@@ -1,4 +1,4 @@
-# Parquet.SourceGenerator
+﻿# Parquet.SourceGenerator
 
 A zero-reflection C# Roslyn source generator that emits Parquet serializers and deserializers at compile time, targeting [Parquet.Net](https://github.com/aloneguid/parquet-dotnet) low-level primitives.
 
