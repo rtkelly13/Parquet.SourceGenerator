@@ -37,7 +37,12 @@ Welcome to the **Parquet.SourceGenerator** documentation repository. This folder
    - Native AOT & trim validation strategy.
    - BenchmarkDotNet performance benchmarking setup.
 
-6. **[06 - Test Data Specification & Symmetrical Benchmarking](./06-TEST-DATA-SPECIFICATION.md)**
+6. **[Performance Benchmarks & Baseline Reports](./BENCHMARKS.md)**
+   - Automated BenchmarkDotNet performance metrics.
+   - Speedup ratios and memory allocation savings vs `ParquetSerializer` v6.
+   - Automated CI benchmark update workflow.
+
+7. **[06 - Test Data Specification & Symmetrical Benchmarking](./06-TEST-DATA-SPECIFICATION.md)**
    - Deterministic test dataset matrix (01 through 05).
    - Mathematical row generation formulas and null rules.
    - Python (`PyArrow` via `uv`) and C# (`Parquet.Net` via `dotnet run`) dataset generation tooling.
