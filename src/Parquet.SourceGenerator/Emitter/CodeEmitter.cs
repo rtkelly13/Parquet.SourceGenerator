@@ -373,7 +373,7 @@ public static class CodeEmitter
         builder.AppendLine("        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;");
         builder.AppendLine();
         builder.AppendLine("        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, cancellationToken: cancellationToken);");
-        builder.AppendLine($"        var results = new global::System.Collections.Generic.List<{model.ClassName}>((int)reader.RowGroups.Sum(rg => rg.RowCount));");
+        builder.AppendLine($"        var results = new global::System.Collections.Generic.List<{model.ClassName}>((int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount));");
         builder.AppendLine();
         builder.AppendLine("        var fileFields = reader.Schema.DataFields;");
 
