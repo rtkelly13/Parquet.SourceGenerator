@@ -73,6 +73,14 @@ Three issues independent of which Parquet.Net version is chosen:
 - `IsExternalInit` is `internal` in `Parquet.SourceGenerator.Attributes`, so net472 consumers using
   `init` accessors need their own copy.
 
+### 1.4 The `IsExternalInit` polyfill missed netstandard2.1 ✅
+
+`IsExternalInit` reached the BCL in .NET 5, so netstandard2.0 **and** netstandard2.1 both lack it.
+The polyfill in the Attributes assembly was guarded on `#if NETSTANDARD2_0` alone, leaving the
+netstandard2.1 target with no polyfill — the first `init` accessor or positional record added to
+that assembly would have broken that one TFM and no other. Found while evaluating whether
+`ParquetSerializerOptions` could become init-only (3.3); the guard now names both.
+
 ---
 
 ## 2. Correctness
@@ -175,13 +183,19 @@ compilation has nullable analysis enabled.
 
 ## 3. Options and API surface
 
-### 3.1 `ParquetSerializerOptions` does nothing on any read path 🟠
+### 3.1 `ParquetSerializerOptions` does nothing on any read path ✅
 
 `EmitReadAsync`, `EmitReadParallelAsync` and `EmitReadStreamAsync` each emit
 `options ??= …Default;` and then never reference `options` again — `ParquetReader.CreateAsync` is
 called without it. Every setting silently no-ops on read.
 
-### 3.2 Row-group sizing uses a magic-number sentinel 🟠
+**Resolved** by passing `BuildFormatOptions(options)` to all three `ParquetReader.CreateAsync`
+calls. This is plumbing rather than a behaviour change today: `ParquetSerializerOptions` currently
+carries only write-side settings, so the constructed `ParquetOptions` matches the reader's defaults.
+What it buys is that any read-relevant option added later reaches the reader instead of being
+silently dropped — see 3.7.
+
+### 3.2 Row-group sizing uses a magic-number sentinel ✅
 
 `options.RowGroupSize > 0 && options.RowGroupSize != 50_000 ? options.RowGroupSize : rowGroupSize`
 
@@ -189,11 +203,22 @@ Setting `RowGroupSize = 50_000` explicitly is indistinguishable from leaving it 
 the method parameter silently wins. A nullable `int?` default expresses "unset" without a sentinel.
 `MaxDegreeOfParallelism` uses the same `> 0` pattern.
 
-### 3.3 `ParquetSerializerOptions.Default` is a mutable shared singleton 🟠
+**Resolved** for row-group sizing: the parameter is now `int?`, precedence is explicit argument →
+options → the options default, and a non-positive value from either source throws
+`ArgumentOutOfRangeException`. `MaxDegreeOfParallelism` is left alone deliberately — it is inert
+until 2.1 is addressed, and giving it real precedence rules before it does anything would only
+enshrine behaviour that does not exist.
+
+### 3.3 `ParquetSerializerOptions.Default` is a mutable shared singleton ✅
 
 `public static ParquetSerializerOptions Default { get; } = new();` exposes `{ get; set; }`
 properties, so any consumer can mutate process-global defaults for every serializer in the
-application. Init-only properties, or returning a fresh instance per access, closes this.
+application.
+
+**Resolved** by making `Default` return a fresh instance per access. Init-only properties were the
+other candidate and were rejected: this assembly targets netstandard2.0/2.1, neither of which
+carries `IsExternalInit`, so init-only would break object-initializer use for exactly the .NET
+Framework consumers section 1 is about.
 
 ### 3.4 `SchemaName` is a dead public API 🟠
 
@@ -244,7 +269,7 @@ Sequenced so that each step is independently shippable and the cheap high-impact
 | # | Item | Change |
 |:---|:---|:---|
 | 1 | 2.2 | ✅ Removed the in-loop `Capacity` assignment |
-| 2 | 3.1, 3.2, 3.3 | Thread options through reads; drop sentinels; freeze `Default` |
+| 2 | 3.1, 3.2, 3.3 | ✅ Threaded options through reads; dropped the sentinel; `Default` is now per-access |
 | 3 | 2.1 | Implement real parallelism, or withdraw the claim and the parameter |
 | 4 | 2.8 | `PARQ006` unsupported-type diagnostic from an explicit whitelist |
 | 5 | 2.3, 2.4 | `PARQ007` unsettable member / positional-record handling |

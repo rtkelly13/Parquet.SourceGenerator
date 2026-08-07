@@ -44,9 +44,23 @@ public enum ParquetCompressionMethod
 public sealed class ParquetSerializerOptions
 {
     /// <summary>
-    /// Gets the global default configuration instance.
+    /// Gets a new configuration instance carrying the default values.
     /// </summary>
-    public static ParquetSerializerOptions Default { get; } = new();
+    /// <remarks>
+    /// Deliberately a fresh instance per access rather than a shared singleton. The properties
+    /// below are settable, so a shared instance let any caller rewrite the defaults for every
+    /// serializer in the process — <c>ParquetSerializerOptions.Default.RowGroupSize = 1;</c> in one
+    /// library silently reconfigured every other one. The allocation is negligible beside the
+    /// megabytes a Parquet read or write moves, and it is only taken when a caller omits options
+    /// entirely.
+    /// <para>
+    /// The properties are not <c>init</c>-only because this assembly targets netstandard2.0 and
+    /// netstandard2.1, neither of which carries <c>IsExternalInit</c>; making them init-only would
+    /// break object-initializer use for exactly the .NET Framework consumers this package is meant
+    /// to keep serving.
+    /// </para>
+    /// </remarks>
+    public static ParquetSerializerOptions Default => new();
 
     /// <summary>
     /// Gets or sets the target row group size for batched writing operations (default is 50,000 rows).

@@ -289,16 +289,13 @@ public static class CodeEmitter
         builder.AppendLine($"    public static async global::System.Threading.Tasks.Task WriteParquetBatchedAsync(");
         builder.AppendLine($"        this global::System.Collections.Generic.IEnumerable<{model.ClassName}> items,");
         builder.AppendLine($"        global::System.IO.Stream stream,");
-        builder.AppendLine($"        int rowGroupSize = 50_000,");
+        builder.AppendLine($"        int? rowGroupSize = null,");
         builder.AppendLine($"        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,");
         builder.AppendLine($"        global::System.Threading.CancellationToken cancellationToken = default)");
         builder.AppendLine("    {");
         builder.AppendLine("        if (items == null) throw new global::System.ArgumentNullException(nameof(items));");
         builder.AppendLine("        if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));");
-        builder.AppendLine("        if (rowGroupSize <= 0) throw new global::System.ArgumentOutOfRangeException(nameof(rowGroupSize));");
-        builder.AppendLine();
-        builder.AppendLine("        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;");
-        builder.AppendLine("        int targetChunkSize = options.RowGroupSize > 0 && options.RowGroupSize != 50_000 ? options.RowGroupSize : rowGroupSize;");
+        EmitRowGroupSizeResolution(builder);
         builder.AppendLine();
         builder.AppendLine("        await using var writer = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken);");
         builder.AppendLine($"        var buffer = new global::System.Collections.Generic.List<{model.ClassName}>(targetChunkSize);");
@@ -329,16 +326,13 @@ public static class CodeEmitter
         builder.AppendLine($"    public static async global::System.Threading.Tasks.Task WriteParquetAsync(");
         builder.AppendLine($"        this global::System.Collections.Generic.IAsyncEnumerable<{model.ClassName}> items,");
         builder.AppendLine($"        global::System.IO.Stream stream,");
-        builder.AppendLine($"        int rowGroupSize = 50_000,");
+        builder.AppendLine($"        int? rowGroupSize = null,");
         builder.AppendLine($"        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,");
         builder.AppendLine($"        global::System.Threading.CancellationToken cancellationToken = default)");
         builder.AppendLine("    {");
         builder.AppendLine("        if (items == null) throw new global::System.ArgumentNullException(nameof(items));");
         builder.AppendLine("        if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));");
-        builder.AppendLine("        if (rowGroupSize <= 0) throw new global::System.ArgumentOutOfRangeException(nameof(rowGroupSize));");
-        builder.AppendLine();
-        builder.AppendLine("        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;");
-        builder.AppendLine("        int targetChunkSize = options.RowGroupSize > 0 && options.RowGroupSize != 50_000 ? options.RowGroupSize : rowGroupSize;");
+        EmitRowGroupSizeResolution(builder);
         builder.AppendLine();
         builder.AppendLine("        await using var writer = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken);");
         builder.AppendLine($"        var buffer = new global::System.Collections.Generic.List<{model.ClassName}>(targetChunkSize);");
@@ -376,7 +370,7 @@ public static class CodeEmitter
         builder.AppendLine();
         builder.AppendLine("        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;");
         builder.AppendLine();
-        builder.AppendLine("        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, cancellationToken: cancellationToken);");
+        builder.AppendLine("        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken);");
         builder.AppendLine($"        var results = new global::System.Collections.Generic.List<{model.ClassName}>((int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount));");
         builder.AppendLine();
         builder.AppendLine("        var fileFields = reader.Schema.DataFields;");
@@ -481,7 +475,7 @@ public static class CodeEmitter
         builder.AppendLine("        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;");
         builder.AppendLine("        int targetParallelism = options.MaxDegreeOfParallelism > 0 ? options.MaxDegreeOfParallelism : maxDegreeOfParallelism;");
         builder.AppendLine();
-        builder.AppendLine("        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, cancellationToken: cancellationToken);");
+        builder.AppendLine("        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken);");
         builder.AppendLine("        int rgCount = reader.RowGroupCount;");
         builder.AppendLine($"        if (rgCount == 0) return new global::System.Collections.Generic.List<{model.ClassName}>();");
         builder.AppendLine();
@@ -586,7 +580,7 @@ public static class CodeEmitter
         builder.AppendLine();
         builder.AppendLine("        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;");
         builder.AppendLine();
-        builder.AppendLine("        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, cancellationToken: cancellationToken);");
+        builder.AppendLine("        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken);");
         builder.AppendLine("        var fileFields = reader.Schema.DataFields;");
         builder.AppendLine();
         if (model.Properties.Length > 0)
@@ -852,6 +846,27 @@ public static class CodeEmitter
         builder.AppendLine();
         builder.AppendLine("        return byName.TryGetValue(expected.Name, out var match) ? match : expected;");
         builder.AppendLine("    }");
+    }
+
+    /// <summary>
+    /// Emits the row-group size resolution shared by the two batched write entry points.
+    /// </summary>
+    private static void EmitRowGroupSizeResolution(StringBuilder builder)
+    {
+        // The old form was `options.RowGroupSize > 0 && options.RowGroupSize != 50_000 ? ... : rowGroupSize`,
+        // which used the default value as a sentinel for "unset". Two consequences: setting
+        // RowGroupSize to exactly 50,000 was indistinguishable from not setting it, and whenever
+        // options *did* carry a size it silently overrode the explicit method argument — the more
+        // specific value losing to the more general one. A nullable parameter says "unset" without
+        // borrowing a legal value to mean it, so the precedence can be the obvious one: the explicit
+        // argument wins, then options, then the options default.
+        builder.AppendLine("        if (rowGroupSize.HasValue && rowGroupSize.Value <= 0)");
+        builder.AppendLine("            throw new global::System.ArgumentOutOfRangeException(nameof(rowGroupSize));");
+        builder.AppendLine();
+        builder.AppendLine("        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;");
+        builder.AppendLine("        int targetChunkSize = rowGroupSize ?? options.RowGroupSize;");
+        builder.AppendLine("        if (targetChunkSize <= 0)");
+        builder.AppendLine("            throw new global::System.ArgumentOutOfRangeException(nameof(options), \"ParquetSerializerOptions.RowGroupSize must be greater than zero.\");");
     }
 
     private static void EmitBuildFormatOptions(StringBuilder builder)
