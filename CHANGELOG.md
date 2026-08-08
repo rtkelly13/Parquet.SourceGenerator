@@ -8,8 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
-Nothing has been released yet. There is no tag and no published package; this section becomes the
-first release entry when one is cut.
+Changes since `0.0.1`. That version is published on nuget.org (alongside the `0.0.1-dev.1` and
+`0.0.1-dev.2` prereleases); this section becomes the next release entry when one is cut.
 
 ### Added
 - **Roslyn incremental source generator**: compiles zero-reflection Parquet serializers and

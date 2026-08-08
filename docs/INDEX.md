@@ -62,9 +62,11 @@ By emitting specialized, strongly-typed column readers and writers at compile ti
 outcome is:
 - **Zero Reflection & Maximum Throughput**: Direct array transfers between C# memory and Parquet columns.
 - **Native AOT & Trimming Compatibility**: reflection-free generated code is a precondition for
-  AOT and trimming. Not yet verified — CI does not run an AOT publish.
+  AOT and trimming. CI publishes the AOT test project with `-r linux-x64` and runs the resulting
+  native binary on every run — `linux-x64` only, and Parquet.Net itself still emits trim and
+  AOT-analysis warnings.
 - **Compile-Time Safety**: Catches schema mismatches and unsupported data types before running code.
 
-> These documents describe intended design. See the
-> [Known limitations](../README.md#known-limitations) table in the README for what is actually
-> implemented today.
+> These documents describe intended design. For what is actually implemented today, see the
+> [Known limitations](../README.md#known-limitations) table in the README and the full audit in
+> [07 - Known Limitations](./07-KNOWN-LIMITATIONS.md).

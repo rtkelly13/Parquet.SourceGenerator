@@ -17,10 +17,6 @@ namespace Parquet.SourceGenerator;
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, AllowMultiple = false, Inherited = true)]
 public sealed class ParquetSerializableAttribute : Attribute
 {
-    /// <summary>
-    /// Optional schema name override.
-    /// </summary>
-    public string? SchemaName { get; set; }
 }
 ```
 

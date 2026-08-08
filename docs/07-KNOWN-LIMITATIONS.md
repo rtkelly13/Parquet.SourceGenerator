@@ -322,7 +322,7 @@ netstandard targets.
 
 ---
 
-## 4. Documentation drift ⚪
+## 4. Documentation drift ✅
 
 - `CHANGELOG.md` states "Nothing has been released yet"; **0.0.1 is published on nuget.org**
   (alongside `0.0.1-dev.1` and `0.0.1-dev.2`).
@@ -334,6 +334,12 @@ netstandard targets.
   Attributes package, but the csproj also targets `net9.0`.
 - `INDEX.md` says "Native AOT … Not yet verified — CI does not run an AOT publish", but `ci.yml`
   publishes and executes the AOT test binary on every run.
+- `02-API-DESIGN-AND-ATTRIBUTES.md` documents `SchemaName`, and
+  `03-INCREMENTAL-GENERATOR-PIPELINE.md` shows `IsRecord`/`IsValueType` on the model. Both are gone
+  (see 3.4).
+
+**All resolved.** The roadmap now marks phases 1–5 shipped, records that the 4.x/5.x plan was
+superseded by v6 and why, and adds a phase 6 for the classic backend and real parallel reading.
 
 ---
 
@@ -352,8 +358,8 @@ Sequenced so that each step is independently shippable and the cheap high-impact
 | 7 | 2.5 | ✅ Walk base types for inherited members |
 | 8 | 2.7, 2.9 | ✅ `DateTimeOffset` reported by `PARQ006`; nullable annotations honoured |
 | 9 | 3.4, 3.5, 3.6, 3.7 | ✅ `SchemaName` removed; buffer overloads for every reader; order-only `[ParquetColumn]`; `CompressionLevel` |
-| 10 | 4 | Reconcile documentation with behaviour |
-| 11 | 1.2 | `Parquet.SourceGenerator.V4` classic backend + net472 target |
+| 10 | 4 | ✅ Reconciled documentation with behaviour |
+| 11 | 1.2 | `Parquet.SourceGenerator.V4` classic backend + net472 target — **still open** |
 
 Items 4–6 are prerequisites for 11: the classic backend supports a narrower type set, so
 compile-time rejection must exist before a second backend can report it.

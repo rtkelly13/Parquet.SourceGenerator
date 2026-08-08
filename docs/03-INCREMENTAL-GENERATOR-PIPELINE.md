@@ -86,8 +86,6 @@ public sealed record PropertyModel(
 public sealed record ClassToGenerate(
     string Namespace,
     string ClassName,
-    bool IsRecord,
-    bool IsValueType,
     EquatableArray<PropertyModel> Properties) : IEquatable<ClassToGenerate>;
 ```
 
