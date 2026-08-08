@@ -85,13 +85,6 @@ public static class TargetParser
             : typeSymbol.ContainingNamespace.ToDisplayString();
 
         string className = typeSymbol.Name;
-        string schemaName = className;
-
-        foreach (KeyValuePair<string, TypedConstant> namedArg in serializableAttr.NamedArguments)
-        {
-            if (namedArg.Key == "SchemaName" && namedArg.Value.Value is string customSchemaName)
-                schemaName = customSchemaName;
-        }
 
         var propertyModels = new List<PropertyModel>();
         var seenColumnNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -138,15 +131,24 @@ public static class TargetParser
             string columnName = member.Name;
             int order = -1;
 
-            if (columnAttr is not null && columnAttr.ConstructorArguments.Length > 0)
+            if (columnAttr is not null)
             {
-                if (columnAttr.ConstructorArguments[0].Value is string customColName)
+                if (columnAttr.ConstructorArguments.Length > 0 &&
+                    columnAttr.ConstructorArguments[0].Value is string customColName)
+                {
                     columnName = customColName;
+                }
 
+                // Named arguments used to be read only when a constructor argument was also present,
+                // which made [ParquetColumn(Order = 2)] — reorder without rename — impossible to
+                // express: there was no parameterless constructor, and even with one the Order would
+                // have been ignored. Name is accepted as a named argument for the same reason.
                 foreach (KeyValuePair<string, TypedConstant> namedArg in columnAttr.NamedArguments)
                 {
                     if (namedArg.Key == "Order" && namedArg.Value.Value is int customOrder)
                         order = customOrder;
+                    else if (namedArg.Key == "Name" && namedArg.Value.Value is string namedColName)
+                        columnName = namedColName;
                 }
             }
 
@@ -294,10 +296,7 @@ public static class TargetParser
         TargetClassModel? model = canEmit ? new TargetClassModel(
             Namespace: namespaceName,
             ClassName: className,
-            SchemaName: schemaName,
-            Properties: new EquatableArray<PropertyModel>(orderedProperties.ToArray()),
-            IsRecord: typeDeclaration is RecordDeclarationSyntax,
-            IsValueType: typeSymbol.IsValueType) : null;
+            Properties: new EquatableArray<PropertyModel>(orderedProperties.ToArray())) : null;
 
         return new TargetParserResult(model, new EquatableArray<DiagnosticInfo>(diagnostics.ToArray()));
     }

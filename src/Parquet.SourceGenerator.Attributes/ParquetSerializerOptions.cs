@@ -39,6 +39,37 @@ public enum ParquetCompressionMethod
 }
 
 /// <summary>
+/// Specifies how hard the chosen compression method should work.
+/// </summary>
+/// <remarks>
+/// Mirrors <c>System.IO.Compression.CompressionLevel</c>. Declared here rather than reused so this
+/// assembly's netstandard2.0 and netstandard2.1 targets do not have to reason about
+/// <c>SmallestSize</c>, which only exists from .NET 6 onwards.
+/// </remarks>
+public enum ParquetCompressionLevel
+{
+    /// <summary>
+    /// Balances compression ratio against speed.
+    /// </summary>
+    Optimal = 0,
+
+    /// <summary>
+    /// Favours speed over compression ratio.
+    /// </summary>
+    Fastest = 1,
+
+    /// <summary>
+    /// Performs no compression, whatever the compression method.
+    /// </summary>
+    NoCompression = 2,
+
+    /// <summary>
+    /// Favours compression ratio over speed.
+    /// </summary>
+    SmallestSize = 3
+}
+
+/// <summary>
 /// Configurable options for Parquet source generator serialization and deserialization operations.
 /// </summary>
 public sealed class ParquetSerializerOptions
@@ -76,6 +107,16 @@ public sealed class ParquetSerializerOptions
     /// Gets or sets the compression method to apply when creating Parquet files (default is Snappy).
     /// </summary>
     public ParquetCompressionMethod CompressionMethod { get; set; } = ParquetCompressionMethod.Snappy;
+
+    /// <summary>
+    /// Gets or sets how hard the compression method should work. Null leaves Parquet.Net's own
+    /// default in place, which is <c>SmallestSize</c>.
+    /// </summary>
+    /// <remarks>
+    /// Nullable rather than defaulted so that "not specified" stays distinguishable from any legal
+    /// value — the same mistake the row group size sentinel used to make.
+    /// </remarks>
+    public ParquetCompressionLevel? CompressionLevel { get; set; }
 
     // UseMicrosecondTimestamps has been removed. It could never have worked: the schema is emitted
     // at compile time into a `static readonly ParquetSchema Schema`, so no runtime flag can change

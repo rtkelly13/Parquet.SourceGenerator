@@ -25,9 +25,10 @@ first release entry when one is cut.
   but not yet honoured.
 - **`IAsyncEnumerable<T>` streaming** directly into chunked row groups.
 - **Microsecond `Int64` timestamps** via `[ParquetTimestamp(ParquetTimestampUnit.Microseconds)]`.
-- **`ParquetSerializerOptions`** for `RowGroupSize` and `CompressionMethod` (`None`, `Snappy`,
-  `Gzip`, `Lz4`, `Brotli`, `Zstd`). `MaxDegreeOfParallelism` is present but inert — see
-  `ReadParquetParallelAsync` above.
+- **`ParquetSerializerOptions`** for `RowGroupSize`, `CompressionMethod` (`None`, `Snappy`, `Gzip`,
+  `Lz4`, `Brotli`, `Zstd`) and `CompressionLevel` (`Optimal`, `Fastest`, `NoCompression`,
+  `SmallestSize`; unset keeps Parquet.Net's default). `MaxDegreeOfParallelism` is present but inert
+  — see `ReadParquetParallelAsync` above.
 - **Compiler diagnostics `PARQ001`–`PARQ010`**: partial-type enforcement, duplicate column names,
   no serializable members, ignored non-public members, invalid decimal precision/scale, unsupported
   member types, unassignable members, types with no parameterless constructor, and nested or

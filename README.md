@@ -173,6 +173,18 @@ await events.WriteParquetBatchedAsync(stream, options: options);
 ```
 
 `CompressionMethod` accepts `None`, `Snappy` (default), `Gzip`, `Lz4`, `Brotli` and `Zstd`.
+`CompressionLevel` accepts `Optimal`, `Fastest`, `NoCompression` and `SmallestSize`; leaving it
+unset keeps Parquet.Net's own default.
+
+Columns can be reordered without being renamed:
+
+```csharp
+[ParquetColumn(Order = 1)]
+public Guid Id { get; init; }          // column keeps the member name "Id"
+
+[ParquetColumn(Name = "user_name", Order = 2)]
+public string Username { get; init; } = string.Empty;
+```
 
 ---
 

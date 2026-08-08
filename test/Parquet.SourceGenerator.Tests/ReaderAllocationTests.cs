@@ -36,10 +36,7 @@ public sealed class ReaderAllocationTests
         var model = new TargetClassModel(
             Namespace: "TestNamespace",
             ClassName: "TestEntity",
-            SchemaName: "TestEntity",
-            Properties: new EquatableArray<PropertyModel>(SingleProperty),
-            IsRecord: true,
-            IsValueType: false);
+            Properties: new EquatableArray<PropertyModel>(SingleProperty));
 
         string source = CodeEmitter.EmitSource(model);
 

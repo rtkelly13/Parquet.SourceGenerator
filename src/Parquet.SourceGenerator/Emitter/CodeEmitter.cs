@@ -896,7 +896,7 @@ public static class CodeEmitter
         builder.AppendLine("    private static global::Parquet.ParquetOptions BuildFormatOptions(");
         builder.AppendLine("        global::Parquet.SourceGenerator.ParquetSerializerOptions options)");
         builder.AppendLine("    {");
-        builder.AppendLine("        return new global::Parquet.ParquetOptions");
+        builder.AppendLine("        var formatOptions = new global::Parquet.ParquetOptions");
         builder.AppendLine("        {");
         builder.AppendLine("            CompressionMethod = options.CompressionMethod switch");
         builder.AppendLine("            {");
@@ -914,6 +914,24 @@ public static class CodeEmitter
         builder.AppendLine("                _ => global::Parquet.CompressionMethod.Snappy,");
         builder.AppendLine("            },");
         builder.AppendLine("        };");
+        builder.AppendLine();
+        // Assigned only when the caller asked for one, so "unspecified" keeps Parquet.Net's own
+        // default (SmallestSize) rather than this generator silently picking a level for them.
+        builder.AppendLine("        if (options.CompressionLevel.HasValue)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            formatOptions.CompressionLevel = options.CompressionLevel.Value switch");
+        builder.AppendLine("            {");
+        builder.AppendLine("                global::Parquet.SourceGenerator.ParquetCompressionLevel.Optimal =>");
+        builder.AppendLine("                    global::System.IO.Compression.CompressionLevel.Optimal,");
+        builder.AppendLine("                global::Parquet.SourceGenerator.ParquetCompressionLevel.Fastest =>");
+        builder.AppendLine("                    global::System.IO.Compression.CompressionLevel.Fastest,");
+        builder.AppendLine("                global::Parquet.SourceGenerator.ParquetCompressionLevel.NoCompression =>");
+        builder.AppendLine("                    global::System.IO.Compression.CompressionLevel.NoCompression,");
+        builder.AppendLine("                _ => global::System.IO.Compression.CompressionLevel.SmallestSize,");
+        builder.AppendLine("            };");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        return formatOptions;");
         builder.AppendLine("    }");
     }
 

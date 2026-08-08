@@ -270,13 +270,17 @@ other candidate and were rejected: this assembly targets netstandard2.0/2.1, nei
 carries `IsExternalInit`, so init-only would break object-initializer use for exactly the .NET
 Framework consumers section 1 is about.
 
-### 3.4 `SchemaName` is a dead public API 🟠
+### 3.4 `SchemaName` is a dead public API ✅
 
 `ParquetSerializableAttribute.SchemaName` is public and documented, is parsed by `TargetParser`, is
 carried on `TargetClassModel` — and is never read by `CodeEmitter`. `TargetClassModel.IsRecord` and
 `IsValueType` are likewise captured and unused.
 
-Either wire `SchemaName` into the emitted schema or remove it before it reaches a stable release.
+**Resolved by removal.** It could not have been wired up: Parquet.Net's `ParquetSchema` has no name
+to set — both constructors take fields and nothing else. `IsRecord` and `IsValueType` went with it.
+Dead state on the model was not merely untidy: it still took part in the incremental pipeline's
+equality comparison, so a change to any of it invalidated the cache and re-ran generation for no
+difference in output.
 
 ### 3.5 Memory overloads are asymmetric, and one leaks 🟠
 
@@ -288,16 +292,27 @@ no equivalent.
 created rather than handing it to a caller who never sees it. The asymmetry remains open, and is
 where the real parallel reader should land (see 2.1).
 
-### 3.6 `[ParquetColumn]` cannot express order without a name 🟡
+### 3.6 `[ParquetColumn]` cannot express order without a name ✅
 
 The attribute has only a name-taking constructor, so `[ParquetColumn(Order = 2)]` — reordering a
-column without renaming it — is impossible. A parameterless constructor with a nullable `Name`
-resolves this.
+column without renaming it — is impossible.
 
-### 3.7 `ParquetOptions.CompressionLevel` is not exposed 🟡
+**Resolved** with a parameterless constructor and a nullable settable `Name`. This uncovered a
+second defect: the parser read named arguments *only when a constructor argument was also present*,
+so even with a parameterless constructor the `Order` would have been silently ignored. `Name` is now
+accepted as a named argument too.
+
+### 3.7 `ParquetOptions.CompressionLevel` is not exposed ✅
 
 `ParquetSerializerOptions` surfaces `CompressionMethod` but not the compression level Parquet.Net
 accepts alongside it.
+
+**Resolved** with a nullable `CompressionLevel`. Nullable rather than defaulted so "unspecified"
+stays distinguishable from every legal value — the mistake 3.2 was about — and so an unset level
+leaves Parquet.Net's own default (`SmallestSize`) in place instead of this generator quietly picking
+one. The enum is declared locally rather than reusing `System.IO.Compression.CompressionLevel`,
+whose `SmallestSize` member only exists from .NET 6 and so is not available to this assembly's
+netstandard targets.
 
 ---
 
@@ -330,7 +345,7 @@ Sequenced so that each step is independently shippable and the cheap high-impact
 | 6 | 2.6 | ✅ `PARQ009` nested, `PARQ010` generic |
 | 7 | 2.5 | ✅ Walk base types for inherited members |
 | 8 | 2.7, 2.9 | ✅ `DateTimeOffset` reported by `PARQ006`; nullable annotations honoured |
-| 9 | 3.4, 3.5, 3.6, 3.7 | `SchemaName`, memory overloads, attribute and options surface |
+| 9 | 3.4, 3.6, 3.7 | ✅ `SchemaName` removed; order-only `[ParquetColumn]`; `CompressionLevel` |
 | 10 | 4 | Reconcile documentation with behaviour |
 | 11 | 1.2 | `Parquet.SourceGenerator.V4` classic backend + net472 target |
 

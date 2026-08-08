@@ -38,10 +38,7 @@ public sealed class ParserAndEmitterTests
         var model = new TargetClassModel(
             Namespace: "TestNamespace",
             ClassName: "TestEntity",
-            SchemaName: "TestEntity",
-            Properties: new EquatableArray<PropertyModel>(properties),
-            IsRecord: true,
-            IsValueType: false);
+            Properties: new EquatableArray<PropertyModel>(properties));
 
         string source = CodeEmitter.EmitSource(model);
 
