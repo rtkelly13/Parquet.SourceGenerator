@@ -672,10 +672,55 @@ public static class CodeEmitter
         // The stream was previously created and handed off without ever being disposed (CA2000).
         // Awaiting inside a `using` keeps ownership here, where it belongs, rather than leaving it
         // to a caller who never sees the stream.
-        builder.AppendLine("        using var stream = global::System.Runtime.InteropServices.MemoryMarshal.TryGetArray(parquetBytes, out var segment)");
+        builder.AppendLine("        using var stream = CreateBufferStream(parquetBytes);");
+        builder.AppendLine("        return await ReadParquetAsync(stream, options, cancellationToken);");
+        builder.AppendLine("    }");
+        builder.AppendLine();
+
+        // The buffer overload used to exist for ReadParquetAsync alone, so choosing the array-backed
+        // or streaming reader meant giving up the zero-copy entry point and wrapping the bytes by
+        // hand at the call site.
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine($"    /// Asynchronously deserializes all <c>{model.ClassName}</c> objects from an in-memory byte buffer into a pre-sized array.");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine($"    public static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<{model.ClassName}>> ReadParquetParallelAsync(");
+        builder.AppendLine($"        global::System.ReadOnlyMemory<byte> parquetBytes,");
+        builder.AppendLine($"        int maxDegreeOfParallelism = -1,");
+        builder.AppendLine($"        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,");
+        builder.AppendLine($"        global::System.Threading.CancellationToken cancellationToken = default)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        using var stream = CreateBufferStream(parquetBytes);");
+        builder.AppendLine("        return await ReadParquetParallelAsync(stream, maxDegreeOfParallelism, options, cancellationToken);");
+        builder.AppendLine("    }");
+        builder.AppendLine();
+
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine($"    /// Asynchronously streams <c>{model.ClassName}</c> items from an in-memory byte buffer, row group by row group.");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine($"    public static async global::System.Collections.Generic.IAsyncEnumerable<{model.ClassName}> ReadParquetStreamAsync(");
+        builder.AppendLine($"        global::System.ReadOnlyMemory<byte> parquetBytes,");
+        builder.AppendLine($"        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,");
+        builder.AppendLine($"        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default)");
+        builder.AppendLine("    {");
+        // Iterating inside the `using` rather than returning the inner sequence is what makes the
+        // stream outlive exactly as long as enumeration does — including when the consumer breaks
+        // out early, which disposes the iterator and so runs this `using`.
+        builder.AppendLine("        using var stream = CreateBufferStream(parquetBytes);");
+        builder.AppendLine("        await foreach (var item in ReadParquetStreamAsync(stream, options, cancellationToken))");
+        builder.AppendLine("        {");
+        builder.AppendLine("            yield return item;");
+        builder.AppendLine("        }");
+        builder.AppendLine("    }");
+        builder.AppendLine();
+
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine("    /// Wraps a byte buffer as a read-only stream, without copying where the buffer is array-backed.");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    private static global::System.IO.MemoryStream CreateBufferStream(global::System.ReadOnlyMemory<byte> parquetBytes)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        return global::System.Runtime.InteropServices.MemoryMarshal.TryGetArray(parquetBytes, out var segment)");
         builder.AppendLine("            ? new global::System.IO.MemoryStream(segment.Array!, segment.Offset, segment.Count, writable: false)");
         builder.AppendLine("            : new global::System.IO.MemoryStream(parquetBytes.ToArray(), writable: false);");
-        builder.AppendLine("        return await ReadParquetAsync(stream, options, cancellationToken);");
         builder.AppendLine("    }");
     }
 

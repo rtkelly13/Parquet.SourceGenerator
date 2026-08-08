@@ -155,9 +155,11 @@ List<UserEvent> events = await UserEventParquetExtensions.ReadParquetAsync(strea
 // Array-backed read (sequential today; maxDegreeOfParallelism is not yet honoured)
 List<UserEvent> parallelEvents = await UserEventParquetExtensions.ReadParquetParallelAsync(stream);
 
-// Read from an in-memory byte buffer
+// Read from an in-memory byte buffer — every reader accepts one
 ReadOnlyMemory<byte> buffer = File.ReadAllBytes("events.parquet");
 List<UserEvent> memEvents = await UserEventParquetExtensions.ReadParquetAsync(buffer);
+List<UserEvent> memArray = await UserEventParquetExtensions.ReadParquetParallelAsync(buffer);
+await foreach (var e in UserEventParquetExtensions.ReadParquetStreamAsync(buffer)) { }
 ```
 
 ### Custom Configuration (`ParquetSerializerOptions`)

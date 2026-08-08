@@ -282,15 +282,21 @@ Dead state on the model was not merely untidy: it still took part in the increme
 equality comparison, so a change to any of it invalidated the cache and re-ran generation for no
 difference in output.
 
-### 3.5 Memory overloads are asymmetric, and one leaks 🟠
+### 3.5 Memory overloads are asymmetric, and one leaks ✅
 
 `ReadParquetAsync(ReadOnlyMemory<byte>)` constructs a `MemoryStream` it never disposes (CA2000).
 It is also the only memory overload — `ReadParquetParallelAsync` and `ReadParquetStreamAsync` have
 no equivalent.
 
-**Leak resolved**: the method now awaits inside a `using`, keeping ownership where the stream is
-created rather than handing it to a caller who never sees it. The asymmetry remains open, and is
-where the real parallel reader should land (see 2.1).
+**Resolved.** The leak first: the method awaits inside a `using`, keeping ownership where the stream
+is created rather than handing it to a caller who never sees it. `ReadParquetParallelAsync` and
+`ReadParquetStreamAsync` then gained matching buffer overloads over a shared `CreateBufferStream`
+helper. The streaming one iterates inside its `using` rather than returning the inner sequence, so
+the stream lives exactly as long as enumeration does — including when a consumer breaks out early,
+which disposes the iterator and runs the `using`.
+
+This is also the entry point the real parallel reader should be built on (see 2.1): a buffer can
+cheaply give each worker its own view over the same bytes, which an arbitrary `Stream` cannot.
 
 ### 3.6 `[ParquetColumn]` cannot express order without a name ✅
 
@@ -345,7 +351,7 @@ Sequenced so that each step is independently shippable and the cheap high-impact
 | 6 | 2.6 | ✅ `PARQ009` nested, `PARQ010` generic |
 | 7 | 2.5 | ✅ Walk base types for inherited members |
 | 8 | 2.7, 2.9 | ✅ `DateTimeOffset` reported by `PARQ006`; nullable annotations honoured |
-| 9 | 3.4, 3.6, 3.7 | ✅ `SchemaName` removed; order-only `[ParquetColumn]`; `CompressionLevel` |
+| 9 | 3.4, 3.5, 3.6, 3.7 | ✅ `SchemaName` removed; buffer overloads for every reader; order-only `[ParquetColumn]`; `CompressionLevel` |
 | 10 | 4 | Reconcile documentation with behaviour |
 | 11 | 1.2 | `Parquet.SourceGenerator.V4` classic backend + net472 target |
 
