@@ -212,15 +212,22 @@ Correcting the original finding: `byte`, `sbyte`, `short`, `ushort`, `uint`, `ul
 they work through the passthrough today. What genuinely has no representation is `char`,
 `DateTimeOffset`, arrays other than `byte[]`, collections, and nested user types.
 
-### 2.9 Every reference-type column is forced nullable 🟠
+### 2.9 Every reference-type column is forced nullable ✅
 
 `TargetParser` computes `isNullable = memberType.IsReferenceType || NullableAnnotation == Annotated`.
 A non-nullable `string Name` under `#nullable enable` therefore emits `isNullable: true`, so the
 required/optional distinction is lost in the written schema. Downstream consumers (Spark, Athena,
 PyArrow) do read that distinction.
 
-The annotation is already available; the `IsReferenceType` disjunct should be dropped when the
-compilation has nullable analysis enabled.
+**Resolved**: the annotation is now authoritative wherever the compilation has nullable analysis
+switched on. In an oblivious context (`NullableAnnotation.None`) nothing can be inferred about a
+reference type, so the conservative optional column is kept.
+
+This is a **behaviour change**, and the one place in this series where a build that worked can start
+failing at runtime: a `string Name` under `#nullable enable` now produces a *required* column, so
+writing an actual null into it throws from Parquet.Net rather than being silently accepted. That is
+the point — the annotation was a promise the schema was not recording — and it matches how EF Core
+treats reference-type nullability. Declaring the member `string?` restores the optional column.
 
 ---
 
@@ -322,7 +329,7 @@ Sequenced so that each step is independently shippable and the cheap high-impact
 | 5 | 2.3, 2.4 | ✅ `PARQ007` unassignable member, `PARQ008` no parameterless constructor |
 | 6 | 2.6 | ✅ `PARQ009` nested, `PARQ010` generic |
 | 7 | 2.5 | ✅ Walk base types for inherited members |
-| 8 | 2.7, 2.9 | `DateTimeOffset` conversion; honour nullable annotations |
+| 8 | 2.7, 2.9 | ✅ `DateTimeOffset` reported by `PARQ006`; nullable annotations honoured |
 | 9 | 3.4, 3.5, 3.6, 3.7 | `SchemaName`, memory overloads, attribute and options surface |
 | 10 | 4 | Reconcile documentation with behaviour |
 | 11 | 1.2 | `Parquet.SourceGenerator.V4` classic backend + net472 target |

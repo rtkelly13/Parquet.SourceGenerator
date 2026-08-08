@@ -77,6 +77,8 @@ Zero-reflection C# source generation vs **`ParquetSerializer` v6** reflection ba
   [Known limitations](#known-limitations).
 - **Type support**: `Guid`, `DateTime`, `TimeSpan`, `Enum`, `decimal`, `byte[]`, `string`,
   primitives, and `Nullable<T>`.
+- **Nullability-aware schemas**: under `#nullable enable`, `string` writes a required column and
+  `string?` an optional one, so the required/optional distinction survives into the file.
 - **Compile-time diagnostics**: `PARQ001`–`PARQ010` (see below) — unsupported types, unassignable
   members and unconstructable types are rejected at compile time rather than at runtime.
 

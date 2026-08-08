@@ -191,8 +191,7 @@ public static class TargetParser
 
             // Unwrap Nullable<T> to get the underlying type for kind classification
             ITypeSymbol underlyingType = memberType;
-            bool isNullable = memberType.IsReferenceType ||
-                              memberType.NullableAnnotation == NullableAnnotation.Annotated;
+            bool isNullable = IsNullableColumn(memberType);
 
             if (memberType is INamedTypeSymbol { IsGenericType: true } genericType &&
                 genericType.ConstructedFrom.SpecialType == SpecialType.System_Nullable_T)
@@ -430,6 +429,35 @@ public static class TargetParser
         // Parquet.Net has no DateTimeOffset representation, so it now reports as unsupported.
         kind = PropertyKind.Primitive;
         return SupportedPassthroughTypes.Contains(fqn);
+    }
+
+    /// <summary>
+    /// Decides whether a member's column should be written as optional.
+    /// </summary>
+    /// <remarks>
+    /// Previously this was <c>IsReferenceType || annotation == Annotated</c>, so every reference
+    /// type produced an optional column — a <c>string Name</c> under <c>#nullable enable</c> was
+    /// indistinguishable from a <c>string? Name</c>, and the required/optional distinction that
+    /// Spark, Athena and PyArrow all read was lost on the way out.
+    /// <para>
+    /// The annotation is authoritative wherever the compilation has nullable analysis switched on.
+    /// Where it does not — <see cref="NullableAnnotation.None"/>, an oblivious context — nothing can
+    /// be inferred about a reference type, so the conservative optional column is kept. Value types
+    /// answer correctly from the annotation alone, and <c>Nullable&lt;T&gt;</c> is handled by the
+    /// unwrap at the call site regardless of context.
+    /// </para>
+    /// </remarks>
+    private static bool IsNullableColumn(ITypeSymbol memberType)
+    {
+        switch (memberType.NullableAnnotation)
+        {
+            case NullableAnnotation.Annotated:
+                return true;
+            case NullableAnnotation.NotAnnotated:
+                return false;
+            default:
+                return memberType.IsReferenceType;
+        }
     }
 
     /// <summary>
