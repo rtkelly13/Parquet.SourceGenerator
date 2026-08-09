@@ -30,13 +30,15 @@ public partial record CompressionLevelModel
 
 public sealed class ColumnAttributeAndLevelTests
 {
+    private static readonly string[] ExpectedColumnOrder = { "First", "second_column", "Third" };
+
     [Fact]
     public void OrderOnlyAttributeReordersColumnsWithoutRenamingThem()
     {
         string[] columns = OrderOnlyModelParquetExtensions.Schema.DataFields.Select(f => f.Name).ToArray();
 
         // First and Third keep their member names; only Second was renamed.
-        Assert.Equal(new[] { "First", "second_column", "Third" }, columns);
+        Assert.Equal(ExpectedColumnOrder, columns);
     }
 
     [Fact]

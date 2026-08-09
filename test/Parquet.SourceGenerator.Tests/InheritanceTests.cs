@@ -28,6 +28,8 @@ public sealed partial record InvoiceRow : AuditedEntity
 /// </summary>
 public sealed class InheritanceTests
 {
+    private static readonly string[] ExpectedColumnOrder = { "id", "created_by", "amount" };
+
     [Fact]
     public void SchemaCarriesBaseColumnsBeforeDerivedOnes()
     {
@@ -35,7 +37,7 @@ public sealed class InheritanceTests
 
         // Base-first ordering is deliberate: a derived declaration that shadows a base one replaces
         // it in the base's position, so adding an override never reorders the schema.
-        Assert.Equal(new[] { "id", "created_by", "amount" }, fields);
+        Assert.Equal(ExpectedColumnOrder, fields);
     }
 
     [Fact]

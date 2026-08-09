@@ -158,6 +158,14 @@ public sealed class DiagnosticTests
     [InlineData("decimal")]
     [InlineData("byte[]")]
     [InlineData("int?")]
+    // Annotated reference types render as "string?" / "byte[]?" from ToDisplayString(), which is not
+    // what the allowlist holds. Every nullable string column in the repository was reported as an
+    // unsupported type until the annotation was stripped before matching.
+    [InlineData("string")]
+    [InlineData("string?")]
+    [InlineData("byte[]?")]
+    [InlineData("System.Guid?")]
+    [InlineData("System.DateTime?")]
     public void SupportedMemberTypeDoesNotTriggerPARQ006(string typeName)
     {
         // The whole point of aligning the allowlist with Parquet.Net's own SupportedTypes: PARQ006
@@ -415,7 +423,12 @@ public sealed class DiagnosticTests
             "TestAssembly",
             new[] { syntaxTree },
             references,
-            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+            // Nullable enabled to match the repository's own build. Without it `string?` in a test
+            // source is an oblivious annotation, and the regression below — an annotated reference
+            // type rendering as "string?" and so missing the PARQ006 allowlist — cannot reproduce.
+            new CSharpCompilationOptions(
+                OutputKind.DynamicallyLinkedLibrary,
+                nullableContextOptions: NullableContextOptions.Enable));
 
         var generator = new ParquetIncrementalGenerator();
         GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);

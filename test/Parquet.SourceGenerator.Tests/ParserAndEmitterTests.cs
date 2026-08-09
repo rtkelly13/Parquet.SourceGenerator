@@ -128,6 +128,8 @@ public sealed class ParserAndEmitterTests
     [Fact]
     public async Task ReadParquetParallelAsyncNullStreamThrowsArgumentNullException()
     {
-        await Assert.ThrowsAsync<ArgumentNullException>(() => TypeCoverageRecordParquetExtensions.ReadParquetParallelAsync(null!));
+        // Cast required: ReadOnlyMemory<byte> has an implicit conversion from byte[], so a bare
+        // `null` is convertible to the buffer overload as well as the stream one.
+        await Assert.ThrowsAsync<ArgumentNullException>(() => TypeCoverageRecordParquetExtensions.ReadParquetParallelAsync((Stream)null!));
     }
 }

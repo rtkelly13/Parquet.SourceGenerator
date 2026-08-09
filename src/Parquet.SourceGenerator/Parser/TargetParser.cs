@@ -404,7 +404,11 @@ public static class TargetParser
             return true;
         }
 
-        string fqn = underlyingType.ToDisplayString();
+        // The annotation has to come off before the name is matched. `ToDisplayString()` renders an
+        // annotated reference type as "string?", not "string", and the Nullable<T> unwrap at the
+        // call site only handles value types — so every `string?` column in the repository was
+        // reported as an unsupported type by PARQ006 the moment the rule was switched on.
+        string fqn = underlyingType.WithNullableAnnotation(NullableAnnotation.None).ToDisplayString();
 
         switch (fqn)
         {
@@ -440,7 +444,7 @@ public static class TargetParser
     /// Spark, Athena and PyArrow all read was lost on the way out.
     /// <para>
     /// The annotation is authoritative wherever the compilation has nullable analysis switched on.
-    /// Where it does not — <see cref="NullableAnnotation.None"/>, an oblivious context — nothing can
+    /// Where it does not — <c>NullableAnnotation.None</c>, an oblivious context — nothing can
     /// be inferred about a reference type, so the conservative optional column is kept. Value types
     /// answer correctly from the annotation alone, and <c>Nullable&lt;T&gt;</c> is handled by the
     /// unwrap at the call site regardless of context.
