@@ -59,22 +59,37 @@ public static class TargetParser
                 new[] { typeSymbol.Name }));
         }
 
+        // Rules PARQ009 / PARQ010: shapes the emitter cannot express. Both previously produced code
+        // that did not compile — a bare unqualified name for a nested type, and a name stripped of
+        // its type parameters for a generic one.
+        bool isNested = typeSymbol.ContainingType is not null;
+        if (isNested)
+        {
+            diagnostics.Add(new DiagnosticInfo(
+                DiagnosticDescriptors.NestedTypeNotSupported,
+                typeDeclaration.Identifier.GetLocation(),
+                new[] { typeSymbol.Name, typeSymbol.ContainingType!.Name }));
+        }
+
+        bool isGeneric = typeSymbol.TypeParameters.Length > 0;
+        if (isGeneric)
+        {
+            diagnostics.Add(new DiagnosticInfo(
+                DiagnosticDescriptors.GenericTypeNotSupported,
+                typeDeclaration.Identifier.GetLocation(),
+                new[] { typeSymbol.Name }));
+        }
+
         string namespaceName = typeSymbol.ContainingNamespace.IsGlobalNamespace
             ? string.Empty
             : typeSymbol.ContainingNamespace.ToDisplayString();
 
         string className = typeSymbol.Name;
-        string schemaName = className;
-
-        foreach (KeyValuePair<string, TypedConstant> namedArg in serializableAttr.NamedArguments)
-        {
-            if (namedArg.Key == "SchemaName" && namedArg.Value.Value is string customSchemaName)
-                schemaName = customSchemaName;
-        }
 
         var propertyModels = new List<PropertyModel>();
         var seenColumnNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        IEnumerable<ISymbol> members = typeSymbol.GetMembers();
+        bool rejectedAnyMember = false;
+        IEnumerable<ISymbol> members = GetSerializableMembers(typeSymbol);
 
         foreach (ISymbol member in members)
         {
@@ -116,15 +131,24 @@ public static class TargetParser
             string columnName = member.Name;
             int order = -1;
 
-            if (columnAttr is not null && columnAttr.ConstructorArguments.Length > 0)
+            if (columnAttr is not null)
             {
-                if (columnAttr.ConstructorArguments[0].Value is string customColName)
+                if (columnAttr.ConstructorArguments.Length > 0 &&
+                    columnAttr.ConstructorArguments[0].Value is string customColName)
+                {
                     columnName = customColName;
+                }
 
+                // Named arguments used to be read only when a constructor argument was also present,
+                // which made [ParquetColumn(Order = 2)] — reorder without rename — impossible to
+                // express: there was no parameterless constructor, and even with one the Order would
+                // have been ignored. Name is accepted as a named argument for the same reason.
                 foreach (KeyValuePair<string, TypedConstant> namedArg in columnAttr.NamedArguments)
                 {
                     if (namedArg.Key == "Order" && namedArg.Value.Value is int customOrder)
                         order = customOrder;
+                    else if (namedArg.Key == "Name" && namedArg.Value.Value is string namedColName)
+                        columnName = namedColName;
                 }
             }
 
@@ -169,8 +193,7 @@ public static class TargetParser
 
             // Unwrap Nullable<T> to get the underlying type for kind classification
             ITypeSymbol underlyingType = memberType;
-            bool isNullable = memberType.IsReferenceType ||
-                              memberType.NullableAnnotation == NullableAnnotation.Annotated;
+            bool isNullable = IsNullableColumn(memberType);
 
             if (memberType is INamedTypeSymbol { IsGenericType: true } genericType &&
                 genericType.ConstructedFrom.SpecialType == SpecialType.System_Nullable_T)
@@ -179,7 +202,40 @@ public static class TargetParser
                 underlyingType = genericType.TypeArguments[0];
             }
 
-            PropertyKind kind = ClassifyKind(underlyingType, memberType);
+            // An unresolved type — a missing using, a half-typed name, a reference the project has
+            // not added yet — must not be reported as unsupported. The compiler is already saying
+            // something accurate about it, and PARQ006 on top would fire constantly while typing.
+            if (memberType.TypeKind == TypeKind.Error || underlyingType.TypeKind == TypeKind.Error)
+                continue;
+
+            // Rule PARQ006: the type must have a Parquet column representation. Rejected members are
+            // left out of the model — the diagnostic is an error, so the build stops either way, and
+            // emitting a column for a type with no representation only buries the real message under
+            // cascading errors inside generated code.
+            if (!TryClassifyKind(underlyingType, memberType, out PropertyKind kind))
+            {
+                Location typeLoc = member.Locations.FirstOrDefault() ?? typeDeclaration.Identifier.GetLocation();
+                diagnostics.Add(new DiagnosticInfo(
+                    DiagnosticDescriptors.UnsupportedPropertyType,
+                    typeLoc,
+                    new[] { member.Name, memberType.ToDisplayString(), className }));
+                rejectedAnyMember = true;
+                continue;
+            }
+
+            // Rule PARQ007: the read path materialises through an object initializer, so every
+            // column needs a reachable setter. Without this the failure was CS0200/CS0191 reported
+            // against generated source, with nothing pointing at the declaration responsible.
+            if (!IsAssignable(member))
+            {
+                Location setLoc = member.Locations.FirstOrDefault() ?? typeDeclaration.Identifier.GetLocation();
+                diagnostics.Add(new DiagnosticInfo(
+                    DiagnosticDescriptors.MemberNotAssignable,
+                    setLoc,
+                    new[] { member.Name, className }));
+                rejectedAnyMember = true;
+                continue;
+            }
 
             // For enum types, capture the underlying type name for correct array allocation
             string? enumUnderlyingTypeName = null;
@@ -201,11 +257,30 @@ public static class TargetParser
                 IsNullable: isNullable));
         }
 
-        // Rule PARQ003: Warning if no public serializable properties found
-        if (propertyModels.Count == 0)
+        // Rule PARQ003: Warning if no public serializable properties found. Suppressed when a
+        // member was rejected above — "this type has no serializable members" is misleading when the
+        // real answer is "its members were rejected", and PARQ006/PARQ007 already say why.
+        if (propertyModels.Count == 0 && !rejectedAnyMember)
         {
             diagnostics.Add(new DiagnosticInfo(
                 DiagnosticDescriptors.NoPropertiesFound,
+                typeDeclaration.Identifier.GetLocation(),
+                new[] { className }));
+        }
+
+        // Rule PARQ008: the read path constructs through an object initializer, which needs an
+        // accessible parameterless constructor. Value types always have one; a positional record or
+        // a class whose only constructors take arguments does not, and previously failed with CS7036
+        // reported against generated source.
+        bool hasParameterlessConstructor =
+            typeSymbol.IsValueType ||
+            typeSymbol.InstanceConstructors.Any(ctor =>
+                ctor.Parameters.Length == 0 && IsReachableFromGeneratedCode(ctor.DeclaredAccessibility));
+
+        if (!hasParameterlessConstructor)
+        {
+            diagnostics.Add(new DiagnosticInfo(
+                DiagnosticDescriptors.NoParameterlessConstructor,
                 typeDeclaration.Identifier.GetLocation(),
                 new[] { className }));
         }
@@ -214,37 +289,205 @@ public static class TargetParser
             .OrderBy(p => p.Order >= 0 ? p.Order : int.MaxValue)
             .ToList();
 
-        TargetClassModel? model = isPartial ? new TargetClassModel(
+        // Emission is suppressed whenever a fatal diagnostic already explains the problem. Emitting
+        // anyway buries that message under cascading errors from the generated file.
+        bool canEmit = isPartial && hasParameterlessConstructor && !rejectedAnyMember && !isNested && !isGeneric;
+
+        TargetClassModel? model = canEmit ? new TargetClassModel(
             Namespace: namespaceName,
             ClassName: className,
-            SchemaName: schemaName,
-            Properties: new EquatableArray<PropertyModel>(orderedProperties.ToArray()),
-            IsRecord: typeDeclaration is RecordDeclarationSyntax,
-            IsValueType: typeSymbol.IsValueType) : null;
+            Properties: new EquatableArray<PropertyModel>(orderedProperties.ToArray())) : null;
 
         return new TargetParserResult(model, new EquatableArray<DiagnosticInfo>(diagnostics.ToArray()));
     }
 
-    private static PropertyKind ClassifyKind(ITypeSymbol underlyingType, ITypeSymbol memberType)
+    /// <summary>
+    /// Collects the properties and fields of a type together with those it inherits.
+    /// </summary>
+    /// <remarks>
+    /// <c>GetMembers()</c> returns declared members only, so a type deriving from a base that
+    /// carried columns silently lost every one of them — no diagnostic, just missing columns.
+    /// <para>
+    /// Two deliberate choices. The walk stops at the first base type not declared in source, so a
+    /// model deriving from a framework type does not drag in <c>Exception.Data</c> and friends as
+    /// columns. And members are collected base-first, with a derived declaration replacing a
+    /// shadowed base one *in the base's position* — so adding an <c>override</c> or <c>new</c>
+    /// member changes which declaration is used without reordering the schema.
+    /// </para>
+    /// </remarks>
+    private static List<ISymbol> GetSerializableMembers(INamedTypeSymbol typeSymbol)
     {
-        // Enum
-        if (underlyingType.TypeKind == TypeKind.Enum)
-            return PropertyKind.Enum;
-
-        // byte[] — must check before the array branch
-        if (memberType is IArrayTypeSymbol { ElementType.SpecialType: SpecialType.System_Byte })
-            return PropertyKind.ByteArray;
-
-        string fqn = underlyingType.ToDisplayString();
-
-        return fqn switch
+        var chain = new List<INamedTypeSymbol>();
+        for (INamedTypeSymbol? current = typeSymbol;
+             current is not null && current.SpecialType == SpecialType.None;
+             current = current.BaseType)
         {
-            "decimal" => PropertyKind.Decimal,
-            "System.DateTime" => PropertyKind.DateTime,
-            "System.DateTimeOffset" => PropertyKind.DateTime,
-            "System.TimeSpan" => PropertyKind.TimeSpan,
-            "System.Guid" => PropertyKind.Guid,
-            _ => PropertyKind.Primitive,
-        };
+            chain.Add(current);
+
+            INamedTypeSymbol? next = current.BaseType;
+            if (next is null || next.DeclaringSyntaxReferences.IsEmpty)
+                break;
+        }
+
+        chain.Reverse();
+
+        var ordered = new List<ISymbol>();
+        var positionByName = new Dictionary<string, int>(StringComparer.Ordinal);
+
+        foreach (INamedTypeSymbol type in chain)
+        {
+            foreach (ISymbol member in type.GetMembers())
+            {
+                if (member is not IPropertySymbol && member is not IFieldSymbol)
+                    continue;
+
+                if (positionByName.TryGetValue(member.Name, out int existing))
+                    ordered[existing] = member;
+                else
+                {
+                    positionByName[member.Name] = ordered.Count;
+                    ordered.Add(member);
+                }
+            }
+        }
+
+        return ordered;
+    }
+
+    /// <summary>
+    /// Types that pass straight through as a <see cref="PropertyKind.Primitive"/> <c>DataField</c>.
+    /// </summary>
+    /// <remarks>
+    /// Mirrors <c>Parquet.Encodings.SchemaEncoder.SupportedTypes</c> in Parquet.Net 6, minus the
+    /// types handled by a dedicated <see cref="PropertyKind"/> below. Keeping it aligned with that
+    /// list is deliberate: PARQ006 should reject exactly what Parquet.Net rejects and nothing more,
+    /// so the diagnostic can never fail a build that would otherwise have worked.
+    /// <para>
+    /// Notably absent, and so reported by PARQ006: <c>char</c>, <c>DateTimeOffset</c>, arrays other
+    /// than <c>byte[]</c>, collections, and nested user types.
+    /// </para>
+    /// </remarks>
+    private static readonly HashSet<string> SupportedPassthroughTypes = new(StringComparer.Ordinal)
+    {
+        "bool",
+        "byte", "sbyte",
+        "short", "ushort",
+        "int", "uint",
+        "long", "ulong",
+        "float", "double",
+        "string",
+        "System.DateOnly",
+        "System.TimeOnly",
+        "System.Numerics.BigInteger",
+        "System.ReadOnlyMemory<byte>",
+        "System.ReadOnlyMemory<char>",
+        "Parquet.File.Values.Primitives.BigDecimal",
+        "Parquet.File.Values.Primitives.Interval",
+    };
+
+    /// <summary>
+    /// Classifies a member's Parquet field kind, returning false when the type has no representation.
+    /// </summary>
+    private static bool TryClassifyKind(ITypeSymbol underlyingType, ITypeSymbol memberType, out PropertyKind kind)
+    {
+        // Enum — any underlying integral type is fine, Parquet.Net accepts every enum.
+        if (underlyingType.TypeKind == TypeKind.Enum)
+        {
+            kind = PropertyKind.Enum;
+            return true;
+        }
+
+        // byte[] — must be checked before any other array reaches the passthrough set.
+        if (memberType is IArrayTypeSymbol { ElementType.SpecialType: SpecialType.System_Byte })
+        {
+            kind = PropertyKind.ByteArray;
+            return true;
+        }
+
+        // The annotation has to come off before the name is matched. `ToDisplayString()` renders an
+        // annotated reference type as "string?", not "string", and the Nullable<T> unwrap at the
+        // call site only handles value types — so every `string?` column in the repository was
+        // reported as an unsupported type by PARQ006 the moment the rule was switched on.
+        string fqn = underlyingType.WithNullableAnnotation(NullableAnnotation.None).ToDisplayString();
+
+        switch (fqn)
+        {
+            case "decimal":
+                kind = PropertyKind.Decimal;
+                return true;
+            case "System.DateTime":
+                kind = PropertyKind.DateTime;
+                return true;
+            case "System.TimeSpan":
+                kind = PropertyKind.TimeSpan;
+                return true;
+            case "System.Guid":
+                kind = PropertyKind.Guid;
+                return true;
+        }
+
+        // System.DateTimeOffset used to map to PropertyKind.DateTime. That emitted a
+        // DateTimeDataField, whose CLR type is DateTime, and then wrote ReadOnlyMemory<DateTimeOffset>
+        // into it — the types disagreed, and the offset would have been lost even had it bound.
+        // Parquet.Net has no DateTimeOffset representation, so it now reports as unsupported.
+        kind = PropertyKind.Primitive;
+        return SupportedPassthroughTypes.Contains(fqn);
+    }
+
+    /// <summary>
+    /// Decides whether a member's column should be written as optional.
+    /// </summary>
+    /// <remarks>
+    /// Previously this was <c>IsReferenceType || annotation == Annotated</c>, so every reference
+    /// type produced an optional column — a <c>string Name</c> under <c>#nullable enable</c> was
+    /// indistinguishable from a <c>string? Name</c>, and the required/optional distinction that
+    /// Spark, Athena and PyArrow all read was lost on the way out.
+    /// <para>
+    /// The annotation is authoritative wherever the compilation has nullable analysis switched on.
+    /// Where it does not — <c>NullableAnnotation.None</c>, an oblivious context — nothing can
+    /// be inferred about a reference type, so the conservative optional column is kept. Value types
+    /// answer correctly from the annotation alone, and <c>Nullable&lt;T&gt;</c> is handled by the
+    /// unwrap at the call site regardless of context.
+    /// </para>
+    /// </remarks>
+    private static bool IsNullableColumn(ITypeSymbol memberType)
+    {
+        switch (memberType.NullableAnnotation)
+        {
+            case NullableAnnotation.Annotated:
+                return true;
+            case NullableAnnotation.NotAnnotated:
+                return false;
+            default:
+                return memberType.IsReferenceType;
+        }
+    }
+
+    /// <summary>
+    /// Determines whether the generated deserializer can assign this member in an object initializer.
+    /// </summary>
+    private static bool IsAssignable(ISymbol member)
+    {
+        // `init` accessors surface as a SetMethod with IsInitOnly, which an object initializer can
+        // use, so no special case is needed for them.
+        if (member is IPropertySymbol property)
+            return property.SetMethod is not null && IsReachableFromGeneratedCode(property.SetMethod.DeclaredAccessibility);
+
+        if (member is IFieldSymbol field)
+            return !field.IsReadOnly && !field.IsConst;
+
+        return false;
+    }
+
+    /// <summary>
+    /// Whether generated code — a sibling type in the same assembly, not a nested one — can reach this.
+    /// </summary>
+    private static bool IsReachableFromGeneratedCode(Accessibility accessibility)
+    {
+        // The extension class sits alongside the target type rather than inside it, so `private` and
+        // `protected` members are out of reach even though they are in the same assembly.
+        return accessibility == Accessibility.Public
+            || accessibility == Accessibility.Internal
+            || accessibility == Accessibility.ProtectedOrInternal;
     }
 }

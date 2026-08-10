@@ -289,16 +289,13 @@ public static class CodeEmitter
         builder.AppendLine($"    public static async global::System.Threading.Tasks.Task WriteParquetBatchedAsync(");
         builder.AppendLine($"        this global::System.Collections.Generic.IEnumerable<{model.ClassName}> items,");
         builder.AppendLine($"        global::System.IO.Stream stream,");
-        builder.AppendLine($"        int rowGroupSize = 50_000,");
+        builder.AppendLine($"        int? rowGroupSize = null,");
         builder.AppendLine($"        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,");
         builder.AppendLine($"        global::System.Threading.CancellationToken cancellationToken = default)");
         builder.AppendLine("    {");
         builder.AppendLine("        if (items == null) throw new global::System.ArgumentNullException(nameof(items));");
         builder.AppendLine("        if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));");
-        builder.AppendLine("        if (rowGroupSize <= 0) throw new global::System.ArgumentOutOfRangeException(nameof(rowGroupSize));");
-        builder.AppendLine();
-        builder.AppendLine("        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;");
-        builder.AppendLine("        int targetChunkSize = options.RowGroupSize > 0 && options.RowGroupSize != 50_000 ? options.RowGroupSize : rowGroupSize;");
+        EmitRowGroupSizeResolution(builder);
         builder.AppendLine();
         builder.AppendLine("        await using var writer = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken);");
         builder.AppendLine($"        var buffer = new global::System.Collections.Generic.List<{model.ClassName}>(targetChunkSize);");
@@ -329,16 +326,13 @@ public static class CodeEmitter
         builder.AppendLine($"    public static async global::System.Threading.Tasks.Task WriteParquetAsync(");
         builder.AppendLine($"        this global::System.Collections.Generic.IAsyncEnumerable<{model.ClassName}> items,");
         builder.AppendLine($"        global::System.IO.Stream stream,");
-        builder.AppendLine($"        int rowGroupSize = 50_000,");
+        builder.AppendLine($"        int? rowGroupSize = null,");
         builder.AppendLine($"        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,");
         builder.AppendLine($"        global::System.Threading.CancellationToken cancellationToken = default)");
         builder.AppendLine("    {");
         builder.AppendLine("        if (items == null) throw new global::System.ArgumentNullException(nameof(items));");
         builder.AppendLine("        if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));");
-        builder.AppendLine("        if (rowGroupSize <= 0) throw new global::System.ArgumentOutOfRangeException(nameof(rowGroupSize));");
-        builder.AppendLine();
-        builder.AppendLine("        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;");
-        builder.AppendLine("        int targetChunkSize = options.RowGroupSize > 0 && options.RowGroupSize != 50_000 ? options.RowGroupSize : rowGroupSize;");
+        EmitRowGroupSizeResolution(builder);
         builder.AppendLine();
         builder.AppendLine("        await using var writer = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken);");
         builder.AppendLine($"        var buffer = new global::System.Collections.Generic.List<{model.ClassName}>(targetChunkSize);");
@@ -376,7 +370,7 @@ public static class CodeEmitter
         builder.AppendLine();
         builder.AppendLine("        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;");
         builder.AppendLine();
-        builder.AppendLine("        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, cancellationToken: cancellationToken);");
+        builder.AppendLine("        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken);");
         builder.AppendLine($"        var results = new global::System.Collections.Generic.List<{model.ClassName}>((int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount));");
         builder.AppendLine();
         builder.AppendLine("        var fileFields = reader.Schema.DataFields;");
@@ -421,7 +415,12 @@ public static class CodeEmitter
         }
 
         builder.AppendLine();
-        builder.AppendLine("                results.Capacity = results.Count + rowCount;");
+        // No Capacity assignment here. `results` is already constructed with capacity equal to the
+        // file's total row count, and List<T>.Capacity reallocates whenever the assigned value
+        // differs from the current backing array length — so setting it to the running total once
+        // per row group allocated a *smaller* array and copied into it, repeatedly, before the list
+        // grew back. Single-row-group files were unaffected; the multi-row-group files that
+        // WriteParquetBatchedAsync produces paid O(groups x rows) of copying for nothing.
         builder.AppendLine("                for (int i = 0; i < rowCount; i++)");
         builder.AppendLine("                {");
         builder.AppendLine($"                    results.Add(new {model.ClassName}");
@@ -463,8 +462,22 @@ public static class CodeEmitter
     private static void EmitReadParallelAsync(StringBuilder builder, TargetClassModel model)
     {
         builder.AppendLine("    /// <summary>");
-        builder.AppendLine($"    /// Asynchronously deserializes all <c>{model.ClassName}</c> objects from a Parquet stream using parallel worker tasks for multi-row-group files.");
+        builder.AppendLine($"    /// Asynchronously deserializes all <c>{model.ClassName}</c> objects from a Parquet stream, materialising");
+        builder.AppendLine("    /// into a single pre-sized array indexed by row-group offset rather than growing a list.");
         builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    /// <remarks>");
+        builder.AppendLine("    /// <para>");
+        builder.AppendLine("    /// This reads row groups sequentially. A single <c>ParquetReader</c> over one <c>Stream</c> cannot be");
+        builder.AppendLine("    /// read concurrently — the reader seeks within the stream, so overlapping row-group reads corrupt");
+        builder.AppendLine("    /// each other. Genuine decode parallelism needs one reader and one stream per worker, which in turn");
+        builder.AppendLine("    /// needs a seekable, shareable source rather than an arbitrary <c>Stream</c>.");
+        builder.AppendLine("    /// </para>");
+        builder.AppendLine("    /// <para>");
+        builder.AppendLine("    /// <paramref name=\"maxDegreeOfParallelism\"/> is accepted for forward compatibility and is not yet");
+        builder.AppendLine("    /// honoured. Prefer <c>ReadParquetAsync</c> unless you specifically want the array-backed");
+        builder.AppendLine("    /// materialisation; the two return equivalent results.");
+        builder.AppendLine("    /// </para>");
+        builder.AppendLine("    /// </remarks>");
         builder.AppendLine($"    public static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<{model.ClassName}>> ReadParquetParallelAsync(");
         builder.AppendLine($"        global::System.IO.Stream stream,");
         builder.AppendLine($"        int maxDegreeOfParallelism = -1,");
@@ -473,10 +486,12 @@ public static class CodeEmitter
         builder.AppendLine("    {");
         builder.AppendLine("        if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));");
         builder.AppendLine();
+        // No `targetParallelism` local here any more. It was computed from maxDegreeOfParallelism
+        // and options.MaxDegreeOfParallelism and then never read — dead code that made the method
+        // look as though it dispatched work it never dispatched.
         builder.AppendLine("        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;");
-        builder.AppendLine("        int targetParallelism = options.MaxDegreeOfParallelism > 0 ? options.MaxDegreeOfParallelism : maxDegreeOfParallelism;");
         builder.AppendLine();
-        builder.AppendLine("        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, cancellationToken: cancellationToken);");
+        builder.AppendLine("        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken);");
         builder.AppendLine("        int rgCount = reader.RowGroupCount;");
         builder.AppendLine($"        if (rgCount == 0) return new global::System.Collections.Generic.List<{model.ClassName}>();");
         builder.AppendLine();
@@ -581,7 +596,7 @@ public static class CodeEmitter
         builder.AppendLine();
         builder.AppendLine("        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;");
         builder.AppendLine();
-        builder.AppendLine("        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, cancellationToken: cancellationToken);");
+        builder.AppendLine("        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken);");
         builder.AppendLine("        var fileFields = reader.Schema.DataFields;");
         builder.AppendLine();
         if (model.Properties.Length > 0)
@@ -649,15 +664,63 @@ public static class CodeEmitter
         builder.AppendLine("    /// <summary>");
         builder.AppendLine($"    /// Asynchronously deserializes all <c>{model.ClassName}</c> objects directly from an in-memory byte buffer with zero buffer allocation.");
         builder.AppendLine("    /// </summary>");
-        builder.AppendLine($"    public static global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<{model.ClassName}>> ReadParquetAsync(");
+        builder.AppendLine($"    public static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<{model.ClassName}>> ReadParquetAsync(");
         builder.AppendLine($"        global::System.ReadOnlyMemory<byte> parquetBytes,");
         builder.AppendLine($"        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,");
         builder.AppendLine($"        global::System.Threading.CancellationToken cancellationToken = default)");
         builder.AppendLine("    {");
-        builder.AppendLine("        var stream = global::System.Runtime.InteropServices.MemoryMarshal.TryGetArray(parquetBytes, out var segment)");
+        // The stream was previously created and handed off without ever being disposed (CA2000).
+        // Awaiting inside a `using` keeps ownership here, where it belongs, rather than leaving it
+        // to a caller who never sees the stream.
+        builder.AppendLine("        using var stream = CreateBufferStream(parquetBytes);");
+        builder.AppendLine("        return await ReadParquetAsync(stream, options, cancellationToken);");
+        builder.AppendLine("    }");
+        builder.AppendLine();
+
+        // The buffer overload used to exist for ReadParquetAsync alone, so choosing the array-backed
+        // or streaming reader meant giving up the zero-copy entry point and wrapping the bytes by
+        // hand at the call site.
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine($"    /// Asynchronously deserializes all <c>{model.ClassName}</c> objects from an in-memory byte buffer into a pre-sized array.");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine($"    public static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<{model.ClassName}>> ReadParquetParallelAsync(");
+        builder.AppendLine($"        global::System.ReadOnlyMemory<byte> parquetBytes,");
+        builder.AppendLine($"        int maxDegreeOfParallelism = -1,");
+        builder.AppendLine($"        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,");
+        builder.AppendLine($"        global::System.Threading.CancellationToken cancellationToken = default)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        using var stream = CreateBufferStream(parquetBytes);");
+        builder.AppendLine("        return await ReadParquetParallelAsync(stream, maxDegreeOfParallelism, options, cancellationToken);");
+        builder.AppendLine("    }");
+        builder.AppendLine();
+
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine($"    /// Asynchronously streams <c>{model.ClassName}</c> items from an in-memory byte buffer, row group by row group.");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine($"    public static async global::System.Collections.Generic.IAsyncEnumerable<{model.ClassName}> ReadParquetStreamAsync(");
+        builder.AppendLine($"        global::System.ReadOnlyMemory<byte> parquetBytes,");
+        builder.AppendLine($"        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,");
+        builder.AppendLine($"        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default)");
+        builder.AppendLine("    {");
+        // Iterating inside the `using` rather than returning the inner sequence is what makes the
+        // stream outlive exactly as long as enumeration does — including when the consumer breaks
+        // out early, which disposes the iterator and so runs this `using`.
+        builder.AppendLine("        using var stream = CreateBufferStream(parquetBytes);");
+        builder.AppendLine("        await foreach (var item in ReadParquetStreamAsync(stream, options, cancellationToken))");
+        builder.AppendLine("        {");
+        builder.AppendLine("            yield return item;");
+        builder.AppendLine("        }");
+        builder.AppendLine("    }");
+        builder.AppendLine();
+
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine("    /// Wraps a byte buffer as a read-only stream, without copying where the buffer is array-backed.");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    private static global::System.IO.MemoryStream CreateBufferStream(global::System.ReadOnlyMemory<byte> parquetBytes)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        return global::System.Runtime.InteropServices.MemoryMarshal.TryGetArray(parquetBytes, out var segment)");
         builder.AppendLine("            ? new global::System.IO.MemoryStream(segment.Array!, segment.Offset, segment.Count, writable: false)");
         builder.AppendLine("            : new global::System.IO.MemoryStream(parquetBytes.ToArray(), writable: false);");
-        builder.AppendLine("        return ReadParquetAsync(stream, options, cancellationToken);");
         builder.AppendLine("    }");
     }
 
@@ -849,6 +912,27 @@ public static class CodeEmitter
         builder.AppendLine("    }");
     }
 
+    /// <summary>
+    /// Emits the row-group size resolution shared by the two batched write entry points.
+    /// </summary>
+    private static void EmitRowGroupSizeResolution(StringBuilder builder)
+    {
+        // The old form was `options.RowGroupSize > 0 && options.RowGroupSize != 50_000 ? ... : rowGroupSize`,
+        // which used the default value as a sentinel for "unset". Two consequences: setting
+        // RowGroupSize to exactly 50,000 was indistinguishable from not setting it, and whenever
+        // options *did* carry a size it silently overrode the explicit method argument — the more
+        // specific value losing to the more general one. A nullable parameter says "unset" without
+        // borrowing a legal value to mean it, so the precedence can be the obvious one: the explicit
+        // argument wins, then options, then the options default.
+        builder.AppendLine("        if (rowGroupSize.HasValue && rowGroupSize.Value <= 0)");
+        builder.AppendLine("            throw new global::System.ArgumentOutOfRangeException(nameof(rowGroupSize));");
+        builder.AppendLine();
+        builder.AppendLine("        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;");
+        builder.AppendLine("        int targetChunkSize = rowGroupSize ?? options.RowGroupSize;");
+        builder.AppendLine("        if (targetChunkSize <= 0)");
+        builder.AppendLine("            throw new global::System.ArgumentOutOfRangeException(nameof(options), \"ParquetSerializerOptions.RowGroupSize must be greater than zero.\");");
+    }
+
     private static void EmitBuildFormatOptions(StringBuilder builder)
     {
         builder.AppendLine("    /// <summary>");
@@ -857,7 +941,7 @@ public static class CodeEmitter
         builder.AppendLine("    private static global::Parquet.ParquetOptions BuildFormatOptions(");
         builder.AppendLine("        global::Parquet.SourceGenerator.ParquetSerializerOptions options)");
         builder.AppendLine("    {");
-        builder.AppendLine("        return new global::Parquet.ParquetOptions");
+        builder.AppendLine("        var formatOptions = new global::Parquet.ParquetOptions");
         builder.AppendLine("        {");
         builder.AppendLine("            CompressionMethod = options.CompressionMethod switch");
         builder.AppendLine("            {");
@@ -875,6 +959,24 @@ public static class CodeEmitter
         builder.AppendLine("                _ => global::Parquet.CompressionMethod.Snappy,");
         builder.AppendLine("            },");
         builder.AppendLine("        };");
+        builder.AppendLine();
+        // Assigned only when the caller asked for one, so "unspecified" keeps Parquet.Net's own
+        // default (SmallestSize) rather than this generator silently picking a level for them.
+        builder.AppendLine("        if (options.CompressionLevel.HasValue)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            formatOptions.CompressionLevel = options.CompressionLevel.Value switch");
+        builder.AppendLine("            {");
+        builder.AppendLine("                global::Parquet.SourceGenerator.ParquetCompressionLevel.Optimal =>");
+        builder.AppendLine("                    global::System.IO.Compression.CompressionLevel.Optimal,");
+        builder.AppendLine("                global::Parquet.SourceGenerator.ParquetCompressionLevel.Fastest =>");
+        builder.AppendLine("                    global::System.IO.Compression.CompressionLevel.Fastest,");
+        builder.AppendLine("                global::Parquet.SourceGenerator.ParquetCompressionLevel.NoCompression =>");
+        builder.AppendLine("                    global::System.IO.Compression.CompressionLevel.NoCompression,");
+        builder.AppendLine("                _ => global::System.IO.Compression.CompressionLevel.SmallestSize,");
+        builder.AppendLine("            };");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        return formatOptions;");
         builder.AppendLine("    }");
     }
 

@@ -8,8 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
-Nothing has been released yet. There is no tag and no published package; this section becomes the
-first release entry when one is cut.
+Changes since `0.0.1`. That version is published on nuget.org (alongside the `0.0.1-dev.1` and
+`0.0.1-dev.2` prereleases); this section becomes the next release entry when one is cut.
 
 ### Added
 - **Roslyn incremental source generator**: compiles zero-reflection Parquet serializers and
@@ -20,14 +20,19 @@ first release entry when one is cut.
   covers the paths the test exercises rather than guaranteeing AOT safety in general.
 - **`Guid` columns** written as native 16-byte values via pooled struct buffers rather than
   strings.
-- **Parallel reader (`ReadParquetParallelAsync`)**: distributes object construction across row
-  groups.
+- **Array-backed reader (`ReadParquetParallelAsync`)**: materialises into a single pre-sized array
+  indexed by row-group offset. Reads row groups sequentially; `maxDegreeOfParallelism` is accepted
+  but not yet honoured.
 - **`IAsyncEnumerable<T>` streaming** directly into chunked row groups.
 - **Microsecond `Int64` timestamps** via `[ParquetTimestamp(ParquetTimestampUnit.Microseconds)]`.
-- **`ParquetSerializerOptions`** for `RowGroupSize`, `MaxDegreeOfParallelism` and
-  `CompressionMethod` (`None`, `Snappy`, `Gzip`, `Lz4`, `Brotli`, `Zstd`), all applied.
-- **Compiler diagnostics `PARQ001`–`PARQ005`**: partial-type enforcement, duplicate column names,
-  no serializable members, ignored non-public members, and invalid decimal precision/scale.
+- **`ParquetSerializerOptions`** for `RowGroupSize`, `CompressionMethod` (`None`, `Snappy`, `Gzip`,
+  `Lz4`, `Brotli`, `Zstd`) and `CompressionLevel` (`Optimal`, `Fastest`, `NoCompression`,
+  `SmallestSize`; unset keeps Parquet.Net's default). `MaxDegreeOfParallelism` is present but inert
+  — see `ReadParquetParallelAsync` above.
+- **Compiler diagnostics `PARQ001`–`PARQ010`**: partial-type enforcement, duplicate column names,
+  no serializable members, ignored non-public members, invalid decimal precision/scale, unsupported
+  member types, unassignable members, types with no parameterless constructor, and nested or
+  generic target types.
 - **CI workflow** building, testing and packing the solution. Benchmarks run on demand.
 
 ### Fixed before release
@@ -40,6 +45,9 @@ first release entry when one is cut.
   compile time so no runtime flag can change a column's encoding.
 
 ### Known gaps
-- Nested collections are unsupported, and unsupported property types fail at runtime rather than
-  producing a compile-time diagnostic.
-- No performance measurements have been published.
+- Nested collections, `DateTimeOffset` and positional records are unsupported. They are now
+  rejected at compile time (`PARQ006`/`PARQ008`) rather than failing at runtime.
+- `ReadParquetParallelAsync` reads row groups sequentially; `maxDegreeOfParallelism` is inert.
+- Nested and generic target types are rejected (`PARQ009`/`PARQ010`) rather than supported.
+- .NET Framework is unsupported — Parquet.Net 5 and 6 ship `net8.0`/`net10.0` only.
+- See [docs/07-KNOWN-LIMITATIONS.md](docs/07-KNOWN-LIMITATIONS.md) for the full audit.
