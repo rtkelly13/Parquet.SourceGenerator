@@ -183,6 +183,13 @@ jobs:
             -p:GeneratorPackageVersion="$version" \
             -p:RestorePackagesPath="$RUNNER_TEMP/consumption-packages-legacy-net9"
 
+          dotnet run --project test/PackageConsumptionV5/PackageConsumptionV5.csproj \
+            --framework net9.0 \
+            --configuration Release \
+            -p:GeneratorPackageVersion="$version" \
+            -p:RestorePackagesPath="$RUNNER_TEMP/consumption-packages-v5-net9"
+>>>>>>> main
+
       - name: Upload Test Coverage Artifacts
         uses: actions/upload-artifact@v4
         with:
