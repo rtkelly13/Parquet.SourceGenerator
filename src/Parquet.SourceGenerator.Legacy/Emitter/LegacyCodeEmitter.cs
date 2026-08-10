@@ -2,13 +2,13 @@ using System;
 using System.Text;
 using Parquet.SourceGenerator.Models;
 
-namespace Parquet.SourceGenerator.V5.Emitter;
+namespace Parquet.SourceGenerator.Legacy.Emitter;
 
 /// <summary>
 /// Emits C# partial extension classes targeting Parquet.Net v4 / v5 (DataColumn-based API).
 /// Provides compatibility for .NET Framework 4.7.2, .NET Standard 2.0, and Parquet.Net 4.x/5.x releases.
 /// </summary>
-public static class V5CodeEmitter
+public static class LegacyCodeEmitter
 {
     /// <summary>
     /// Generates complete C# source code string for a target model using Parquet.Net v4/v5 APIs.
@@ -28,7 +28,7 @@ public static class V5CodeEmitter
             builder.AppendLine();
         }
 
-        string extensionsClassName = $"{model.ClassName}ParquetV5Extensions";
+        string extensionsClassName = $"{model.ClassName}ParquetLegacyExtensions";
 
         builder.AppendLine($"public static partial class {extensionsClassName}");
         builder.AppendLine("{");

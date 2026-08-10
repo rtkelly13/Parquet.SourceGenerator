@@ -3,7 +3,7 @@
   <!--
     Deliberately NOT part of Parquet.SourceGenertor.sln.
 
-    Consumes Parquet.SourceGenerator.V5 as a NuGet package built into ../../artifacts.
+    Consumes Parquet.SourceGenerator.Legacy as a NuGet package built into ../../artifacts.
     Exercises Parquet.Net 4.25.0 across .NET 8, .NET 9, and .NET Framework 4.7.2.
   -->
 
@@ -12,12 +12,12 @@
     <TargetFrameworks>net8.0;net9.0;net472</TargetFrameworks>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
-    <RootNamespace>PackageConsumptionV5</RootNamespace>
+    <RootNamespace>PackageConsumptionLegacy</RootNamespace>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Parquet.SourceGenerator.V5" Version="$(GeneratorPackageVersion)" />
+    <PackageReference Include="Parquet.SourceGenerator.Legacy" Version="$(GeneratorPackageVersion)" />
     <PackageReference Include="Parquet.Net" Version="4.25.0" />
   </ItemGroup>
 
