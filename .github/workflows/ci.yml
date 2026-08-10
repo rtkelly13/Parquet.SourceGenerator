@@ -118,27 +118,33 @@ jobs:
       - name: Pack All NuGet Packages
         run: dotnet pack Parquet.SourceGenertor.sln --configuration Release --no-build --output ./artifacts
 
-      # Packing proves the packages build, not that they work. These two steps consume them.
+      # Packing proves the packages build, not that they work. These steps consume them.
       - name: Verify Package Layout
         run: |
           set -euo pipefail
           cd artifacts
           gen=$(ls Parquet.SourceGenerator.[0-9]*.nupkg)
+          genv5=$(ls Parquet.SourceGenerator.V5.[0-9]*.nupkg)
           attrs=$(ls Parquet.SourceGenerator.Attributes.*.nupkg)
           echo "::group::$gen contents"; unzip -Z1 "$gen"; echo "::endgroup::"
+          echo "::group::$genv5 contents"; unzip -Z1 "$genv5"; echo "::endgroup::"
 
           # The generator must ship as an analyzer and must NOT ship as a library: a lib/ entry
           # means consumers compile against the generator and its Roslyn-facing internals.
           unzip -Z1 "$gen" | grep -q '^analyzers/dotnet/cs/Parquet\.SourceGenerator\.dll$' \
             || { echo "FAIL: generator missing from analyzers/dotnet/cs/"; exit 1; }
-          if unzip -Z1 "$gen" | grep -q '^lib/'; then
+          unzip -Z1 "$genv5" | grep -q '^analyzers/dotnet/cs/Parquet\.SourceGenerator\.V5\.dll$' \
+            || { echo "FAIL: V5 generator missing from analyzers/dotnet/cs/"; exit 1; }
+          if unzip -Z1 "$gen" | grep -q '^lib/' || unzip -Z1 "$genv5" | grep -q '^lib/'; then
             echo "FAIL: generator package contains lib/ entries; it must be analyzer-only:"
-            unzip -Z1 "$gen" | grep '^lib/'; exit 1
+            exit 1
           fi
 
           # Generated code references the attributes, so the dependency has to be declared.
           unzip -p "$gen" '*.nuspec' | grep -q 'id="Parquet.SourceGenerator.Attributes"' \
             || { echo "FAIL: generator .nuspec does not depend on the Attributes package"; exit 1; }
+          unzip -p "$genv5" '*.nuspec' | grep -q 'id="Parquet.SourceGenerator.Attributes"' \
+            || { echo "FAIL: V5 generator .nuspec does not depend on the Attributes package"; exit 1; }
 
           # The attributes package is a real runtime library and must carry assemblies.
           for tfm in netstandard2.0 netstandard2.1 net8.0 net9.0; do
@@ -147,14 +153,12 @@ jobs:
           done
           echo "Package layout OK."
 
-      - name: Verify Package Consumption (installs the built packages on .NET 8 & .NET 9)
+      - name: Verify Package Consumption (v6 & v5 packages on .NET 8 & .NET 9)
         run: |
           set -euo pipefail
           version=$(ls artifacts/Parquet.SourceGenerator.[0-9]*.nupkg \
             | sed -E 's/.*Parquet\.SourceGenerator\.([0-9][^/]*)\.nupkg/\1/')
-          echo "Consuming Parquet.SourceGenerator $version from the local feed (.NET 8 & .NET 9)"
-          # An isolated package directory stops an already-cached copy of this version from standing
-          # in for the freshly built one.
+          echo "Consuming Parquet.SourceGenerator $version and V5 from local feed"
           dotnet run --project test/PackageConsumption/PackageConsumption.csproj \
             --framework net8.0 \
             --configuration Release \
@@ -166,6 +170,18 @@ jobs:
             --configuration Release \
             -p:GeneratorPackageVersion="$version" \
             -p:RestorePackagesPath="$RUNNER_TEMP/consumption-packages-net9"
+
+          dotnet run --project test/PackageConsumptionV5/PackageConsumptionV5.csproj \
+            --framework net8.0 \
+            --configuration Release \
+            -p:GeneratorPackageVersion="$version" \
+            -p:RestorePackagesPath="$RUNNER_TEMP/consumption-packages-v5-net8"
+
+          dotnet run --project test/PackageConsumptionV5/PackageConsumptionV5.csproj \
+            --framework net9.0 \
+            --configuration Release \
+            -p:GeneratorPackageVersion="$version" \
+            -p:RestorePackagesPath="$RUNNER_TEMP/consumption-packages-v5-net9"
 
       - name: Upload Test Coverage Artifacts
         uses: actions/upload-artifact@v4
