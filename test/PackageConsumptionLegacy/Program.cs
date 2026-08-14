@@ -4,7 +4,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Parquet.SourceGenerator;
 
-namespace PackageConsumptionV5;
+namespace PackageConsumptionLegacy;
 
 [ParquetSerializable]
 public sealed partial class Measurement
@@ -36,7 +36,7 @@ internal static class Program
         }
 
         stream.Position = 0;
-        List<Measurement> actual = await MeasurementParquetV5Extensions.ReadParquetAsync(stream);
+        List<Measurement> actual = await MeasurementParquetLegacyExtensions.ReadParquetAsync(stream);
 
         if (actual.Count != expected.Count)
         {
@@ -44,7 +44,7 @@ internal static class Program
             return 1;
         }
 
-        Console.WriteLine($"PackageConsumptionV5 OK: round-tripped {actual.Count} records.");
+        Console.WriteLine($"PackageConsumptionLegacy OK: round-tripped {actual.Count} records.");
         return 0;
     }
 }

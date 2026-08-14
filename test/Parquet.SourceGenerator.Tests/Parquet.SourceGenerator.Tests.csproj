@@ -34,9 +34,9 @@
     <ProjectReference Include="..\..\src\Parquet.SourceGenerator\Parquet.SourceGenerator.csproj"
                       OutputItemType="Analyzer"
                       ReferenceOutputAssembly="true" />
-    <ProjectReference Include="..\..\src\Parquet.SourceGenerator.V5\Parquet.SourceGenerator.V5.csproj"
+    <ProjectReference Include="..\..\src\Parquet.SourceGenerator.Legacy\Parquet.SourceGenerator.Legacy.csproj"
                       ReferenceOutputAssembly="true"
-                      Aliases="V5Generator" />
+                      Aliases="LegacyGenerator" />
   </ItemGroup>
 
 </Project>

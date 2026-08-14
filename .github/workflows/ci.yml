@@ -124,18 +124,18 @@ jobs:
           set -euo pipefail
           cd artifacts
           gen=$(ls Parquet.SourceGenerator.[0-9]*.nupkg)
-          genv5=$(ls Parquet.SourceGenerator.V5.[0-9]*.nupkg)
+          genlegacy=$(ls Parquet.SourceGenerator.Legacy.[0-9]*.nupkg)
           attrs=$(ls Parquet.SourceGenerator.Attributes.*.nupkg)
           echo "::group::$gen contents"; unzip -Z1 "$gen"; echo "::endgroup::"
-          echo "::group::$genv5 contents"; unzip -Z1 "$genv5"; echo "::endgroup::"
+          echo "::group::$genlegacy contents"; unzip -Z1 "$genlegacy"; echo "::endgroup::"
 
           # The generator must ship as an analyzer and must NOT ship as a library: a lib/ entry
           # means consumers compile against the generator and its Roslyn-facing internals.
           unzip -Z1 "$gen" | grep -q '^analyzers/dotnet/cs/Parquet\.SourceGenerator\.dll$' \
             || { echo "FAIL: generator missing from analyzers/dotnet/cs/"; exit 1; }
-          unzip -Z1 "$genv5" | grep -q '^analyzers/dotnet/cs/Parquet\.SourceGenerator\.V5\.dll$' \
-            || { echo "FAIL: V5 generator missing from analyzers/dotnet/cs/"; exit 1; }
-          if unzip -Z1 "$gen" | grep -q '^lib/' || unzip -Z1 "$genv5" | grep -q '^lib/'; then
+          unzip -Z1 "$genlegacy" | grep -q '^analyzers/dotnet/cs/Parquet\.SourceGenerator\.Legacy\.dll$' \
+            || { echo "FAIL: Legacy generator missing from analyzers/dotnet/cs/"; exit 1; }
+          if unzip -Z1 "$gen" | grep -q '^lib/' || unzip -Z1 "$genlegacy" | grep -q '^lib/'; then
             echo "FAIL: generator package contains lib/ entries; it must be analyzer-only:"
             exit 1
           fi
@@ -143,8 +143,8 @@ jobs:
           # Generated code references the attributes, so the dependency has to be declared.
           unzip -p "$gen" '*.nuspec' | grep -q 'id="Parquet.SourceGenerator.Attributes"' \
             || { echo "FAIL: generator .nuspec does not depend on the Attributes package"; exit 1; }
-          unzip -p "$genv5" '*.nuspec' | grep -q 'id="Parquet.SourceGenerator.Attributes"' \
-            || { echo "FAIL: V5 generator .nuspec does not depend on the Attributes package"; exit 1; }
+          unzip -p "$genlegacy" '*.nuspec' | grep -q 'id="Parquet.SourceGenerator.Attributes"' \
+            || { echo "FAIL: Legacy generator .nuspec does not depend on the Attributes package"; exit 1; }
 
           # The attributes package is a real runtime library and must carry assemblies.
           for tfm in netstandard2.0 netstandard2.1 net8.0 net9.0; do
@@ -153,12 +153,12 @@ jobs:
           done
           echo "Package layout OK."
 
-      - name: Verify Package Consumption (v6 & v5 packages on .NET 8 & .NET 9)
+      - name: Verify Package Consumption (v6 & Legacy packages on .NET 8 & .NET 9)
         run: |
           set -euo pipefail
           version=$(ls artifacts/Parquet.SourceGenerator.[0-9]*.nupkg \
             | sed -E 's/.*Parquet\.SourceGenerator\.([0-9][^/]*)\.nupkg/\1/')
-          echo "Consuming Parquet.SourceGenerator $version and V5 from local feed"
+          echo "Consuming Parquet.SourceGenerator $version and Legacy from local feed"
           dotnet run --project test/PackageConsumption/PackageConsumption.csproj \
             --framework net8.0 \
             --configuration Release \
@@ -171,17 +171,17 @@ jobs:
             -p:GeneratorPackageVersion="$version" \
             -p:RestorePackagesPath="$RUNNER_TEMP/consumption-packages-net9"
 
-          dotnet run --project test/PackageConsumptionV5/PackageConsumptionV5.csproj \
+          dotnet run --project test/PackageConsumptionLegacy/PackageConsumptionLegacy.csproj \
             --framework net8.0 \
             --configuration Release \
             -p:GeneratorPackageVersion="$version" \
-            -p:RestorePackagesPath="$RUNNER_TEMP/consumption-packages-v5-net8"
+            -p:RestorePackagesPath="$RUNNER_TEMP/consumption-packages-legacy-net8"
 
-          dotnet run --project test/PackageConsumptionV5/PackageConsumptionV5.csproj \
+          dotnet run --project test/PackageConsumptionLegacy/PackageConsumptionLegacy.csproj \
             --framework net9.0 \
             --configuration Release \
             -p:GeneratorPackageVersion="$version" \
-            -p:RestorePackagesPath="$RUNNER_TEMP/consumption-packages-v5-net9"
+            -p:RestorePackagesPath="$RUNNER_TEMP/consumption-packages-legacy-net9"
 
       - name: Upload Test Coverage Artifacts
         uses: actions/upload-artifact@v4
