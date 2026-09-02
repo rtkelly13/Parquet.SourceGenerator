@@ -36,7 +36,7 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "issue_comment" ]; then
             # Extract PR branch name via GitHub CLI
-            branch=$(gh pr view ${{ github.event.issue.number }} --json headRefName -q .headRefName)
+            branch=$(gh pr view ${{ github.event.issue.number }} --repo ${{ github.repository }} --json headRefName -q .headRefName)
             echo "branch=$branch" >> $GITHUB_OUTPUT
             echo "is_pr=true" >> $GITHUB_OUTPUT
             echo "pr_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
@@ -102,7 +102,7 @@ jobs:
       - name: Comment Benchmark Summary on PR
         if: steps.pr_info.outputs.is_pr == 'true'
         run: |
-          gh pr comment ${{ steps.pr_info.outputs.pr_number }} --body-file benchmark-summary.md
+          gh pr comment ${{ steps.pr_info.outputs.pr_number }} --repo ${{ github.repository }} --body-file benchmark-summary.md
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
