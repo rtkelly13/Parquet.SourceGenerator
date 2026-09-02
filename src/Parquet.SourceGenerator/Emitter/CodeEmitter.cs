@@ -371,8 +371,21 @@ public static class CodeEmitter
         builder.AppendLine("        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;");
         builder.AppendLine();
         builder.AppendLine("        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken);");
-        builder.AppendLine($"        var results = new global::System.Collections.Generic.List<{model.ClassName}>((int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount));");
+        builder.AppendLine("        int rgCount = reader.RowGroupCount;");
+        builder.AppendLine($"        if (rgCount == 0) return new global::System.Collections.Generic.List<{model.ClassName}>();");
         builder.AppendLine();
+        builder.AppendLine("        int totalRows = 0;");
+        builder.AppendLine("        int maxRowGroupSize = 0;");
+        builder.AppendLine("        var rowOffsets = new int[rgCount];");
+        builder.AppendLine("        for (int r = 0; r < rgCount; r++)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            int rowCount = (int)reader.RowGroups[r].RowCount;");
+        builder.AppendLine("            rowOffsets[r] = totalRows;");
+        builder.AppendLine("            totalRows += rowCount;");
+        builder.AppendLine("            if (rowCount > maxRowGroupSize) maxRowGroupSize = rowCount;");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine($"        var resultArray = new {model.ClassName}[totalRows];");
         builder.AppendLine("        var fileFields = reader.Schema.DataFields;");
 
         // Schema field resolution against the file's actual fields (see ResolveSchemaField).
@@ -386,24 +399,24 @@ public static class CodeEmitter
         }
         builder.AppendLine();
 
-        builder.AppendLine("        for (int r = 0; r < reader.RowGroupCount; r++)");
-        builder.AppendLine("        {");
-        builder.AppendLine("            cancellationToken.ThrowIfCancellationRequested();");
-        builder.AppendLine("            using var groupReader = reader.OpenRowGroupReader(r);");
-        builder.AppendLine("            int rowCount = (int)groupReader.RowCount;");
-        builder.AppendLine();
-
-        // Rent buffers for column reading
+        // Rent column buffers once per file sized to the largest row group, eliminating per-row-group ArrayPool churn
         for (int i = 0; i < model.Properties.Length; i++)
         {
             PropertyModel prop = model.Properties[i];
             string bufType = GetBufferElementType(prop);
-            builder.AppendLine($"            var buffer_{i} = global::System.Buffers.ArrayPool<{bufType}>.Shared.Rent(rowCount);");
+            builder.AppendLine($"        var buffer_{i} = global::System.Buffers.ArrayPool<{bufType}>.Shared.Rent(maxRowGroupSize);");
         }
 
         builder.AppendLine();
-        builder.AppendLine("            try");
+        builder.AppendLine("        try");
+        builder.AppendLine("        {");
+        builder.AppendLine("            for (int r = 0; r < rgCount; r++)");
         builder.AppendLine("            {");
+        builder.AppendLine("                cancellationToken.ThrowIfCancellationRequested();");
+        builder.AppendLine("                using var groupReader = reader.OpenRowGroupReader(r);");
+        builder.AppendLine("                int rowCount = (int)groupReader.RowCount;");
+        builder.AppendLine("                int startIdx = rowOffsets[r];");
+        builder.AppendLine();
 
         // Read columns using low-level primitive ReadAsync
         for (int i = 0; i < model.Properties.Length; i++)
@@ -415,15 +428,9 @@ public static class CodeEmitter
         }
 
         builder.AppendLine();
-        // No Capacity assignment here. `results` is already constructed with capacity equal to the
-        // file's total row count, and List<T>.Capacity reallocates whenever the assigned value
-        // differs from the current backing array length — so setting it to the running total once
-        // per row group allocated a *smaller* array and copied into it, repeatedly, before the list
-        // grew back. Single-row-group files were unaffected; the multi-row-group files that
-        // WriteParquetBatchedAsync produces paid O(groups x rows) of copying for nothing.
         builder.AppendLine("                for (int i = 0; i < rowCount; i++)");
         builder.AppendLine("                {");
-        builder.AppendLine($"                    results.Add(new {model.ClassName}");
+        builder.AppendLine($"                    resultArray[startIdx + i] = new {model.ClassName}");
         builder.AppendLine("                    {");
 
         for (int i = 0; i < model.Properties.Length; i++)
@@ -433,11 +440,12 @@ public static class CodeEmitter
             builder.AppendLine($"                        {prop.Name} = {readExpr},");
         }
 
-        builder.AppendLine("                    });");
+        builder.AppendLine("                    };");
         builder.AppendLine("                }");
         builder.AppendLine("            }");
-        builder.AppendLine("            finally");
-        builder.AppendLine("            {");
+        builder.AppendLine("        }");
+        builder.AppendLine("        finally");
+        builder.AppendLine("        {");
 
         for (int i = 0; i < model.Properties.Length; i++)
         {
@@ -445,13 +453,12 @@ public static class CodeEmitter
             string bufType = GetBufferElementType(prop);
             bool isRef = IsReferenceTypeBuffer(prop);
             string clearArg = isRef ? "clearArray: true" : "clearArray: false";
-            builder.AppendLine($"                global::System.Buffers.ArrayPool<{bufType}>.Shared.Return(buffer_{i}, {clearArg});");
+            builder.AppendLine($"            global::System.Buffers.ArrayPool<{bufType}>.Shared.Return(buffer_{i}, {clearArg});");
         }
 
-        builder.AppendLine("            }");
         builder.AppendLine("        }");
         builder.AppendLine();
-        builder.AppendLine("        return results;");
+        builder.AppendLine($"        return new global::System.Collections.Generic.List<{model.ClassName}>(resultArray);");
         builder.AppendLine("    }");
     }
 
