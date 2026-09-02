@@ -40,8 +40,8 @@ public sealed class ReaderAllocationTests
 
         string source = CodeEmitter.EmitSource(model);
 
-        // The one legitimate sizing happens in the constructor, from the summed row count.
-        Assert.Contains("new global::System.Collections.Generic.List<TestEntity>((int)global::System.Linq.Enumerable.Sum", source);
+        // The one legitimate sizing happens in the constructor, from the pre-allocated array.
+        Assert.Contains("new global::System.Collections.Generic.List<TestEntity>(resultArray);", source);
         Assert.DoesNotContain("results.Capacity", source);
     }
 
