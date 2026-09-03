@@ -377,22 +377,26 @@ public static partial class OrderEventParquetExtensions
                 await groupReader.ReadAsync(field_8, new global::System.Memory<byte[]?>(buffer_8, 0, rowCount), cancellationToken: cancellationToken);
 
 #if NET8_0_OR_GREATER
-                var span = global::System.Runtime.InteropServices.CollectionsMarshal.AsSpan(results);
-                for (int i = 0; i < rowCount; i++)
+                void PopulateSpan()
                 {
-                    span[currentOffset + i] = new OrderEvent
+                    var span = global::System.Runtime.InteropServices.CollectionsMarshal.AsSpan(results);
+                    for (int i = 0; i < rowCount; i++)
                     {
-                        Id = buffer_0[i],
-                        Name = buffer_1[i],
-                        Score = buffer_2[i],
-                        Price = buffer_3[i],
-                        CreatedAt = buffer_4[i],
-                        Duration = buffer_5[i],
-                        CorrelationId = buffer_6[i],
-                        OptionalGuid = buffer_7[i],
-                        Payload = buffer_8[i],
-                    };
+                        span[currentOffset + i] = new OrderEvent
+                        {
+                            Id = buffer_0[i],
+                            Name = buffer_1[i],
+                            Score = buffer_2[i],
+                            Price = buffer_3[i],
+                            CreatedAt = buffer_4[i],
+                            Duration = buffer_5[i],
+                            CorrelationId = buffer_6[i],
+                            OptionalGuid = buffer_7[i],
+                            Payload = buffer_8[i],
+                        };
+                    }
                 }
+                PopulateSpan();
 #else
                 for (int i = 0; i < rowCount; i++)
                 {

@@ -78,21 +78,25 @@ public static partial class CodeEmitter
 
         builder.AppendLine();
         builder.AppendLine("#if NET8_0_OR_GREATER");
-        builder.AppendLine("                var span = global::System.Runtime.InteropServices.CollectionsMarshal.AsSpan(results);");
-        builder.AppendLine("                for (int i = 0; i < rowCount; i++)");
+        builder.AppendLine("                void PopulateSpan()");
         builder.AppendLine("                {");
-        builder.AppendLine($"                    span[currentOffset + i] = new {model.ClassName}");
+        builder.AppendLine("                    var span = global::System.Runtime.InteropServices.CollectionsMarshal.AsSpan(results);");
+        builder.AppendLine("                    for (int i = 0; i < rowCount; i++)");
         builder.AppendLine("                    {");
+        builder.AppendLine($"                        span[currentOffset + i] = new {model.ClassName}");
+        builder.AppendLine("                        {");
 
         for (int i = 0; i < model.Properties.Length; i++)
         {
             PropertyModel prop = model.Properties[i];
             string readExpr = GetReadExpression(prop, $"buffer_{i}[i]");
-            builder.AppendLine($"                        {prop.Name} = {readExpr},");
+            builder.AppendLine($"                            {prop.Name} = {readExpr},");
         }
 
-        builder.AppendLine("                    };");
+        builder.AppendLine("                        };");
+        builder.AppendLine("                    }");
         builder.AppendLine("                }");
+        builder.AppendLine("                PopulateSpan();");
         builder.AppendLine("#else");
         builder.AppendLine("                for (int i = 0; i < rowCount; i++)");
         builder.AppendLine("                {");

@@ -366,21 +366,25 @@ public static partial class ScalarMetricParquetExtensions
                 await groupReader.ReadAsync<float>(field_7, new global::System.Memory<float>(buffer_7, 0, rowCount), cancellationToken: cancellationToken);
 
 #if NET8_0_OR_GREATER
-                var span = global::System.Runtime.InteropServices.CollectionsMarshal.AsSpan(results);
-                for (int i = 0; i < rowCount; i++)
+                void PopulateSpan()
                 {
-                    span[currentOffset + i] = new ScalarMetric
+                    var span = global::System.Runtime.InteropServices.CollectionsMarshal.AsSpan(results);
+                    for (int i = 0; i < rowCount; i++)
                     {
-                        RowId = buffer_0[i],
-                        Flag = buffer_1[i],
-                        NullableFlag = buffer_2[i],
-                        StatusCode = (SampleDomain.Models.ProcessStatus)buffer_3[i],
-                        OptionalStatus = buffer_4[i] is null ? (SampleDomain.Models.ProcessStatus?)null : (SampleDomain.Models.ProcessStatus)buffer_4[i]!,
-                        TinyNum = buffer_5[i],
-                        ShortNum = buffer_6[i],
-                        FloatVal = buffer_7[i],
-                    };
+                        span[currentOffset + i] = new ScalarMetric
+                        {
+                            RowId = buffer_0[i],
+                            Flag = buffer_1[i],
+                            NullableFlag = buffer_2[i],
+                            StatusCode = (SampleDomain.Models.ProcessStatus)buffer_3[i],
+                            OptionalStatus = buffer_4[i] is null ? (SampleDomain.Models.ProcessStatus?)null : (SampleDomain.Models.ProcessStatus)buffer_4[i]!,
+                            TinyNum = buffer_5[i],
+                            ShortNum = buffer_6[i],
+                            FloatVal = buffer_7[i],
+                        };
+                    }
                 }
+                PopulateSpan();
 #else
                 for (int i = 0; i < rowCount; i++)
                 {
