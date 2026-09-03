@@ -1,14 +1,15 @@
 using System;
 using System.Text;
+using Parquet.SourceGenerator.Emitter.Components;
 using Parquet.SourceGenerator.Models;
 
 namespace Parquet.SourceGenerator.Legacy.Emitter;
 
 /// <summary>
-/// Emits C# partial extension classes targeting Parquet.Net v4 / v5 (DataColumn-based API).
+/// Emits C# extension classes targeting Parquet.Net v4 / v5 (DataColumn-based API).
 /// Provides compatibility for .NET Framework 4.7.2, .NET Standard 2.0, and Parquet.Net 4.x/5.x releases.
 /// </summary>
-public static partial class LegacyCodeEmitter
+public static class LegacyCodeEmitter
 {
     /// <summary>
     /// Generates complete C# source code string for a target model using Parquet.Net v4/v5 APIs.
@@ -70,4 +71,377 @@ public static partial class LegacyCodeEmitter
 
         return builder.ToString();
     }
+
+    // ──────────────────────────────────────────────────────────
+    //  SCHEMA & STATIC CACHING
+    // ──────────────────────────────────────────────────────────
+
+    private static void EmitSchema(StringBuilder builder, TargetClassModel model)
+    {
+        SchemaComponent.EmitSchema(builder, model);
+    }
+
+    private static void EmitStaticFields(StringBuilder builder, TargetClassModel model)
+    {
+        SchemaComponent.EmitStaticFields(builder, model);
+    }
+
+    private static void EmitResolveSchemaField(StringBuilder builder)
+    {
+        SchemaComponent.EmitResolveSchemaField(builder, usePath: true);
+    }
+
+    // ──────────────────────────────────────────────────────────
+    //  FORMAT OPTIONS & COMPRESSION
+    // ──────────────────────────────────────────────────────────
+
+    private static void EmitBuildFormatOptions(StringBuilder builder)
+    {
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine("    /// Translates the generator's options into the Parquet.Net options the reader and writer accept.");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    /// <remarks>");
+        builder.AppendLine("    /// Parquet.Net v4/v5 keeps compression on <c>ParquetWriter</c> rather than on");
+        builder.AppendLine("    /// <c>ParquetOptions</c> — see <c>ApplyCompression</c>. <c>ParquetOptions</c> itself carries only");
+        builder.AppendLine("    /// decoding hints (<c>TreatByteArrayAsString</c> and friends) that this generator does not");
+        builder.AppendLine("    /// currently expose, so the returned instance is deliberately left at its defaults.");
+        builder.AppendLine("    /// </remarks>");
+        builder.AppendLine("    private static global::Parquet.ParquetOptions BuildFormatOptions(");
+        builder.AppendLine("        global::Parquet.SourceGenerator.ParquetSerializerOptions options)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        return new global::Parquet.ParquetOptions();");
+        builder.AppendLine("    }");
+    }
+
+    private static void EmitApplyCompression(StringBuilder builder)
+    {
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine("    /// Applies the requested compression settings to a v4/v5 writer.");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    /// <remarks>");
+        builder.AppendLine("    /// <c>CompressionMethod</c> is a property and <c>CompressionLevel</c> a field on");
+        builder.AppendLine("    /// <c>ParquetWriter</c> in this API generation; both must be set after the writer exists and");
+        builder.AppendLine("    /// before the first row group is written. Without this, every option was silently discarded and");
+        builder.AppendLine("    /// a Gzip request wrote Snappy.");
+        builder.AppendLine("    /// </remarks>");
+        builder.AppendLine("    private static void ApplyCompression(");
+        builder.AppendLine("        global::Parquet.ParquetWriter writer,");
+        builder.AppendLine("        global::Parquet.SourceGenerator.ParquetSerializerOptions options)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        writer.CompressionMethod = options.CompressionMethod switch");
+        builder.AppendLine("        {");
+        builder.AppendLine("            global::Parquet.SourceGenerator.ParquetCompressionMethod.None =>");
+        builder.AppendLine("                global::Parquet.CompressionMethod.None,");
+        builder.AppendLine("            global::Parquet.SourceGenerator.ParquetCompressionMethod.Gzip =>");
+        builder.AppendLine("                global::Parquet.CompressionMethod.Gzip,");
+        builder.AppendLine("            // Parquet.Net spells this one in caps.");
+        builder.AppendLine("            global::Parquet.SourceGenerator.ParquetCompressionMethod.Lz4 =>");
+        builder.AppendLine("                global::Parquet.CompressionMethod.LZ4,");
+        builder.AppendLine("            global::Parquet.SourceGenerator.ParquetCompressionMethod.Brotli =>");
+        builder.AppendLine("                global::Parquet.CompressionMethod.Brotli,");
+        builder.AppendLine("            global::Parquet.SourceGenerator.ParquetCompressionMethod.Zstd =>");
+        builder.AppendLine("                global::Parquet.CompressionMethod.Zstd,");
+        builder.AppendLine("            _ => global::Parquet.CompressionMethod.Snappy,");
+        builder.AppendLine("        };");
+        builder.AppendLine();
+        builder.AppendLine("        if (!options.CompressionLevel.HasValue) return;");
+        builder.AppendLine();
+        builder.AppendLine("        switch (options.CompressionLevel.Value)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            case global::Parquet.SourceGenerator.ParquetCompressionLevel.Fastest:");
+        builder.AppendLine("                writer.CompressionLevel = global::System.IO.Compression.CompressionLevel.Fastest;");
+        builder.AppendLine("                break;");
+        builder.AppendLine("            case global::Parquet.SourceGenerator.ParquetCompressionLevel.NoCompression:");
+        builder.AppendLine("                writer.CompressionLevel = global::System.IO.Compression.CompressionLevel.NoCompression;");
+        builder.AppendLine("                break;");
+        // CompressionLevel.SmallestSize arrived in .NET 6. This generated code compiles inside the
+        // consumer's project, so on net472 / netstandard2.0 — the targets this backend exists for —
+        // naming it would not compile. Optimal is the strongest level those targets have.
+        builder.AppendLine("#if NET6_0_OR_GREATER");
+        builder.AppendLine("            case global::Parquet.SourceGenerator.ParquetCompressionLevel.SmallestSize:");
+        builder.AppendLine("                writer.CompressionLevel = global::System.IO.Compression.CompressionLevel.SmallestSize;");
+        builder.AppendLine("                break;");
+        builder.AppendLine("#endif");
+        builder.AppendLine("            default:");
+        builder.AppendLine("                // Includes SmallestSize below .NET 6, where Optimal is the strongest level available.");
+        builder.AppendLine("                writer.CompressionLevel = global::System.IO.Compression.CompressionLevel.Optimal;");
+        builder.AppendLine("                break;");
+        builder.AppendLine("        }");
+        builder.AppendLine("    }");
+    }
+
+    // ──────────────────────────────────────────────────────────
+    //  WRITE METHODS
+    // ──────────────────────────────────────────────────────────
+
+    private static void EmitWriteRowGroupAsync(StringBuilder builder, TargetClassModel model)
+    {
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine($"    /// Writes a single row group chunk using Parquet.Net DataColumn primitives.");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    public static async global::System.Threading.Tasks.Task WriteRowGroupAsync(");
+        builder.AppendLine("        this global::Parquet.ParquetWriter writer,");
+        builder.AppendLine($"        global::System.Collections.Generic.IReadOnlyList<{model.ClassName}> items,");
+        builder.AppendLine("        global::System.Threading.CancellationToken cancellationToken = default)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        if (writer == null) throw new global::System.ArgumentNullException(nameof(writer));");
+        builder.AppendLine("        if (items == null) throw new global::System.ArgumentNullException(nameof(items));");
+        builder.AppendLine();
+
+        if (model.Properties.Length == 0)
+        {
+            builder.AppendLine("        using (var rgWriter = writer.CreateRowGroup())");
+            builder.AppendLine("        {");
+            builder.AppendLine("            await global::System.Threading.Tasks.Task.CompletedTask.ConfigureAwait(false);");
+            builder.AppendLine("        }");
+            builder.AppendLine("    }");
+            return;
+        }
+
+        builder.AppendLine("        int count = items.Count;");
+        builder.AppendLine("        if (count == 0) return;");
+        builder.AppendLine();
+
+        // Array creation has to respect element rank. `byte[]` is the only element type here that is
+        // itself an array, and the naive `new {elementType}[count]` produced `new byte[][count]`,
+        // which is not C# — so every model with a byte[] column emitted a generated file that could
+        // not parse. The rank suffix belongs after the length: `new byte[count][]`.
+        for (int i = 0; i < model.Properties.Length; i++)
+        {
+            builder.AppendLine($"        var colArray_{i} = {GetArrayCreationExpression(model.Properties[i], "count")};");
+        }
+
+        builder.AppendLine();
+        builder.AppendLine("        for (int k = 0; k < count; k++)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            var item = items[k];");
+
+        PropertyMappingComponent.EmitPropertyAssignments(builder, model, itemVar: "item", indexVar: "k", bufferPrefix: "colArray_", indent: "            ");
+
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        using (var rgWriter = writer.CreateRowGroup())");
+        builder.AppendLine("        {");
+
+        for (int i = 0; i < model.Properties.Length; i++)
+        {
+            builder.AppendLine($"            var col_{i} = new global::Parquet.Data.DataColumn(_field_{i}, colArray_{i});");
+            builder.AppendLine($"            await rgWriter.WriteColumnAsync(col_{i}, cancellationToken).ConfigureAwait(false);");
+        }
+
+        builder.AppendLine("        }");
+        builder.AppendLine("    }");
+    }
+
+    private static void EmitWriteAsync(StringBuilder builder, TargetClassModel model)
+    {
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine($"    /// Asynchronously serializes all <c>{model.ClassName}</c> items to stream using Parquet.Net v4/v5.");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    public static async global::System.Threading.Tasks.Task WriteParquetAsync(");
+        builder.AppendLine($"        this global::System.Collections.Generic.IReadOnlyList<{model.ClassName}> items,");
+        builder.AppendLine("        global::System.IO.Stream stream,");
+        builder.AppendLine("        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,");
+        builder.AppendLine("        global::System.Threading.CancellationToken cancellationToken = default)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        if (items == null) throw new global::System.ArgumentNullException(nameof(items));");
+        builder.AppendLine("        if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));");
+        builder.AppendLine();
+        builder.AppendLine("        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;");
+        builder.AppendLine("        using (var writer = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken).ConfigureAwait(false))");
+        builder.AppendLine("        {");
+        builder.AppendLine("            ApplyCompression(writer, options);");
+        builder.AppendLine("            await writer.WriteRowGroupAsync(items, cancellationToken).ConfigureAwait(false);");
+        builder.AppendLine("        }");
+        builder.AppendLine("    }");
+    }
+
+    private static void EmitWriteBatchedAsync(StringBuilder builder, TargetClassModel model)
+    {
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine($"    /// Asynchronously serializes items in fixed-size row group chunks.");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    public static async global::System.Threading.Tasks.Task WriteParquetBatchedAsync(");
+        builder.AppendLine($"        this global::System.Collections.Generic.IEnumerable<{model.ClassName}> items,");
+        builder.AppendLine("        global::System.IO.Stream stream,");
+        builder.AppendLine("        int? rowGroupSize = null,");
+        builder.AppendLine("        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,");
+        builder.AppendLine("        global::System.Threading.CancellationToken cancellationToken = default)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        if (items == null) throw new global::System.ArgumentNullException(nameof(items));");
+        builder.AppendLine("        if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));");
+        BatchValidationComponent.EmitRowGroupSizeResolution(builder, "batchSize");
+        builder.AppendLine();
+        builder.AppendLine($"        if (items is global::System.Collections.Generic.IReadOnlyList<{model.ClassName}> list && list.Count <= batchSize)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            using (var singleWriter = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken).ConfigureAwait(false))");
+        builder.AppendLine("            {");
+        builder.AppendLine("                ApplyCompression(singleWriter, options);");
+        builder.AppendLine("                await singleWriter.WriteRowGroupAsync(list, cancellationToken).ConfigureAwait(false);");
+        builder.AppendLine("            }");
+        builder.AppendLine("            return;");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        using (var writer = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken).ConfigureAwait(false))");
+        builder.AppendLine("        {");
+        builder.AppendLine("            ApplyCompression(writer, options);");
+        builder.AppendLine($"            var chunk = new global::System.Collections.Generic.List<{model.ClassName}>(batchSize);");
+        builder.AppendLine("            foreach (var item in items)");
+        builder.AppendLine("            {");
+        builder.AppendLine("                cancellationToken.ThrowIfCancellationRequested();");
+        builder.AppendLine("                chunk.Add(item);");
+        builder.AppendLine("                if (chunk.Count >= batchSize)");
+        builder.AppendLine("                {");
+        builder.AppendLine("                    await writer.WriteRowGroupAsync(chunk, cancellationToken).ConfigureAwait(false);");
+        builder.AppendLine("                    chunk.Clear();");
+        builder.AppendLine("                }");
+        builder.AppendLine("            }");
+        builder.AppendLine("            if (chunk.Count > 0)");
+        builder.AppendLine("            {");
+        builder.AppendLine("                await writer.WriteRowGroupAsync(chunk, cancellationToken).ConfigureAwait(false);");
+        builder.AppendLine("            }");
+        builder.AppendLine("        }");
+        builder.AppendLine("    }");
+    }
+
+    // ──────────────────────────────────────────────────────────
+    //  READ METHODS
+    // ──────────────────────────────────────────────────────────
+
+    private static void EmitReadAsync(StringBuilder builder, TargetClassModel model)
+    {
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine($"    /// Asynchronously deserializes all <c>{model.ClassName}</c> objects from a Parquet stream using Parquet.Net v4/v5.");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine($"    public static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<{model.ClassName}>> ReadParquetAsync(");
+        builder.AppendLine("        global::System.IO.Stream stream,");
+        builder.AppendLine("        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,");
+        builder.AppendLine("        global::System.Threading.CancellationToken cancellationToken = default)");
+        builder.AppendLine("    {");
+        builder.AppendLine($"        var array = await ReadParquetArrayAsync(stream, options, cancellationToken);");
+        builder.AppendLine($"        return new global::System.Collections.Generic.List<{model.ClassName}>(array);");
+        builder.AppendLine("    }");
+    }
+
+    private static void EmitReadArrayAsync(StringBuilder builder, TargetClassModel model)
+    {
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine($"    /// Asynchronously deserializes all <c>{model.ClassName}</c> objects directly into an array using Parquet.Net v4/v5.");
+        builder.AppendLine("    /// Eliminates List wrapper allocations for zero-copy array materialization.");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine($"    public static async global::System.Threading.Tasks.Task<{model.ClassName}[]> ReadParquetArrayAsync(");
+        builder.AppendLine("        global::System.IO.Stream stream,");
+        builder.AppendLine("        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,");
+        builder.AppendLine("        global::System.Threading.CancellationToken cancellationToken = default)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));");
+        builder.AppendLine();
+        builder.AppendLine("        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;");
+        builder.AppendLine("        using (var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken).ConfigureAwait(false))");
+        builder.AppendLine("        {");
+
+        if (model.Properties.Length == 0)
+        {
+            builder.AppendLine($"            return global::System.Array.Empty<{model.ClassName}>();");
+            builder.AppendLine("        }");
+            builder.AppendLine("    }");
+            return;
+        }
+
+        builder.AppendLine("            int totalRows = 0;");
+        builder.AppendLine("            for (int r = 0; r < reader.RowGroupCount; r++)");
+        builder.AppendLine("            {");
+        builder.AppendLine("                totalRows += (int)reader.RowGroups[r].RowCount;");
+        builder.AppendLine("            }");
+        builder.AppendLine();
+        builder.AppendLine($"            var results = new {model.ClassName}[totalRows];");
+        builder.AppendLine("            int currentOffset = 0;");
+        builder.AppendLine();
+        builder.AppendLine("            var fileFields = reader.Schema.GetDataFields();");
+        builder.AppendLine("            global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;");
+
+        for (int i = 0; i < model.Properties.Length; i++)
+        {
+            builder.AppendLine($"            var field_{i} = ResolveSchemaField(fileFields, {i}, _field_{i}, ref fieldsByName);");
+        }
+
+        builder.AppendLine();
+        builder.AppendLine("            for (int r = 0; r < reader.RowGroupCount; r++)");
+        builder.AppendLine("            {");
+        builder.AppendLine("                cancellationToken.ThrowIfCancellationRequested();");
+        builder.AppendLine("                using (var rgReader = reader.OpenRowGroupReader(r))");
+        builder.AppendLine("                {");
+        builder.AppendLine("                    int groupRows = (int)rgReader.RowCount;");
+        builder.AppendLine("                    if (groupRows == 0) continue;");
+        builder.AppendLine();
+
+        for (int i = 0; i < model.Properties.Length; i++)
+        {
+            PropertyModel prop = model.Properties[i];
+            string elementType = GetColumnElementType(prop);
+            builder.AppendLine($"                    var col_{i} = await rgReader.ReadColumnAsync(field_{i}, cancellationToken).ConfigureAwait(false);");
+            builder.AppendLine($"                    var data_{i} = ({elementType}[])col_{i}.Data;");
+        }
+
+        builder.AppendLine();
+        builder.AppendLine("                    for (int k = 0; k < groupRows; k++)");
+        builder.AppendLine("                    {");
+        PropertyMappingComponent.EmitObjectMaterialization(builder, model, "results", "currentOffset", "k", bufferPrefix: "data_", indent: "                        ");
+        builder.AppendLine("                    }");
+        builder.AppendLine("                    currentOffset += groupRows;");
+        builder.AppendLine("                }");
+        builder.AppendLine("            }");
+        builder.AppendLine("            return results;");
+        builder.AppendLine("        }");
+        builder.AppendLine("    }");
+    }
+
+    // ──────────────────────────────────────────────────────────
+    //  TYPE MAPPING & HELPERS
+    // ──────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// The CLR element type of the array a <c>DataColumn</c> carries for this member.
+    /// </summary>
+    private static string GetColumnElementType(PropertyModel prop)
+    {
+        string enumUnderlying = prop.EnumUnderlyingTypeName ?? "int";
+
+        return prop.Kind switch
+        {
+            PropertyKind.ByteArray => "byte[]",
+            PropertyKind.Enum => prop.IsNullable ? enumUnderlying + "?" : enumUnderlying,
+            PropertyKind.Guid => prop.IsNullable ? "global::System.Guid?" : "global::System.Guid",
+            _ => IsReferenceTypeColumn(prop) ? prop.TypeName.TrimEnd('?') : prop.TypeName,
+        };
+    }
+
+    /// <summary>
+    /// Builds the <c>new T[count]</c> expression for a column, placing array ranks after the length.
+    /// </summary>
+    private static string GetArrayCreationExpression(PropertyModel prop, string countExpression)
+    {
+        string element = GetColumnElementType(prop);
+
+        int bracket = element.IndexOf('[');
+        if (bracket >= 0)
+        {
+            return $"new {element.Substring(0, bracket)}[{countExpression}]{element.Substring(bracket)}";
+        }
+
+        return $"new {element}[{countExpression}]";
+    }
+
+    private static bool IsReferenceTypeColumn(PropertyModel prop)
+    {
+        return BufferPoolComponent.IsReferenceTypeBuffer(prop);
+    }
+
+    private static string GetWriteExpression(PropertyModel prop, string valueExpression) =>
+        PropertyMappingComponent.GetWriteExpression(prop, valueExpression);
+
+    private static string GetReadExpression(PropertyModel prop, string valueExpression) =>
+        PropertyMappingComponent.GetReadExpression(prop, valueExpression);
+
+    private static string BoolLiteral(bool val) => SchemaComponent.BoolLiteral(val);
 }
