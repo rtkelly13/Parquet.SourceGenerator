@@ -266,11 +266,24 @@ public static class CodeEmitter
         // List fast path
         builder.AppendLine($"            if (chunk is global::System.Collections.Generic.List<{model.ClassName}> listItems)");
         builder.AppendLine("            {");
+        builder.AppendLine("#if NET6_0_OR_GREATER");
+        builder.AppendLine("                void ExtractSpan()");
+        builder.AppendLine("                {");
+        builder.AppendLine("                    var span = global::System.Runtime.InteropServices.CollectionsMarshal.AsSpan(listItems);");
+        builder.AppendLine("                    for (int i = 0; i < count; i++)");
+        builder.AppendLine("                    {");
+        builder.AppendLine("                        var item = span[i];");
+        EmitPropertyAssignments(builder, model, "buffer_", prefix: "                        ");
+        builder.AppendLine("                    }");
+        builder.AppendLine("                }");
+        builder.AppendLine("                ExtractSpan();");
+        builder.AppendLine("#else");
         builder.AppendLine("                for (int i = 0; i < count; i++)");
         builder.AppendLine("                {");
         builder.AppendLine($"                    var item = listItems[i];");
         EmitPropertyAssignments(builder, model, "buffer_", prefix: "                    ");
         builder.AppendLine("                }");
+        builder.AppendLine("#endif");
         builder.AppendLine("            }");
 
         // Array fast path
