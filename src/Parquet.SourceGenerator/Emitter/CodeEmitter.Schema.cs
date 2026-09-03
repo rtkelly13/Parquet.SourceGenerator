@@ -115,5 +115,5 @@ public static partial class CodeEmitter
         builder.AppendLine();
         builder.AppendLine("        return byName.TryGetValue(expected.Name, out var match) ? match : expected;");
         builder.AppendLine("    }");
-}
+    }
 }
