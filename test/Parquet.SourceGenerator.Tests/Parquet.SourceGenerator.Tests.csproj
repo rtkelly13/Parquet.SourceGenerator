@@ -46,4 +46,11 @@
     <ProjectReference Include="..\..\tools\BenchmarkSummaryGenerator\BenchmarkSummaryGenerator.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="GoldenFiles\**\*.cs" />
+    <None Include="GoldenFiles\**\*.cs">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
