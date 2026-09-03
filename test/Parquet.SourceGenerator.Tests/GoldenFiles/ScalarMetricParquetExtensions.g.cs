@@ -782,17 +782,22 @@ public static partial class ScalarMetricParquetExtensions
             : new global::System.ReadOnlyMemory<byte>(parquetBytes.ToArray());
 
         int rowGroupCount;
-        int totalRows = 0;
+        int totalRows;
+        int maxRowGroupSize;
         int[] rowOffsets;
         using (var probeStream = CreateBufferStream(sourceBytes))
         {
             await using var probe = await global::Parquet.ParquetReader.CreateAsync(probeStream, formatOptions, cancellationToken: cancellationToken);
             rowGroupCount = probe.RowGroupCount;
+            totalRows = 0;
+            maxRowGroupSize = 0;
             rowOffsets = new int[rowGroupCount];
             for (int r = 0; r < rowGroupCount; r++)
             {
+                int rc = (int)probe.RowGroups[r].RowCount;
                 rowOffsets[r] = totalRows;
-                totalRows += (int)probe.RowGroups[r].RowCount;
+                totalRows += rc;
+                if (rc > maxRowGroupSize) maxRowGroupSize = rc;
             }
         }
 
@@ -816,7 +821,7 @@ public static partial class ScalarMetricParquetExtensions
 
         if (workerCount == 1)
         {
-            await ReadRowGroupsIntoAsync(sourceBytes, formatOptions, resultArray, rowOffsets, cursor, rowGroupCount, linkedCts, workerToken);
+            await ReadRowGroupsIntoAsync(sourceBytes, formatOptions, resultArray, rowOffsets, cursor, rowGroupCount, maxRowGroupSize, linkedCts, workerToken);
         }
         else
         {
@@ -824,7 +829,7 @@ public static partial class ScalarMetricParquetExtensions
             for (int w = 0; w < workerCount; w++)
             {
                 workers[w] = global::System.Threading.Tasks.Task.Run(
-                    () => ReadRowGroupsIntoAsync(sourceBytes, formatOptions, resultArray, rowOffsets, cursor, rowGroupCount, linkedCts, workerToken),
+                    () => ReadRowGroupsIntoAsync(sourceBytes, formatOptions, resultArray, rowOffsets, cursor, rowGroupCount, maxRowGroupSize, linkedCts, workerToken),
                     workerToken);
             }
 
@@ -871,6 +876,7 @@ public static partial class ScalarMetricParquetExtensions
         int[] rowOffsets,
         int[] cursor,
         int rowGroupCount,
+        int maxRowGroupSize,
         global::System.Threading.CancellationTokenSource linkedCts,
         global::System.Threading.CancellationToken cancellationToken)
     {
@@ -891,27 +897,27 @@ public static partial class ScalarMetricParquetExtensions
             var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName);
             var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName);
 
-            while (true)
+            var buffer_0 = global::System.Buffers.ArrayPool<long>.Shared.Rent(maxRowGroupSize);
+            var buffer_1 = global::System.Buffers.ArrayPool<bool>.Shared.Rent(maxRowGroupSize);
+            var buffer_2 = global::System.Buffers.ArrayPool<bool?>.Shared.Rent(maxRowGroupSize);
+            var buffer_3 = global::System.Buffers.ArrayPool<int>.Shared.Rent(maxRowGroupSize);
+            var buffer_4 = global::System.Buffers.ArrayPool<int?>.Shared.Rent(maxRowGroupSize);
+            var buffer_5 = global::System.Buffers.ArrayPool<byte>.Shared.Rent(maxRowGroupSize);
+            var buffer_6 = global::System.Buffers.ArrayPool<short>.Shared.Rent(maxRowGroupSize);
+            var buffer_7 = global::System.Buffers.ArrayPool<float>.Shared.Rent(maxRowGroupSize);
+
+            try
             {
-                int r = global::System.Threading.Interlocked.Increment(ref cursor[0]) - 1;
-                if (r >= rowGroupCount) break;
-
-                cancellationToken.ThrowIfCancellationRequested();
-                using var groupReader = reader.OpenRowGroupReader(r);
-                int rowCount = (int)groupReader.RowCount;
-                int startIdx = rowOffsets[r];
-
-                var buffer_0 = global::System.Buffers.ArrayPool<long>.Shared.Rent(rowCount);
-                var buffer_1 = global::System.Buffers.ArrayPool<bool>.Shared.Rent(rowCount);
-                var buffer_2 = global::System.Buffers.ArrayPool<bool?>.Shared.Rent(rowCount);
-                var buffer_3 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
-                var buffer_4 = global::System.Buffers.ArrayPool<int?>.Shared.Rent(rowCount);
-                var buffer_5 = global::System.Buffers.ArrayPool<byte>.Shared.Rent(rowCount);
-                var buffer_6 = global::System.Buffers.ArrayPool<short>.Shared.Rent(rowCount);
-                var buffer_7 = global::System.Buffers.ArrayPool<float>.Shared.Rent(rowCount);
-
-                try
+                while (true)
                 {
+                    int r = global::System.Threading.Interlocked.Increment(ref cursor[0]) - 1;
+                    if (r >= rowGroupCount) break;
+
+                    cancellationToken.ThrowIfCancellationRequested();
+                    using var groupReader = reader.OpenRowGroupReader(r);
+                    int rowCount = (int)groupReader.RowCount;
+                    int startIdx = rowOffsets[r];
+
                     await groupReader.ReadAsync<long>(field_0, new global::System.Memory<long>(buffer_0, 0, rowCount), cancellationToken: cancellationToken);
                     await groupReader.ReadAsync<bool>(field_1, new global::System.Memory<bool>(buffer_1, 0, rowCount), cancellationToken: cancellationToken);
                     await groupReader.ReadAsync<bool>(field_2, new global::System.Memory<bool?>(buffer_2, 0, rowCount), cancellationToken: cancellationToken);
@@ -936,17 +942,17 @@ public static partial class ScalarMetricParquetExtensions
                         };
                     }
                 }
-                finally
-                {
-                    global::System.Buffers.ArrayPool<long>.Shared.Return(buffer_0, clearArray: false);
-                    global::System.Buffers.ArrayPool<bool>.Shared.Return(buffer_1, clearArray: false);
-                    global::System.Buffers.ArrayPool<bool?>.Shared.Return(buffer_2, clearArray: false);
-                    global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_3, clearArray: false);
-                    global::System.Buffers.ArrayPool<int?>.Shared.Return(buffer_4, clearArray: false);
-                    global::System.Buffers.ArrayPool<byte>.Shared.Return(buffer_5, clearArray: false);
-                    global::System.Buffers.ArrayPool<short>.Shared.Return(buffer_6, clearArray: false);
-                    global::System.Buffers.ArrayPool<float>.Shared.Return(buffer_7, clearArray: false);
-                }
+            }
+            finally
+            {
+                global::System.Buffers.ArrayPool<long>.Shared.Return(buffer_0, clearArray: false);
+                global::System.Buffers.ArrayPool<bool>.Shared.Return(buffer_1, clearArray: false);
+                global::System.Buffers.ArrayPool<bool?>.Shared.Return(buffer_2, clearArray: false);
+                global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_3, clearArray: false);
+                global::System.Buffers.ArrayPool<int?>.Shared.Return(buffer_4, clearArray: false);
+                global::System.Buffers.ArrayPool<byte>.Shared.Return(buffer_5, clearArray: false);
+                global::System.Buffers.ArrayPool<short>.Shared.Return(buffer_6, clearArray: false);
+                global::System.Buffers.ArrayPool<float>.Shared.Return(buffer_7, clearArray: false);
             }
         }
         catch

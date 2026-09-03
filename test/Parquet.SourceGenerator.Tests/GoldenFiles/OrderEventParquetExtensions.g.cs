@@ -812,17 +812,22 @@ public static partial class OrderEventParquetExtensions
             : new global::System.ReadOnlyMemory<byte>(parquetBytes.ToArray());
 
         int rowGroupCount;
-        int totalRows = 0;
+        int totalRows;
+        int maxRowGroupSize;
         int[] rowOffsets;
         using (var probeStream = CreateBufferStream(sourceBytes))
         {
             await using var probe = await global::Parquet.ParquetReader.CreateAsync(probeStream, formatOptions, cancellationToken: cancellationToken);
             rowGroupCount = probe.RowGroupCount;
+            totalRows = 0;
+            maxRowGroupSize = 0;
             rowOffsets = new int[rowGroupCount];
             for (int r = 0; r < rowGroupCount; r++)
             {
+                int rc = (int)probe.RowGroups[r].RowCount;
                 rowOffsets[r] = totalRows;
-                totalRows += (int)probe.RowGroups[r].RowCount;
+                totalRows += rc;
+                if (rc > maxRowGroupSize) maxRowGroupSize = rc;
             }
         }
 
@@ -846,7 +851,7 @@ public static partial class OrderEventParquetExtensions
 
         if (workerCount == 1)
         {
-            await ReadRowGroupsIntoAsync(sourceBytes, formatOptions, resultArray, rowOffsets, cursor, rowGroupCount, linkedCts, workerToken);
+            await ReadRowGroupsIntoAsync(sourceBytes, formatOptions, resultArray, rowOffsets, cursor, rowGroupCount, maxRowGroupSize, linkedCts, workerToken);
         }
         else
         {
@@ -854,7 +859,7 @@ public static partial class OrderEventParquetExtensions
             for (int w = 0; w < workerCount; w++)
             {
                 workers[w] = global::System.Threading.Tasks.Task.Run(
-                    () => ReadRowGroupsIntoAsync(sourceBytes, formatOptions, resultArray, rowOffsets, cursor, rowGroupCount, linkedCts, workerToken),
+                    () => ReadRowGroupsIntoAsync(sourceBytes, formatOptions, resultArray, rowOffsets, cursor, rowGroupCount, maxRowGroupSize, linkedCts, workerToken),
                     workerToken);
             }
 
@@ -901,6 +906,7 @@ public static partial class OrderEventParquetExtensions
         int[] rowOffsets,
         int[] cursor,
         int rowGroupCount,
+        int maxRowGroupSize,
         global::System.Threading.CancellationTokenSource linkedCts,
         global::System.Threading.CancellationToken cancellationToken)
     {
@@ -922,28 +928,28 @@ public static partial class OrderEventParquetExtensions
             var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName);
             var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName);
 
-            while (true)
+            var buffer_0 = global::System.Buffers.ArrayPool<int>.Shared.Rent(maxRowGroupSize);
+            var buffer_1 = global::System.Buffers.ArrayPool<string?>.Shared.Rent(maxRowGroupSize);
+            var buffer_2 = global::System.Buffers.ArrayPool<double>.Shared.Rent(maxRowGroupSize);
+            var buffer_3 = global::System.Buffers.ArrayPool<decimal>.Shared.Rent(maxRowGroupSize);
+            var buffer_4 = global::System.Buffers.ArrayPool<System.DateTime>.Shared.Rent(maxRowGroupSize);
+            var buffer_5 = global::System.Buffers.ArrayPool<System.TimeSpan>.Shared.Rent(maxRowGroupSize);
+            var buffer_6 = global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Rent(maxRowGroupSize);
+            var buffer_7 = global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Rent(maxRowGroupSize);
+            var buffer_8 = global::System.Buffers.ArrayPool<byte[]>.Shared.Rent(maxRowGroupSize);
+
+            try
             {
-                int r = global::System.Threading.Interlocked.Increment(ref cursor[0]) - 1;
-                if (r >= rowGroupCount) break;
-
-                cancellationToken.ThrowIfCancellationRequested();
-                using var groupReader = reader.OpenRowGroupReader(r);
-                int rowCount = (int)groupReader.RowCount;
-                int startIdx = rowOffsets[r];
-
-                var buffer_0 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
-                var buffer_1 = global::System.Buffers.ArrayPool<string?>.Shared.Rent(rowCount);
-                var buffer_2 = global::System.Buffers.ArrayPool<double>.Shared.Rent(rowCount);
-                var buffer_3 = global::System.Buffers.ArrayPool<decimal>.Shared.Rent(rowCount);
-                var buffer_4 = global::System.Buffers.ArrayPool<System.DateTime>.Shared.Rent(rowCount);
-                var buffer_5 = global::System.Buffers.ArrayPool<System.TimeSpan>.Shared.Rent(rowCount);
-                var buffer_6 = global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Rent(rowCount);
-                var buffer_7 = global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Rent(rowCount);
-                var buffer_8 = global::System.Buffers.ArrayPool<byte[]>.Shared.Rent(rowCount);
-
-                try
+                while (true)
                 {
+                    int r = global::System.Threading.Interlocked.Increment(ref cursor[0]) - 1;
+                    if (r >= rowGroupCount) break;
+
+                    cancellationToken.ThrowIfCancellationRequested();
+                    using var groupReader = reader.OpenRowGroupReader(r);
+                    int rowCount = (int)groupReader.RowCount;
+                    int startIdx = rowOffsets[r];
+
                     await groupReader.ReadAsync<int>(field_0, new global::System.Memory<int>(buffer_0, 0, rowCount), cancellationToken: cancellationToken);
                     await groupReader.ReadAsync(field_1, new global::System.Memory<string?>(buffer_1, 0, rowCount), cancellationToken: cancellationToken);
                     await groupReader.ReadAsync<double>(field_2, new global::System.Memory<double>(buffer_2, 0, rowCount), cancellationToken: cancellationToken);
@@ -970,18 +976,18 @@ public static partial class OrderEventParquetExtensions
                         };
                     }
                 }
-                finally
-                {
-                    global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_0, clearArray: false);
-                    global::System.Buffers.ArrayPool<string?>.Shared.Return(buffer_1, clearArray: true);
-                    global::System.Buffers.ArrayPool<double>.Shared.Return(buffer_2, clearArray: false);
-                    global::System.Buffers.ArrayPool<decimal>.Shared.Return(buffer_3, clearArray: false);
-                    global::System.Buffers.ArrayPool<System.DateTime>.Shared.Return(buffer_4, clearArray: false);
-                    global::System.Buffers.ArrayPool<System.TimeSpan>.Shared.Return(buffer_5, clearArray: false);
-                    global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(buffer_6, clearArray: false);
-                    global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Return(buffer_7, clearArray: false);
-                    global::System.Buffers.ArrayPool<byte[]>.Shared.Return(buffer_8, clearArray: true);
-                }
+            }
+            finally
+            {
+                global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_0, clearArray: false);
+                global::System.Buffers.ArrayPool<string?>.Shared.Return(buffer_1, clearArray: true);
+                global::System.Buffers.ArrayPool<double>.Shared.Return(buffer_2, clearArray: false);
+                global::System.Buffers.ArrayPool<decimal>.Shared.Return(buffer_3, clearArray: false);
+                global::System.Buffers.ArrayPool<System.DateTime>.Shared.Return(buffer_4, clearArray: false);
+                global::System.Buffers.ArrayPool<System.TimeSpan>.Shared.Return(buffer_5, clearArray: false);
+                global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(buffer_6, clearArray: false);
+                global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Return(buffer_7, clearArray: false);
+                global::System.Buffers.ArrayPool<byte[]>.Shared.Return(buffer_8, clearArray: true);
             }
         }
         catch
