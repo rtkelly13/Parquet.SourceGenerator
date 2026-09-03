@@ -116,6 +116,16 @@ public static partial class LegacyCodeEmitter
         builder.AppendLine("        if (batchSize <= 0)");
         builder.AppendLine("            throw new global::System.ArgumentOutOfRangeException(nameof(options), \"ParquetSerializerOptions.RowGroupSize must be greater than zero.\");");
         builder.AppendLine();
+        builder.AppendLine($"        if (items is global::System.Collections.Generic.IReadOnlyList<{model.ClassName}> list && list.Count <= batchSize)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            using (var singleWriter = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken).ConfigureAwait(false))");
+        builder.AppendLine("            {");
+        builder.AppendLine("                ApplyCompression(singleWriter, options);");
+        builder.AppendLine("                await singleWriter.WriteRowGroupAsync(list, cancellationToken).ConfigureAwait(false);");
+        builder.AppendLine("            }");
+        builder.AppendLine("            return;");
+        builder.AppendLine("        }");
+        builder.AppendLine();
         builder.AppendLine("        using (var writer = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken).ConfigureAwait(false))");
         builder.AppendLine("        {");
         builder.AppendLine("            ApplyCompression(writer, options);");

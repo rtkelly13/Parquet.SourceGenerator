@@ -145,6 +145,13 @@ public static partial class CodeEmitter
         builder.AppendLine("        if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));");
         EmitRowGroupSizeResolution(builder);
         builder.AppendLine();
+        builder.AppendLine($"        if (items is global::System.Collections.Generic.IReadOnlyCollection<{model.ClassName}> col && col.Count <= targetChunkSize)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            await using var singleWriter = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken);");
+        builder.AppendLine("            await singleWriter.WriteParquetRowGroupAsync(col, cancellationToken);");
+        builder.AppendLine("            return;");
+        builder.AppendLine("        }");
+        builder.AppendLine();
         builder.AppendLine("        await using var writer = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken);");
         builder.AppendLine($"        var buffer = new global::System.Collections.Generic.List<{model.ClassName}>(targetChunkSize);");
         builder.AppendLine("        foreach (var item in items)");

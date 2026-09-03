@@ -253,6 +253,13 @@ public static partial class OrderEventParquetExtensions
         if (targetChunkSize <= 0)
             throw new global::System.ArgumentOutOfRangeException(nameof(options), "ParquetSerializerOptions.RowGroupSize must be greater than zero.");
 
+        if (items is global::System.Collections.Generic.IReadOnlyCollection<OrderEvent> col && col.Count <= targetChunkSize)
+        {
+            await using var singleWriter = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken);
+            await singleWriter.WriteParquetRowGroupAsync(col, cancellationToken);
+            return;
+        }
+
         await using var writer = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken);
         var buffer = new global::System.Collections.Generic.List<OrderEvent>(targetChunkSize);
         foreach (var item in items)
@@ -319,9 +326,129 @@ public static partial class OrderEventParquetExtensions
         options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
 
         await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken);
-        var results = new global::System.Collections.Generic.List<OrderEvent>((int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount));
+        int totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);
+#if NET8_0_OR_GREATER
+        var results = new global::System.Collections.Generic.List<OrderEvent>(totalRows);
+        global::System.Runtime.InteropServices.CollectionsMarshal.SetCount(results, totalRows);
+#else
+        var results = new global::System.Collections.Generic.List<OrderEvent>(totalRows);
+#endif
+        int currentOffset = 0;
 
         var fileFields = reader.Schema.DataFields;
+
+        global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
+        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
+        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
+        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
+        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
+        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName);
+        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName);
+        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName);
+        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName);
+        var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName);
+
+        for (int r = 0; r < reader.RowGroupCount; r++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using var groupReader = reader.OpenRowGroupReader(r);
+            int rowCount = (int)groupReader.RowCount;
+
+            var buffer_0 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+            var buffer_1 = global::System.Buffers.ArrayPool<string?>.Shared.Rent(rowCount);
+            var buffer_2 = global::System.Buffers.ArrayPool<double>.Shared.Rent(rowCount);
+            var buffer_3 = global::System.Buffers.ArrayPool<decimal>.Shared.Rent(rowCount);
+            var buffer_4 = global::System.Buffers.ArrayPool<System.DateTime>.Shared.Rent(rowCount);
+            var buffer_5 = global::System.Buffers.ArrayPool<System.TimeSpan>.Shared.Rent(rowCount);
+            var buffer_6 = global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Rent(rowCount);
+            var buffer_7 = global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Rent(rowCount);
+            var buffer_8 = global::System.Buffers.ArrayPool<byte[]>.Shared.Rent(rowCount);
+
+            try
+            {
+                await groupReader.ReadAsync<int>(field_0, new global::System.Memory<int>(buffer_0, 0, rowCount), cancellationToken: cancellationToken);
+                await groupReader.ReadAsync(field_1, new global::System.Memory<string?>(buffer_1, 0, rowCount), cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<double>(field_2, new global::System.Memory<double>(buffer_2, 0, rowCount), cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<decimal>(field_3, new global::System.Memory<decimal>(buffer_3, 0, rowCount), cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<System.DateTime>(field_4, new global::System.Memory<System.DateTime>(buffer_4, 0, rowCount), cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<System.TimeSpan>(field_5, new global::System.Memory<System.TimeSpan>(buffer_5, 0, rowCount), cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<global::System.Guid>(field_6, new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount), cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<global::System.Guid>(field_7, new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount), cancellationToken: cancellationToken);
+                await groupReader.ReadAsync(field_8, new global::System.Memory<byte[]?>(buffer_8, 0, rowCount), cancellationToken: cancellationToken);
+
+#if NET8_0_OR_GREATER
+                var span = global::System.Runtime.InteropServices.CollectionsMarshal.AsSpan(results);
+                for (int i = 0; i < rowCount; i++)
+                {
+                    span[currentOffset + i] = new OrderEvent
+                    {
+                        Id = buffer_0[i],
+                        Name = buffer_1[i],
+                        Score = buffer_2[i],
+                        Price = buffer_3[i],
+                        CreatedAt = buffer_4[i],
+                        Duration = buffer_5[i],
+                        CorrelationId = buffer_6[i],
+                        OptionalGuid = buffer_7[i],
+                        Payload = buffer_8[i],
+                    };
+                }
+#else
+                for (int i = 0; i < rowCount; i++)
+                {
+                    results.Add(new OrderEvent
+                    {
+                        Id = buffer_0[i],
+                        Name = buffer_1[i],
+                        Score = buffer_2[i],
+                        Price = buffer_3[i],
+                        CreatedAt = buffer_4[i],
+                        Duration = buffer_5[i],
+                        CorrelationId = buffer_6[i],
+                        OptionalGuid = buffer_7[i],
+                        Payload = buffer_8[i],
+                    });
+                }
+#endif
+                currentOffset += rowCount;
+            }
+            finally
+            {
+                global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_0, clearArray: false);
+                global::System.Buffers.ArrayPool<string?>.Shared.Return(buffer_1, clearArray: true);
+                global::System.Buffers.ArrayPool<double>.Shared.Return(buffer_2, clearArray: false);
+                global::System.Buffers.ArrayPool<decimal>.Shared.Return(buffer_3, clearArray: false);
+                global::System.Buffers.ArrayPool<System.DateTime>.Shared.Return(buffer_4, clearArray: false);
+                global::System.Buffers.ArrayPool<System.TimeSpan>.Shared.Return(buffer_5, clearArray: false);
+                global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(buffer_6, clearArray: false);
+                global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Return(buffer_7, clearArray: false);
+                global::System.Buffers.ArrayPool<byte[]>.Shared.Return(buffer_8, clearArray: true);
+            }
+        }
+
+        return results;
+    }
+
+    /// <summary>
+    /// Asynchronously deserializes all <c>OrderEvent</c> objects directly into an array using Parquet.Net low-level primitives.
+    /// Eliminates List wrapper allocations for zero-copy array materialization.
+    /// </summary>
+    public static async global::System.Threading.Tasks.Task<OrderEvent[]> ReadParquetArrayAsync(
+        global::System.IO.Stream stream,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));
+
+        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
+
+        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken);
+        int totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);
+        var results = new OrderEvent[totalRows];
+        int currentOffset = 0;
+
+        var fileFields = reader.Schema.DataFields;
+
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
         var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
         var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
@@ -363,7 +490,7 @@ public static partial class OrderEventParquetExtensions
 
                 for (int i = 0; i < rowCount; i++)
                 {
-                    results.Add(new OrderEvent
+                    results[currentOffset + i] = new OrderEvent
                     {
                         Id = buffer_0[i],
                         Name = buffer_1[i],
@@ -374,8 +501,9 @@ public static partial class OrderEventParquetExtensions
                         CorrelationId = buffer_6[i],
                         OptionalGuid = buffer_7[i],
                         Payload = buffer_8[i],
-                    });
+                    };
                 }
+                currentOffset += rowCount;
             }
             finally
             {
@@ -395,8 +523,7 @@ public static partial class OrderEventParquetExtensions
     }
 
     /// <summary>
-    /// Asynchronously deserializes all <c>OrderEvent</c> objects from a Parquet stream, materialising
-    /// into a single pre-sized array indexed by row-group offset rather than growing a list.
+    /// Asynchronously deserializes all <c>OrderEvent</c> objects from a Parquet stream directly into an array.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -408,11 +535,9 @@ public static partial class OrderEventParquetExtensions
     /// <para>
     /// For genuine decode parallelism use the <c>ReadOnlyMemory&lt;byte&gt;</c> overload, which gives
     /// every worker its own reader over its own view of the same bytes.
-    /// <paramref name="maxDegreeOfParallelism"/> is not honoured here; it is accepted so that the two
-    /// overloads share a signature.
     /// </para>
     /// </remarks>
-    public static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<OrderEvent>> ReadParquetParallelAsync(
+    public static async global::System.Threading.Tasks.Task<OrderEvent[]> ReadParquetParallelArrayAsync(
         global::System.IO.Stream stream,
         int maxDegreeOfParallelism = -1,
         global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
@@ -424,7 +549,7 @@ public static partial class OrderEventParquetExtensions
 
         await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken);
         int rgCount = reader.RowGroupCount;
-        if (rgCount == 0) return new global::System.Collections.Generic.List<OrderEvent>();
+        if (rgCount == 0) return global::System.Array.Empty<OrderEvent>();
 
         int totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);
         var resultArray = new OrderEvent[totalRows];
@@ -508,11 +633,26 @@ public static partial class OrderEventParquetExtensions
             }
         }
 
+        return resultArray;
+    }
+
+    /// <summary>
+    /// Asynchronously deserializes all <c>OrderEvent</c> objects from a Parquet stream, materialising
+    /// into a single pre-sized list indexed by row-group offset rather than growing a list.
+    /// </summary>
+    public static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<OrderEvent>> ReadParquetParallelAsync(
+        global::System.IO.Stream stream,
+        int maxDegreeOfParallelism = -1,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        var resultArray = await ReadParquetParallelArrayAsync(stream, maxDegreeOfParallelism, options, cancellationToken);
         return new global::System.Collections.Generic.List<OrderEvent>(resultArray);
     }
 
     /// <summary>
     /// Asynchronously streams <c>OrderEvent</c> items row-group by row-group as an <see cref="global::System.Collections.Generic.IAsyncEnumerable{T}"/>.
+    /// Memory usage is bounded by a single row group rather than the whole file.
     /// </summary>
     public static async global::System.Collections.Generic.IAsyncEnumerable<OrderEvent> ReadParquetStreamAsync(
         global::System.IO.Stream stream,
@@ -552,7 +692,6 @@ public static partial class OrderEventParquetExtensions
             var buffer_6 = global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Rent(rowCount);
             var buffer_7 = global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Rent(rowCount);
             var buffer_8 = global::System.Buffers.ArrayPool<byte[]>.Shared.Rent(rowCount);
-
             try
             {
                 await groupReader.ReadAsync<int>(field_0, new global::System.Memory<int>(buffer_0, 0, rowCount), cancellationToken: cancellationToken);
@@ -609,32 +748,22 @@ public static partial class OrderEventParquetExtensions
     }
 
     /// <summary>
-    /// Asynchronously deserializes all <c>OrderEvent</c> objects from an in-memory byte buffer,
-    /// decoding row groups across multiple workers.
+    /// Asynchronously deserializes all <c>OrderEvent</c> objects directly from an in-memory byte buffer into an array with zero buffer allocation.
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// Each worker gets its own <c>ParquetReader</c> over its own stream across the same buffer, so
-    /// decompression and decoding — where the cost actually is — happen concurrently. This is the
-    /// reason the parallel reader is offered on a buffer and not on an arbitrary <c>Stream</c>: a
-    /// single reader seeks within its stream, so overlapping row-group reads on one would corrupt
-    /// each other.
-    /// </para>
-    /// <para>
-    /// Parallelism is bounded by the row-group count — a single-row-group file has nothing to divide
-    /// and reads sequentially. Row groups are claimed dynamically rather than split into fixed
-    /// ranges, so uneven group sizes do not leave workers idle. Results are ordered as in the file.
-    /// </para>
-    /// </remarks>
-    /// <param name="parquetBytes">The complete Parquet file.</param>
-    /// <param name="maxDegreeOfParallelism">
-    /// Maximum concurrent workers. Non-positive means unset, in which case
-    /// <c>ParquetSerializerOptions.MaxDegreeOfParallelism</c> applies, and failing that
-    /// <c>Environment.ProcessorCount</c>.
-    /// </param>
-    /// <param name="options">Serializer options, or <c>null</c> for the defaults.</param>
-    /// <param name="cancellationToken">Cancels the read.</param>
-    public static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<OrderEvent>> ReadParquetParallelAsync(
+    public static async global::System.Threading.Tasks.Task<OrderEvent[]> ReadParquetArrayAsync(
+        global::System.ReadOnlyMemory<byte> parquetBytes,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        using var stream = CreateBufferStream(parquetBytes);
+        return await ReadParquetArrayAsync(stream, options, cancellationToken);
+    }
+
+    /// <summary>
+    /// Asynchronously deserializes all <c>OrderEvent</c> objects from an in-memory byte buffer into an array,
+    /// decoding row groups across multiple workers with zero list wrapper allocation.
+    /// </summary>
+    public static async global::System.Threading.Tasks.Task<OrderEvent[]> ReadParquetParallelArrayAsync(
         global::System.ReadOnlyMemory<byte> parquetBytes,
         int maxDegreeOfParallelism = -1,
         global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
@@ -663,7 +792,13 @@ public static partial class OrderEventParquetExtensions
             }
         }
 
-        if (rowGroupCount == 0) return new global::System.Collections.Generic.List<OrderEvent>();
+        if (rowGroupCount == 0) return global::System.Array.Empty<OrderEvent>();
+
+        // Small row count or single row group fast path: drop to sequential reader
+        if (rowGroupCount <= 1 || totalRows <= 10_000)
+        {
+            return await ReadParquetArrayAsync(sourceBytes, options, cancellationToken);
+        }
 
         var resultArray = new OrderEvent[totalRows];
         var cursor = new int[1];
@@ -690,6 +825,20 @@ public static partial class OrderEventParquetExtensions
             await global::System.Threading.Tasks.Task.WhenAll(workers);
         }
 
+        return resultArray;
+    }
+
+    /// <summary>
+    /// Asynchronously deserializes all <c>OrderEvent</c> objects from an in-memory byte buffer,
+    /// decoding row groups across multiple workers.
+    /// </summary>
+    public static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<OrderEvent>> ReadParquetParallelAsync(
+        global::System.ReadOnlyMemory<byte> parquetBytes,
+        int maxDegreeOfParallelism = -1,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        var resultArray = await ReadParquetParallelArrayAsync(parquetBytes, maxDegreeOfParallelism, options, cancellationToken);
         return new global::System.Collections.Generic.List<OrderEvent>(resultArray);
     }
 
@@ -714,6 +863,7 @@ public static partial class OrderEventParquetExtensions
         await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, formatOptions, cancellationToken: cancellationToken);
 
         var fileFields = reader.Schema.DataFields;
+
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
         var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
         var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);

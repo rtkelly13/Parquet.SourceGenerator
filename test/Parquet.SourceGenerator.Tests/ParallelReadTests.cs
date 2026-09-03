@@ -286,4 +286,62 @@ public sealed class ParallelReadTests
             }
         }
     }
+
+    [Fact]
+    public async Task ReadParquetArrayAsyncStreamAndBufferReturnsNativeArray()
+    {
+        byte[] bytes = await WriteAsync(rowCount: 50, rowGroupSize: 20);
+
+        using var stream = new MemoryStream(bytes);
+        ParallelRow[] fromStream = await ParallelRowParquetExtensions.ReadParquetArrayAsync(stream);
+        Assert.Equal(50, fromStream.Length);
+        Assert.Equal(1, fromStream[0].Id);
+        Assert.Equal(50, fromStream[49].Id);
+
+        ParallelRow[] fromBuffer = await ParallelRowParquetExtensions.ReadParquetArrayAsync(new ReadOnlyMemory<byte>(bytes));
+        Assert.Equal(50, fromBuffer.Length);
+        Assert.Equal(1, fromBuffer[0].Id);
+        Assert.Equal(50, fromBuffer[49].Id);
+    }
+
+    [Fact]
+    public async Task ReadParquetParallelArrayAsyncStreamAndBufferReturnsNativeArray()
+    {
+        byte[] bytes = await WriteAsync(rowCount: 100, rowGroupSize: 25);
+
+        using var stream = new MemoryStream(bytes);
+        ParallelRow[] fromStream = await ParallelRowParquetExtensions.ReadParquetParallelArrayAsync(stream);
+        Assert.Equal(100, fromStream.Length);
+        Assert.Equal(1, fromStream[0].Id);
+        Assert.Equal(100, fromStream[99].Id);
+
+        ParallelRow[] fromBuffer = await ParallelRowParquetExtensions.ReadParquetParallelArrayAsync(
+            new ReadOnlyMemory<byte>(bytes),
+            maxDegreeOfParallelism: 4);
+        Assert.Equal(100, fromBuffer.Length);
+        Assert.Equal(1, fromBuffer[0].Id);
+        Assert.Equal(100, fromBuffer[99].Id);
+    }
+
+    [Fact]
+    public void EmittedCodeContainsThresholdOptimizationsAndDirectArrayOverloads()
+    {
+        var model = new TargetClassModel(
+            Namespace: "TestNamespace",
+            ClassName: "TestEntity",
+            Properties: new EquatableArray<PropertyModel>(new[]
+            {
+                new PropertyModel("Id", "id", "int", null, null, 1, null, null, PropertyKind.Primitive, false),
+            }));
+
+        string source = CodeEmitter.EmitSource(model);
+
+        // Direct array reader overloads
+        Assert.Contains("Task<TestEntity[]> ReadParquetArrayAsync(", source);
+        Assert.Contains("Task<TestEntity[]> ReadParquetParallelArrayAsync(", source);
+
+        // Threshold fast paths
+        Assert.Contains("if (items is global::System.Collections.Generic.IReadOnlyCollection<TestEntity> col && col.Count <= targetChunkSize)", source);
+        Assert.Contains("if (rowGroupCount <= 1 || totalRows <= 10_000)", source);
+    }
 }

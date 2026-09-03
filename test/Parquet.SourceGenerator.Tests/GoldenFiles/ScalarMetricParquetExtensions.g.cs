@@ -245,6 +245,13 @@ public static partial class ScalarMetricParquetExtensions
         if (targetChunkSize <= 0)
             throw new global::System.ArgumentOutOfRangeException(nameof(options), "ParquetSerializerOptions.RowGroupSize must be greater than zero.");
 
+        if (items is global::System.Collections.Generic.IReadOnlyCollection<ScalarMetric> col && col.Count <= targetChunkSize)
+        {
+            await using var singleWriter = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken);
+            await singleWriter.WriteParquetRowGroupAsync(col, cancellationToken);
+            return;
+        }
+
         await using var writer = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken);
         var buffer = new global::System.Collections.Generic.List<ScalarMetric>(targetChunkSize);
         foreach (var item in items)
@@ -311,9 +318,123 @@ public static partial class ScalarMetricParquetExtensions
         options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
 
         await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken);
-        var results = new global::System.Collections.Generic.List<ScalarMetric>((int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount));
+        int totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);
+#if NET8_0_OR_GREATER
+        var results = new global::System.Collections.Generic.List<ScalarMetric>(totalRows);
+        global::System.Runtime.InteropServices.CollectionsMarshal.SetCount(results, totalRows);
+#else
+        var results = new global::System.Collections.Generic.List<ScalarMetric>(totalRows);
+#endif
+        int currentOffset = 0;
 
         var fileFields = reader.Schema.DataFields;
+
+        global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
+        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
+        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
+        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
+        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
+        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName);
+        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName);
+        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName);
+        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName);
+
+        for (int r = 0; r < reader.RowGroupCount; r++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using var groupReader = reader.OpenRowGroupReader(r);
+            int rowCount = (int)groupReader.RowCount;
+
+            var buffer_0 = global::System.Buffers.ArrayPool<long>.Shared.Rent(rowCount);
+            var buffer_1 = global::System.Buffers.ArrayPool<bool>.Shared.Rent(rowCount);
+            var buffer_2 = global::System.Buffers.ArrayPool<bool?>.Shared.Rent(rowCount);
+            var buffer_3 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+            var buffer_4 = global::System.Buffers.ArrayPool<int?>.Shared.Rent(rowCount);
+            var buffer_5 = global::System.Buffers.ArrayPool<byte>.Shared.Rent(rowCount);
+            var buffer_6 = global::System.Buffers.ArrayPool<short>.Shared.Rent(rowCount);
+            var buffer_7 = global::System.Buffers.ArrayPool<float>.Shared.Rent(rowCount);
+
+            try
+            {
+                await groupReader.ReadAsync<long>(field_0, new global::System.Memory<long>(buffer_0, 0, rowCount), cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<bool>(field_1, new global::System.Memory<bool>(buffer_1, 0, rowCount), cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<bool>(field_2, new global::System.Memory<bool?>(buffer_2, 0, rowCount), cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<int>(field_3, new global::System.Memory<int>(buffer_3, 0, rowCount), cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<int>(field_4, new global::System.Memory<int?>(buffer_4, 0, rowCount), cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<byte>(field_5, new global::System.Memory<byte>(buffer_5, 0, rowCount), cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<short>(field_6, new global::System.Memory<short>(buffer_6, 0, rowCount), cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<float>(field_7, new global::System.Memory<float>(buffer_7, 0, rowCount), cancellationToken: cancellationToken);
+
+#if NET8_0_OR_GREATER
+                var span = global::System.Runtime.InteropServices.CollectionsMarshal.AsSpan(results);
+                for (int i = 0; i < rowCount; i++)
+                {
+                    span[currentOffset + i] = new ScalarMetric
+                    {
+                        RowId = buffer_0[i],
+                        Flag = buffer_1[i],
+                        NullableFlag = buffer_2[i],
+                        StatusCode = (SampleDomain.Models.ProcessStatus)buffer_3[i],
+                        OptionalStatus = buffer_4[i] is null ? (SampleDomain.Models.ProcessStatus?)null : (SampleDomain.Models.ProcessStatus)buffer_4[i]!,
+                        TinyNum = buffer_5[i],
+                        ShortNum = buffer_6[i],
+                        FloatVal = buffer_7[i],
+                    };
+                }
+#else
+                for (int i = 0; i < rowCount; i++)
+                {
+                    results.Add(new ScalarMetric
+                    {
+                        RowId = buffer_0[i],
+                        Flag = buffer_1[i],
+                        NullableFlag = buffer_2[i],
+                        StatusCode = (SampleDomain.Models.ProcessStatus)buffer_3[i],
+                        OptionalStatus = buffer_4[i] is null ? (SampleDomain.Models.ProcessStatus?)null : (SampleDomain.Models.ProcessStatus)buffer_4[i]!,
+                        TinyNum = buffer_5[i],
+                        ShortNum = buffer_6[i],
+                        FloatVal = buffer_7[i],
+                    });
+                }
+#endif
+                currentOffset += rowCount;
+            }
+            finally
+            {
+                global::System.Buffers.ArrayPool<long>.Shared.Return(buffer_0, clearArray: false);
+                global::System.Buffers.ArrayPool<bool>.Shared.Return(buffer_1, clearArray: false);
+                global::System.Buffers.ArrayPool<bool?>.Shared.Return(buffer_2, clearArray: false);
+                global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_3, clearArray: false);
+                global::System.Buffers.ArrayPool<int?>.Shared.Return(buffer_4, clearArray: false);
+                global::System.Buffers.ArrayPool<byte>.Shared.Return(buffer_5, clearArray: false);
+                global::System.Buffers.ArrayPool<short>.Shared.Return(buffer_6, clearArray: false);
+                global::System.Buffers.ArrayPool<float>.Shared.Return(buffer_7, clearArray: false);
+            }
+        }
+
+        return results;
+    }
+
+    /// <summary>
+    /// Asynchronously deserializes all <c>ScalarMetric</c> objects directly into an array using Parquet.Net low-level primitives.
+    /// Eliminates List wrapper allocations for zero-copy array materialization.
+    /// </summary>
+    public static async global::System.Threading.Tasks.Task<ScalarMetric[]> ReadParquetArrayAsync(
+        global::System.IO.Stream stream,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));
+
+        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
+
+        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken);
+        int totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);
+        var results = new ScalarMetric[totalRows];
+        int currentOffset = 0;
+
+        var fileFields = reader.Schema.DataFields;
+
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
         var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
         var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
@@ -352,7 +473,7 @@ public static partial class ScalarMetricParquetExtensions
 
                 for (int i = 0; i < rowCount; i++)
                 {
-                    results.Add(new ScalarMetric
+                    results[currentOffset + i] = new ScalarMetric
                     {
                         RowId = buffer_0[i],
                         Flag = buffer_1[i],
@@ -362,8 +483,9 @@ public static partial class ScalarMetricParquetExtensions
                         TinyNum = buffer_5[i],
                         ShortNum = buffer_6[i],
                         FloatVal = buffer_7[i],
-                    });
+                    };
                 }
+                currentOffset += rowCount;
             }
             finally
             {
@@ -382,8 +504,7 @@ public static partial class ScalarMetricParquetExtensions
     }
 
     /// <summary>
-    /// Asynchronously deserializes all <c>ScalarMetric</c> objects from a Parquet stream, materialising
-    /// into a single pre-sized array indexed by row-group offset rather than growing a list.
+    /// Asynchronously deserializes all <c>ScalarMetric</c> objects from a Parquet stream directly into an array.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -395,11 +516,9 @@ public static partial class ScalarMetricParquetExtensions
     /// <para>
     /// For genuine decode parallelism use the <c>ReadOnlyMemory&lt;byte&gt;</c> overload, which gives
     /// every worker its own reader over its own view of the same bytes.
-    /// <paramref name="maxDegreeOfParallelism"/> is not honoured here; it is accepted so that the two
-    /// overloads share a signature.
     /// </para>
     /// </remarks>
-    public static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<ScalarMetric>> ReadParquetParallelAsync(
+    public static async global::System.Threading.Tasks.Task<ScalarMetric[]> ReadParquetParallelArrayAsync(
         global::System.IO.Stream stream,
         int maxDegreeOfParallelism = -1,
         global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
@@ -411,7 +530,7 @@ public static partial class ScalarMetricParquetExtensions
 
         await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken);
         int rgCount = reader.RowGroupCount;
-        if (rgCount == 0) return new global::System.Collections.Generic.List<ScalarMetric>();
+        if (rgCount == 0) return global::System.Array.Empty<ScalarMetric>();
 
         int totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);
         var resultArray = new ScalarMetric[totalRows];
@@ -490,11 +609,26 @@ public static partial class ScalarMetricParquetExtensions
             }
         }
 
+        return resultArray;
+    }
+
+    /// <summary>
+    /// Asynchronously deserializes all <c>ScalarMetric</c> objects from a Parquet stream, materialising
+    /// into a single pre-sized list indexed by row-group offset rather than growing a list.
+    /// </summary>
+    public static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<ScalarMetric>> ReadParquetParallelAsync(
+        global::System.IO.Stream stream,
+        int maxDegreeOfParallelism = -1,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        var resultArray = await ReadParquetParallelArrayAsync(stream, maxDegreeOfParallelism, options, cancellationToken);
         return new global::System.Collections.Generic.List<ScalarMetric>(resultArray);
     }
 
     /// <summary>
     /// Asynchronously streams <c>ScalarMetric</c> items row-group by row-group as an <see cref="global::System.Collections.Generic.IAsyncEnumerable{T}"/>.
+    /// Memory usage is bounded by a single row group rather than the whole file.
     /// </summary>
     public static async global::System.Collections.Generic.IAsyncEnumerable<ScalarMetric> ReadParquetStreamAsync(
         global::System.IO.Stream stream,
@@ -532,7 +666,6 @@ public static partial class ScalarMetricParquetExtensions
             var buffer_5 = global::System.Buffers.ArrayPool<byte>.Shared.Rent(rowCount);
             var buffer_6 = global::System.Buffers.ArrayPool<short>.Shared.Rent(rowCount);
             var buffer_7 = global::System.Buffers.ArrayPool<float>.Shared.Rent(rowCount);
-
             try
             {
                 await groupReader.ReadAsync<long>(field_0, new global::System.Memory<long>(buffer_0, 0, rowCount), cancellationToken: cancellationToken);
@@ -586,32 +719,22 @@ public static partial class ScalarMetricParquetExtensions
     }
 
     /// <summary>
-    /// Asynchronously deserializes all <c>ScalarMetric</c> objects from an in-memory byte buffer,
-    /// decoding row groups across multiple workers.
+    /// Asynchronously deserializes all <c>ScalarMetric</c> objects directly from an in-memory byte buffer into an array with zero buffer allocation.
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// Each worker gets its own <c>ParquetReader</c> over its own stream across the same buffer, so
-    /// decompression and decoding — where the cost actually is — happen concurrently. This is the
-    /// reason the parallel reader is offered on a buffer and not on an arbitrary <c>Stream</c>: a
-    /// single reader seeks within its stream, so overlapping row-group reads on one would corrupt
-    /// each other.
-    /// </para>
-    /// <para>
-    /// Parallelism is bounded by the row-group count — a single-row-group file has nothing to divide
-    /// and reads sequentially. Row groups are claimed dynamically rather than split into fixed
-    /// ranges, so uneven group sizes do not leave workers idle. Results are ordered as in the file.
-    /// </para>
-    /// </remarks>
-    /// <param name="parquetBytes">The complete Parquet file.</param>
-    /// <param name="maxDegreeOfParallelism">
-    /// Maximum concurrent workers. Non-positive means unset, in which case
-    /// <c>ParquetSerializerOptions.MaxDegreeOfParallelism</c> applies, and failing that
-    /// <c>Environment.ProcessorCount</c>.
-    /// </param>
-    /// <param name="options">Serializer options, or <c>null</c> for the defaults.</param>
-    /// <param name="cancellationToken">Cancels the read.</param>
-    public static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<ScalarMetric>> ReadParquetParallelAsync(
+    public static async global::System.Threading.Tasks.Task<ScalarMetric[]> ReadParquetArrayAsync(
+        global::System.ReadOnlyMemory<byte> parquetBytes,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        using var stream = CreateBufferStream(parquetBytes);
+        return await ReadParquetArrayAsync(stream, options, cancellationToken);
+    }
+
+    /// <summary>
+    /// Asynchronously deserializes all <c>ScalarMetric</c> objects from an in-memory byte buffer into an array,
+    /// decoding row groups across multiple workers with zero list wrapper allocation.
+    /// </summary>
+    public static async global::System.Threading.Tasks.Task<ScalarMetric[]> ReadParquetParallelArrayAsync(
         global::System.ReadOnlyMemory<byte> parquetBytes,
         int maxDegreeOfParallelism = -1,
         global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
@@ -640,7 +763,13 @@ public static partial class ScalarMetricParquetExtensions
             }
         }
 
-        if (rowGroupCount == 0) return new global::System.Collections.Generic.List<ScalarMetric>();
+        if (rowGroupCount == 0) return global::System.Array.Empty<ScalarMetric>();
+
+        // Small row count or single row group fast path: drop to sequential reader
+        if (rowGroupCount <= 1 || totalRows <= 10_000)
+        {
+            return await ReadParquetArrayAsync(sourceBytes, options, cancellationToken);
+        }
 
         var resultArray = new ScalarMetric[totalRows];
         var cursor = new int[1];
@@ -667,6 +796,20 @@ public static partial class ScalarMetricParquetExtensions
             await global::System.Threading.Tasks.Task.WhenAll(workers);
         }
 
+        return resultArray;
+    }
+
+    /// <summary>
+    /// Asynchronously deserializes all <c>ScalarMetric</c> objects from an in-memory byte buffer,
+    /// decoding row groups across multiple workers.
+    /// </summary>
+    public static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<ScalarMetric>> ReadParquetParallelAsync(
+        global::System.ReadOnlyMemory<byte> parquetBytes,
+        int maxDegreeOfParallelism = -1,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        var resultArray = await ReadParquetParallelArrayAsync(parquetBytes, maxDegreeOfParallelism, options, cancellationToken);
         return new global::System.Collections.Generic.List<ScalarMetric>(resultArray);
     }
 
@@ -691,6 +834,7 @@ public static partial class ScalarMetricParquetExtensions
         await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, formatOptions, cancellationToken: cancellationToken);
 
         var fileFields = reader.Schema.DataFields;
+
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
         var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
         var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);

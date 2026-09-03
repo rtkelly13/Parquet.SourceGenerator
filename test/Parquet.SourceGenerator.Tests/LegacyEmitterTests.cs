@@ -206,6 +206,18 @@ public class LegacyEmitterTests
         Assert.DoesNotContain(diagnostics, d => d.Id == DiagnosticDescriptors.UnsupportedPropertyType.Id);
     }
 
+    [Fact]
+    public void LegacyEmittedCodeContainsReadParquetArrayAsyncAndSmallBatchOptimization()
+    {
+        string code = Emit(Prop("Id", "id", "int", LegacyModels::PropertyKind.Primitive, isNullable: false));
+
+        // Direct array reader overload
+        Assert.Contains("Task<TestModel[]> ReadParquetArrayAsync(", code);
+
+        // Batched write small-collection fast path
+        Assert.Contains("if (items is global::System.Collections.Generic.IReadOnlyList<TestModel> list && list.Count <= batchSize)", code);
+    }
+
     // ──────────────────────────────────────────────────────────
     //  HELPERS
     // ──────────────────────────────────────────────────────────
