@@ -53,29 +53,11 @@ public static partial class CodeEmitter
         };
     }
 
-    private static string GetWriteExpression(PropertyModel prop, string valueExpr)
-    {
-        return prop.Kind switch
-        {
-            PropertyKind.Guid => valueExpr, // Direct Guid value copy! Zero allocations!
-            PropertyKind.Enum when prop.IsNullable => $"{valueExpr} is null ? ({prop.EnumUnderlyingTypeName ?? "int"}?)null : ({prop.EnumUnderlyingTypeName ?? "int"}){valueExpr}.Value",
-            PropertyKind.Enum => $"({prop.EnumUnderlyingTypeName ?? "int"}){valueExpr}",
-            _ => valueExpr,
-        };
-    }
+    private static string GetWriteExpression(PropertyModel prop, string valueExpr) =>
+        EmitterShared.GetWriteExpression(prop, valueExpr);
 
-    private static string GetReadExpression(PropertyModel prop, string valueExpr)
-    {
-        return prop.Kind switch
-        {
-            PropertyKind.Guid => valueExpr, // Direct Guid value read! Zero allocations!
-            PropertyKind.Enum when prop.IsNullable =>
-                $"{valueExpr} is null ? ({prop.TypeName})null : ({prop.TypeName.TrimEnd('?')}){valueExpr}!",
-            PropertyKind.Enum =>
-                $"({prop.TypeName.TrimEnd('?')}){valueExpr}",
-            _ => valueExpr,
-        };
-    }
+    private static string GetReadExpression(PropertyModel prop, string valueExpr) =>
+        EmitterShared.GetReadExpression(prop, valueExpr);
 
     private static string GetWritePrimitiveCall(PropertyModel prop, string fieldAccess, string bufName)
     {
@@ -201,5 +183,5 @@ public static partial class CodeEmitter
         builder.AppendLine("    }");
     }
 
-    private static string BoolLiteral(bool value) => value ? "true" : "false";
+    private static string BoolLiteral(bool value) => EmitterShared.BoolLiteral(value);
 }
