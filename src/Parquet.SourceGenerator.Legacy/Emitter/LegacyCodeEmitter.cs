@@ -293,16 +293,18 @@ public static class LegacyCodeEmitter
         // Row counts come from the reader's row-group metadata. The previous form opened every row
         // group once to total the rows and then opened them all again to read — a second full pass
         // over the file whose only product was an int.
-        builder.AppendLine("            int totalRows = 0;");
-        builder.AppendLine("            for (int r = 0; r < reader.RowGroupCount; r++)");
-        builder.AppendLine("            {");
-        builder.AppendLine("                totalRows += (int)reader.RowGroups[r].RowCount;");
-        builder.AppendLine("            }");
-        builder.AppendLine();
-        builder.AppendLine($"            var results = new global::System.Collections.Generic.List<{model.ClassName}>(totalRows);");
-        builder.AppendLine();
-        // Field resolution is per-file, not per-row-group. Doing it inside the loop also re-invoked
-        // reader.Schema.GetDataFields(), which allocates a fresh array on every call.
+            builder.AppendLine("            int rgCount = reader.RowGroupCount;");
+            builder.AppendLine($"            if (rgCount == 0) return new global::System.Collections.Generic.List<{model.ClassName}>();");
+            builder.AppendLine();
+            builder.AppendLine("            int totalRows = 0;");
+            builder.AppendLine("            var rowOffsets = new int[rgCount];");
+            builder.AppendLine("            for (int r = 0; r < rgCount; r++)");
+            builder.AppendLine("            {");
+            builder.AppendLine("                rowOffsets[r] = totalRows;");
+            builder.AppendLine("                totalRows += (int)reader.RowGroups[r].RowCount;");
+            builder.AppendLine("            }");
+            builder.AppendLine();
+            builder.AppendLine($"            var resultArray = new {model.ClassName}[totalRows];");
         builder.AppendLine("            var fileFields = reader.Schema.GetDataFields();");
         builder.AppendLine("            global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;");
 
@@ -312,13 +314,14 @@ public static class LegacyCodeEmitter
         }
 
         builder.AppendLine();
-        builder.AppendLine("            for (int r = 0; r < reader.RowGroupCount; r++)");
+        builder.AppendLine("            for (int r = 0; r < rgCount; r++)");
         builder.AppendLine("            {");
         builder.AppendLine("                cancellationToken.ThrowIfCancellationRequested();");
         builder.AppendLine("                using (var rgReader = reader.OpenRowGroupReader(r))");
         builder.AppendLine("                {");
         builder.AppendLine("                    int groupRows = (int)rgReader.RowCount;");
         builder.AppendLine("                    if (groupRows == 0) continue;");
+        builder.AppendLine("                    int startIdx = rowOffsets[r];");
         builder.AppendLine();
 
         for (int i = 0; i < model.Properties.Length; i++)
@@ -332,7 +335,7 @@ public static class LegacyCodeEmitter
         builder.AppendLine();
         builder.AppendLine("                    for (int k = 0; k < groupRows; k++)");
         builder.AppendLine("                    {");
-        builder.AppendLine($"                        results.Add(new {model.ClassName}");
+        builder.AppendLine($"                        resultArray[startIdx + k] = new {model.ClassName}");
         builder.AppendLine("                        {");
 
         for (int i = 0; i < model.Properties.Length; i++)
@@ -341,11 +344,11 @@ public static class LegacyCodeEmitter
             builder.AppendLine($"                            {prop.Name} = {GetReadExpression(prop, $"data_{i}[k]")},");
         }
 
-        builder.AppendLine("                        });");
+        builder.AppendLine("                        };");
         builder.AppendLine("                    }");
         builder.AppendLine("                }");
         builder.AppendLine("            }");
-        builder.AppendLine("            return results;");
+        builder.AppendLine($"            return new global::System.Collections.Generic.List<{model.ClassName}>(resultArray);");
         builder.AppendLine("        }");
         builder.AppendLine("    }");
     }
