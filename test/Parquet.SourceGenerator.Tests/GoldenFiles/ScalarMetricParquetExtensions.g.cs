@@ -64,7 +64,17 @@ public static partial class ScalarMetricParquetExtensions
             }
         }
 
-        return byName.TryGetValue(expected.Name, out var match) ? match : expected;
+        if (byName.TryGetValue(expected.Name, out var match))
+        {
+            return match;
+        }
+
+        if (!expected.IsNullable)
+        {
+            throw new global::System.IO.InvalidDataException($"Required column '{expected.Name}' was not found in the Parquet file schema.");
+        }
+
+        return expected;
     }
 
     /// <summary>
