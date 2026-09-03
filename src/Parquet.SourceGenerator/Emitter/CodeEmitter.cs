@@ -479,6 +479,7 @@ public static class CodeEmitter
         builder.AppendLine("    /// overloads share a signature.");
         builder.AppendLine("    /// </para>");
         builder.AppendLine("    /// </remarks>");
+        builder.AppendLine("    [global::System.Obsolete(\"Arbitrary streams cannot be read in parallel. Use ReadParquetAsync(stream) for sequential stream reading, or ReadParquetParallelAsync(ReadOnlyMemory<byte>) for true parallel decoding.\")]");
         builder.AppendLine($"    public static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<{model.ClassName}>> ReadParquetParallelAsync(");
         builder.AppendLine($"        global::System.IO.Stream stream,");
         builder.AppendLine($"        int maxDegreeOfParallelism = -1,");

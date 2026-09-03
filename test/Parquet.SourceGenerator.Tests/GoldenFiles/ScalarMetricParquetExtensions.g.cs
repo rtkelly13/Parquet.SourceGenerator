@@ -399,6 +399,7 @@ public static partial class ScalarMetricParquetExtensions
     /// overloads share a signature.
     /// </para>
     /// </remarks>
+    [global::System.Obsolete("Arbitrary streams cannot be read in parallel. Use ReadParquetAsync(stream) for sequential stream reading, or ReadParquetParallelAsync(ReadOnlyMemory<byte>) for true parallel decoding.")]
     public static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<ScalarMetric>> ReadParquetParallelAsync(
         global::System.IO.Stream stream,
         int maxDegreeOfParallelism = -1,
