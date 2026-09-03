@@ -952,18 +952,13 @@ public static class CodeEmitter
         builder.AppendLine("            : new global::System.ReadOnlyMemory<byte>(parquetBytes.ToArray());");
         builder.AppendLine();
         builder.AppendLine("        int rowGroupCount;");
-        builder.AppendLine("        int totalRows = 0;");
+        builder.AppendLine("        int totalRows;");
+        builder.AppendLine("        int maxRowGroupSize;");
         builder.AppendLine("        int[] rowOffsets;");
         builder.AppendLine("        using (var probeStream = CreateBufferStream(sourceBytes))");
         builder.AppendLine("        {");
         builder.AppendLine("            await using var probe = await global::Parquet.ParquetReader.CreateAsync(probeStream, formatOptions, cancellationToken: cancellationToken);");
-        builder.AppendLine("            rowGroupCount = probe.RowGroupCount;");
-        builder.AppendLine("            rowOffsets = new int[rowGroupCount];");
-        builder.AppendLine("            for (int r = 0; r < rowGroupCount; r++)");
-        builder.AppendLine("            {");
-        builder.AppendLine("                rowOffsets[r] = totalRows;");
-        builder.AppendLine("                totalRows += (int)probe.RowGroups[r].RowCount;");
-        builder.AppendLine("            }");
+        RowGroupLayoutComponent.EmitIndexedLayoutProbe(builder, "probe", "rowGroupCount", "rowOffsets", "totalRows", "maxRowGroupSize", declareVariables: false, indent: "            ");
         builder.AppendLine("        }");
         builder.AppendLine();
         builder.AppendLine($"        if (rowGroupCount == 0) return global::System.Array.Empty<{model.ClassName}>();");
@@ -986,7 +981,7 @@ public static class CodeEmitter
         builder.AppendLine();
         builder.AppendLine("        if (workerCount == 1)");
         builder.AppendLine("        {");
-        builder.AppendLine("            await ReadRowGroupsIntoAsync(sourceBytes, formatOptions, resultArray, rowOffsets, cursor, rowGroupCount, linkedCts, workerToken);");
+        builder.AppendLine("            await ReadRowGroupsIntoAsync(sourceBytes, formatOptions, resultArray, rowOffsets, cursor, rowGroupCount, maxRowGroupSize, linkedCts, workerToken);");
         builder.AppendLine("        }");
         builder.AppendLine("        else");
         builder.AppendLine("        {");
@@ -994,7 +989,7 @@ public static class CodeEmitter
         builder.AppendLine("            for (int w = 0; w < workerCount; w++)");
         builder.AppendLine("            {");
         builder.AppendLine("                workers[w] = global::System.Threading.Tasks.Task.Run(");
-        builder.AppendLine("                    () => ReadRowGroupsIntoAsync(sourceBytes, formatOptions, resultArray, rowOffsets, cursor, rowGroupCount, linkedCts, workerToken),");
+        builder.AppendLine("                    () => ReadRowGroupsIntoAsync(sourceBytes, formatOptions, resultArray, rowOffsets, cursor, rowGroupCount, maxRowGroupSize, linkedCts, workerToken),");
         builder.AppendLine("                    workerToken);");
         builder.AppendLine("            }");
         builder.AppendLine();
@@ -1048,6 +1043,7 @@ public static class CodeEmitter
         builder.AppendLine("        int[] rowOffsets,");
         builder.AppendLine("        int[] cursor,");
         builder.AppendLine("        int rowGroupCount,");
+        builder.AppendLine("        int maxRowGroupSize,");
         builder.AppendLine("        global::System.Threading.CancellationTokenSource linkedCts,");
         builder.AppendLine("        global::System.Threading.CancellationToken cancellationToken)");
         builder.AppendLine("    {");
@@ -1069,20 +1065,20 @@ public static class CodeEmitter
             builder.AppendLine();
         }
 
-        builder.AppendLine("            while (true)");
+        BufferPoolComponent.EmitRentals(builder, model, "maxRowGroupSize", indent: "            ");
+        builder.AppendLine();
+        builder.AppendLine("            try");
         builder.AppendLine("            {");
-        builder.AppendLine("                int r = global::System.Threading.Interlocked.Increment(ref cursor[0]) - 1;");
-        builder.AppendLine("                if (r >= rowGroupCount) break;");
-        builder.AppendLine();
-        builder.AppendLine("                cancellationToken.ThrowIfCancellationRequested();");
-        builder.AppendLine("                using var groupReader = reader.OpenRowGroupReader(r);");
-        builder.AppendLine("                int rowCount = (int)groupReader.RowCount;");
-        builder.AppendLine("                int startIdx = rowOffsets[r];");
-        builder.AppendLine();
-        BufferPoolComponent.EmitRentals(builder, model, "rowCount", indent: "                ");
-        builder.AppendLine();
-        builder.AppendLine("                try");
+        builder.AppendLine("                while (true)");
         builder.AppendLine("                {");
+        builder.AppendLine("                    int r = global::System.Threading.Interlocked.Increment(ref cursor[0]) - 1;");
+        builder.AppendLine("                    if (r >= rowGroupCount) break;");
+        builder.AppendLine();
+        builder.AppendLine("                    cancellationToken.ThrowIfCancellationRequested();");
+        builder.AppendLine("                    using var groupReader = reader.OpenRowGroupReader(r);");
+        builder.AppendLine("                    int rowCount = (int)groupReader.RowCount;");
+        builder.AppendLine("                    int startIdx = rowOffsets[r];");
+        builder.AppendLine();
         for (int i = 0; i < model.Properties.Length; i++)
         {
             PropertyModel prop = model.Properties[i];
@@ -1095,10 +1091,10 @@ public static class CodeEmitter
         PropertyMappingComponent.EmitObjectMaterialization(builder, model, "target", "startIdx", "i", indent: "                        ");
         builder.AppendLine("                    }");
         builder.AppendLine("                }");
-        builder.AppendLine("                finally");
-        builder.AppendLine("                {");
-        BufferPoolComponent.EmitReturns(builder, model, indent: "                    ");
-        builder.AppendLine("                }");
+        builder.AppendLine("            }");
+        builder.AppendLine("            finally");
+        builder.AppendLine("            {");
+        BufferPoolComponent.EmitReturns(builder, model, indent: "                ");
         builder.AppendLine("            }");
         builder.AppendLine("        }");
         builder.AppendLine("        catch");

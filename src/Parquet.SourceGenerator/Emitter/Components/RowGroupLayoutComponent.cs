@@ -43,12 +43,23 @@ internal static class RowGroupLayoutComponent
         string offsetsVar = "rowOffsets",
         string rowCountVar = "totalRows",
         string maxRowVar = "maxRowGroupSize",
+        bool declareVariables = true,
         string indent = "        ")
     {
-        builder.AppendLine($"{indent}int {rowGroupCountVar} = {readerVar}.RowGroupCount;");
-        builder.AppendLine($"{indent}int {rowCountVar} = 0;");
-        builder.AppendLine($"{indent}int {maxRowVar} = 0;");
-        builder.AppendLine($"{indent}var {offsetsVar} = new int[{rowGroupCountVar}];");
+        if (declareVariables)
+        {
+            builder.AppendLine($"{indent}int {rowGroupCountVar} = {readerVar}.RowGroupCount;");
+            builder.AppendLine($"{indent}int {rowCountVar} = 0;");
+            builder.AppendLine($"{indent}int {maxRowVar} = 0;");
+            builder.AppendLine($"{indent}var {offsetsVar} = new int[{rowGroupCountVar}];");
+        }
+        else
+        {
+            builder.AppendLine($"{indent}{rowGroupCountVar} = {readerVar}.RowGroupCount;");
+            builder.AppendLine($"{indent}{rowCountVar} = 0;");
+            builder.AppendLine($"{indent}{maxRowVar} = 0;");
+            builder.AppendLine($"{indent}{offsetsVar} = new int[{rowGroupCountVar}];");
+        }
         builder.AppendLine($"{indent}for (int r = 0; r < {rowGroupCountVar}; r++)");
         builder.AppendLine($"{indent}{{");
         builder.AppendLine($"{indent}    int rc = (int){readerVar}.RowGroups[r].RowCount;");
