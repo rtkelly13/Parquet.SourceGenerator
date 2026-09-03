@@ -48,7 +48,7 @@ public class ScalingSerializationBenchmark
 {
     private List<ScaleEvent> _data = null!;
 
-    [Params(1_000, 10_000, 100_000)]
+    [Params(1_000, 10_000, 100_000, 1_000_000)]
     public int Count { get; set; }
 
     [GlobalSetup]
@@ -105,7 +105,7 @@ public class ScalingDeserializationBenchmark
 {
     private byte[] _parquetBytes = null!;
 
-    [Params(1_000, 10_000, 100_000)]
+    [Params(1_000, 10_000, 100_000, 1_000_000)]
     public int Count { get; set; }
 
     [GlobalSetup]
