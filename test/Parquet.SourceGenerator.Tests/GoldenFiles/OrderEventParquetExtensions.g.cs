@@ -149,6 +149,26 @@ public static partial class OrderEventParquetExtensions
         {
             if (chunk is global::System.Collections.Generic.List<OrderEvent> listItems)
             {
+#if NET6_0_OR_GREATER
+                void ExtractSpan()
+                {
+                    var span = global::System.Runtime.InteropServices.CollectionsMarshal.AsSpan(listItems);
+                    for (int i = 0; i < count; i++)
+                    {
+                        var item = span[i];
+                        buffer_0[i] = item.Id;
+                        buffer_1[i] = item.Name;
+                        buffer_2[i] = item.Score;
+                        buffer_3[i] = item.Price;
+                        buffer_4[i] = item.CreatedAt;
+                        buffer_5[i] = item.Duration;
+                        buffer_6[i] = item.CorrelationId;
+                        buffer_7[i] = item.OptionalGuid;
+                        buffer_8[i] = item.Payload;
+                    }
+                }
+                ExtractSpan();
+#else
                 for (int i = 0; i < count; i++)
                 {
                     var item = listItems[i];
@@ -162,6 +182,7 @@ public static partial class OrderEventParquetExtensions
                     buffer_7[i] = item.OptionalGuid;
                     buffer_8[i] = item.Payload;
                 }
+#endif
             }
             else if (chunk is OrderEvent[] arrayItems)
             {

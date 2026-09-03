@@ -146,6 +146,25 @@ public static partial class ScalarMetricParquetExtensions
         {
             if (chunk is global::System.Collections.Generic.List<ScalarMetric> listItems)
             {
+#if NET6_0_OR_GREATER
+                void ExtractSpan()
+                {
+                    var span = global::System.Runtime.InteropServices.CollectionsMarshal.AsSpan(listItems);
+                    for (int i = 0; i < count; i++)
+                    {
+                        var item = span[i];
+                        buffer_0[i] = item.RowId;
+                        buffer_1[i] = item.Flag;
+                        buffer_2[i] = item.NullableFlag;
+                        buffer_3[i] = (int)item.StatusCode;
+                        buffer_4[i] = item.OptionalStatus is null ? (int?)null : (int)item.OptionalStatus.Value;
+                        buffer_5[i] = item.TinyNum;
+                        buffer_6[i] = item.ShortNum;
+                        buffer_7[i] = item.FloatVal;
+                    }
+                }
+                ExtractSpan();
+#else
                 for (int i = 0; i < count; i++)
                 {
                     var item = listItems[i];
@@ -158,6 +177,7 @@ public static partial class ScalarMetricParquetExtensions
                     buffer_6[i] = item.ShortNum;
                     buffer_7[i] = item.FloatVal;
                 }
+#endif
             }
             else if (chunk is ScalarMetric[] arrayItems)
             {
