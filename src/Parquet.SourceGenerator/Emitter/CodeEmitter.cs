@@ -975,6 +975,8 @@ public static class CodeEmitter
         builder.AppendLine("        }");
         builder.AppendLine();
         builder.AppendLine($"        var resultArray = new {model.ClassName}[totalRows];");
+        builder.AppendLine("        using var linkedCts = global::System.Threading.CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);");
+        builder.AppendLine("        var workerToken = linkedCts.Token;");
         builder.AppendLine("        var cursor = new int[1];");
         builder.AppendLine();
         builder.AppendLine("        int requested = maxDegreeOfParallelism > 0");
@@ -984,7 +986,7 @@ public static class CodeEmitter
         builder.AppendLine();
         builder.AppendLine("        if (workerCount == 1)");
         builder.AppendLine("        {");
-        builder.AppendLine("            await ReadRowGroupsIntoAsync(sourceBytes, formatOptions, resultArray, rowOffsets, cursor, rowGroupCount, cancellationToken);");
+        builder.AppendLine("            await ReadRowGroupsIntoAsync(sourceBytes, formatOptions, resultArray, rowOffsets, cursor, rowGroupCount, linkedCts, workerToken);");
         builder.AppendLine("        }");
         builder.AppendLine("        else");
         builder.AppendLine("        {");
@@ -992,11 +994,19 @@ public static class CodeEmitter
         builder.AppendLine("            for (int w = 0; w < workerCount; w++)");
         builder.AppendLine("            {");
         builder.AppendLine("                workers[w] = global::System.Threading.Tasks.Task.Run(");
-        builder.AppendLine("                    () => ReadRowGroupsIntoAsync(sourceBytes, formatOptions, resultArray, rowOffsets, cursor, rowGroupCount, cancellationToken),");
-        builder.AppendLine("                    cancellationToken);");
+        builder.AppendLine("                    () => ReadRowGroupsIntoAsync(sourceBytes, formatOptions, resultArray, rowOffsets, cursor, rowGroupCount, linkedCts, workerToken),");
+        builder.AppendLine("                    workerToken);");
         builder.AppendLine("            }");
         builder.AppendLine();
-        builder.AppendLine("            await global::System.Threading.Tasks.Task.WhenAll(workers);");
+        builder.AppendLine("            try");
+        builder.AppendLine("            {");
+        builder.AppendLine("                await global::System.Threading.Tasks.Task.WhenAll(workers);");
+        builder.AppendLine("            }");
+        builder.AppendLine("            catch");
+        builder.AppendLine("            {");
+        builder.AppendLine("                linkedCts.Cancel();");
+        builder.AppendLine("                throw;");
+        builder.AppendLine("            }");
         builder.AppendLine("        }");
         builder.AppendLine();
         builder.AppendLine("        return resultArray;");
@@ -1038,54 +1048,63 @@ public static class CodeEmitter
         builder.AppendLine("        int[] rowOffsets,");
         builder.AppendLine("        int[] cursor,");
         builder.AppendLine("        int rowGroupCount,");
+        builder.AppendLine("        global::System.Threading.CancellationTokenSource linkedCts,");
         builder.AppendLine("        global::System.Threading.CancellationToken cancellationToken)");
         builder.AppendLine("    {");
-        builder.AppendLine("        using var stream = CreateBufferStream(parquetBytes);");
-        builder.AppendLine("        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, formatOptions, cancellationToken: cancellationToken);");
+        builder.AppendLine("        try");
+        builder.AppendLine("        {");
+        builder.AppendLine("            using var stream = CreateBufferStream(parquetBytes);");
+        builder.AppendLine("            await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, formatOptions, cancellationToken: cancellationToken);");
         builder.AppendLine();
-        builder.AppendLine("        var fileFields = reader.Schema.DataFields;");
+        builder.AppendLine("            var fileFields = reader.Schema.DataFields;");
         builder.AppendLine();
 
         if (model.Properties.Length > 0)
         {
-            builder.AppendLine("        global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;");
+            builder.AppendLine("            global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;");
             for (int i = 0; i < model.Properties.Length; i++)
             {
-                builder.AppendLine($"        var field_{i} = ResolveSchemaField(fileFields, {i}, _field_{i}, ref fieldsByName);");
+                builder.AppendLine($"            var field_{i} = ResolveSchemaField(fileFields, {i}, _field_{i}, ref fieldsByName);");
             }
             builder.AppendLine();
         }
 
-        builder.AppendLine("        while (true)");
-        builder.AppendLine("        {");
-        builder.AppendLine("            int r = global::System.Threading.Interlocked.Increment(ref cursor[0]) - 1;");
-        builder.AppendLine("            if (r >= rowGroupCount) break;");
-        builder.AppendLine();
-        builder.AppendLine("            cancellationToken.ThrowIfCancellationRequested();");
-        builder.AppendLine("            using var groupReader = reader.OpenRowGroupReader(r);");
-        builder.AppendLine("            int rowCount = (int)groupReader.RowCount;");
-        builder.AppendLine("            int startIdx = rowOffsets[r];");
-        builder.AppendLine();
-        BufferPoolComponent.EmitRentals(builder, model, "rowCount", indent: "            ");
-        builder.AppendLine();
-        builder.AppendLine("            try");
+        builder.AppendLine("            while (true)");
         builder.AppendLine("            {");
+        builder.AppendLine("                int r = global::System.Threading.Interlocked.Increment(ref cursor[0]) - 1;");
+        builder.AppendLine("                if (r >= rowGroupCount) break;");
+        builder.AppendLine();
+        builder.AppendLine("                cancellationToken.ThrowIfCancellationRequested();");
+        builder.AppendLine("                using var groupReader = reader.OpenRowGroupReader(r);");
+        builder.AppendLine("                int rowCount = (int)groupReader.RowCount;");
+        builder.AppendLine("                int startIdx = rowOffsets[r];");
+        builder.AppendLine();
+        BufferPoolComponent.EmitRentals(builder, model, "rowCount", indent: "                ");
+        builder.AppendLine();
+        builder.AppendLine("                try");
+        builder.AppendLine("                {");
         for (int i = 0; i < model.Properties.Length; i++)
         {
             PropertyModel prop = model.Properties[i];
             string readCall = GetReadPrimitiveCall(prop, $"field_{i}", $"buffer_{i}");
-            builder.AppendLine($"                {readCall}");
+            builder.AppendLine($"                    {readCall}");
         }
         builder.AppendLine();
-        builder.AppendLine("                for (int i = 0; i < rowCount; i++)");
+        builder.AppendLine("                    for (int i = 0; i < rowCount; i++)");
+        builder.AppendLine("                    {");
+        PropertyMappingComponent.EmitObjectMaterialization(builder, model, "target", "startIdx", "i", indent: "                        ");
+        builder.AppendLine("                    }");
+        builder.AppendLine("                }");
+        builder.AppendLine("                finally");
         builder.AppendLine("                {");
-        PropertyMappingComponent.EmitObjectMaterialization(builder, model, "target", "startIdx", "i", indent: "                    ");
+        BufferPoolComponent.EmitReturns(builder, model, indent: "                    ");
         builder.AppendLine("                }");
         builder.AppendLine("            }");
-        builder.AppendLine("            finally");
-        builder.AppendLine("            {");
-        BufferPoolComponent.EmitReturns(builder, model, indent: "                ");
-        builder.AppendLine("            }");
+        builder.AppendLine("        }");
+        builder.AppendLine("        catch");
+        builder.AppendLine("        {");
+        builder.AppendLine("            linkedCts.Cancel();");
+        builder.AppendLine("            throw;");
         builder.AppendLine("        }");
         builder.AppendLine("    }");
     }
