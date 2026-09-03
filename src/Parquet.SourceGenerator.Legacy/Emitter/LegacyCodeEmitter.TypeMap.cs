@@ -1,6 +1,6 @@
 using System;
 using System.Text;
-using Parquet.SourceGenerator.Emitter;
+using Parquet.SourceGenerator.Emitter.Components;
 using Parquet.SourceGenerator.Models;
 
 namespace Parquet.SourceGenerator.Legacy.Emitter;
@@ -139,10 +139,10 @@ public static partial class LegacyCodeEmitter
     }
 
     private static string GetWriteExpression(PropertyModel prop, string valueExpression) =>
-        EmitterShared.GetWriteExpression(prop, valueExpression);
+        PropertyMappingComponent.GetWriteExpression(prop, valueExpression);
 
     private static string GetReadExpression(PropertyModel prop, string valueExpression) =>
-        EmitterShared.GetReadExpression(prop, valueExpression);
+        PropertyMappingComponent.GetReadExpression(prop, valueExpression);
 
-    private static string BoolLiteral(bool val) => EmitterShared.BoolLiteral(val);
+    private static string BoolLiteral(bool val) => SchemaComponent.BoolLiteral(val);
 }

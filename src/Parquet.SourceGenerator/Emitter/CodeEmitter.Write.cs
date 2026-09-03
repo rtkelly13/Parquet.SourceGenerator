@@ -1,4 +1,5 @@
 using System.Text;
+using Parquet.SourceGenerator.Emitter.Components;
 using Parquet.SourceGenerator.Models;
 
 namespace Parquet.SourceGenerator.Emitter;
@@ -26,12 +27,7 @@ public static partial class CodeEmitter
         builder.AppendLine("        if (count == 0) return;");
         builder.AppendLine();
 
-        for (int i = 0; i < model.Properties.Length; i++)
-        {
-            PropertyModel prop = model.Properties[i];
-            string bufType = GetBufferElementType(prop);
-            builder.AppendLine($"        var buffer_{i} = global::System.Buffers.ArrayPool<{bufType}>.Shared.Rent(count);");
-        }
+        BufferPoolComponent.EmitRentals(builder, model, "count");
 
         builder.AppendLine();
         builder.AppendLine("        try");
@@ -86,14 +82,7 @@ public static partial class CodeEmitter
         builder.AppendLine("        finally");
         builder.AppendLine("        {");
 
-        for (int i = 0; i < model.Properties.Length; i++)
-        {
-            PropertyModel prop = model.Properties[i];
-            string bufType = GetBufferElementType(prop);
-            bool isRef = IsReferenceTypeBuffer(prop);
-            string clearArg = isRef ? "clearArray: true" : "clearArray: false";
-            builder.AppendLine($"            global::System.Buffers.ArrayPool<{bufType}>.Shared.Return(buffer_{i}, {clearArg});");
-        }
+        BufferPoolComponent.EmitReturns(builder, model);
 
         builder.AppendLine("        }");
         builder.AppendLine("    }");
@@ -209,20 +198,7 @@ public static partial class CodeEmitter
 
     private static void EmitRowGroupSizeResolution(StringBuilder builder)
     {
-        // The old form was `options.RowGroupSize > 0 && options.RowGroupSize != 50_000 ? ... : rowGroupSize`,
-        // which used the default value as a sentinel for "unset". Two consequences: setting
-        // RowGroupSize to exactly 50,000 was indistinguishable from not setting it, and whenever
-        // options *did* carry a size it silently overrode the explicit method argument — the more
-        // specific value losing to the more general one. A nullable parameter says "unset" without
-        // borrowing a legal value to mean it, so the precedence can be the obvious one: the explicit
-        // argument wins, then options, then the options default.
-        builder.AppendLine("        if (rowGroupSize.HasValue && rowGroupSize.Value <= 0)");
-        builder.AppendLine("            throw new global::System.ArgumentOutOfRangeException(nameof(rowGroupSize));");
-        builder.AppendLine();
-        builder.AppendLine("        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;");
-        builder.AppendLine("        int targetChunkSize = rowGroupSize ?? options.RowGroupSize;");
-        builder.AppendLine("        if (targetChunkSize <= 0)");
-        builder.AppendLine("            throw new global::System.ArgumentOutOfRangeException(nameof(options), \"ParquetSerializerOptions.RowGroupSize must be greater than zero.\");");
+        BatchValidationComponent.EmitRowGroupSizeResolution(builder, "targetChunkSize");
     }
 
 

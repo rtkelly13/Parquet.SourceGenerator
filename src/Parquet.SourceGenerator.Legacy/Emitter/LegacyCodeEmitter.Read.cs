@@ -1,4 +1,5 @@
 using System.Text;
+using Parquet.SourceGenerator.Emitter.Components;
 using Parquet.SourceGenerator.Models;
 
 namespace Parquet.SourceGenerator.Legacy.Emitter;
@@ -83,16 +84,7 @@ public static partial class LegacyCodeEmitter
         builder.AppendLine();
         builder.AppendLine("                    for (int k = 0; k < groupRows; k++)");
         builder.AppendLine("                    {");
-        builder.AppendLine($"                        results[currentOffset + k] = new {model.ClassName}");
-        builder.AppendLine("                        {");
-
-        for (int i = 0; i < model.Properties.Length; i++)
-        {
-            PropertyModel prop = model.Properties[i];
-            builder.AppendLine($"                            {prop.Name} = {GetReadExpression(prop, $"data_{i}[k]")},");
-        }
-
-        builder.AppendLine("                        };");
+        PropertyMappingComponent.EmitObjectMaterialization(builder, model, "results", "currentOffset", "k", bufferPrefix: "data_", indent: "                        ");
         builder.AppendLine("                    }");
         builder.AppendLine("                    currentOffset += groupRows;");
         builder.AppendLine("                }");

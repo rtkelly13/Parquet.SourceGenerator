@@ -1,4 +1,5 @@
 using System.Text;
+using Parquet.SourceGenerator.Emitter.Components;
 using Parquet.SourceGenerator.Models;
 
 namespace Parquet.SourceGenerator.Legacy.Emitter;
@@ -47,11 +48,7 @@ public static partial class LegacyCodeEmitter
         builder.AppendLine("        {");
         builder.AppendLine("            var item = items[k];");
 
-        for (int i = 0; i < model.Properties.Length; i++)
-        {
-            PropertyModel prop = model.Properties[i];
-            builder.AppendLine($"            colArray_{i}[k] = {GetWriteExpression(prop, $"item.{prop.Name}")};");
-        }
+        PropertyMappingComponent.EmitPropertyAssignments(builder, model, itemVar: "item", indexVar: "k", bufferPrefix: "colArray_", indent: "            ");
 
         builder.AppendLine("        }");
         builder.AppendLine();
@@ -105,16 +102,7 @@ public static partial class LegacyCodeEmitter
         builder.AppendLine("    {");
         builder.AppendLine("        if (items == null) throw new global::System.ArgumentNullException(nameof(items));");
         builder.AppendLine("        if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));");
-        // Same precedence rules the v6 emitter settled on in audit item 3.2: explicit argument wins,
-        // then options, then the options default — and a non-positive value from either source is an
-        // error rather than a silent fallback.
-        builder.AppendLine("        if (rowGroupSize.HasValue && rowGroupSize.Value <= 0)");
-        builder.AppendLine("            throw new global::System.ArgumentOutOfRangeException(nameof(rowGroupSize));");
-        builder.AppendLine();
-        builder.AppendLine("        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;");
-        builder.AppendLine("        int batchSize = rowGroupSize ?? options.RowGroupSize;");
-        builder.AppendLine("        if (batchSize <= 0)");
-        builder.AppendLine("            throw new global::System.ArgumentOutOfRangeException(nameof(options), \"ParquetSerializerOptions.RowGroupSize must be greater than zero.\");");
+        BatchValidationComponent.EmitRowGroupSizeResolution(builder, "batchSize");
         builder.AppendLine();
         builder.AppendLine($"        if (items is global::System.Collections.Generic.IReadOnlyList<{model.ClassName}> list && list.Count <= batchSize)");
         builder.AppendLine("        {");

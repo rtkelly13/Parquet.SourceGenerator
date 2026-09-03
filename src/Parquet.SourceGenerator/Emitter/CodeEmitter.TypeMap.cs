@@ -1,5 +1,6 @@
 using System;
 using System.Text;
+using Parquet.SourceGenerator.Emitter.Components;
 using Parquet.SourceGenerator.Models;
 
 namespace Parquet.SourceGenerator.Emitter;
@@ -31,33 +32,16 @@ public static partial class CodeEmitter
     }
 
     private static string GetBufferElementType(PropertyModel prop)
-    {
-        return prop.Kind switch
-        {
-            PropertyKind.Guid when prop.IsNullable => "global::System.Guid?",
-            PropertyKind.Guid => "global::System.Guid",
-            PropertyKind.Enum when prop.IsNullable => $"{prop.EnumUnderlyingTypeName ?? "int"}?",
-            PropertyKind.Enum => prop.EnumUnderlyingTypeName ?? "int",
-            _ => prop.TypeName,
-        };
-    }
+        => BufferPoolComponent.GetBufferElementType(prop);
 
     private static bool IsReferenceTypeBuffer(PropertyModel prop)
-    {
-        return prop.Kind switch
-        {
-            PropertyKind.Guid => false, // Guid is a 16-byte value type struct!
-            PropertyKind.ByteArray => true,
-            PropertyKind.Primitive when prop.TypeName.Contains("string") => true,
-            _ => false,
-        };
-    }
+        => BufferPoolComponent.IsReferenceTypeBuffer(prop);
 
     private static string GetWriteExpression(PropertyModel prop, string valueExpr) =>
-        EmitterShared.GetWriteExpression(prop, valueExpr);
+        PropertyMappingComponent.GetWriteExpression(prop, valueExpr);
 
     private static string GetReadExpression(PropertyModel prop, string valueExpr) =>
-        EmitterShared.GetReadExpression(prop, valueExpr);
+        PropertyMappingComponent.GetReadExpression(prop, valueExpr);
 
     private static string GetWritePrimitiveCall(PropertyModel prop, string fieldAccess, string bufName)
     {
@@ -183,5 +167,5 @@ public static partial class CodeEmitter
         builder.AppendLine("    }");
     }
 
-    private static string BoolLiteral(bool value) => EmitterShared.BoolLiteral(value);
+    private static string BoolLiteral(bool value) => SchemaComponent.BoolLiteral(value);
 }

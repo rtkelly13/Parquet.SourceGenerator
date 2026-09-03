@@ -1,4 +1,5 @@
 using System.Text;
+using Parquet.SourceGenerator.Emitter.Components;
 using Parquet.SourceGenerator.Models;
 
 namespace Parquet.SourceGenerator.Emitter;
@@ -178,12 +179,7 @@ public static partial class CodeEmitter
         builder.AppendLine("            int rowCount = (int)groupReader.RowCount;");
         builder.AppendLine();
 
-        for (int i = 0; i < model.Properties.Length; i++)
-        {
-            PropertyModel prop = model.Properties[i];
-            string bufType = GetBufferElementType(prop);
-            builder.AppendLine($"            var buffer_{i} = global::System.Buffers.ArrayPool<{bufType}>.Shared.Rent(rowCount);");
-        }
+        BufferPoolComponent.EmitRentals(builder, model, "rowCount", indent: "            ");
 
         builder.AppendLine();
         builder.AppendLine("            try");
@@ -200,31 +196,14 @@ public static partial class CodeEmitter
         builder.AppendLine();
         builder.AppendLine("                for (int i = 0; i < rowCount; i++)");
         builder.AppendLine("                {");
-        builder.AppendLine($"                    results[currentOffset + i] = new {model.ClassName}");
-        builder.AppendLine("                    {");
-
-        for (int i = 0; i < model.Properties.Length; i++)
-        {
-            PropertyModel prop = model.Properties[i];
-            string readExpr = GetReadExpression(prop, $"buffer_{i}[i]");
-            builder.AppendLine($"                        {prop.Name} = {readExpr},");
-        }
-
-        builder.AppendLine("                    };");
+        PropertyMappingComponent.EmitObjectMaterialization(builder, model, "results", "currentOffset", "i", indent: "                    ");
         builder.AppendLine("                }");
         builder.AppendLine("                currentOffset += rowCount;");
         builder.AppendLine("            }");
         builder.AppendLine("            finally");
         builder.AppendLine("            {");
 
-        for (int i = 0; i < model.Properties.Length; i++)
-        {
-            PropertyModel prop = model.Properties[i];
-            string bufType = GetBufferElementType(prop);
-            bool isRef = IsReferenceTypeBuffer(prop);
-            string clearArg = isRef ? "clearArray: true" : "clearArray: false";
-            builder.AppendLine($"                global::System.Buffers.ArrayPool<{bufType}>.Shared.Return(buffer_{i}, {clearArg});");
-        }
+        BufferPoolComponent.EmitReturns(builder, model, indent: "                ");
 
         builder.AppendLine("            }");
         builder.AppendLine("        }");
@@ -408,14 +387,7 @@ public static partial class CodeEmitter
         builder.AppendLine("        int rowGroupCount = reader.RowGroupCount;");
         builder.AppendLine($"        if (rowGroupCount == 0) return global::System.Array.Empty<{model.ClassName}>();");
         builder.AppendLine();
-        builder.AppendLine("        int totalRows = 0;");
-        builder.AppendLine("        int maxRowCount = 0;");
-        builder.AppendLine("        for (int r = 0; r < rowGroupCount; r++)");
-        builder.AppendLine("        {");
-        builder.AppendLine("            int rc = (int)reader.RowGroups[r].RowCount;");
-        builder.AppendLine("            totalRows += rc;");
-        builder.AppendLine("            if (rc > maxRowCount) maxRowCount = rc;");
-        builder.AppendLine("        }");
+        RowGroupLayoutComponent.EmitLayoutProbe(builder, "reader", "totalRows", "maxRowCount", "rowGroupCount", declareRowGroupCount: false);
         builder.AppendLine();
         builder.AppendLine($"        var results = new {model.ClassName}[totalRows];");
         builder.AppendLine("        int currentOffset = 0;");
@@ -429,12 +401,7 @@ public static partial class CodeEmitter
         }
 
         builder.AppendLine();
-        for (int i = 0; i < model.Properties.Length; i++)
-        {
-            PropertyModel prop = model.Properties[i];
-            string bufType = GetBufferElementType(prop);
-            builder.AppendLine($"        var buffer_{i} = global::System.Buffers.ArrayPool<{bufType}>.Shared.Rent(maxRowCount);");
-        }
+        BufferPoolComponent.EmitRentals(builder, model, "maxRowCount");
 
         builder.AppendLine();
         builder.AppendLine("        try");
@@ -457,17 +424,7 @@ public static partial class CodeEmitter
         builder.AppendLine();
         builder.AppendLine("                for (int i = 0; i < rowCount; i++)");
         builder.AppendLine("                {");
-        builder.AppendLine($"                    results[currentOffset + i] = new {model.ClassName}");
-        builder.AppendLine("                    {");
-
-        for (int i = 0; i < model.Properties.Length; i++)
-        {
-            PropertyModel prop = model.Properties[i];
-            string readExpr = GetReadExpression(prop, $"buffer_{i}[i]");
-            builder.AppendLine($"                        {prop.Name} = {readExpr},");
-        }
-
-        builder.AppendLine("                    };");
+        PropertyMappingComponent.EmitObjectMaterialization(builder, model, "results", "currentOffset", "i", indent: "                    ");
         builder.AppendLine("                }");
         builder.AppendLine("                currentOffset += rowCount;");
         builder.AppendLine("            }");
@@ -475,14 +432,7 @@ public static partial class CodeEmitter
         builder.AppendLine("        finally");
         builder.AppendLine("        {");
 
-        for (int i = 0; i < model.Properties.Length; i++)
-        {
-            PropertyModel prop = model.Properties[i];
-            string bufType = GetBufferElementType(prop);
-            bool isRef = IsReferenceTypeBuffer(prop);
-            string clearArg = isRef ? "clearArray: true" : "clearArray: false";
-            builder.AppendLine($"            global::System.Buffers.ArrayPool<{bufType}>.Shared.Return(buffer_{i}, {clearArg});");
-        }
+        BufferPoolComponent.EmitReturns(builder, model);
 
         builder.AppendLine("        }");
         builder.AppendLine();
