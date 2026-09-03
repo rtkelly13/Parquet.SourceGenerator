@@ -266,11 +266,24 @@ public static class CodeEmitter
         // List fast path
         builder.AppendLine($"            if (chunk is global::System.Collections.Generic.List<{model.ClassName}> listItems)");
         builder.AppendLine("            {");
+        builder.AppendLine("#if NET6_0_OR_GREATER");
+        builder.AppendLine("                void ExtractSpan()");
+        builder.AppendLine("                {");
+        builder.AppendLine("                    var span = global::System.Runtime.InteropServices.CollectionsMarshal.AsSpan(listItems);");
+        builder.AppendLine("                    for (int i = 0; i < count; i++)");
+        builder.AppendLine("                    {");
+        builder.AppendLine("                        var item = span[i];");
+        EmitPropertyAssignments(builder, model, "buffer_", prefix: "                        ");
+        builder.AppendLine("                    }");
+        builder.AppendLine("                }");
+        builder.AppendLine("                ExtractSpan();");
+        builder.AppendLine("#else");
         builder.AppendLine("                for (int i = 0; i < count; i++)");
         builder.AppendLine("                {");
         builder.AppendLine($"                    var item = listItems[i];");
         EmitPropertyAssignments(builder, model, "buffer_", prefix: "                    ");
         builder.AppendLine("                }");
+        builder.AppendLine("#endif");
         builder.AppendLine("            }");
 
         // Array fast path
@@ -939,18 +952,13 @@ public static class CodeEmitter
         builder.AppendLine("            : new global::System.ReadOnlyMemory<byte>(parquetBytes.ToArray());");
         builder.AppendLine();
         builder.AppendLine("        int rowGroupCount;");
-        builder.AppendLine("        int totalRows = 0;");
+        builder.AppendLine("        int totalRows;");
+        builder.AppendLine("        int maxRowGroupSize;");
         builder.AppendLine("        int[] rowOffsets;");
         builder.AppendLine("        using (var probeStream = CreateBufferStream(sourceBytes))");
         builder.AppendLine("        {");
         builder.AppendLine("            await using var probe = await global::Parquet.ParquetReader.CreateAsync(probeStream, formatOptions, cancellationToken: cancellationToken);");
-        builder.AppendLine("            rowGroupCount = probe.RowGroupCount;");
-        builder.AppendLine("            rowOffsets = new int[rowGroupCount];");
-        builder.AppendLine("            for (int r = 0; r < rowGroupCount; r++)");
-        builder.AppendLine("            {");
-        builder.AppendLine("                rowOffsets[r] = totalRows;");
-        builder.AppendLine("                totalRows += (int)probe.RowGroups[r].RowCount;");
-        builder.AppendLine("            }");
+        RowGroupLayoutComponent.EmitIndexedLayoutProbe(builder, "probe", "rowGroupCount", "rowOffsets", "totalRows", "maxRowGroupSize", declareVariables: false, indent: "            ");
         builder.AppendLine("        }");
         builder.AppendLine();
         builder.AppendLine($"        if (rowGroupCount == 0) return global::System.Array.Empty<{model.ClassName}>();");
@@ -962,6 +970,8 @@ public static class CodeEmitter
         builder.AppendLine("        }");
         builder.AppendLine();
         builder.AppendLine($"        var resultArray = new {model.ClassName}[totalRows];");
+        builder.AppendLine("        using var linkedCts = global::System.Threading.CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);");
+        builder.AppendLine("        var workerToken = linkedCts.Token;");
         builder.AppendLine("        var cursor = new int[1];");
         builder.AppendLine();
         builder.AppendLine("        int requested = maxDegreeOfParallelism > 0");
@@ -971,7 +981,7 @@ public static class CodeEmitter
         builder.AppendLine();
         builder.AppendLine("        if (workerCount == 1)");
         builder.AppendLine("        {");
-        builder.AppendLine("            await ReadRowGroupsIntoAsync(sourceBytes, formatOptions, resultArray, rowOffsets, cursor, rowGroupCount, cancellationToken);");
+        builder.AppendLine("            await ReadRowGroupsIntoAsync(sourceBytes, formatOptions, resultArray, rowOffsets, cursor, rowGroupCount, maxRowGroupSize, linkedCts, workerToken);");
         builder.AppendLine("        }");
         builder.AppendLine("        else");
         builder.AppendLine("        {");
@@ -979,17 +989,24 @@ public static class CodeEmitter
         builder.AppendLine("            for (int w = 0; w < workerCount; w++)");
         builder.AppendLine("            {");
         builder.AppendLine("                workers[w] = global::System.Threading.Tasks.Task.Run(");
-        builder.AppendLine("                    () => ReadRowGroupsIntoAsync(sourceBytes, formatOptions, resultArray, rowOffsets, cursor, rowGroupCount, cancellationToken),");
-        builder.AppendLine("                    cancellationToken);");
+        builder.AppendLine("                    () => ReadRowGroupsIntoAsync(sourceBytes, formatOptions, resultArray, rowOffsets, cursor, rowGroupCount, maxRowGroupSize, linkedCts, workerToken),");
+        builder.AppendLine("                    workerToken);");
         builder.AppendLine("            }");
         builder.AppendLine();
-        builder.AppendLine("            await global::System.Threading.Tasks.Task.WhenAll(workers);");
+        builder.AppendLine("            try");
+        builder.AppendLine("            {");
+        builder.AppendLine("                await global::System.Threading.Tasks.Task.WhenAll(workers);");
+        builder.AppendLine("            }");
+        builder.AppendLine("            catch");
+        builder.AppendLine("            {");
+        builder.AppendLine("                linkedCts.Cancel();");
+        builder.AppendLine("                throw;");
+        builder.AppendLine("            }");
         builder.AppendLine("        }");
         builder.AppendLine();
         builder.AppendLine("        return resultArray;");
         builder.AppendLine("    }");
         builder.AppendLine();
-
         builder.AppendLine("    /// <summary>");
         builder.AppendLine($"    /// Asynchronously deserializes all <c>{model.ClassName}</c> objects from an in-memory byte buffer,");
         builder.AppendLine("    /// decoding row groups across multiple workers.");
@@ -1014,10 +1031,6 @@ public static class CodeEmitter
         builder.AppendLine("    /// One parallel-read worker: opens its own reader over the shared buffer and materialises every");
         builder.AppendLine("    /// row group it manages to claim.");
         builder.AppendLine("    /// </summary>");
-        builder.AppendLine("    /// <remarks>");
-        builder.AppendLine("    /// Workers write into disjoint index ranges of <paramref name=\"target\"/> — a row group's rows");
-        builder.AppendLine("    /// start at its precomputed offset — so no synchronisation is needed beyond claiming the group.");
-        builder.AppendLine("    /// </remarks>");
         builder.AppendLine("    private static async global::System.Threading.Tasks.Task ReadRowGroupsIntoAsync(");
         builder.AppendLine("        global::System.ReadOnlyMemory<byte> parquetBytes,");
         builder.AppendLine("        global::Parquet.ParquetOptions formatOptions,");
@@ -1025,54 +1038,65 @@ public static class CodeEmitter
         builder.AppendLine("        int[] rowOffsets,");
         builder.AppendLine("        int[] cursor,");
         builder.AppendLine("        int rowGroupCount,");
+        builder.AppendLine("        int maxRowGroupSize,");
+        builder.AppendLine("        global::System.Threading.CancellationTokenSource linkedCts,");
         builder.AppendLine("        global::System.Threading.CancellationToken cancellationToken)");
         builder.AppendLine("    {");
-        builder.AppendLine("        using var stream = CreateBufferStream(parquetBytes);");
-        builder.AppendLine("        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, formatOptions, cancellationToken: cancellationToken);");
+        builder.AppendLine("        try");
+        builder.AppendLine("        {");
+        builder.AppendLine("            using var stream = CreateBufferStream(parquetBytes);");
+        builder.AppendLine("            await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, formatOptions, cancellationToken: cancellationToken);");
         builder.AppendLine();
-        builder.AppendLine("        var fileFields = reader.Schema.DataFields;");
+        builder.AppendLine("            var fileFields = reader.Schema.DataFields;");
         builder.AppendLine();
 
         if (model.Properties.Length > 0)
         {
-            builder.AppendLine("        global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;");
+            builder.AppendLine("            global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;");
             for (int i = 0; i < model.Properties.Length; i++)
             {
-                builder.AppendLine($"        var field_{i} = ResolveSchemaField(fileFields, {i}, _field_{i}, ref fieldsByName);");
+                builder.AppendLine($"            var field_{i} = ResolveSchemaField(fileFields, {i}, _field_{i}, ref fieldsByName);");
             }
             builder.AppendLine();
         }
 
-        builder.AppendLine("        while (true)");
-        builder.AppendLine("        {");
-        builder.AppendLine("            int r = global::System.Threading.Interlocked.Increment(ref cursor[0]) - 1;");
-        builder.AppendLine("            if (r >= rowGroupCount) break;");
-        builder.AppendLine();
-        builder.AppendLine("            cancellationToken.ThrowIfCancellationRequested();");
-        builder.AppendLine("            using var groupReader = reader.OpenRowGroupReader(r);");
-        builder.AppendLine("            int rowCount = (int)groupReader.RowCount;");
-        builder.AppendLine("            int startIdx = rowOffsets[r];");
-        builder.AppendLine();
-        BufferPoolComponent.EmitRentals(builder, model, "rowCount", indent: "            ");
+        BufferPoolComponent.EmitRentals(builder, model, "maxRowGroupSize", indent: "            ");
         builder.AppendLine();
         builder.AppendLine("            try");
         builder.AppendLine("            {");
+        builder.AppendLine("                while (true)");
+        builder.AppendLine("                {");
+        builder.AppendLine("                    int r = global::System.Threading.Interlocked.Increment(ref cursor[0]) - 1;");
+        builder.AppendLine("                    if (r >= rowGroupCount) break;");
+        builder.AppendLine();
+        builder.AppendLine("                    cancellationToken.ThrowIfCancellationRequested();");
+        builder.AppendLine("                    using var groupReader = reader.OpenRowGroupReader(r);");
+        builder.AppendLine("                    int rowCount = (int)groupReader.RowCount;");
+        builder.AppendLine("                    int startIdx = rowOffsets[r];");
+        builder.AppendLine();
         for (int i = 0; i < model.Properties.Length; i++)
         {
             PropertyModel prop = model.Properties[i];
-            string readCall = GetReadPrimitiveCall(prop, $"field_{i}", $"buffer_{i}");
-            builder.AppendLine($"                {readCall}");
+            string fieldAccess = $"field_{i}";
+            string readCall = GetReadPrimitiveCall(prop, fieldAccess, $"buffer_{i}");
+            builder.AppendLine($"                    {readCall}");
         }
         builder.AppendLine();
-        builder.AppendLine("                for (int i = 0; i < rowCount; i++)");
-        builder.AppendLine("                {");
-        PropertyMappingComponent.EmitObjectMaterialization(builder, model, "target", "startIdx", "i", indent: "                    ");
+        builder.AppendLine("                    for (int i = 0; i < rowCount; i++)");
+        builder.AppendLine("                    {");
+        PropertyMappingComponent.EmitObjectMaterialization(builder, model, "target", "startIdx", "i", indent: "                        ");
+        builder.AppendLine("                    }");
         builder.AppendLine("                }");
         builder.AppendLine("            }");
         builder.AppendLine("            finally");
         builder.AppendLine("            {");
         BufferPoolComponent.EmitReturns(builder, model, indent: "                ");
         builder.AppendLine("            }");
+        builder.AppendLine("        }");
+        builder.AppendLine("        catch");
+        builder.AppendLine("        {");
+        builder.AppendLine("            linkedCts.Cancel();");
+        builder.AppendLine("            throw;");
         builder.AppendLine("        }");
         builder.AppendLine("    }");
     }

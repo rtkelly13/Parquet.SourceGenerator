@@ -352,3 +352,7 @@ MigrationBackup/
 # Local TODO files
 *.todo.md
 
+# Temporary output directories
+temp/
+.temp/
+
