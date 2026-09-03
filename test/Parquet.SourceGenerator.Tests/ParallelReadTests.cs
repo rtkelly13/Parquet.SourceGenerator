@@ -225,8 +225,10 @@ public sealed class ParallelReadTests
         // The probe reads through the normalised value, and both worker dispatch sites — the
         // single-threaded branch and the Task.Run loop — hand it on rather than the original.
         Assert.Equal(1, Occurrences(source, "CreateBufferStream(sourceBytes)"));
-        Assert.Equal(2, Occurrences(source, "ReadRowGroupsIntoAsync(sourceBytes,"));
+        Assert.Equal(1, Occurrences(source, "ReadRowGroupsSequentialAsync(sourceBytes,"));
+        Assert.Equal(1, Occurrences(source, "ReadRowGroupsIntoAsync(sourceBytes,"));
         Assert.Equal(0, Occurrences(source, "ReadRowGroupsIntoAsync(parquetBytes,"));
+        Assert.Equal(0, Occurrences(source, "ReadRowGroupsSequentialAsync(parquetBytes,"));
     }
 
     private static int Occurrences(string haystack, string needle)
