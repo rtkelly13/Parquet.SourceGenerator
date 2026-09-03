@@ -174,7 +174,7 @@ public static partial class CodeEmitter
         builder.AppendLine("        // Small row count or single row group fast path: drop to sequential reader");
         builder.AppendLine("        if (rowGroupCount <= 1 || totalRows <= 10_000)");
         builder.AppendLine("        {");
-        builder.AppendLine("            return await ReadParquetArrayAsync(sourceBytes, options, cancellationToken);");
+        builder.AppendLine("            return await ReadBufferSequentialArrayAsync(sourceBytes, options, cancellationToken);");
         builder.AppendLine("        }");
         builder.AppendLine();
         builder.AppendLine($"        var resultArray = new {model.ClassName}[totalRows];");
