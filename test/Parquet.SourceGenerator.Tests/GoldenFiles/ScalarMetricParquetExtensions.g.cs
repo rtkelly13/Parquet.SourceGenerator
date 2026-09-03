@@ -728,8 +728,8 @@ public static partial class ScalarMetricParquetExtensions
         global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
         global::System.Threading.CancellationToken cancellationToken = default)
     {
-        using var stream = CreateBufferStream(parquetBytes);
-        return await ReadParquetAsync(stream, options, cancellationToken);
+        var results = await ReadBufferSequentialArrayAsync(parquetBytes, options, cancellationToken);
+        return new global::System.Collections.Generic.List<ScalarMetric>(results);
     }
 
     /// <summary>
@@ -740,8 +740,7 @@ public static partial class ScalarMetricParquetExtensions
         global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
         global::System.Threading.CancellationToken cancellationToken = default)
     {
-        using var stream = CreateBufferStream(parquetBytes);
-        return await ReadParquetArrayAsync(stream, options, cancellationToken);
+        return await ReadBufferSequentialArrayAsync(parquetBytes, options, cancellationToken);
     }
 
     /// <summary>
@@ -782,7 +781,7 @@ public static partial class ScalarMetricParquetExtensions
         // Small row count or single row group fast path: drop to sequential reader
         if (rowGroupCount <= 1 || totalRows <= 10_000)
         {
-            return await ReadParquetArrayAsync(sourceBytes, options, cancellationToken);
+            return await ReadBufferSequentialArrayAsync(sourceBytes, options, cancellationToken);
         }
 
         var resultArray = new ScalarMetric[totalRows];
@@ -916,6 +915,102 @@ public static partial class ScalarMetricParquetExtensions
                 global::System.Buffers.ArrayPool<float>.Shared.Return(buffer_7, clearArray: false);
             }
         }
+    }
+
+    /// <summary>
+    /// Dedicated sequential reader over an in-memory buffer without threadpool hops or stream wrapping overhead.
+    /// </summary>
+    private static async global::System.Threading.Tasks.Task<ScalarMetric[]> ReadBufferSequentialArrayAsync(
+        global::System.ReadOnlyMemory<byte> parquetBytes,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
+        using var stream = CreateBufferStream(parquetBytes);
+        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken);
+        int rowGroupCount = reader.RowGroupCount;
+        if (rowGroupCount == 0) return global::System.Array.Empty<ScalarMetric>();
+
+        int totalRows = 0;
+        int maxRowCount = 0;
+        for (int r = 0; r < rowGroupCount; r++)
+        {
+            int rc = (int)reader.RowGroups[r].RowCount;
+            totalRows += rc;
+            if (rc > maxRowCount) maxRowCount = rc;
+        }
+
+        var results = new ScalarMetric[totalRows];
+        int currentOffset = 0;
+        var fileFields = reader.Schema.DataFields;
+        global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
+
+        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
+        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
+        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
+        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
+        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName);
+        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName);
+        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName);
+        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName);
+
+        var buffer_0 = global::System.Buffers.ArrayPool<long>.Shared.Rent(maxRowCount);
+        var buffer_1 = global::System.Buffers.ArrayPool<bool>.Shared.Rent(maxRowCount);
+        var buffer_2 = global::System.Buffers.ArrayPool<bool?>.Shared.Rent(maxRowCount);
+        var buffer_3 = global::System.Buffers.ArrayPool<int>.Shared.Rent(maxRowCount);
+        var buffer_4 = global::System.Buffers.ArrayPool<int?>.Shared.Rent(maxRowCount);
+        var buffer_5 = global::System.Buffers.ArrayPool<byte>.Shared.Rent(maxRowCount);
+        var buffer_6 = global::System.Buffers.ArrayPool<short>.Shared.Rent(maxRowCount);
+        var buffer_7 = global::System.Buffers.ArrayPool<float>.Shared.Rent(maxRowCount);
+
+        try
+        {
+            for (int r = 0; r < rowGroupCount; r++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                using var groupReader = reader.OpenRowGroupReader(r);
+                int rowCount = (int)groupReader.RowCount;
+                if (rowCount == 0) continue;
+
+                await groupReader.ReadAsync<long>(field_0, new global::System.Memory<long>(buffer_0, 0, rowCount), cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<bool>(field_1, new global::System.Memory<bool>(buffer_1, 0, rowCount), cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<bool>(field_2, new global::System.Memory<bool?>(buffer_2, 0, rowCount), cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<int>(field_3, new global::System.Memory<int>(buffer_3, 0, rowCount), cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<int>(field_4, new global::System.Memory<int?>(buffer_4, 0, rowCount), cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<byte>(field_5, new global::System.Memory<byte>(buffer_5, 0, rowCount), cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<short>(field_6, new global::System.Memory<short>(buffer_6, 0, rowCount), cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<float>(field_7, new global::System.Memory<float>(buffer_7, 0, rowCount), cancellationToken: cancellationToken);
+
+                for (int i = 0; i < rowCount; i++)
+                {
+                    results[currentOffset + i] = new ScalarMetric
+                    {
+                        RowId = buffer_0[i],
+                        Flag = buffer_1[i],
+                        NullableFlag = buffer_2[i],
+                        StatusCode = (SampleDomain.Models.ProcessStatus)buffer_3[i],
+                        OptionalStatus = buffer_4[i] is null ? (SampleDomain.Models.ProcessStatus?)null : (SampleDomain.Models.ProcessStatus)buffer_4[i]!,
+                        TinyNum = buffer_5[i],
+                        ShortNum = buffer_6[i],
+                        FloatVal = buffer_7[i],
+                    };
+                }
+                currentOffset += rowCount;
+            }
+        }
+        finally
+        {
+            global::System.Buffers.ArrayPool<long>.Shared.Return(buffer_0, clearArray: false);
+            global::System.Buffers.ArrayPool<bool>.Shared.Return(buffer_1, clearArray: false);
+            global::System.Buffers.ArrayPool<bool?>.Shared.Return(buffer_2, clearArray: false);
+            global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_3, clearArray: false);
+            global::System.Buffers.ArrayPool<int?>.Shared.Return(buffer_4, clearArray: false);
+            global::System.Buffers.ArrayPool<byte>.Shared.Return(buffer_5, clearArray: false);
+            global::System.Buffers.ArrayPool<short>.Shared.Return(buffer_6, clearArray: false);
+            global::System.Buffers.ArrayPool<float>.Shared.Return(buffer_7, clearArray: false);
+        }
+
+        return results;
     }
 
     /// <summary>
