@@ -6,14 +6,24 @@ on:
     - cron: '0 2 * * 0'
   workflow_dispatch:
     inputs:
-      tier:
-        description: 'Benchmark Tier (fast or full)'
+      job_preset:
+        description: 'BenchmarkDotNet Job Preset'
         required: false
-        default: 'full'
+        default: 'short'
         type: choice
         options:
-          - fast
-          - full
+          - short
+          - default
+      scale:
+        description: 'Scale (Row Counts)'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - 1m
+          - 100k
+          - quick
       filter:
         description: 'BenchmarkDotNet filter pattern'
         required: false
@@ -43,34 +53,53 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Resolve Target PR Branch and Execution Mode
+      - name: Resolve Target PR Branch and Execution Options
         id: pr_info
         run: |
           if [ "${{ github.event_name }}" = "schedule" ]; then
             echo "branch=main" >> $GITHUB_OUTPUT
             echo "is_pr=false" >> $GITHUB_OUTPUT
-            echo "tier=full" >> $GITHUB_OUTPUT
+            echo "commit_results=true" >> $GITHUB_OUTPUT
+            echo "job_flag=--job default" >> $GITHUB_OUTPUT
+            echo "params_flag=" >> $GITHUB_OUTPUT
             echo "filter=*" >> $GITHUB_OUTPUT
-            echo "extra_args=--job default" >> $GITHUB_OUTPUT
           elif [ "${{ github.event_name }}" = "issue_comment" ]; then
             # Extract PR branch name via GitHub CLI
             branch=$(gh pr view ${{ github.event.issue.number }} --repo ${{ github.repository }} --json headRefName -q .headRefName)
             echo "branch=$branch" >> $GITHUB_OUTPUT
             echo "is_pr=true" >> $GITHUB_OUTPUT
             echo "pr_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+            echo "commit_results=false" >> $GITHUB_OUTPUT
 
             comment_body="${{ github.event.comment.body }}"
-            # Check if user requested --full
-            if echo "$comment_body" | grep -q -- "--full"; then
-              echo "tier=full" >> $GITHUB_OUTPUT
-              echo "extra_args=--job default" >> $GITHUB_OUTPUT
+
+            # Job preset choice: default to --job short unless --deep or --default is specified
+            if echo "$comment_body" | grep -q -- "--deep" || echo "$comment_body" | grep -q -- "--default"; then
+              job_flag="--job default"
             else
-              # Fast slice is the PR default: 3 warmup, 3 iterations, small scale
-              echo "tier=fast" >> $GITHUB_OUTPUT
-              echo "extra_args=--job short --params Count=1000,10000" >> $GITHUB_OUTPUT
+              # --job short: 3 warmup, 3 measurement iterations
+              job_flag="--job short"
             fi
 
-            # Parse optional filter (ignoring flags)
+            # Scale choices:
+            # - /benchmark (default): full scale (1K, 10K, 100K, 1M) with short job
+            # - /benchmark --1m: only 1,000,000 rows
+            # - /benchmark --100k: up to 100,000 rows
+            # - /benchmark --quick: 1K, 10K rows
+            if echo "$comment_body" | grep -q -- "--1m"; then
+              params_flag="--params Count=1000000"
+            elif echo "$comment_body" | grep -q -- "--quick"; then
+              params_flag="--params Count=1000,10000"
+            elif echo "$comment_body" | grep -q -- "--100k"; then
+              params_flag="--params Count=1000,10000,100000"
+            else
+              params_flag=""
+            fi
+
+            echo "job_flag=$job_flag" >> $GITHUB_OUTPUT
+            echo "params_flag=$params_flag" >> $GITHUB_OUTPUT
+
+            # Parse optional filter (ignoring flags like --job, --1m, etc.)
             custom_filter=$(echo "$comment_body" | tr ' ' '\n' | grep -v '^/benchmark' | grep -v '^-' | head -n 1)
             if [ -n "$custom_filter" ]; then
               echo "filter=$custom_filter" >> $GITHUB_OUTPUT
@@ -85,13 +114,16 @@ jobs:
               echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
             fi
             echo "is_pr=false" >> $GITHUB_OUTPUT
-            tier="${{ github.event.inputs.tier || 'full' }}"
-            echo "tier=$tier" >> $GITHUB_OUTPUT
-            if [ "$tier" = "fast" ]; then
-              echo "extra_args=--job short --params Count=1000,10000" >> $GITHUB_OUTPUT
-            else
-              echo "extra_args=--job default" >> $GITHUB_OUTPUT
-            fi
+            echo "commit_results=true" >> $GITHUB_OUTPUT
+            echo "job_flag=--job ${{ github.event.inputs.job_preset || 'short' }}" >> $GITHUB_OUTPUT
+
+            case "${{ github.event.inputs.scale }}" in
+              1m) echo "params_flag=--params Count=1000000" >> $GITHUB_OUTPUT ;;
+              100k) echo "params_flag=--params Count=1000,10000,100000" >> $GITHUB_OUTPUT ;;
+              quick) echo "params_flag=--params Count=1000,10000" >> $GITHUB_OUTPUT ;;
+              *) echo "params_flag=" >> $GITHUB_OUTPUT ;;
+            esac
+
             echo "filter=${{ github.event.inputs.filter || '*' }}" >> $GITHUB_OUTPUT
           fi
         env:
@@ -114,10 +146,10 @@ jobs:
       - name: Build benchmarks (Release)
         run: dotnet build benchmarks/Parquet.SourceGenerator.Benchmarks/Parquet.SourceGenerator.Benchmarks.csproj --configuration Release --no-restore
 
-      - name: Execute BenchmarkDotNet Suite (${{ steps.pr_info.outputs.tier }})
+      - name: Execute BenchmarkDotNet Suite
         run: |
-          echo "Running tier: ${{ steps.pr_info.outputs.tier }} with args: ${{ steps.pr_info.outputs.extra_args }} and filter: ${{ steps.pr_info.outputs.filter }}"
-          dotnet run -c Release --project benchmarks/Parquet.SourceGenerator.Benchmarks/Parquet.SourceGenerator.Benchmarks.csproj --no-build -- --filter "${{ steps.pr_info.outputs.filter }}" ${{ steps.pr_info.outputs.extra_args }}
+          echo "Executing: dotnet run -c Release --no-build -- --filter '${{ steps.pr_info.outputs.filter }}' ${{ steps.pr_info.outputs.job_flag }} ${{ steps.pr_info.outputs.params_flag }}"
+          dotnet run -c Release --project benchmarks/Parquet.SourceGenerator.Benchmarks/Parquet.SourceGenerator.Benchmarks.csproj --no-build -- --filter "${{ steps.pr_info.outputs.filter }}" ${{ steps.pr_info.outputs.job_flag }} ${{ steps.pr_info.outputs.params_flag }}
 
       - name: Generate Headline Benchmark Summary & Update READMEs
         run: |
@@ -125,8 +157,7 @@ jobs:
           cat benchmark-summary.md >> $GITHUB_STEP_SUMMARY
 
       - name: Commit & Push Benchmark Updates to Branch
-        # Only commit README updates on full runs or main scheduled runs, not fast slices
-        if: steps.pr_info.outputs.tier == 'full'
+        if: steps.pr_info.outputs.commit_results == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -148,7 +179,7 @@ jobs:
       - name: Upload Benchmark Results Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: benchmark-results-${{ steps.pr_info.outputs.tier }}
+          name: benchmark-results
           path: |
             BenchmarkDotNet.Artifacts/results/*.csv
             BenchmarkDotNet.Artifacts/results/*.html
