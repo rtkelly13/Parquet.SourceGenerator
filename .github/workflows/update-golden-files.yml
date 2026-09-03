@@ -1,0 +1,95 @@
+name: Update Golden Code Generation Files
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: 'Branch to update golden files on (defaults to current)'
+        required: false
+        default: ''
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  update-golden:
+    name: Update Golden Code Generation Files
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request != null &&
+       startsWith(github.event.comment.body, '/update-golden'))
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Resolve Target PR Branch
+        id: pr_info
+        run: |
+          if [ "${{ github.event_name }}" = "issue_comment" ]; then
+            branch=$(gh pr view ${{ github.event.issue.number }} --repo ${{ github.repository }} --json headRefName -q .headRefName)
+            echo "branch=$branch" >> $GITHUB_OUTPUT
+            echo "is_pr=true" >> $GITHUB_OUTPUT
+            echo "pr_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+          else
+            target="${{ github.event.inputs.target_branch }}"
+            if [ -n "$target" ]; then
+              echo "branch=$target" >> $GITHUB_OUTPUT
+            else
+              echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            fi
+            echo "is_pr=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.pr_info.outputs.branch }}
+          fetch-depth: 0
+
+      - name: Setup .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore Parquet.SourceGenertor.sln
+
+      - name: Regenerate Golden Files
+        run: |
+          UPDATE_GOLDEN_FILES=true dotnet test test/Parquet.SourceGenerator.Tests/Parquet.SourceGenerator.Tests.csproj \
+            --configuration Release \
+            --filter "FullyQualifiedName~GoldenCodeGenRegressionTests"
+
+      - name: Commit & Push Updated Golden Files to Branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add test/Parquet.SourceGenerator.Tests/GoldenFiles/
+          if ! git diff --cached --quiet; then
+            git commit -m "test(generator): update source-controlled golden generated code"
+            git push origin ${{ steps.pr_info.outputs.branch }}
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "No changes detected in golden files."
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
+        id: git_status
+
+      - name: Comment on PR
+        if: steps.pr_info.outputs.is_pr == 'true'
+        run: |
+          if [ "${{ steps.git_status.outputs.has_changes }}" = "true" ]; then
+            gh pr comment ${{ steps.pr_info.outputs.pr_number }} --repo ${{ github.repository }} \
+              --body "✅ Successfully regenerated and committed the source-controlled golden generated C# files to branch \`${{ steps.pr_info.outputs.branch }}\`."
+          else
+            gh pr comment ${{ steps.pr_info.outputs.pr_number }} --repo ${{ github.repository }} \
+              --body "ℹ️ The source-controlled golden generated files on \`${{ steps.pr_info.outputs.branch }}\` are already up to date."
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
