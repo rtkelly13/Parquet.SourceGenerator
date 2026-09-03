@@ -71,6 +71,10 @@ public static partial class CodeEmitter
         EmitReadAsync(builder, model);
         builder.AppendLine();
 
+        // Direct array Read API — zero-copy array materialization
+        EmitReadArrayAsync(builder, model);
+        builder.AppendLine();
+
         // Parallel Read API — multi-core parallel object instantiation
         EmitReadParallelAsync(builder, model);
         builder.AppendLine();

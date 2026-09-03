@@ -63,6 +63,9 @@ public static partial class LegacyCodeEmitter
         EmitReadAsync(builder, model);
         builder.AppendLine();
 
+        EmitReadArrayAsync(builder, model);
+        builder.AppendLine();
+
         builder.AppendLine("}");
 
         return builder.ToString();

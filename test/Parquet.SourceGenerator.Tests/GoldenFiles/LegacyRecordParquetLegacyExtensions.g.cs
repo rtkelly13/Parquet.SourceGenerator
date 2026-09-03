@@ -207,6 +207,16 @@ public static partial class LegacyRecordParquetLegacyExtensions
         if (batchSize <= 0)
             throw new global::System.ArgumentOutOfRangeException(nameof(options), "ParquetSerializerOptions.RowGroupSize must be greater than zero.");
 
+        if (items is global::System.Collections.Generic.IReadOnlyList<LegacyRecord> list && list.Count <= batchSize)
+        {
+            using (var singleWriter = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken).ConfigureAwait(false))
+            {
+                ApplyCompression(singleWriter, options);
+                await singleWriter.WriteRowGroupAsync(list, cancellationToken).ConfigureAwait(false);
+            }
+            return;
+        }
+
         using (var writer = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken).ConfigureAwait(false))
         {
             ApplyCompression(writer, options);
@@ -236,6 +246,19 @@ public static partial class LegacyRecordParquetLegacyExtensions
         global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
         global::System.Threading.CancellationToken cancellationToken = default)
     {
+        var array = await ReadParquetArrayAsync(stream, options, cancellationToken);
+        return new global::System.Collections.Generic.List<LegacyRecord>(array);
+    }
+
+    /// <summary>
+    /// Asynchronously deserializes all <c>LegacyRecord</c> objects directly into an array using Parquet.Net v4/v5.
+    /// Eliminates List wrapper allocations for zero-copy array materialization.
+    /// </summary>
+    public static async global::System.Threading.Tasks.Task<LegacyRecord[]> ReadParquetArrayAsync(
+        global::System.IO.Stream stream,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        global::System.Threading.CancellationToken cancellationToken = default)
+    {
         if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));
 
         options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
@@ -247,7 +270,8 @@ public static partial class LegacyRecordParquetLegacyExtensions
                 totalRows += (int)reader.RowGroups[r].RowCount;
             }
 
-            var results = new global::System.Collections.Generic.List<LegacyRecord>(totalRows);
+            var results = new LegacyRecord[totalRows];
+            int currentOffset = 0;
 
             var fileFields = reader.Schema.GetDataFields();
             global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
@@ -275,14 +299,15 @@ public static partial class LegacyRecordParquetLegacyExtensions
 
                     for (int k = 0; k < groupRows; k++)
                     {
-                        results.Add(new LegacyRecord
+                        results[currentOffset + k] = new LegacyRecord
                         {
                             Id = data_0[k],
                             Description = data_1[k],
                             RawData = data_2[k],
                             Level = (SampleDomain.Models.AccessLevel)data_3[k],
-                        });
+                        };
                     }
+                    currentOffset += groupRows;
                 }
             }
             return results;

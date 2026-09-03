@@ -15,37 +15,45 @@ public static partial class LegacyCodeEmitter
         builder.AppendLine("        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,");
         builder.AppendLine("        global::System.Threading.CancellationToken cancellationToken = default)");
         builder.AppendLine("    {");
+        builder.AppendLine($"        var array = await ReadParquetArrayAsync(stream, options, cancellationToken);");
+        builder.AppendLine($"        return new global::System.Collections.Generic.List<{model.ClassName}>(array);");
+        builder.AppendLine("    }");
+    }
+
+    private static void EmitReadArrayAsync(StringBuilder builder, TargetClassModel model)
+    {
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine($"    /// Asynchronously deserializes all <c>{model.ClassName}</c> objects directly into an array using Parquet.Net v4/v5.");
+        builder.AppendLine("    /// Eliminates List wrapper allocations for zero-copy array materialization.");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine($"    public static async global::System.Threading.Tasks.Task<{model.ClassName}[]> ReadParquetArrayAsync(");
+        builder.AppendLine("        global::System.IO.Stream stream,");
+        builder.AppendLine("        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,");
+        builder.AppendLine("        global::System.Threading.CancellationToken cancellationToken = default)");
+        builder.AppendLine("    {");
         builder.AppendLine("        if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));");
         builder.AppendLine();
         builder.AppendLine("        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;");
-        // The reader was previously created without options at all — the same defect audit item 3.1
-        // closed on the v6 side, reintroduced here. v4's ParquetOptions carries no setting this
-        // generator currently exposes, so this is plumbing rather than a behaviour change; what it
-        // buys is that a read-relevant option added later reaches the reader instead of vanishing.
         builder.AppendLine("        using (var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken).ConfigureAwait(false))");
         builder.AppendLine("        {");
 
         if (model.Properties.Length == 0)
         {
-            builder.AppendLine($"            return new global::System.Collections.Generic.List<{model.ClassName}>();");
+            builder.AppendLine($"            return global::System.Array.Empty<{model.ClassName}>();");
             builder.AppendLine("        }");
             builder.AppendLine("    }");
             return;
         }
 
-        // Row counts come from the reader's row-group metadata. The previous form opened every row
-        // group once to total the rows and then opened them all again to read — a second full pass
-        // over the file whose only product was an int.
         builder.AppendLine("            int totalRows = 0;");
         builder.AppendLine("            for (int r = 0; r < reader.RowGroupCount; r++)");
         builder.AppendLine("            {");
         builder.AppendLine("                totalRows += (int)reader.RowGroups[r].RowCount;");
         builder.AppendLine("            }");
         builder.AppendLine();
-        builder.AppendLine($"            var results = new global::System.Collections.Generic.List<{model.ClassName}>(totalRows);");
+        builder.AppendLine($"            var results = new {model.ClassName}[totalRows];");
+        builder.AppendLine("            int currentOffset = 0;");
         builder.AppendLine();
-        // Field resolution is per-file, not per-row-group. Doing it inside the loop also re-invoked
-        // reader.Schema.GetDataFields(), which allocates a fresh array on every call.
         builder.AppendLine("            var fileFields = reader.Schema.GetDataFields();");
         builder.AppendLine("            global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;");
 
@@ -75,7 +83,7 @@ public static partial class LegacyCodeEmitter
         builder.AppendLine();
         builder.AppendLine("                    for (int k = 0; k < groupRows; k++)");
         builder.AppendLine("                    {");
-        builder.AppendLine($"                        results.Add(new {model.ClassName}");
+        builder.AppendLine($"                        results[currentOffset + k] = new {model.ClassName}");
         builder.AppendLine("                        {");
 
         for (int i = 0; i < model.Properties.Length; i++)
@@ -84,13 +92,14 @@ public static partial class LegacyCodeEmitter
             builder.AppendLine($"                            {prop.Name} = {GetReadExpression(prop, $"data_{i}[k]")},");
         }
 
-        builder.AppendLine("                        });");
+        builder.AppendLine("                        };");
         builder.AppendLine("                    }");
+        builder.AppendLine("                    currentOffset += groupRows;");
         builder.AppendLine("                }");
         builder.AppendLine("            }");
         builder.AppendLine("            return results;");
         builder.AppendLine("        }");
         builder.AppendLine("    }");
     }
-
 }
+
