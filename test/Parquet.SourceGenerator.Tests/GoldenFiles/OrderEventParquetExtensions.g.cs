@@ -835,6 +835,8 @@ public static partial class OrderEventParquetExtensions
         }
 
         var resultArray = new OrderEvent[totalRows];
+        using var linkedCts = global::System.Threading.CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var workerToken = linkedCts.Token;
         var cursor = new int[1];
 
         int requested = maxDegreeOfParallelism > 0
@@ -844,7 +846,7 @@ public static partial class OrderEventParquetExtensions
 
         if (workerCount == 1)
         {
-            await ReadRowGroupsIntoAsync(sourceBytes, formatOptions, resultArray, rowOffsets, cursor, rowGroupCount, cancellationToken);
+            await ReadRowGroupsIntoAsync(sourceBytes, formatOptions, resultArray, rowOffsets, cursor, rowGroupCount, linkedCts, workerToken);
         }
         else
         {
@@ -852,11 +854,19 @@ public static partial class OrderEventParquetExtensions
             for (int w = 0; w < workerCount; w++)
             {
                 workers[w] = global::System.Threading.Tasks.Task.Run(
-                    () => ReadRowGroupsIntoAsync(sourceBytes, formatOptions, resultArray, rowOffsets, cursor, rowGroupCount, cancellationToken),
-                    cancellationToken);
+                    () => ReadRowGroupsIntoAsync(sourceBytes, formatOptions, resultArray, rowOffsets, cursor, rowGroupCount, linkedCts, workerToken),
+                    workerToken);
             }
 
-            await global::System.Threading.Tasks.Task.WhenAll(workers);
+            try
+            {
+                await global::System.Threading.Tasks.Task.WhenAll(workers);
+            }
+            catch
+            {
+                linkedCts.Cancel();
+                throw;
+            }
         }
 
         return resultArray;
@@ -891,84 +901,93 @@ public static partial class OrderEventParquetExtensions
         int[] rowOffsets,
         int[] cursor,
         int rowGroupCount,
+        global::System.Threading.CancellationTokenSource linkedCts,
         global::System.Threading.CancellationToken cancellationToken)
     {
-        using var stream = CreateBufferStream(parquetBytes);
-        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, formatOptions, cancellationToken: cancellationToken);
-
-        var fileFields = reader.Schema.DataFields;
-
-        global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
-        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
-        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
-        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
-        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
-        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName);
-        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName);
-        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName);
-        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName);
-        var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName);
-
-        while (true)
+        try
         {
-            int r = global::System.Threading.Interlocked.Increment(ref cursor[0]) - 1;
-            if (r >= rowGroupCount) break;
+            using var stream = CreateBufferStream(parquetBytes);
+            await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, formatOptions, cancellationToken: cancellationToken);
 
-            cancellationToken.ThrowIfCancellationRequested();
-            using var groupReader = reader.OpenRowGroupReader(r);
-            int rowCount = (int)groupReader.RowCount;
-            int startIdx = rowOffsets[r];
+            var fileFields = reader.Schema.DataFields;
 
-            var buffer_0 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
-            var buffer_1 = global::System.Buffers.ArrayPool<string?>.Shared.Rent(rowCount);
-            var buffer_2 = global::System.Buffers.ArrayPool<double>.Shared.Rent(rowCount);
-            var buffer_3 = global::System.Buffers.ArrayPool<decimal>.Shared.Rent(rowCount);
-            var buffer_4 = global::System.Buffers.ArrayPool<System.DateTime>.Shared.Rent(rowCount);
-            var buffer_5 = global::System.Buffers.ArrayPool<System.TimeSpan>.Shared.Rent(rowCount);
-            var buffer_6 = global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Rent(rowCount);
-            var buffer_7 = global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Rent(rowCount);
-            var buffer_8 = global::System.Buffers.ArrayPool<byte[]>.Shared.Rent(rowCount);
+            global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
+            var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
+            var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
+            var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
+            var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
+            var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName);
+            var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName);
+            var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName);
+            var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName);
+            var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName);
 
-            try
+            while (true)
             {
-                await groupReader.ReadAsync<int>(field_0, new global::System.Memory<int>(buffer_0, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync(field_1, new global::System.Memory<string?>(buffer_1, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<double>(field_2, new global::System.Memory<double>(buffer_2, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<decimal>(field_3, new global::System.Memory<decimal>(buffer_3, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<System.DateTime>(field_4, new global::System.Memory<System.DateTime>(buffer_4, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<System.TimeSpan>(field_5, new global::System.Memory<System.TimeSpan>(buffer_5, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<global::System.Guid>(field_6, new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<global::System.Guid>(field_7, new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync(field_8, new global::System.Memory<byte[]?>(buffer_8, 0, rowCount), cancellationToken: cancellationToken);
+                int r = global::System.Threading.Interlocked.Increment(ref cursor[0]) - 1;
+                if (r >= rowGroupCount) break;
 
-                for (int i = 0; i < rowCount; i++)
+                cancellationToken.ThrowIfCancellationRequested();
+                using var groupReader = reader.OpenRowGroupReader(r);
+                int rowCount = (int)groupReader.RowCount;
+                int startIdx = rowOffsets[r];
+
+                var buffer_0 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                var buffer_1 = global::System.Buffers.ArrayPool<string?>.Shared.Rent(rowCount);
+                var buffer_2 = global::System.Buffers.ArrayPool<double>.Shared.Rent(rowCount);
+                var buffer_3 = global::System.Buffers.ArrayPool<decimal>.Shared.Rent(rowCount);
+                var buffer_4 = global::System.Buffers.ArrayPool<System.DateTime>.Shared.Rent(rowCount);
+                var buffer_5 = global::System.Buffers.ArrayPool<System.TimeSpan>.Shared.Rent(rowCount);
+                var buffer_6 = global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Rent(rowCount);
+                var buffer_7 = global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Rent(rowCount);
+                var buffer_8 = global::System.Buffers.ArrayPool<byte[]>.Shared.Rent(rowCount);
+
+                try
                 {
-                    target[startIdx + i] = new OrderEvent
+                    await groupReader.ReadAsync<int>(field_0, new global::System.Memory<int>(buffer_0, 0, rowCount), cancellationToken: cancellationToken);
+                    await groupReader.ReadAsync(field_1, new global::System.Memory<string?>(buffer_1, 0, rowCount), cancellationToken: cancellationToken);
+                    await groupReader.ReadAsync<double>(field_2, new global::System.Memory<double>(buffer_2, 0, rowCount), cancellationToken: cancellationToken);
+                    await groupReader.ReadAsync<decimal>(field_3, new global::System.Memory<decimal>(buffer_3, 0, rowCount), cancellationToken: cancellationToken);
+                    await groupReader.ReadAsync<System.DateTime>(field_4, new global::System.Memory<System.DateTime>(buffer_4, 0, rowCount), cancellationToken: cancellationToken);
+                    await groupReader.ReadAsync<System.TimeSpan>(field_5, new global::System.Memory<System.TimeSpan>(buffer_5, 0, rowCount), cancellationToken: cancellationToken);
+                    await groupReader.ReadAsync<global::System.Guid>(field_6, new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount), cancellationToken: cancellationToken);
+                    await groupReader.ReadAsync<global::System.Guid>(field_7, new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount), cancellationToken: cancellationToken);
+                    await groupReader.ReadAsync(field_8, new global::System.Memory<byte[]?>(buffer_8, 0, rowCount), cancellationToken: cancellationToken);
+
+                    for (int i = 0; i < rowCount; i++)
                     {
-                        Id = buffer_0[i],
-                        Name = buffer_1[i],
-                        Score = buffer_2[i],
-                        Price = buffer_3[i],
-                        CreatedAt = buffer_4[i],
-                        Duration = buffer_5[i],
-                        CorrelationId = buffer_6[i],
-                        OptionalGuid = buffer_7[i],
-                        Payload = buffer_8[i],
-                    };
+                        target[startIdx + i] = new OrderEvent
+                        {
+                            Id = buffer_0[i],
+                            Name = buffer_1[i],
+                            Score = buffer_2[i],
+                            Price = buffer_3[i],
+                            CreatedAt = buffer_4[i],
+                            Duration = buffer_5[i],
+                            CorrelationId = buffer_6[i],
+                            OptionalGuid = buffer_7[i],
+                            Payload = buffer_8[i],
+                        };
+                    }
+                }
+                finally
+                {
+                    global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_0, clearArray: false);
+                    global::System.Buffers.ArrayPool<string?>.Shared.Return(buffer_1, clearArray: true);
+                    global::System.Buffers.ArrayPool<double>.Shared.Return(buffer_2, clearArray: false);
+                    global::System.Buffers.ArrayPool<decimal>.Shared.Return(buffer_3, clearArray: false);
+                    global::System.Buffers.ArrayPool<System.DateTime>.Shared.Return(buffer_4, clearArray: false);
+                    global::System.Buffers.ArrayPool<System.TimeSpan>.Shared.Return(buffer_5, clearArray: false);
+                    global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(buffer_6, clearArray: false);
+                    global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Return(buffer_7, clearArray: false);
+                    global::System.Buffers.ArrayPool<byte[]>.Shared.Return(buffer_8, clearArray: true);
                 }
             }
-            finally
-            {
-                global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_0, clearArray: false);
-                global::System.Buffers.ArrayPool<string?>.Shared.Return(buffer_1, clearArray: true);
-                global::System.Buffers.ArrayPool<double>.Shared.Return(buffer_2, clearArray: false);
-                global::System.Buffers.ArrayPool<decimal>.Shared.Return(buffer_3, clearArray: false);
-                global::System.Buffers.ArrayPool<System.DateTime>.Shared.Return(buffer_4, clearArray: false);
-                global::System.Buffers.ArrayPool<System.TimeSpan>.Shared.Return(buffer_5, clearArray: false);
-                global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(buffer_6, clearArray: false);
-                global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Return(buffer_7, clearArray: false);
-                global::System.Buffers.ArrayPool<byte[]>.Shared.Return(buffer_8, clearArray: true);
-            }
+        }
+        catch
+        {
+            linkedCts.Cancel();
+            throw;
         }
     }
 
