@@ -241,14 +241,18 @@ public static partial class LegacyRecordParquetLegacyExtensions
         options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
         using (var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken).ConfigureAwait(false))
         {
+            int rgCount = reader.RowGroupCount;
+            if (rgCount == 0) return new global::System.Collections.Generic.List<LegacyRecord>();
+
             int totalRows = 0;
-            for (int r = 0; r < reader.RowGroupCount; r++)
+            var rowOffsets = new int[rgCount];
+            for (int r = 0; r < rgCount; r++)
             {
+                rowOffsets[r] = totalRows;
                 totalRows += (int)reader.RowGroups[r].RowCount;
             }
 
-            var results = new global::System.Collections.Generic.List<LegacyRecord>(totalRows);
-
+            var resultArray = new LegacyRecord[totalRows];
             var fileFields = reader.Schema.GetDataFields();
             global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
             var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
@@ -256,13 +260,14 @@ public static partial class LegacyRecordParquetLegacyExtensions
             var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
             var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
 
-            for (int r = 0; r < reader.RowGroupCount; r++)
+            for (int r = 0; r < rgCount; r++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 using (var rgReader = reader.OpenRowGroupReader(r))
                 {
                     int groupRows = (int)rgReader.RowCount;
                     if (groupRows == 0) continue;
+                    int startIdx = rowOffsets[r];
 
                     var col_0 = await rgReader.ReadColumnAsync(field_0, cancellationToken).ConfigureAwait(false);
                     var data_0 = (int[])col_0.Data;
@@ -275,17 +280,17 @@ public static partial class LegacyRecordParquetLegacyExtensions
 
                     for (int k = 0; k < groupRows; k++)
                     {
-                        results.Add(new LegacyRecord
+                        resultArray[startIdx + k] = new LegacyRecord
                         {
                             Id = data_0[k],
                             Description = data_1[k],
                             RawData = data_2[k],
                             Level = (SampleDomain.Models.AccessLevel)data_3[k],
-                        });
+                        };
                     }
                 }
             }
-            return results;
+            return new global::System.Collections.Generic.List<LegacyRecord>(resultArray);
         }
     }
 
