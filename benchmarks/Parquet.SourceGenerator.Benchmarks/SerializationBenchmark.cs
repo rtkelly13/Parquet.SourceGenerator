@@ -188,6 +188,36 @@ public class ScalingDeserializationBenchmark
     }
 
     /// <summary>
+    /// Source generator sequential array deserializer over a stream — zero-copy native array.
+    /// </summary>
+    [Benchmark]
+    public async Task<ScaleEvent[]> SourceGeneratorReadArrayAsync()
+    {
+        using var stream = new MemoryStream(_parquetBytes);
+        return await ScaleEventParquetExtensions.ReadParquetArrayAsync(stream);
+    }
+
+    /// <summary>
+    /// Source generator sequential array deserializer over a byte buffer — zero-copy native array.
+    /// </summary>
+    [Benchmark]
+    public async Task<ScaleEvent[]> SourceGeneratorReadBufferArrayAsync()
+    {
+        return await ScaleEventParquetExtensions.ReadParquetArrayAsync(new ReadOnlyMemory<byte>(_parquetBytes));
+    }
+
+    /// <summary>
+    /// Source generator parallel array deserializer over a byte buffer — zero-copy native array.
+    /// </summary>
+    [Benchmark]
+    public async Task<ScaleEvent[]> SourceGeneratorReadParallelBufferArrayAsync()
+    {
+        return await ScaleEventParquetExtensions.ReadParquetParallelArrayAsync(
+            new ReadOnlyMemory<byte>(_parquetBytes),
+            maxDegreeOfParallelism: 4);
+    }
+
+    /// <summary>
     /// Source generator streaming deserializer — IAsyncEnumerable O(1) memory footprint.
     /// </summary>
     [Benchmark]
