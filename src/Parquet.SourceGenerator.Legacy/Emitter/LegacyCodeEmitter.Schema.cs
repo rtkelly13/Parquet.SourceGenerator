@@ -1,14 +1,11 @@
 using System.Text;
+using Parquet.SourceGenerator.Emitter;
 using Parquet.SourceGenerator.Models;
 
-namespace Parquet.SourceGenerator.Emitter;
+namespace Parquet.SourceGenerator.Legacy.Emitter;
 
-public static partial class CodeEmitter
+public static partial class LegacyCodeEmitter
 {
-    // ──────────────────────────────────────────────────────────
-    //  SCHEMA & STATIC FIELD CACHING
-    // ──────────────────────────────────────────────────────────
-
     private static void EmitSchema(StringBuilder builder, TargetClassModel model)
     {
         builder.AppendLine("    /// <summary>");
@@ -42,17 +39,17 @@ public static partial class CodeEmitter
         builder.AppendLine("        global::Parquet.Schema.DataField expected,");
         builder.AppendLine("        ref global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? byName)");
         builder.AppendLine("    {");
-        builder.AppendLine("        // Ordered schemas resolve on a single index check: no hashing, no delegate, no allocation.");
-        builder.AppendLine("        // Every file this generator writes lands here, as does any file whose column order matches.");
+        builder.AppendLine("        string expectedPath = expected.Path.ToString();");
+        builder.AppendLine();
+        builder.AppendLine("        // Ordered schemas resolve on a single index check. Every file this generator writes lands");
+        builder.AppendLine("        // here, as does any file whose column order matches; the linear scan below is only for");
+        builder.AppendLine("        // files written with a different column order.");
         builder.AppendLine("        if ((uint)index < (uint)fileFields.Length");
-        builder.AppendLine("            && string.Equals(fileFields[index].Name, expected.Name, global::System.StringComparison.OrdinalIgnoreCase))");
+        builder.AppendLine("            && string.Equals(fileFields[index].Path.ToString(), expectedPath, global::System.StringComparison.OrdinalIgnoreCase))");
         builder.AppendLine("        {");
         builder.AppendLine("            return fileFields[index];");
         builder.AppendLine("        }");
         builder.AppendLine();
-        builder.AppendLine("        // Only a file whose column order differs reaches here. The name index is built at most once");
-        builder.AppendLine("        // per read and reused for every subsequent miss, so even a fully reordered schema costs O(n)");
-        builder.AppendLine("        // in total rather than a linear scan per field.");
         builder.AppendLine("        if (byName is null)");
         builder.AppendLine("        {");
         builder.AppendLine("            byName = new global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>(");
@@ -61,14 +58,16 @@ public static partial class CodeEmitter
         builder.AppendLine("            {");
         builder.AppendLine("                // First occurrence wins if a file carries duplicate column names. Dictionary.TryAdd is");
         builder.AppendLine("                // not available to netstandard2.0 consumers, hence the explicit containment check.");
-        builder.AppendLine("                if (!byName.ContainsKey(fileFields[i].Name))");
+        builder.AppendLine("                string path = fileFields[i].Path.ToString();");
+        builder.AppendLine("                if (!byName.ContainsKey(path))");
         builder.AppendLine("                {");
-        builder.AppendLine("                    byName.Add(fileFields[i].Name, fileFields[i]);");
+        builder.AppendLine("                    byName.Add(path, fileFields[i]);");
         builder.AppendLine("                }");
         builder.AppendLine("            }");
         builder.AppendLine("        }");
         builder.AppendLine();
-        builder.AppendLine("        return byName.TryGetValue(expected.Name, out var match) ? match : expected;");
+        builder.AppendLine("        return byName.TryGetValue(expectedPath, out var matched) ? matched : expected;");
         builder.AppendLine("    }");
     }
+
 }

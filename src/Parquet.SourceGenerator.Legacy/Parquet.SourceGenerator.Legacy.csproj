@@ -32,6 +32,7 @@
     <Compile Include="..\Parquet.SourceGenerator\Diagnostics\*.cs" Link="Diagnostics\%(Filename)%(Extension)" />
     <Compile Include="..\Parquet.SourceGenerator\Models\*.cs" Link="Models\%(Filename)%(Extension)" />
     <Compile Include="..\Parquet.SourceGenerator\Parser\*.cs" Link="Parser\%(Filename)%(Extension)" />
+    <Compile Include="..\Parquet.SourceGenerator\Emitter\EmitterShared.cs" Link="Emitter\EmitterShared.cs" />
     <Compile Include="..\Parquet.SourceGenerator\IsExternalInit.cs" Link="IsExternalInit.cs" />
   </ItemGroup>
 

@@ -1,5 +1,4 @@
 extern alias LegacyGenerator;
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,12 +9,11 @@ using Parquet.SourceGenerator.Diagnostics;
 using Parquet.SourceGenerator.Emitter;
 using Parquet.SourceGenerator.Models;
 using Xunit;
-using IOPath = System.IO.Path;
-using IOFile = System.IO.File;
 using IODirectory = System.IO.Directory;
-
-using LegacyModels = LegacyGenerator::Parquet.SourceGenerator.Models;
+using IOFile = System.IO.File;
+using IOPath = System.IO.Path;
 using LegacyEmitter = LegacyGenerator::Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter;
+using LegacyModels = LegacyGenerator::Parquet.SourceGenerator.Models;
 
 namespace Parquet.SourceGenerator.Tests;
 
