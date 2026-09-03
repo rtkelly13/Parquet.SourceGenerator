@@ -57,7 +57,17 @@ public static partial class LegacyRecordParquetLegacyExtensions
             }
         }
 
-        return byName.TryGetValue(expectedPath, out var matched) ? matched : expected;
+        if (byName.TryGetValue(expectedPath, out var matched))
+        {
+            return matched;
+        }
+
+        if (!expected.IsNullable)
+        {
+            throw new global::System.IO.InvalidDataException($"Required column '{expectedPath}' was not found in the Parquet file schema.");
+        }
+
+        return expected;
     }
 
     /// <summary>

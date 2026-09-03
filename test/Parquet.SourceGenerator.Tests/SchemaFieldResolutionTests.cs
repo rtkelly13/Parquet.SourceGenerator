@@ -36,6 +36,16 @@ public partial record ReversedOrder
     public int Alpha { get; init; }
 }
 
+[ParquetSerializable]
+public partial record PartialOrder
+{
+    [ParquetColumn("alpha", Order = 1)]
+    public int Alpha { get; init; }
+
+    [ParquetColumn("beta", Order = 2)]
+    public string Beta { get; init; } = string.Empty;
+}
+
 public sealed class SchemaFieldResolutionTests
 {
     [Fact]
@@ -112,5 +122,23 @@ public sealed class SchemaFieldResolutionTests
         Assert.Equal(7, read[0].Alpha);
         Assert.Equal("seven", read[0].Beta);
         Assert.Equal(7.75, read[0].Gamma);
+    }
+
+    [Fact]
+    public async Task MissingRequiredColumnThrowsDescriptiveInvalidDataException()
+    {
+        // Write file with only alpha and beta, omitting required gamma
+        var partialList = new List<PartialOrder>
+        {
+            new() { Alpha = 1, Beta = "b" },
+        };
+
+        using var stream = new MemoryStream();
+        await partialList.WriteParquetAsync(stream);
+        stream.Position = 0;
+
+        // ForwardOrder requires 'gamma' (non-nullable double). Reading partial stream should throw InvalidDataException.
+        var ex = await Assert.ThrowsAsync<InvalidDataException>(() => ForwardOrderParquetExtensions.ReadParquetAsync(stream));
+        Assert.Contains("Required column 'gamma' was not found in the Parquet file schema", ex.Message);
     }
 }

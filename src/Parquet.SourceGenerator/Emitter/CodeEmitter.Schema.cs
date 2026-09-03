@@ -68,7 +68,17 @@ public static partial class CodeEmitter
         builder.AppendLine("            }");
         builder.AppendLine("        }");
         builder.AppendLine();
-        builder.AppendLine("        return byName.TryGetValue(expected.Name, out var match) ? match : expected;");
+        builder.AppendLine("        if (byName.TryGetValue(expected.Name, out var match))");
+        builder.AppendLine("        {");
+        builder.AppendLine("            return match;");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        if (!expected.IsNullable)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            throw new global::System.IO.InvalidDataException($\"Required column '{expected.Name}' was not found in the Parquet file schema.\");");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        return expected;");
         builder.AppendLine("    }");
     }
 }

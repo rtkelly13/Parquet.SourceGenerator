@@ -66,7 +66,17 @@ public static partial class LegacyCodeEmitter
         builder.AppendLine("            }");
         builder.AppendLine("        }");
         builder.AppendLine();
-        builder.AppendLine("        return byName.TryGetValue(expectedPath, out var matched) ? matched : expected;");
+        builder.AppendLine("        if (byName.TryGetValue(expectedPath, out var matched))");
+        builder.AppendLine("        {");
+        builder.AppendLine("            return matched;");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        if (!expected.IsNullable)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            throw new global::System.IO.InvalidDataException($\"Required column '{expectedPath}' was not found in the Parquet file schema.\");");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        return expected;");
         builder.AppendLine("    }");
     }
 
