@@ -41,7 +41,7 @@
         <None Include="$(MSBuildThisFileDirectory)LICENSE" Pack="true" PackagePath="\" />
         <PackageReference
             Include="Microsoft.SourceLink.GitHub"
-            Version="8.0.0"
+            Version="10.0.400"
             PrivateAssets="All"
         />
     </ItemGroup>
