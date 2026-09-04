@@ -24,6 +24,19 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+          dotnet-quality: 'preview'
+
+      - name: Verify Benchmark Data LFS Hydration & Provenance Integrity
+        run: dotnet run scripts/VerifyProvenance.cs
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -32,14 +45,6 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v3
-
-      # 8.0.x only. Nothing in the solution targets net9.0, and global.json pins the SDK to 8.0.400
-      # with rollForward: latestMinor, so a 9.0.x SDK would not have been selected even if something
-      # did. Installing it cost time on every run and implied a coverage this repo does not have.
-      - name: Setup .NET SDK
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 8.0.x
 
       - name: Restore solution dependencies
         run: dotnet restore Parquet.SourceGenertor.sln

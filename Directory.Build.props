@@ -17,6 +17,7 @@
       ships a new analyzer, which is friction paid by everyone to catch problems CI already
       catches once.
     -->
+        <RollForward>LatestMajor</RollForward>
     </PropertyGroup>
 
     <!-- Package Metadata & SourceLink -->

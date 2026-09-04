@@ -134,6 +134,7 @@ jobs:
         with:
           ref: ${{ steps.pr_info.outputs.branch }}
           fetch-depth: 0
+          lfs: true
 
       - name: Setup .NET 8 SDK
         uses: actions/setup-dotnet@v4

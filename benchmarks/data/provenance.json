@@ -1,0 +1,514 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Cryptographic Data Provenance Manifest for Parquet.SourceGenerator Benchmarks",
+  "generated_at": "2026-09-04T11:26:30.9841010Z",
+  "datasets": [
+    {
+      "id": "tpch-lineitem-sf001",
+      "filename": "tpch_lineitem_sf001.parquet",
+      "description": "TPC-H Benchmark lineitem table at Scale Factor 0.01 (standard analytical decision support benchmark).",
+      "provenance": {
+        "source_platform": "Hugging Face Hub",
+        "upstream_repository": "liangyc/tpch-sf-0_01",
+        "upstream_commit": "a91e9442ea9dc1fe4729db3138afdd03ef36a9e5",
+        "source_url": "https://huggingface.co/datasets/liangyc/tpch-sf-0_01/resolve/a91e9442ea9dc1fe4729db3138afdd03ef36a9e5/lineitem/train/0000.parquet",
+        "license": "Apache-2.0",
+        "verified_at": "2026-09-04T11:26:30.9851500Z"
+      },
+      "integrity": {
+        "file_size_bytes": 1344366,
+        "sha256": "c2a3d37cff204e6569e35fa63f0efe0c89d43a36ac2dd25b8e65f90a1e9b0ccc",
+        "git_lfs_oid": "sha256:c2a3d37cff204e6569e35fa63f0efe0c89d43a36ac2dd25b8e65f90a1e9b0ccc"
+      },
+      "parquet_profile": {
+        "row_count": 60175,
+        "column_count": 16,
+        "row_group_count": 1,
+        "compression": "zstd",
+        "dictionary_columns": [
+          "l_partkey",
+          "l_suppkey",
+          "l_linenumber",
+          "l_quantity",
+          "l_discount",
+          "l_tax",
+          "l_returnflag",
+          "l_linestatus",
+          "l_shipdate",
+          "l_commitdate",
+          "l_receiptdate",
+          "l_shipinstruct",
+          "l_shipmode"
+        ],
+        "plain_columns": [
+          "l_orderkey",
+          "l_extendedprice",
+          "l_comment"
+        ],
+        "columns": [
+          {
+            "name": "l_orderkey",
+            "physical_type": "INT64",
+            "encodings": [
+              "PLAIN"
+            ],
+            "dictionary_encoded": false
+          },
+          {
+            "name": "l_partkey",
+            "physical_type": "INT64",
+            "encodings": [
+              "PLAIN_DICTIONARY"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "l_suppkey",
+            "physical_type": "INT64",
+            "encodings": [
+              "PLAIN_DICTIONARY"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "l_linenumber",
+            "physical_type": "INT64",
+            "encodings": [
+              "PLAIN_DICTIONARY"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "l_quantity",
+            "physical_type": "INT64",
+            "encodings": [
+              "PLAIN_DICTIONARY"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "l_extendedprice",
+            "physical_type": "INT64",
+            "encodings": [
+              "PLAIN"
+            ],
+            "dictionary_encoded": false
+          },
+          {
+            "name": "l_discount",
+            "physical_type": "INT64",
+            "encodings": [
+              "PLAIN_DICTIONARY"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "l_tax",
+            "physical_type": "INT64",
+            "encodings": [
+              "PLAIN_DICTIONARY"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "l_returnflag",
+            "physical_type": "BYTE_ARRAY",
+            "encodings": [
+              "PLAIN_DICTIONARY"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "l_linestatus",
+            "physical_type": "BYTE_ARRAY",
+            "encodings": [
+              "PLAIN_DICTIONARY"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "l_shipdate",
+            "physical_type": "INT32",
+            "encodings": [
+              "PLAIN_DICTIONARY"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "l_commitdate",
+            "physical_type": "INT32",
+            "encodings": [
+              "PLAIN_DICTIONARY"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "l_receiptdate",
+            "physical_type": "INT32",
+            "encodings": [
+              "PLAIN_DICTIONARY"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "l_shipinstruct",
+            "physical_type": "BYTE_ARRAY",
+            "encodings": [
+              "PLAIN_DICTIONARY"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "l_shipmode",
+            "physical_type": "BYTE_ARRAY",
+            "encodings": [
+              "PLAIN_DICTIONARY"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "l_comment",
+            "physical_type": "BYTE_ARRAY",
+            "encodings": [
+              "PLAIN"
+            ],
+            "dictionary_encoded": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "adult-census-income",
+      "filename": "adult_census_income.parquet",
+      "description": "Adult Census Income dataset from UCI Machine Learning Repository (standard categorical tabular benchmark).",
+      "provenance": {
+        "source_platform": "Hugging Face Hub",
+        "upstream_repository": "scikit-learn/adult-census-income",
+        "upstream_commit": "aefa0f0f1b03a11dd48f460913e20a1d50b4e53c",
+        "source_url": "https://huggingface.co/datasets/scikit-learn/adult-census-income/resolve/aefa0f0f1b03a11dd48f460913e20a1d50b4e53c/default/train/0000.parquet",
+        "license": "CC-BY-4.0",
+        "verified_at": "2026-09-04T11:26:30.9856520Z"
+      },
+      "integrity": {
+        "file_size_bytes": 553790,
+        "sha256": "5a285f7b73234dda6fb69ea8bbd2655e850a3d9efd8c81512785afb1f7773517",
+        "git_lfs_oid": "sha256:5a285f7b73234dda6fb69ea8bbd2655e850a3d9efd8c81512785afb1f7773517"
+      },
+      "parquet_profile": {
+        "row_count": 32561,
+        "column_count": 15,
+        "row_group_count": 33,
+        "compression": "snappy",
+        "dictionary_columns": [
+          "age",
+          "workclass",
+          "fnlwgt",
+          "education",
+          "education.num",
+          "marital.status",
+          "occupation",
+          "relationship",
+          "race",
+          "sex",
+          "capital.gain",
+          "capital.loss",
+          "hours.per.week",
+          "native.country",
+          "income"
+        ],
+        "plain_columns": [],
+        "columns": [
+          {
+            "name": "age",
+            "physical_type": "INT64",
+            "encodings": [
+              "RLE_DICTIONARY",
+              "PLAIN",
+              "RLE"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "workclass",
+            "physical_type": "BYTE_ARRAY",
+            "encodings": [
+              "RLE_DICTIONARY",
+              "PLAIN",
+              "RLE"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "fnlwgt",
+            "physical_type": "INT64",
+            "encodings": [
+              "RLE_DICTIONARY",
+              "PLAIN",
+              "RLE"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "education",
+            "physical_type": "BYTE_ARRAY",
+            "encodings": [
+              "RLE_DICTIONARY",
+              "PLAIN",
+              "RLE"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "education.num",
+            "physical_type": "INT64",
+            "encodings": [
+              "RLE_DICTIONARY",
+              "PLAIN",
+              "RLE"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "marital.status",
+            "physical_type": "BYTE_ARRAY",
+            "encodings": [
+              "RLE_DICTIONARY",
+              "PLAIN",
+              "RLE"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "occupation",
+            "physical_type": "BYTE_ARRAY",
+            "encodings": [
+              "RLE_DICTIONARY",
+              "PLAIN",
+              "RLE"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "relationship",
+            "physical_type": "BYTE_ARRAY",
+            "encodings": [
+              "RLE_DICTIONARY",
+              "PLAIN",
+              "RLE"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "race",
+            "physical_type": "BYTE_ARRAY",
+            "encodings": [
+              "RLE_DICTIONARY",
+              "PLAIN",
+              "RLE"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "sex",
+            "physical_type": "BYTE_ARRAY",
+            "encodings": [
+              "RLE_DICTIONARY",
+              "PLAIN",
+              "RLE"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "capital.gain",
+            "physical_type": "INT64",
+            "encodings": [
+              "RLE_DICTIONARY",
+              "PLAIN",
+              "RLE"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "capital.loss",
+            "physical_type": "INT64",
+            "encodings": [
+              "RLE_DICTIONARY",
+              "PLAIN",
+              "RLE"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "hours.per.week",
+            "physical_type": "INT64",
+            "encodings": [
+              "RLE_DICTIONARY",
+              "PLAIN",
+              "RLE"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "native.country",
+            "physical_type": "BYTE_ARRAY",
+            "encodings": [
+              "RLE_DICTIONARY",
+              "PLAIN",
+              "RLE"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "income",
+            "physical_type": "BYTE_ARRAY",
+            "encodings": [
+              "RLE_DICTIONARY",
+              "PLAIN",
+              "RLE"
+            ],
+            "dictionary_encoded": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "diamonds",
+      "filename": "diamonds.parquet",
+      "description": "Diamonds dataset from ggplot2 (standard regression tabular benchmark with numeric \u0026 ordinal features).",
+      "provenance": {
+        "source_platform": "Hugging Face Hub",
+        "upstream_repository": "inria-soda/tabular-benchmark",
+        "upstream_commit": "cb2bcee34f8fbd271c04dc644fd91f23a51a8570",
+        "source_url": "https://huggingface.co/datasets/inria-soda/tabular-benchmark/resolve/cb2bcee34f8fbd271c04dc644fd91f23a51a8570/reg_cat_diamonds/train/0000.parquet",
+        "license": "CC0-1.0",
+        "verified_at": "2026-09-04T11:26:30.9858180Z"
+      },
+      "integrity": {
+        "file_size_bytes": 785608,
+        "sha256": "828f91f368b79d520b200c393989e820adb7cbda7545fdf66b8552972467789e",
+        "git_lfs_oid": "sha256:828f91f368b79d520b200c393989e820adb7cbda7545fdf66b8552972467789e"
+      },
+      "parquet_profile": {
+        "row_count": 53940,
+        "column_count": 10,
+        "row_group_count": 54,
+        "compression": "snappy",
+        "dictionary_columns": [
+          "carat",
+          "cut",
+          "color",
+          "clarity",
+          "depth",
+          "table",
+          "x",
+          "y",
+          "z",
+          "price"
+        ],
+        "plain_columns": [],
+        "columns": [
+          {
+            "name": "carat",
+            "physical_type": "DOUBLE",
+            "encodings": [
+              "RLE_DICTIONARY",
+              "PLAIN",
+              "RLE"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "cut",
+            "physical_type": "INT64",
+            "encodings": [
+              "RLE_DICTIONARY",
+              "PLAIN",
+              "RLE"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "color",
+            "physical_type": "INT64",
+            "encodings": [
+              "RLE_DICTIONARY",
+              "PLAIN",
+              "RLE"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "clarity",
+            "physical_type": "INT64",
+            "encodings": [
+              "RLE_DICTIONARY",
+              "PLAIN",
+              "RLE"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "depth",
+            "physical_type": "DOUBLE",
+            "encodings": [
+              "RLE_DICTIONARY",
+              "PLAIN",
+              "RLE"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "table",
+            "physical_type": "DOUBLE",
+            "encodings": [
+              "RLE_DICTIONARY",
+              "PLAIN",
+              "RLE"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "x",
+            "physical_type": "DOUBLE",
+            "encodings": [
+              "RLE_DICTIONARY",
+              "PLAIN",
+              "RLE"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "y",
+            "physical_type": "DOUBLE",
+            "encodings": [
+              "RLE_DICTIONARY",
+              "PLAIN",
+              "RLE"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "z",
+            "physical_type": "DOUBLE",
+            "encodings": [
+              "RLE_DICTIONARY",
+              "PLAIN",
+              "RLE"
+            ],
+            "dictionary_encoded": true
+          },
+          {
+            "name": "price",
+            "physical_type": "DOUBLE",
+            "encodings": [
+              "RLE_DICTIONARY",
+              "PLAIN",
+              "RLE"
+            ],
+            "dictionary_encoded": true
+          }
+        ]
+      }
+    }
+  ]
+}
