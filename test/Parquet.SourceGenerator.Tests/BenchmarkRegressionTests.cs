@@ -46,7 +46,10 @@ public sealed class BenchmarkRegressionTests
 
         Assert.NotNull(before);
         Assert.NotNull(after);
-        Assert.True(after > before, $"1.2 ms ({after} ns) must compare as slower than 900 μs ({before} ns)");
+        Assert.True(
+            after > before,
+            $"1.2 ms ({after} ns) must compare as slower than 900 μs ({before} ns)"
+        );
     }
 
     [Theory]
@@ -103,7 +106,9 @@ public sealed class BenchmarkRegressionTests
         IReadOnlyList<BenchmarkMeasurement> measurements = RegressionCheck.ParseCsv(csv);
 
         Assert.Equal(2, measurements.Count);
-        BenchmarkMeasurement generated = measurements.Single(m => m.Method == "SourceGeneratorReadAsync");
+        BenchmarkMeasurement generated = measurements.Single(m =>
+            m.Method == "SourceGeneratorReadAsync"
+        );
         Assert.Equal(100_000, generated.Count);
         Assert.Equal(1_234_500d, generated.MeanNanoseconds);
         Assert.Equal(2_621_440L, generated.AllocatedBytes);
@@ -113,15 +118,20 @@ public sealed class BenchmarkRegressionTests
     //  THRESHOLDS
     // ──────────────────────────────────────────────────────────
 
-    private static BenchmarkMeasurement Measurement(double meanNs, long allocated, string method = "Read", int count = 1000) =>
-        new(method, count, meanNs, allocated);
+    private static BenchmarkMeasurement Measurement(
+        double meanNs,
+        long allocated,
+        string method = "Read",
+        int count = 1000
+    ) => new(method, count, meanNs, allocated);
 
     [Fact]
     public void AllocationGrowthBeyondToleranceIsARegression()
     {
         IReadOnlyList<BenchmarkComparison> comparisons = RegressionCheck.Compare(
             new[] { Measurement(1000, 1_000_000) },
-            new[] { Measurement(1000, 1_500_000) });
+            new[] { Measurement(1000, 1_500_000) }
+        );
 
         BenchmarkComparison result = Assert.Single(comparisons);
         Assert.Equal(RegressionKind.AllocationRegression, result.Kind);
@@ -133,7 +143,8 @@ public sealed class BenchmarkRegressionTests
     {
         IReadOnlyList<BenchmarkComparison> comparisons = RegressionCheck.Compare(
             new[] { Measurement(1000, 1_000_000) },
-            new[] { Measurement(1000, 1_020_000) });
+            new[] { Measurement(1000, 1_020_000) }
+        );
 
         Assert.Equal(RegressionKind.Unchanged, Assert.Single(comparisons).Kind);
         Assert.False(RegressionCheck.HasFailures(comparisons, failOnTime: false));
@@ -148,7 +159,8 @@ public sealed class BenchmarkRegressionTests
     {
         IReadOnlyList<BenchmarkComparison> comparisons = RegressionCheck.Compare(
             new[] { Measurement(1000, 200) },
-            new[] { Measurement(1000, 400) });
+            new[] { Measurement(1000, 400) }
+        );
 
         Assert.Equal(RegressionKind.Unchanged, Assert.Single(comparisons).Kind);
     }
@@ -162,7 +174,8 @@ public sealed class BenchmarkRegressionTests
     {
         IReadOnlyList<BenchmarkComparison> comparisons = RegressionCheck.Compare(
             new[] { Measurement(1_000_000, 1000) },
-            new[] { Measurement(3_000_000, 1000) });
+            new[] { Measurement(3_000_000, 1000) }
+        );
 
         Assert.Equal(RegressionKind.TimeRegression, Assert.Single(comparisons).Kind);
         Assert.False(RegressionCheck.HasFailures(comparisons, failOnTime: false));
@@ -177,7 +190,8 @@ public sealed class BenchmarkRegressionTests
     {
         IReadOnlyList<BenchmarkComparison> comparisons = RegressionCheck.Compare(
             new[] { Measurement(1_000_000, 1_000_000) },
-            new[] { Measurement(3_000_000, 2_000_000) });
+            new[] { Measurement(3_000_000, 2_000_000) }
+        );
 
         Assert.Equal(RegressionKind.AllocationRegression, Assert.Single(comparisons).Kind);
     }
@@ -187,7 +201,8 @@ public sealed class BenchmarkRegressionTests
     {
         IReadOnlyList<BenchmarkComparison> comparisons = RegressionCheck.Compare(
             new[] { Measurement(1000, 2_000_000) },
-            new[] { Measurement(1000, 1_000_000) });
+            new[] { Measurement(1000, 1_000_000) }
+        );
 
         Assert.Equal(RegressionKind.Improved, Assert.Single(comparisons).Kind);
         Assert.False(RegressionCheck.HasFailures(comparisons, failOnTime: false));
@@ -202,7 +217,8 @@ public sealed class BenchmarkRegressionTests
     {
         IReadOnlyList<BenchmarkComparison> comparisons = RegressionCheck.Compare(
             new[] { Measurement(3_000_000, 1_000_000) },
-            new[] { Measurement(1_000_000, 1_000_000) });
+            new[] { Measurement(1_000_000, 1_000_000) }
+        );
 
         Assert.Equal(RegressionKind.Unchanged, Assert.Single(comparisons).Kind);
     }
@@ -219,9 +235,13 @@ public sealed class BenchmarkRegressionTests
     {
         IReadOnlyList<BenchmarkComparison> comparisons = RegressionCheck.Compare(
             new[] { Measurement(1000, 1000, "Read"), Measurement(1000, 1000, "Write") },
-            new[] { Measurement(1000, 1000, "Read") });
+            new[] { Measurement(1000, 1000, "Read") }
+        );
 
-        BenchmarkComparison missing = Assert.Single(comparisons, c => c.Kind == RegressionKind.NotRun);
+        BenchmarkComparison missing = Assert.Single(
+            comparisons,
+            c => c.Kind == RegressionKind.NotRun
+        );
         Assert.Equal("Write", missing.Method);
     }
 
@@ -230,7 +250,8 @@ public sealed class BenchmarkRegressionTests
     {
         IReadOnlyList<BenchmarkComparison> comparisons = RegressionCheck.Compare(
             new[] { Measurement(1000, 1000, "Read") },
-            new[] { Measurement(1000, 1000, "Read"), Measurement(1000, 1000, "ReadParallel") });
+            new[] { Measurement(1000, 1000, "Read"), Measurement(1000, 1000, "ReadParallel") }
+        );
 
         BenchmarkComparison added = Assert.Single(comparisons, c => c.Kind == RegressionKind.New);
         Assert.Equal("ReadParallel", added.Method);
@@ -246,7 +267,8 @@ public sealed class BenchmarkRegressionTests
     {
         IReadOnlyList<BenchmarkComparison> comparisons = RegressionCheck.Compare(
             new[] { Measurement(1000, 1_000_000, "Read", 1_000) },
-            new[] { Measurement(1000, 1_000_000, "Read", 100_000) });
+            new[] { Measurement(1000, 1_000_000, "Read", 100_000) }
+        );
 
         Assert.Contains(comparisons, c => c.Kind == RegressionKind.New && c.Count == 100_000);
         Assert.Contains(comparisons, c => c.Kind == RegressionKind.NotRun && c.Count == 1_000);
@@ -265,8 +287,9 @@ public sealed class BenchmarkRegressionTests
             Measurement(9_000, 512, "SourceGeneratorGuidWriteAsync", 1_000),
         };
 
-        IReadOnlyList<BenchmarkMeasurement> restored =
-            RegressionCheck.ParseBaseline(RegressionCheck.WriteBaseline(original));
+        IReadOnlyList<BenchmarkMeasurement> restored = RegressionCheck.ParseBaseline(
+            RegressionCheck.WriteBaseline(original)
+        );
 
         Assert.Equal(2, restored.Count);
         BenchmarkMeasurement read = restored.Single(m => m.Method == "SourceGeneratorReadAsync");
@@ -282,10 +305,14 @@ public sealed class BenchmarkRegressionTests
         // to matter, every run would regress against a baseline taken from the same numbers.
         var measurements = new[] { Measurement(1_234_567.89, 2_621_440, "Read", 100_000) };
 
-        IReadOnlyList<BenchmarkMeasurement> restored =
-            RegressionCheck.ParseBaseline(RegressionCheck.WriteBaseline(measurements));
+        IReadOnlyList<BenchmarkMeasurement> restored = RegressionCheck.ParseBaseline(
+            RegressionCheck.WriteBaseline(measurements)
+        );
 
-        Assert.Equal(RegressionKind.Unchanged, Assert.Single(RegressionCheck.Compare(restored, measurements)).Kind);
+        Assert.Equal(
+            RegressionKind.Unchanged,
+            Assert.Single(RegressionCheck.Compare(restored, measurements)).Kind
+        );
     }
 
     [Fact]
@@ -293,7 +320,8 @@ public sealed class BenchmarkRegressionTests
     {
         IReadOnlyList<BenchmarkComparison> comparisons = RegressionCheck.Compare(
             new[] { Measurement(1000, 1_000_000, "SourceGeneratorReadAsync") },
-            new[] { Measurement(1000, 4_000_000, "SourceGeneratorReadAsync") });
+            new[] { Measurement(1000, 4_000_000, "SourceGeneratorReadAsync") }
+        );
 
         string report = RegressionCheck.BuildReport(comparisons);
 

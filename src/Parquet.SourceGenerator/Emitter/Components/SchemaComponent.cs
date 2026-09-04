@@ -18,17 +18,23 @@ internal static class SchemaComponent
     /// </summary>
     public static string GetFieldCreationExpression(PropertyModel prop)
     {
-        string name = Microsoft.CodeAnalysis.CSharp.SymbolDisplay.FormatLiteral(prop.ParquetColumnName, quote: true);
+        string name = Microsoft.CodeAnalysis.CSharp.SymbolDisplay.FormatLiteral(
+            prop.ParquetColumnName,
+            quote: true
+        );
 
         return prop.Kind switch
         {
-            PropertyKind.Decimal when prop.DecimalPrecision.HasValue && prop.DecimalScale.HasValue =>
+            PropertyKind.Decimal
+                when prop.DecimalPrecision.HasValue && prop.DecimalScale.HasValue =>
                 $"new global::Parquet.Schema.DecimalDataField({name}, {prop.DecimalPrecision.Value}, {prop.DecimalScale.Value}, isNullable: {BoolLiteral(prop.IsNullable)})",
 
             PropertyKind.Decimal =>
                 $"new global::Parquet.Schema.DecimalDataField({name}, 38, 18, isNullable: {BoolLiteral(prop.IsNullable)})",
 
-            PropertyKind.DateTime when prop.TimestampUnit == "1" || prop.TimestampUnit?.Contains("Microseconds") == true =>
+            PropertyKind.DateTime
+                when prop.TimestampUnit == "1"
+                    || prop.TimestampUnit?.Contains("Microseconds") == true =>
                 $"new global::Parquet.Schema.DateTimeDataField({name}, global::Parquet.Schema.DateTimeFormat.DateAndTimeMicros, isNullable: {BoolLiteral(prop.IsNullable)})",
 
             PropertyKind.DateTime =>
@@ -58,7 +64,9 @@ internal static class SchemaComponent
     {
         for (int i = 0; i < model.Properties.Length; i++)
         {
-            builder.AppendLine($"    private static readonly global::Parquet.Schema.DataField _field_{i} = (global::Parquet.Schema.DataField)Schema.Fields[{i}];");
+            builder.AppendLine(
+                $"    private static readonly global::Parquet.Schema.DataField _field_{i} = (global::Parquet.Schema.DataField)Schema.Fields[{i}];"
+            );
         }
     }
 
@@ -68,9 +76,13 @@ internal static class SchemaComponent
     public static void EmitSchema(StringBuilder builder, TargetClassModel model)
     {
         builder.AppendLine("    /// <summary>");
-        builder.AppendLine($"    /// Static compile-time <c>Parquet.Schema.ParquetSchema</c> for <c>{model.ClassName}</c>.");
+        builder.AppendLine(
+            $"    /// Static compile-time <c>Parquet.Schema.ParquetSchema</c> for <c>{model.ClassName}</c>."
+        );
         builder.AppendLine("    /// </summary>");
-        builder.AppendLine("    public static readonly global::Parquet.Schema.ParquetSchema Schema = new global::Parquet.Schema.ParquetSchema(");
+        builder.AppendLine(
+            "    public static readonly global::Parquet.Schema.ParquetSchema Schema = new global::Parquet.Schema.ParquetSchema("
+        );
 
         for (int i = 0; i < model.Properties.Length; i++)
         {
@@ -90,36 +102,56 @@ internal static class SchemaComponent
     public static void EmitResolveSchemaField(StringBuilder builder, bool usePath = false)
     {
         builder.AppendLine("    /// <summary>");
-        builder.AppendLine("    /// Resolves one generated schema field against the fields actually present in the file.");
+        builder.AppendLine(
+            "    /// Resolves one generated schema field against the fields actually present in the file."
+        );
         builder.AppendLine("    /// </summary>");
-        builder.AppendLine("    private static global::Parquet.Schema.DataField ResolveSchemaField(");
+        builder.AppendLine(
+            "    private static global::Parquet.Schema.DataField ResolveSchemaField("
+        );
         builder.AppendLine("        global::Parquet.Schema.DataField[] fileFields,");
         builder.AppendLine("        int index,");
         builder.AppendLine("        global::Parquet.Schema.DataField expected,");
-        builder.AppendLine("        ref global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? byName)");
+        builder.AppendLine(
+            "        ref global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? byName)"
+        );
         builder.AppendLine("    {");
 
         if (usePath)
         {
             builder.AppendLine("        string expectedPath = expected.Path.ToString();");
             builder.AppendLine();
-            builder.AppendLine("        // Ordered schemas resolve on a single index check. Every file this generator writes lands");
-            builder.AppendLine("        // here, as does any file whose column order matches; the linear scan below is only for");
+            builder.AppendLine(
+                "        // Ordered schemas resolve on a single index check. Every file this generator writes lands"
+            );
+            builder.AppendLine(
+                "        // here, as does any file whose column order matches; the linear scan below is only for"
+            );
             builder.AppendLine("        // files written with a different column order.");
             builder.AppendLine("        if ((uint)index < (uint)fileFields.Length");
-            builder.AppendLine("            && string.Equals(fileFields[index].Path.ToString(), expectedPath, global::System.StringComparison.OrdinalIgnoreCase))");
+            builder.AppendLine(
+                "            && string.Equals(fileFields[index].Path.ToString(), expectedPath, global::System.StringComparison.OrdinalIgnoreCase))"
+            );
             builder.AppendLine("        {");
             builder.AppendLine("            return fileFields[index];");
             builder.AppendLine("        }");
             builder.AppendLine();
             builder.AppendLine("        if (byName is null)");
             builder.AppendLine("        {");
-            builder.AppendLine("            byName = new global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>(");
-            builder.AppendLine("                fileFields.Length, global::System.StringComparer.OrdinalIgnoreCase);");
+            builder.AppendLine(
+                "            byName = new global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>("
+            );
+            builder.AppendLine(
+                "                fileFields.Length, global::System.StringComparer.OrdinalIgnoreCase);"
+            );
             builder.AppendLine("            for (int i = 0; i < fileFields.Length; i++)");
             builder.AppendLine("            {");
-            builder.AppendLine("                // First occurrence wins if a file carries duplicate column names. Dictionary.TryAdd is");
-            builder.AppendLine("                // not available to netstandard2.0 consumers, hence the explicit containment check.");
+            builder.AppendLine(
+                "                // First occurrence wins if a file carries duplicate column names. Dictionary.TryAdd is"
+            );
+            builder.AppendLine(
+                "                // not available to netstandard2.0 consumers, hence the explicit containment check."
+            );
             builder.AppendLine("                string path = fileFields[i].Path.ToString();");
             builder.AppendLine("                if (!byName.ContainsKey(path))");
             builder.AppendLine("                {");
@@ -135,7 +167,9 @@ internal static class SchemaComponent
             builder.AppendLine();
             builder.AppendLine("        if (!expected.IsNullable)");
             builder.AppendLine("        {");
-            builder.AppendLine("            throw new global::System.IO.InvalidDataException($\"Required column '{expectedPath}' was not found in the Parquet file schema.\");");
+            builder.AppendLine(
+                "            throw new global::System.IO.InvalidDataException($\"Required column '{expectedPath}' was not found in the Parquet file schema.\");"
+            );
             builder.AppendLine("        }");
             builder.AppendLine();
             builder.AppendLine("        return expected;");
@@ -143,28 +177,48 @@ internal static class SchemaComponent
         }
         else
         {
-            builder.AppendLine("        // Ordered schemas resolve on a single index check: no hashing, no delegate, no allocation.");
-            builder.AppendLine("        // Every file this generator writes lands here, as does any file whose column order matches.");
+            builder.AppendLine(
+                "        // Ordered schemas resolve on a single index check: no hashing, no delegate, no allocation."
+            );
+            builder.AppendLine(
+                "        // Every file this generator writes lands here, as does any file whose column order matches."
+            );
             builder.AppendLine("        if ((uint)index < (uint)fileFields.Length");
-            builder.AppendLine("            && string.Equals(fileFields[index].Name, expected.Name, global::System.StringComparison.OrdinalIgnoreCase))");
+            builder.AppendLine(
+                "            && string.Equals(fileFields[index].Name, expected.Name, global::System.StringComparison.OrdinalIgnoreCase))"
+            );
             builder.AppendLine("        {");
             builder.AppendLine("            return fileFields[index];");
             builder.AppendLine("        }");
             builder.AppendLine();
-            builder.AppendLine("        // Only a file whose column order differs reaches here. The name index is built at most once");
-            builder.AppendLine("        // per read and reused for every subsequent miss, so even a fully reordered schema costs O(n)");
+            builder.AppendLine(
+                "        // Only a file whose column order differs reaches here. The name index is built at most once"
+            );
+            builder.AppendLine(
+                "        // per read and reused for every subsequent miss, so even a fully reordered schema costs O(n)"
+            );
             builder.AppendLine("        // in total rather than a linear scan per field.");
             builder.AppendLine("        if (byName is null)");
             builder.AppendLine("        {");
-            builder.AppendLine("            byName = new global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>(");
-            builder.AppendLine("                fileFields.Length, global::System.StringComparer.OrdinalIgnoreCase);");
+            builder.AppendLine(
+                "            byName = new global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>("
+            );
+            builder.AppendLine(
+                "                fileFields.Length, global::System.StringComparer.OrdinalIgnoreCase);"
+            );
             builder.AppendLine("            for (int i = 0; i < fileFields.Length; i++)");
             builder.AppendLine("            {");
-            builder.AppendLine("                // First occurrence wins if a file carries duplicate column names. Dictionary.TryAdd is");
-            builder.AppendLine("                // not available to netstandard2.0 consumers, hence the explicit containment check.");
+            builder.AppendLine(
+                "                // First occurrence wins if a file carries duplicate column names. Dictionary.TryAdd is"
+            );
+            builder.AppendLine(
+                "                // not available to netstandard2.0 consumers, hence the explicit containment check."
+            );
             builder.AppendLine("                if (!byName.ContainsKey(fileFields[i].Name))");
             builder.AppendLine("                {");
-            builder.AppendLine("                    byName.Add(fileFields[i].Name, fileFields[i]);");
+            builder.AppendLine(
+                "                    byName.Add(fileFields[i].Name, fileFields[i]);"
+            );
             builder.AppendLine("                }");
             builder.AppendLine("            }");
             builder.AppendLine("        }");
@@ -176,7 +230,9 @@ internal static class SchemaComponent
             builder.AppendLine();
             builder.AppendLine("        if (!expected.IsNullable)");
             builder.AppendLine("        {");
-            builder.AppendLine("            throw new global::System.IO.InvalidDataException($\"Required column '{expected.Name}' was not found in the Parquet file schema.\");");
+            builder.AppendLine(
+                "            throw new global::System.IO.InvalidDataException($\"Required column '{expected.Name}' was not found in the Parquet file schema.\");"
+            );
             builder.AppendLine("        }");
             builder.AppendLine();
             builder.AppendLine("        return expected;");

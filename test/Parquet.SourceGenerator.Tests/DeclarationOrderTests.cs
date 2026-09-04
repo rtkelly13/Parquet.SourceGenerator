@@ -22,14 +22,15 @@ public sealed class DeclarationOrderTests
     {
         var written = new List<DeclarationOrderModel>
         {
-            new() { Zzz = "last_letter", Aaa = 42 }
+            new() { Zzz = "last_letter", Aaa = 42 },
         };
 
         using var stream = new MemoryStream();
         await written.WriteParquetAsync(stream);
         stream.Position = 0;
 
-        List<DeclarationOrderModel> read = await DeclarationOrderModelParquetExtensions.ReadParquetAsync(stream);
+        List<DeclarationOrderModel> read =
+            await DeclarationOrderModelParquetExtensions.ReadParquetAsync(stream);
 
         Assert.Single(read);
         Assert.Equal("last_letter", read[0].Zzz);

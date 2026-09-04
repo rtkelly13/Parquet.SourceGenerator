@@ -11,7 +11,9 @@ namespace Parquet.SourceGenerator;
 /// no name to set: both its constructors take fields and nothing else. It was removed rather than
 /// left as a public property that silently does nothing.
 /// </remarks>
-[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, AllowMultiple = false, Inherited = true)]
-public sealed class ParquetSerializableAttribute : Attribute
-{
-}
+[AttributeUsage(
+    AttributeTargets.Class | AttributeTargets.Struct,
+    AllowMultiple = false,
+    Inherited = true
+)]
+public sealed class ParquetSerializableAttribute : Attribute { }

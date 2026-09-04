@@ -9,7 +9,12 @@ namespace Parquet.SourceGenerator.Tests;
 
 // ── New type test models ───────────────────────────────────────────────────
 
-public enum EventStatus { Pending = 0, Active = 1, Closed = 2 }
+public enum EventStatus
+{
+    Pending = 0,
+    Active = 1,
+    Closed = 2,
+}
 
 [ParquetSerializable]
 public partial record TypeCoverageRecord
@@ -67,7 +72,14 @@ public sealed class TypeCoverageTests
         var now = new DateTime(2024, 6, 15, 12, 30, 0, DateTimeKind.Utc);
         var items = new List<TypeCoverageRecord>
         {
-            new() { Id = 1, CreatedAt = now, CorrelationId = Guid.Empty, Status = EventStatus.Active, Duration = TimeSpan.FromSeconds(30) }
+            new()
+            {
+                Id = 1,
+                CreatedAt = now,
+                CorrelationId = Guid.Empty,
+                Status = EventStatus.Active,
+                Duration = TimeSpan.FromSeconds(30),
+            },
         };
 
         var stream = new MemoryStream();
@@ -78,7 +90,10 @@ public sealed class TypeCoverageTests
 
         Assert.Single(result);
         // DateTime precision in Parquet Impala format is milliseconds
-        Assert.Equal(now.Ticks / TimeSpan.TicksPerMillisecond, result[0].CreatedAt.Ticks / TimeSpan.TicksPerMillisecond);
+        Assert.Equal(
+            now.Ticks / TimeSpan.TicksPerMillisecond,
+            result[0].CreatedAt.Ticks / TimeSpan.TicksPerMillisecond
+        );
     }
 
     [Fact]
@@ -87,7 +102,7 @@ public sealed class TypeCoverageTests
         var now = new DateTime(2024, 6, 15, 12, 30, 0, DateTimeKind.Utc);
         var items = new List<CompactTimestampRecord>
         {
-            new() { Id = 1, MicroTs = now }
+            new() { Id = 1, MicroTs = now },
         };
 
         var stream = new MemoryStream();
@@ -99,33 +114,42 @@ public sealed class TypeCoverageTests
         var result = await CompactTimestampRecordParquetExtensions.ReadParquetAsync(mem);
 
         Assert.Single(result);
-        Assert.Equal(now.Ticks / TimeSpan.TicksPerMillisecond, result[0].MicroTs.Ticks / TimeSpan.TicksPerMillisecond);
+        Assert.Equal(
+            now.Ticks / TimeSpan.TicksPerMillisecond,
+            result[0].MicroTs.Ticks / TimeSpan.TicksPerMillisecond
+        );
     }
 
     [Fact]
     public async Task CustomOptionsRoundtripCorrectly()
     {
-        var items = Enumerable.Range(0, 100).Select(i => new TypeCoverageRecord
-        {
-            Id = i,
-            CreatedAt = DateTime.UtcNow,
-            CorrelationId = Guid.NewGuid(),
-            Status = EventStatus.Active,
-            Duration = TimeSpan.FromSeconds(i)
-        }).ToList();
+        var items = Enumerable
+            .Range(0, 100)
+            .Select(i => new TypeCoverageRecord
+            {
+                Id = i,
+                CreatedAt = DateTime.UtcNow,
+                CorrelationId = Guid.NewGuid(),
+                Status = EventStatus.Active,
+                Duration = TimeSpan.FromSeconds(i),
+            })
+            .ToList();
 
         var options = new ParquetSerializerOptions
         {
             RowGroupSize = 25,
             MaxDegreeOfParallelism = 2,
-            CompressionMethod = ParquetCompressionMethod.Snappy
+            CompressionMethod = ParquetCompressionMethod.Snappy,
         };
 
         var stream = new MemoryStream();
         await items.WriteParquetBatchedAsync(stream, options: options);
         stream.Position = 0;
 
-        var result = await TypeCoverageRecordParquetExtensions.ReadParquetParallelAsync(stream, options: options);
+        var result = await TypeCoverageRecordParquetExtensions.ReadParquetParallelAsync(
+            stream,
+            options: options
+        );
 
         Assert.Equal(100, result.Count);
         Assert.Equal(items[50].Id, result[50].Id);
@@ -145,7 +169,7 @@ public sealed class TypeCoverageTests
                     CreatedAt = DateTime.UtcNow,
                     CorrelationId = Guid.NewGuid(),
                     Status = (EventStatus)(i % 3),
-                    Duration = TimeSpan.FromMilliseconds(i * 50)
+                    Duration = TimeSpan.FromMilliseconds(i * 50),
                 };
             }
         }
@@ -167,7 +191,14 @@ public sealed class TypeCoverageTests
         var id = Guid.NewGuid();
         var items = new List<TypeCoverageRecord>
         {
-            new() { Id = 1, CreatedAt = DateTime.UtcNow, CorrelationId = id, Status = EventStatus.Pending, Duration = TimeSpan.Zero }
+            new()
+            {
+                Id = 1,
+                CreatedAt = DateTime.UtcNow,
+                CorrelationId = id,
+                Status = EventStatus.Pending,
+                Duration = TimeSpan.Zero,
+            },
         };
 
         var stream = new MemoryStream();
@@ -183,14 +214,19 @@ public sealed class TypeCoverageTests
     [Fact]
     public async Task EnumRoundtripsCorrectly()
     {
-        var items = Enum.GetValues<EventStatus>().Select((s, idx) => new TypeCoverageRecord
-        {
-            Id = idx,
-            CreatedAt = DateTime.UtcNow,
-            CorrelationId = Guid.NewGuid(),
-            Status = s,
-            Duration = TimeSpan.FromMinutes(idx)
-        }).ToList();
+        var items = Enum.GetValues<EventStatus>()
+            .Select(
+                (s, idx) =>
+                    new TypeCoverageRecord
+                    {
+                        Id = idx,
+                        CreatedAt = DateTime.UtcNow,
+                        CorrelationId = Guid.NewGuid(),
+                        Status = s,
+                        Duration = TimeSpan.FromMinutes(idx),
+                    }
+            )
+            .ToList();
 
         var stream = new MemoryStream();
         await items.WriteParquetAsync(stream);
@@ -209,7 +245,14 @@ public sealed class TypeCoverageTests
         var duration = TimeSpan.FromHours(2) + TimeSpan.FromMinutes(30) + TimeSpan.FromSeconds(15);
         var items = new List<TypeCoverageRecord>
         {
-            new() { Id = 1, CreatedAt = DateTime.UtcNow, CorrelationId = Guid.NewGuid(), Status = EventStatus.Active, Duration = duration }
+            new()
+            {
+                Id = 1,
+                CreatedAt = DateTime.UtcNow,
+                CorrelationId = Guid.NewGuid(),
+                Status = EventStatus.Active,
+                Duration = duration,
+            },
         };
 
         var stream = new MemoryStream();
@@ -220,26 +263,33 @@ public sealed class TypeCoverageTests
 
         Assert.Single(result);
         // TimeSpan in Parquet MilliSeconds format — verify millisecond precision
-        Assert.Equal(duration.Ticks / TimeSpan.TicksPerMillisecond, result[0].Duration.Ticks / TimeSpan.TicksPerMillisecond);
+        Assert.Equal(
+            duration.Ticks / TimeSpan.TicksPerMillisecond,
+            result[0].Duration.Ticks / TimeSpan.TicksPerMillisecond
+        );
     }
 
     [Fact]
     public async Task MultipleRowGroupsBatchedRoundtripsCorrectly()
     {
-        var items = Enumerable.Range(0, 1_000)
+        var items = Enumerable
+            .Range(0, 1_000)
             .Select(i => new TypeCoverageRecord
             {
                 Id = i,
                 CreatedAt = DateTime.UtcNow.AddSeconds(i),
                 CorrelationId = Guid.NewGuid(),
                 Status = (EventStatus)(i % 3),
-                Duration = TimeSpan.FromMilliseconds(i * 100)
+                Duration = TimeSpan.FromMilliseconds(i * 100),
             })
             .ToList();
 
         var stream = new MemoryStream();
         // Write in 3 row groups (rowGroupSize=333 → 3 groups + tail)
-        await ((IEnumerable<TypeCoverageRecord>)items).WriteParquetBatchedAsync(stream, rowGroupSize: 333);
+        await ((IEnumerable<TypeCoverageRecord>)items).WriteParquetBatchedAsync(
+            stream,
+            rowGroupSize: 333
+        );
         stream.Position = 0;
 
         var result = await TypeCoverageRecordParquetExtensions.ReadParquetAsync(stream);
@@ -253,22 +303,29 @@ public sealed class TypeCoverageTests
     [Fact]
     public async Task ReadParquetParallelAsyncRoundtripsCorrectly()
     {
-        var items = Enumerable.Range(0, 1_000)
+        var items = Enumerable
+            .Range(0, 1_000)
             .Select(i => new TypeCoverageRecord
             {
                 Id = i,
                 CreatedAt = DateTime.UtcNow.AddSeconds(i),
                 CorrelationId = Guid.NewGuid(),
                 Status = (EventStatus)(i % 3),
-                Duration = TimeSpan.FromMilliseconds(i * 100)
+                Duration = TimeSpan.FromMilliseconds(i * 100),
             })
             .ToList();
 
         var stream = new MemoryStream();
-        await ((IEnumerable<TypeCoverageRecord>)items).WriteParquetBatchedAsync(stream, rowGroupSize: 250);
+        await ((IEnumerable<TypeCoverageRecord>)items).WriteParquetBatchedAsync(
+            stream,
+            rowGroupSize: 250
+        );
         stream.Position = 0;
 
-        var result = await TypeCoverageRecordParquetExtensions.ReadParquetParallelAsync(stream, maxDegreeOfParallelism: 4);
+        var result = await TypeCoverageRecordParquetExtensions.ReadParquetParallelAsync(
+            stream,
+            maxDegreeOfParallelism: 4
+        );
 
         Assert.Equal(items.Count, result.Count);
         Assert.Equal(items[0].Id, result[0].Id);
@@ -283,8 +340,20 @@ public sealed class TypeCoverageTests
         var id1 = Guid.NewGuid();
         var items = new List<NullableTypeCoverageRecord>
         {
-            new() { Id = 1, CreatedAt = null, CorrelationId = null, Status = null },
-            new() { Id = 2, CreatedAt = DateTime.UtcNow, CorrelationId = id1, Status = EventStatus.Closed },
+            new()
+            {
+                Id = 1,
+                CreatedAt = null,
+                CorrelationId = null,
+                Status = null,
+            },
+            new()
+            {
+                Id = 2,
+                CreatedAt = DateTime.UtcNow,
+                CorrelationId = id1,
+                Status = EventStatus.Closed,
+            },
         };
 
         var stream = new MemoryStream();

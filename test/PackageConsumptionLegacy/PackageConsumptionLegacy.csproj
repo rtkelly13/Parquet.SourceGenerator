@@ -1,40 +1,45 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
-  <!--
+    <!--
     Deliberately NOT part of Parquet.SourceGenertor.sln.
 
     Consumes Parquet.SourceGenerator.Legacy as a NuGet package built into ../../artifacts.
     Exercises Parquet.Net 4.25.0 across .NET 8, .NET 9, and .NET Framework 4.7.2.
   -->
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFrameworks>net8.0;net9.0;net472</TargetFrameworks>
-    <Nullable>enable</Nullable>
-    <IsPackable>false</IsPackable>
-    <RootNamespace>PackageConsumptionLegacy</RootNamespace>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFrameworks>net8.0;net9.0;net472</TargetFrameworks>
+        <Nullable>enable</Nullable>
+        <IsPackable>false</IsPackable>
+        <RootNamespace>PackageConsumptionLegacy</RootNamespace>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 
-    <!--
+        <!--
       net472's default language version is 7.3, which predates switch expressions, `??=` and
       nullable reference annotations — all of which the generated code uses. Without this the
       net472 target cannot compile at all, which is the one target this package exists for.
     -->
-    <LangVersion>latest</LangVersion>
-  </PropertyGroup>
+        <LangVersion>latest</LangVersion>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Parquet.SourceGenerator.Legacy" Version="$(GeneratorPackageVersion)" />
-    <PackageReference Include="Parquet.Net" Version="4.25.0" />
-  </ItemGroup>
+    <ItemGroup>
+        <PackageReference
+            Include="Parquet.SourceGenerator.Legacy"
+            Version="$(GeneratorPackageVersion)"
+        />
+        <PackageReference Include="Parquet.Net" Version="4.25.0" />
+    </ItemGroup>
 
-  <!--
+    <!--
     Building a .NET Framework target on Linux needs the reference assemblies; the CI runner has no
     .NET Framework targeting pack installed. This only makes the target *buildable* — running it
     still requires Windows or Mono, so CI compiles net472 and executes net8.0/net9.0.
   -->
-  <ItemGroup Condition="'$(TargetFramework)' == 'net472'">
-    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
-  </ItemGroup>
-
+    <ItemGroup Condition="'$(TargetFramework)' == 'net472'">
+        <PackageReference
+            Include="Microsoft.NETFramework.ReferenceAssemblies"
+            Version="1.0.3"
+            PrivateAssets="all"
+        />
+    </ItemGroup>
 </Project>

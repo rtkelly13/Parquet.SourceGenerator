@@ -15,7 +15,8 @@ namespace Parquet.SourceGenerator.Parser;
 /// </summary>
 public sealed record TargetParserResult(
     TargetClassModel? Model,
-    EquatableArray<DiagnosticInfo> Diagnostics);
+    EquatableArray<DiagnosticInfo> Diagnostics
+);
 
 /// <summary>
 /// Extracts semantic models from Roslyn syntax contexts for decorated target types and validates compiler rules.
@@ -25,8 +26,10 @@ public static class TargetParser
     private const string AttributeFullName = "Parquet.SourceGenerator.ParquetSerializableAttribute";
     private const string ColumnAttributeFullName = "Parquet.SourceGenerator.ParquetColumnAttribute";
     private const string IgnoreAttributeFullName = "Parquet.SourceGenerator.ParquetIgnoreAttribute";
-    private const string DecimalAttributeFullName = "Parquet.SourceGenerator.ParquetDecimalAttribute";
-    private const string TimestampAttributeFullName = "Parquet.SourceGenerator.ParquetTimestampAttribute";
+    private const string DecimalAttributeFullName =
+        "Parquet.SourceGenerator.ParquetDecimalAttribute";
+    private const string TimestampAttributeFullName =
+        "Parquet.SourceGenerator.ParquetTimestampAttribute";
 
     /// <summary>
     /// Parses a Roslyn syntax context and returns a value-equatable <see cref="TargetParserResult"/> containing the target model and diagnostics.
@@ -42,7 +45,10 @@ public static class TargetParser
     /// Which backend will consume the model. This narrows the accepted member types — see
     /// <see cref="ParquetApiLevel"/>.
     /// </param>
-    public static TargetParserResult GetTargetModel(GeneratorSyntaxContext context, ParquetApiLevel apiLevel)
+    public static TargetParserResult GetTargetModel(
+        GeneratorSyntaxContext context,
+        ParquetApiLevel apiLevel
+    )
     {
         SyntaxNode node = context.Node;
         if (node is not TypeDeclarationSyntax typeDeclaration)
@@ -52,7 +58,8 @@ public static class TargetParser
         if (symbol is not INamedTypeSymbol typeSymbol)
             return new TargetParserResult(null, EquatableArray<DiagnosticInfo>.Empty);
 
-        AttributeData? serializableAttr = typeSymbol.GetAttributes()
+        AttributeData? serializableAttr = typeSymbol
+            .GetAttributes()
             .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == AttributeFullName);
 
         if (serializableAttr is null)
@@ -64,10 +71,13 @@ public static class TargetParser
         bool isPartial = typeDeclaration.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword));
         if (!isPartial)
         {
-            diagnostics.Add(new DiagnosticInfo(
-                DiagnosticDescriptors.MustBePartial,
-                typeDeclaration.Identifier.GetLocation(),
-                new[] { typeSymbol.Name }));
+            diagnostics.Add(
+                new DiagnosticInfo(
+                    DiagnosticDescriptors.MustBePartial,
+                    typeDeclaration.Identifier.GetLocation(),
+                    new[] { typeSymbol.Name }
+                )
+            );
         }
 
         // Rules PARQ009 / PARQ010: shapes the emitter cannot express. Both previously produced code
@@ -76,19 +86,25 @@ public static class TargetParser
         bool isNested = typeSymbol.ContainingType is not null;
         if (isNested)
         {
-            diagnostics.Add(new DiagnosticInfo(
-                DiagnosticDescriptors.NestedTypeNotSupported,
-                typeDeclaration.Identifier.GetLocation(),
-                new[] { typeSymbol.Name, typeSymbol.ContainingType!.Name }));
+            diagnostics.Add(
+                new DiagnosticInfo(
+                    DiagnosticDescriptors.NestedTypeNotSupported,
+                    typeDeclaration.Identifier.GetLocation(),
+                    new[] { typeSymbol.Name, typeSymbol.ContainingType!.Name }
+                )
+            );
         }
 
         bool isGeneric = typeSymbol.TypeParameters.Length > 0;
         if (isGeneric)
         {
-            diagnostics.Add(new DiagnosticInfo(
-                DiagnosticDescriptors.GenericTypeNotSupported,
-                typeDeclaration.Identifier.GetLocation(),
-                new[] { typeSymbol.Name }));
+            diagnostics.Add(
+                new DiagnosticInfo(
+                    DiagnosticDescriptors.GenericTypeNotSupported,
+                    typeDeclaration.Identifier.GetLocation(),
+                    new[] { typeSymbol.Name }
+                )
+            );
         }
 
         string namespaceName = typeSymbol.ContainingNamespace.IsGlobalNamespace
@@ -104,22 +120,32 @@ public static class TargetParser
 
         foreach (ISymbol member in members)
         {
-            if (member.IsStatic) continue;
+            if (member.IsStatic)
+                continue;
 
             // Rule PARQ004: Non-public property decorated with [ParquetColumn] warning
             if (member.DeclaredAccessibility != Accessibility.Public)
             {
-                bool hasColAttr = member.GetAttributes().Any(a =>
-                    a.AttributeClass?.ToDisplayString() == ColumnAttributeFullName ||
-                    a.AttributeClass?.ToDisplayString() == "Parquet.Attributes.ParquetColumnAttribute");
+                bool hasColAttr = member
+                    .GetAttributes()
+                    .Any(a =>
+                        a.AttributeClass?.ToDisplayString() == ColumnAttributeFullName
+                        || a.AttributeClass?.ToDisplayString()
+                            == "Parquet.Attributes.ParquetColumnAttribute"
+                    );
 
                 if (hasColAttr)
                 {
-                    Location loc = member.Locations.FirstOrDefault() ?? typeDeclaration.Identifier.GetLocation();
-                    diagnostics.Add(new DiagnosticInfo(
-                        DiagnosticDescriptors.NonPublicPropertyIgnored,
-                        loc,
-                        new[] { member.Name, className }));
+                    Location loc =
+                        member.Locations.FirstOrDefault()
+                        ?? typeDeclaration.Identifier.GetLocation();
+                    diagnostics.Add(
+                        new DiagnosticInfo(
+                            DiagnosticDescriptors.NonPublicPropertyIgnored,
+                            loc,
+                            new[] { member.Name, className }
+                        )
+                    );
                 }
                 continue;
             }
@@ -130,22 +156,32 @@ public static class TargetParser
             else if (member is IFieldSymbol fieldSymbol)
                 memberType = fieldSymbol.Type;
 
-            if (memberType is null) continue;
+            if (memberType is null)
+                continue;
 
-            bool isIgnored = member.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString() == IgnoreAttributeFullName);
-            if (isIgnored) continue;
+            bool isIgnored = member
+                .GetAttributes()
+                .Any(a => a.AttributeClass?.ToDisplayString() == IgnoreAttributeFullName);
+            if (isIgnored)
+                continue;
 
-            AttributeData? columnAttr = member.GetAttributes()
-                .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == ColumnAttributeFullName ||
-                                     a.AttributeClass?.ToDisplayString() == "Parquet.Attributes.ParquetColumnAttribute");
+            AttributeData? columnAttr = member
+                .GetAttributes()
+                .FirstOrDefault(a =>
+                    a.AttributeClass?.ToDisplayString() == ColumnAttributeFullName
+                    || a.AttributeClass?.ToDisplayString()
+                        == "Parquet.Attributes.ParquetColumnAttribute"
+                );
 
             string columnName = member.Name;
             int order = -1;
 
             if (columnAttr is not null)
             {
-                if (columnAttr.ConstructorArguments.Length > 0 &&
-                    columnAttr.ConstructorArguments[0].Value is string customColName)
+                if (
+                    columnAttr.ConstructorArguments.Length > 0
+                    && columnAttr.ConstructorArguments[0].Value is string customColName
+                )
                 {
                     columnName = customColName;
                 }
@@ -166,20 +202,30 @@ public static class TargetParser
             // Rule PARQ002: Duplicate column name check
             if (!seenColumnNames.Add(columnName))
             {
-                Location loc = member.Locations.FirstOrDefault() ?? typeDeclaration.Identifier.GetLocation();
-                diagnostics.Add(new DiagnosticInfo(
-                    DiagnosticDescriptors.DuplicateColumnName,
-                    loc,
-                    new[] { columnName, className }));
+                Location loc =
+                    member.Locations.FirstOrDefault() ?? typeDeclaration.Identifier.GetLocation();
+                diagnostics.Add(
+                    new DiagnosticInfo(
+                        DiagnosticDescriptors.DuplicateColumnName,
+                        loc,
+                        new[] { columnName, className }
+                    )
+                );
             }
 
-            AttributeData? decimalAttr = member.GetAttributes()
-                .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == DecimalAttributeFullName);
+            AttributeData? decimalAttr = member
+                .GetAttributes()
+                .FirstOrDefault(a =>
+                    a.AttributeClass?.ToDisplayString() == DecimalAttributeFullName
+                );
             int? precision = null;
             int? scale = null;
             if (decimalAttr is not null && decimalAttr.ConstructorArguments.Length >= 2)
             {
-                if (decimalAttr.ConstructorArguments[0].Value is int p && decimalAttr.ConstructorArguments[1].Value is int s)
+                if (
+                    decimalAttr.ConstructorArguments[0].Value is int p
+                    && decimalAttr.ConstructorArguments[1].Value is int s
+                )
                 {
                     precision = p;
                     scale = s;
@@ -187,17 +233,30 @@ public static class TargetParser
                     // Rule PARQ005: Decimal precision/scale validation
                     if (p < s || p > 38 || p <= 0 || s < 0)
                     {
-                        Location loc = member.Locations.FirstOrDefault() ?? typeDeclaration.Identifier.GetLocation();
-                        diagnostics.Add(new DiagnosticInfo(
-                            DiagnosticDescriptors.InvalidDecimalPrecisionScale,
-                            loc,
-                            new[] { member.Name, p.ToString(CultureInfo.InvariantCulture), s.ToString(CultureInfo.InvariantCulture) }));
+                        Location loc =
+                            member.Locations.FirstOrDefault()
+                            ?? typeDeclaration.Identifier.GetLocation();
+                        diagnostics.Add(
+                            new DiagnosticInfo(
+                                DiagnosticDescriptors.InvalidDecimalPrecisionScale,
+                                loc,
+                                new[]
+                                {
+                                    member.Name,
+                                    p.ToString(CultureInfo.InvariantCulture),
+                                    s.ToString(CultureInfo.InvariantCulture),
+                                }
+                            )
+                        );
                     }
                 }
             }
 
-            AttributeData? timestampAttr = member.GetAttributes()
-                .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == TimestampAttributeFullName);
+            AttributeData? timestampAttr = member
+                .GetAttributes()
+                .FirstOrDefault(a =>
+                    a.AttributeClass?.ToDisplayString() == TimestampAttributeFullName
+                );
             string? timestampUnit = null;
             if (timestampAttr is not null && timestampAttr.ConstructorArguments.Length > 0)
                 timestampUnit = timestampAttr.ConstructorArguments[0].Value?.ToString();
@@ -206,8 +265,10 @@ public static class TargetParser
             ITypeSymbol underlyingType = memberType;
             bool isNullable = IsNullableColumn(memberType);
 
-            if (memberType is INamedTypeSymbol { IsGenericType: true } genericType &&
-                genericType.ConstructedFrom.SpecialType == SpecialType.System_Nullable_T)
+            if (
+                memberType is INamedTypeSymbol { IsGenericType: true } genericType
+                && genericType.ConstructedFrom.SpecialType == SpecialType.System_Nullable_T
+            )
             {
                 isNullable = true;
                 underlyingType = genericType.TypeArguments[0];
@@ -225,11 +286,15 @@ public static class TargetParser
             // cascading errors inside generated code.
             if (!TryClassifyKind(underlyingType, memberType, out PropertyKind kind))
             {
-                Location typeLoc = member.Locations.FirstOrDefault() ?? typeDeclaration.Identifier.GetLocation();
-                diagnostics.Add(new DiagnosticInfo(
-                    DiagnosticDescriptors.UnsupportedPropertyType,
-                    typeLoc,
-                    new[] { member.Name, memberType.ToDisplayString(), className }));
+                Location typeLoc =
+                    member.Locations.FirstOrDefault() ?? typeDeclaration.Identifier.GetLocation();
+                diagnostics.Add(
+                    new DiagnosticInfo(
+                        DiagnosticDescriptors.UnsupportedPropertyType,
+                        typeLoc,
+                        new[] { member.Name, memberType.ToDisplayString(), className }
+                    )
+                );
                 rejectedAnyMember = true;
                 continue;
             }
@@ -240,11 +305,15 @@ public static class TargetParser
             // the type.
             if (apiLevel == ParquetApiLevel.V4 && !IsSupportedOnClassicApi(underlyingType))
             {
-                Location classicLoc = member.Locations.FirstOrDefault() ?? typeDeclaration.Identifier.GetLocation();
-                diagnostics.Add(new DiagnosticInfo(
-                    DiagnosticDescriptors.TypeUnsupportedOnClassicApi,
-                    classicLoc,
-                    new[] { member.Name, memberType.ToDisplayString(), className }));
+                Location classicLoc =
+                    member.Locations.FirstOrDefault() ?? typeDeclaration.Identifier.GetLocation();
+                diagnostics.Add(
+                    new DiagnosticInfo(
+                        DiagnosticDescriptors.TypeUnsupportedOnClassicApi,
+                        classicLoc,
+                        new[] { member.Name, memberType.ToDisplayString(), className }
+                    )
+                );
                 rejectedAnyMember = true;
                 continue;
             }
@@ -254,11 +323,15 @@ public static class TargetParser
             // against generated source, with nothing pointing at the declaration responsible.
             if (!IsAssignable(member))
             {
-                Location setLoc = member.Locations.FirstOrDefault() ?? typeDeclaration.Identifier.GetLocation();
-                diagnostics.Add(new DiagnosticInfo(
-                    DiagnosticDescriptors.MemberNotAssignable,
-                    setLoc,
-                    new[] { member.Name, className }));
+                Location setLoc =
+                    member.Locations.FirstOrDefault() ?? typeDeclaration.Identifier.GetLocation();
+                diagnostics.Add(
+                    new DiagnosticInfo(
+                        DiagnosticDescriptors.MemberNotAssignable,
+                        setLoc,
+                        new[] { member.Name, className }
+                    )
+                );
                 rejectedAnyMember = true;
                 continue;
             }
@@ -266,21 +339,26 @@ public static class TargetParser
             // For enum types, capture the underlying type name for correct array allocation
             string? enumUnderlyingTypeName = null;
             if (kind == PropertyKind.Enum && underlyingType is INamedTypeSymbol enumTypeSymbol)
-                enumUnderlyingTypeName = enumTypeSymbol.EnumUnderlyingType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                enumUnderlyingTypeName = enumTypeSymbol.EnumUnderlyingType?.ToDisplayString(
+                    SymbolDisplayFormat.FullyQualifiedFormat
+                );
 
             string typeName = memberType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
-            propertyModels.Add(new PropertyModel(
-                Name: member.Name,
-                ParquetColumnName: columnName,
-                TypeName: typeName,
-                TimestampUnit: timestampUnit,
-                EnumUnderlyingTypeName: enumUnderlyingTypeName,
-                Order: order,
-                DecimalPrecision: precision,
-                DecimalScale: scale,
-                Kind: kind,
-                IsNullable: isNullable));
+            propertyModels.Add(
+                new PropertyModel(
+                    Name: member.Name,
+                    ParquetColumnName: columnName,
+                    TypeName: typeName,
+                    TimestampUnit: timestampUnit,
+                    EnumUnderlyingTypeName: enumUnderlyingTypeName,
+                    Order: order,
+                    DecimalPrecision: precision,
+                    DecimalScale: scale,
+                    Kind: kind,
+                    IsNullable: isNullable
+                )
+            );
         }
 
         // Rule PARQ003: Warning if no public serializable properties found. Suppressed when a
@@ -288,10 +366,13 @@ public static class TargetParser
         // real answer is "its members were rejected", and PARQ006/PARQ007 already say why.
         if (propertyModels.Count == 0 && !rejectedAnyMember)
         {
-            diagnostics.Add(new DiagnosticInfo(
-                DiagnosticDescriptors.NoPropertiesFound,
-                typeDeclaration.Identifier.GetLocation(),
-                new[] { className }));
+            diagnostics.Add(
+                new DiagnosticInfo(
+                    DiagnosticDescriptors.NoPropertiesFound,
+                    typeDeclaration.Identifier.GetLocation(),
+                    new[] { className }
+                )
+            );
         }
 
         // Rule PARQ008: the read path constructs through an object initializer, which needs an
@@ -299,16 +380,21 @@ public static class TargetParser
         // a class whose only constructors take arguments does not, and previously failed with CS7036
         // reported against generated source.
         bool hasParameterlessConstructor =
-            typeSymbol.IsValueType ||
-            typeSymbol.InstanceConstructors.Any(ctor =>
-                ctor.Parameters.Length == 0 && IsReachableFromGeneratedCode(ctor.DeclaredAccessibility));
+            typeSymbol.IsValueType
+            || typeSymbol.InstanceConstructors.Any(ctor =>
+                ctor.Parameters.Length == 0
+                && IsReachableFromGeneratedCode(ctor.DeclaredAccessibility)
+            );
 
         if (!hasParameterlessConstructor)
         {
-            diagnostics.Add(new DiagnosticInfo(
-                DiagnosticDescriptors.NoParameterlessConstructor,
-                typeDeclaration.Identifier.GetLocation(),
-                new[] { className }));
+            diagnostics.Add(
+                new DiagnosticInfo(
+                    DiagnosticDescriptors.NoParameterlessConstructor,
+                    typeDeclaration.Identifier.GetLocation(),
+                    new[] { className }
+                )
+            );
         }
 
         List<PropertyModel> orderedProperties = propertyModels
@@ -317,14 +403,25 @@ public static class TargetParser
 
         // Emission is suppressed whenever a fatal diagnostic already explains the problem. Emitting
         // anyway buries that message under cascading errors from the generated file.
-        bool canEmit = isPartial && hasParameterlessConstructor && !rejectedAnyMember && !isNested && !isGeneric;
+        bool canEmit =
+            isPartial
+            && hasParameterlessConstructor
+            && !rejectedAnyMember
+            && !isNested
+            && !isGeneric;
 
-        TargetClassModel? model = canEmit ? new TargetClassModel(
-            Namespace: namespaceName,
-            ClassName: className,
-            Properties: new EquatableArray<PropertyModel>(orderedProperties.ToArray())) : null;
+        TargetClassModel? model = canEmit
+            ? new TargetClassModel(
+                Namespace: namespaceName,
+                ClassName: className,
+                Properties: new EquatableArray<PropertyModel>(orderedProperties.ToArray())
+            )
+            : null;
 
-        return new TargetParserResult(model, new EquatableArray<DiagnosticInfo>(diagnostics.ToArray()));
+        return new TargetParserResult(
+            model,
+            new EquatableArray<DiagnosticInfo>(diagnostics.ToArray())
+        );
     }
 
     /// <summary>
@@ -344,9 +441,11 @@ public static class TargetParser
     private static List<ISymbol> GetSerializableMembers(INamedTypeSymbol typeSymbol)
     {
         var chain = new List<INamedTypeSymbol>();
-        for (INamedTypeSymbol? current = typeSymbol;
-             current is not null && current.SpecialType == SpecialType.None;
-             current = current.BaseType)
+        for (
+            INamedTypeSymbol? current = typeSymbol;
+            current is not null && current.SpecialType == SpecialType.None;
+            current = current.BaseType
+        )
         {
             chain.Add(current);
 
@@ -396,11 +495,16 @@ public static class TargetParser
     private static readonly HashSet<string> SupportedPassthroughTypes = new(StringComparer.Ordinal)
     {
         "bool",
-        "byte", "sbyte",
-        "short", "ushort",
-        "int", "uint",
-        "long", "ulong",
-        "float", "double",
+        "byte",
+        "sbyte",
+        "short",
+        "ushort",
+        "int",
+        "uint",
+        "long",
+        "ulong",
+        "float",
+        "double",
         "string",
         "System.DateOnly",
         "System.TimeOnly",
@@ -432,12 +536,17 @@ public static class TargetParser
     /// </summary>
     private static bool IsSupportedOnClassicApi(ITypeSymbol underlyingType) =>
         !ClassicApiUnsupportedTypes.Contains(
-            underlyingType.WithNullableAnnotation(NullableAnnotation.None).ToDisplayString());
+            underlyingType.WithNullableAnnotation(NullableAnnotation.None).ToDisplayString()
+        );
 
     /// <summary>
     /// Classifies a member's Parquet field kind, returning false when the type has no representation.
     /// </summary>
-    private static bool TryClassifyKind(ITypeSymbol underlyingType, ITypeSymbol memberType, out PropertyKind kind)
+    private static bool TryClassifyKind(
+        ITypeSymbol underlyingType,
+        ITypeSymbol memberType,
+        out PropertyKind kind
+    )
     {
         // Enum — any underlying integral type is fine, Parquet.Net accepts every enum.
         if (underlyingType.TypeKind == TypeKind.Enum)
@@ -457,7 +566,9 @@ public static class TargetParser
         // annotated reference type as "string?", not "string", and the Nullable<T> unwrap at the
         // call site only handles value types — so every `string?` column in the repository was
         // reported as an unsupported type by PARQ006 the moment the rule was switched on.
-        string fqn = underlyingType.WithNullableAnnotation(NullableAnnotation.None).ToDisplayString();
+        string fqn = underlyingType
+            .WithNullableAnnotation(NullableAnnotation.None)
+            .ToDisplayString();
 
         switch (fqn)
         {
@@ -520,7 +631,8 @@ public static class TargetParser
         // `init` accessors surface as a SetMethod with IsInitOnly, which an object initializer can
         // use, so no special case is needed for them.
         if (member is IPropertySymbol property)
-            return property.SetMethod is not null && IsReachableFromGeneratedCode(property.SetMethod.DeclaredAccessibility);
+            return property.SetMethod is not null
+                && IsReachableFromGeneratedCode(property.SetMethod.DeclaredAccessibility);
 
         if (member is IFieldSymbol field)
             return !field.IsReadOnly && !field.IsConst;

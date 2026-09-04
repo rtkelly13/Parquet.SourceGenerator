@@ -5,7 +5,11 @@ namespace Parquet.SourceGenerator;
 /// <summary>
 /// Controls column binding parameters such as field name override and ordering.
 /// </summary>
-[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false, Inherited = true)]
+[AttributeUsage(
+    AttributeTargets.Property | AttributeTargets.Field,
+    AllowMultiple = false,
+    Inherited = true
+)]
 public sealed class ParquetColumnAttribute : Attribute
 {
     /// <summary>
@@ -15,9 +19,7 @@ public sealed class ParquetColumnAttribute : Attribute
     /// Exists so ordering can be expressed on its own — <c>[ParquetColumn(Order = 2)]</c>. With only
     /// the name-taking constructor available, reordering a column forced you to restate its name.
     /// </remarks>
-    public ParquetColumnAttribute()
-    {
-    }
+    public ParquetColumnAttribute() { }
 
     /// <summary>
     /// Initializes a new instance of <see cref="ParquetColumnAttribute"/> with the specified column name.

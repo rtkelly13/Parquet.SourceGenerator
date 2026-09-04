@@ -20,31 +20,35 @@ public sealed class ParquetLegacyIncrementalGenerator : IIncrementalGenerator
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         // 1. Filter syntax nodes decorated with attributes and extract target model + diagnostics
-        IncrementalValuesProvider<TargetParserResult> targets = context.SyntaxProvider
-            .CreateSyntaxProvider(
+        IncrementalValuesProvider<TargetParserResult> targets =
+            context.SyntaxProvider.CreateSyntaxProvider(
                 predicate: static (s, _) => IsTargetSyntax(s),
-                transform: static (ctx, _) => TargetParser.GetTargetModel(ctx, ParquetApiLevel.V4));
+                transform: static (ctx, _) => TargetParser.GetTargetModel(ctx, ParquetApiLevel.V4)
+            );
 
         // 2. Register source output emission & diagnostic reporting
-        context.RegisterSourceOutput(targets, static (spc, result) =>
-        {
-            // Report compiler diagnostics
-            for (int i = 0; i < result.Diagnostics.Length; i++)
+        context.RegisterSourceOutput(
+            targets,
+            static (spc, result) =>
             {
-                spc.ReportDiagnostic(result.Diagnostics[i].ToDiagnostic());
-            }
+                // Report compiler diagnostics
+                for (int i = 0; i < result.Diagnostics.Length; i++)
+                {
+                    spc.ReportDiagnostic(result.Diagnostics[i].ToDiagnostic());
+                }
 
-            // Emit generated source code if target model is valid
-            if (result.Model is not null)
-            {
-                string prefix = string.IsNullOrEmpty(result.Model.Namespace)
-                    ? result.Model.ClassName
-                    : $"{result.Model.Namespace}.{result.Model.ClassName}";
-                string hintName = $"{prefix}.ParquetLegacySerializer.g.cs";
-                string sourceCode = LegacyCodeEmitter.EmitSource(result.Model);
-                spc.AddSource(hintName, sourceCode);
+                // Emit generated source code if target model is valid
+                if (result.Model is not null)
+                {
+                    string prefix = string.IsNullOrEmpty(result.Model.Namespace)
+                        ? result.Model.ClassName
+                        : $"{result.Model.Namespace}.{result.Model.ClassName}";
+                    string hintName = $"{prefix}.ParquetLegacySerializer.g.cs";
+                    string sourceCode = LegacyCodeEmitter.EmitSource(result.Model);
+                    spc.AddSource(hintName, sourceCode);
+                }
             }
-        });
+        );
     }
 
     private static bool IsTargetSyntax(SyntaxNode node)

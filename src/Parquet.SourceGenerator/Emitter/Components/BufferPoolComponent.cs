@@ -34,20 +34,33 @@ internal static class BufferPoolComponent
     /// <summary>
     /// Emits ArrayPool rentals for all property column buffers.
     /// </summary>
-    public static void EmitRentals(StringBuilder builder, TargetClassModel model, string sizeExpr, string varPrefix = "buffer_", string indent = "        ")
+    public static void EmitRentals(
+        StringBuilder builder,
+        TargetClassModel model,
+        string sizeExpr,
+        string varPrefix = "buffer_",
+        string indent = "        "
+    )
     {
         for (int i = 0; i < model.Properties.Length; i++)
         {
             PropertyModel prop = model.Properties[i];
             string bufType = GetBufferElementType(prop);
-            builder.AppendLine($"{indent}var {varPrefix}{i} = global::System.Buffers.ArrayPool<{bufType}>.Shared.Rent({sizeExpr});");
+            builder.AppendLine(
+                $"{indent}var {varPrefix}{i} = global::System.Buffers.ArrayPool<{bufType}>.Shared.Rent({sizeExpr});"
+            );
         }
     }
 
     /// <summary>
     /// Emits ArrayPool returns for all property column buffers.
     /// </summary>
-    public static void EmitReturns(StringBuilder builder, TargetClassModel model, string varPrefix = "buffer_", string indent = "            ")
+    public static void EmitReturns(
+        StringBuilder builder,
+        TargetClassModel model,
+        string varPrefix = "buffer_",
+        string indent = "            "
+    )
     {
         for (int i = 0; i < model.Properties.Length; i++)
         {
@@ -55,7 +68,9 @@ internal static class BufferPoolComponent
             string bufType = GetBufferElementType(prop);
             bool isRef = IsReferenceTypeBuffer(prop);
             string clearArg = isRef ? "clearArray: true" : "clearArray: false";
-            builder.AppendLine($"{indent}global::System.Buffers.ArrayPool<{bufType}>.Shared.Return({varPrefix}{i}, {clearArg});");
+            builder.AppendLine(
+                $"{indent}global::System.Buffers.ArrayPool<{bufType}>.Shared.Return({varPrefix}{i}, {clearArg});"
+            );
         }
     }
 }

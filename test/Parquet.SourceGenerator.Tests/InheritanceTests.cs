@@ -45,8 +45,18 @@ public sealed class InheritanceTests
     {
         var written = new List<InvoiceRow>
         {
-            new() { Id = 1, CreatedBy = "ada", Amount = 12.5 },
-            new() { Id = 2, CreatedBy = "grace", Amount = 99.0 },
+            new()
+            {
+                Id = 1,
+                CreatedBy = "ada",
+                Amount = 12.5,
+            },
+            new()
+            {
+                Id = 2,
+                CreatedBy = "grace",
+                Amount = 99.0,
+            },
         };
 
         using var stream = new MemoryStream();

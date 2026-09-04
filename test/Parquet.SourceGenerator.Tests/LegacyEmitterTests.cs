@@ -19,11 +19,15 @@ public class LegacyEmitterTests
     {
         string code = Emit(
             Prop("Id", "id", "int", LegacyModels::PropertyKind.Primitive, isNullable: false),
-            Prop("Name", "name", "string", LegacyModels::PropertyKind.Primitive, isNullable: true));
+            Prop("Name", "name", "string", LegacyModels::PropertyKind.Primitive, isNullable: true)
+        );
 
         Assert.Contains("namespace TestNamespace;", code);
         Assert.Contains("public static partial class TestModelParquetLegacyExtensions", code);
-        Assert.Contains("public static readonly global::Parquet.Schema.ParquetSchema Schema = new global::Parquet.Schema.ParquetSchema(", code);
+        Assert.Contains(
+            "public static readonly global::Parquet.Schema.ParquetSchema Schema = new global::Parquet.Schema.ParquetSchema(",
+            code
+        );
         Assert.Contains("new global::Parquet.Data.DataColumn(_field_0, colArray_0)", code);
         Assert.Contains("rgWriter.WriteColumnAsync(col_0, cancellationToken)", code);
         Assert.Contains("rgReader.ReadColumnAsync(field_0, cancellationToken)", code);
@@ -37,7 +41,15 @@ public class LegacyEmitterTests
     [Fact]
     public void ByteArrayColumnCreatesAJaggedArrayWithTheRankAfterTheLength()
     {
-        string code = Emit(Prop("Payload", "payload", "byte[]", LegacyModels::PropertyKind.ByteArray, isNullable: true));
+        string code = Emit(
+            Prop(
+                "Payload",
+                "payload",
+                "byte[]",
+                LegacyModels::PropertyKind.ByteArray,
+                isNullable: true
+            )
+        );
 
         Assert.Contains("var colArray_0 = new byte[count][];", code);
         Assert.DoesNotContain("new byte[][count]", code);
@@ -55,29 +67,38 @@ public class LegacyEmitterTests
     [Fact]
     public void NullableEnumColumnKeepsItsNullsOnBothSides()
     {
-        string code = Emit(Prop(
-            "Grade",
-            "grade",
-            "global::MyApp.Grade?",
-            LegacyModels::PropertyKind.Enum,
-            isNullable: true,
-            enumUnderlyingTypeName: "int"));
+        string code = Emit(
+            Prop(
+                "Grade",
+                "grade",
+                "global::MyApp.Grade?",
+                LegacyModels::PropertyKind.Enum,
+                isNullable: true,
+                enumUnderlyingTypeName: "int"
+            )
+        );
 
         Assert.Contains("var colArray_0 = new int?[count];", code);
         Assert.Contains("item.Grade is null ? (int?)null : (int)item.Grade.Value", code);
-        Assert.Contains("data_0[k] is null ? (global::MyApp.Grade?)null : (global::MyApp.Grade)data_0[k]!", code);
+        Assert.Contains(
+            "data_0[k] is null ? (global::MyApp.Grade?)null : (global::MyApp.Grade)data_0[k]!",
+            code
+        );
     }
 
     [Fact]
     public void NonNullableEnumColumnUsesTheBareUnderlyingType()
     {
-        string code = Emit(Prop(
-            "Grade",
-            "grade",
-            "global::MyApp.Grade",
-            LegacyModels::PropertyKind.Enum,
-            isNullable: false,
-            enumUnderlyingTypeName: "int"));
+        string code = Emit(
+            Prop(
+                "Grade",
+                "grade",
+                "global::MyApp.Grade",
+                LegacyModels::PropertyKind.Enum,
+                isNullable: false,
+                enumUnderlyingTypeName: "int"
+            )
+        );
 
         Assert.Contains("var colArray_0 = new int[count];", code);
         Assert.Contains("colArray_0[k] = (int)item.Grade;", code);
@@ -91,10 +112,15 @@ public class LegacyEmitterTests
     [Fact]
     public void CompressionIsAppliedToTheWriterFromEveryWriteEntryPoint()
     {
-        string code = Emit(Prop("Id", "id", "int", LegacyModels::PropertyKind.Primitive, isNullable: false));
+        string code = Emit(
+            Prop("Id", "id", "int", LegacyModels::PropertyKind.Primitive, isNullable: false)
+        );
 
         Assert.Contains("writer.CompressionMethod = options.CompressionMethod switch", code);
-        Assert.Contains("writer.CompressionLevel = global::System.IO.Compression.CompressionLevel.Fastest;", code);
+        Assert.Contains(
+            "writer.CompressionLevel = global::System.IO.Compression.CompressionLevel.Fastest;",
+            code
+        );
 
         // Both WriteParquetAsync and WriteParquetBatchedAsync must call it, or the batched path
         // quietly keeps the default while the simple path honours the option.
@@ -109,15 +135,21 @@ public class LegacyEmitterTests
     [Fact]
     public void SmallestSizeCompressionLevelIsGuardedForPreNet6Consumers()
     {
-        string code = Emit(Prop("Id", "id", "int", LegacyModels::PropertyKind.Primitive, isNullable: false));
+        string code = Emit(
+            Prop("Id", "id", "int", LegacyModels::PropertyKind.Primitive, isNullable: false)
+        );
 
         int guardStart = code.IndexOf("#if NET6_0_OR_GREATER", StringComparison.Ordinal);
         int guardEnd = code.IndexOf("#endif", StringComparison.Ordinal);
         int smallestSize = code.IndexOf(
             "global::System.IO.Compression.CompressionLevel.SmallestSize",
-            StringComparison.Ordinal);
+            StringComparison.Ordinal
+        );
 
-        Assert.True(guardStart >= 0, "The emitted code should guard the .NET 6+ compression level.");
+        Assert.True(
+            guardStart >= 0,
+            "The emitted code should guard the .NET 6+ compression level."
+        );
         Assert.InRange(smallestSize, guardStart, guardEnd);
     }
 
@@ -128,11 +160,14 @@ public class LegacyEmitterTests
     [Fact]
     public void ReaderReceivesTheFormatOptions()
     {
-        string code = Emit(Prop("Id", "id", "int", LegacyModels::PropertyKind.Primitive, isNullable: false));
+        string code = Emit(
+            Prop("Id", "id", "int", LegacyModels::PropertyKind.Primitive, isNullable: false)
+        );
 
         Assert.Contains(
             "global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken)",
-            code);
+            code
+        );
     }
 
     /// <summary>
@@ -144,10 +179,14 @@ public class LegacyEmitterTests
     {
         string code = Emit(
             Prop("Id", "id", "int", LegacyModels::PropertyKind.Primitive, isNullable: false),
-            Prop("Name", "name", "string", LegacyModels::PropertyKind.Primitive, isNullable: true));
+            Prop("Name", "name", "string", LegacyModels::PropertyKind.Primitive, isNullable: true)
+        );
 
         Assert.Equal(1, CountOccurrences(code, "reader.Schema.GetDataFields()"));
-        Assert.Equal(1, CountOccurrences(code, "ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName)"));
+        Assert.Equal(
+            1,
+            CountOccurrences(code, "ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName)")
+        );
 
         // Row counts come from row-group metadata, so the file is not walked twice just to total them.
         Assert.Contains("totalRows += (int)reader.RowGroups[r].RowCount;", code);
@@ -173,7 +212,10 @@ public class LegacyEmitterTests
             }
             """;
 
-        Assert.Contains(RunLegacyGenerator(source), d => d.Id == DiagnosticDescriptors.TypeUnsupportedOnClassicApi.Id);
+        Assert.Contains(
+            RunLegacyGenerator(source),
+            d => d.Id == DiagnosticDescriptors.TypeUnsupportedOnClassicApi.Id
+        );
     }
 
     [Fact]
@@ -202,20 +244,31 @@ public class LegacyEmitterTests
 
         ImmutableArray<Diagnostic> diagnostics = RunLegacyGenerator(source);
 
-        Assert.DoesNotContain(diagnostics, d => d.Id == DiagnosticDescriptors.TypeUnsupportedOnClassicApi.Id);
-        Assert.DoesNotContain(diagnostics, d => d.Id == DiagnosticDescriptors.UnsupportedPropertyType.Id);
+        Assert.DoesNotContain(
+            diagnostics,
+            d => d.Id == DiagnosticDescriptors.TypeUnsupportedOnClassicApi.Id
+        );
+        Assert.DoesNotContain(
+            diagnostics,
+            d => d.Id == DiagnosticDescriptors.UnsupportedPropertyType.Id
+        );
     }
 
     [Fact]
     public void LegacyEmittedCodeContainsReadParquetArrayAsyncAndSmallBatchOptimization()
     {
-        string code = Emit(Prop("Id", "id", "int", LegacyModels::PropertyKind.Primitive, isNullable: false));
+        string code = Emit(
+            Prop("Id", "id", "int", LegacyModels::PropertyKind.Primitive, isNullable: false)
+        );
 
         // Direct array reader overload
         Assert.Contains("Task<TestModel[]> ReadParquetArrayAsync(", code);
 
         // Batched write small-collection fast path
-        Assert.Contains("if (items is global::System.Collections.Generic.IReadOnlyList<TestModel> list && list.Count <= batchSize)", code);
+        Assert.Contains(
+            "if (items is global::System.Collections.Generic.IReadOnlyList<TestModel> list && list.Count <= batchSize)",
+            code
+        );
     }
 
     // ──────────────────────────────────────────────────────────
@@ -228,25 +281,42 @@ public class LegacyEmitterTests
         string typeName,
         LegacyModels::PropertyKind kind,
         bool isNullable,
-        string? enumUnderlyingTypeName = null) =>
-        new(name, columnName, typeName, null, enumUnderlyingTypeName, 1, null, null, kind, isNullable);
+        string? enumUnderlyingTypeName = null
+    ) =>
+        new(
+            name,
+            columnName,
+            typeName,
+            null,
+            enumUnderlyingTypeName,
+            1,
+            null,
+            null,
+            kind,
+            isNullable
+        );
 
     private static string Emit(params LegacyModels::PropertyModel[] properties)
     {
         var model = new LegacyModels::TargetClassModel(
             "TestNamespace",
             "TestModel",
-            new LegacyModels::EquatableArray<LegacyModels::PropertyModel>(properties));
+            new LegacyModels::EquatableArray<LegacyModels::PropertyModel>(properties)
+        );
 
-        return LegacyGenerator::Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitSource(model);
+        return LegacyGenerator::Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitSource(
+            model
+        );
     }
 
     private static int CountOccurrences(string haystack, string needle)
     {
         int count = 0;
-        for (int i = haystack.IndexOf(needle, StringComparison.Ordinal);
-             i >= 0;
-             i = haystack.IndexOf(needle, i + needle.Length, StringComparison.Ordinal))
+        for (
+            int i = haystack.IndexOf(needle, StringComparison.Ordinal);
+            i >= 0;
+            i = haystack.IndexOf(needle, i + needle.Length, StringComparison.Ordinal)
+        )
         {
             count++;
         }
@@ -261,7 +331,9 @@ public class LegacyEmitterTests
         {
             MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(Attribute).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(ParquetSerializableAttribute).Assembly.Location),
+            MetadataReference.CreateFromFile(
+                typeof(ParquetSerializableAttribute).Assembly.Location
+            ),
             MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location),
             MetadataReference.CreateFromFile(Assembly.Load("System.Runtime.Numerics").Location),
             MetadataReference.CreateFromFile(Assembly.Load("System.Collections").Location),
@@ -273,9 +345,12 @@ public class LegacyEmitterTests
             references,
             new CSharpCompilationOptions(
                 OutputKind.DynamicallyLinkedLibrary,
-                nullableContextOptions: NullableContextOptions.Enable));
+                nullableContextOptions: NullableContextOptions.Enable
+            )
+        );
 
-        var generator = new LegacyGenerator::Parquet.SourceGenerator.Legacy.ParquetLegacyIncrementalGenerator();
+        var generator =
+            new LegacyGenerator::Parquet.SourceGenerator.Legacy.ParquetLegacyIncrementalGenerator();
         GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
         driver.RunGeneratorsAndUpdateCompilation(compilation, out _, out var diagnostics);
 

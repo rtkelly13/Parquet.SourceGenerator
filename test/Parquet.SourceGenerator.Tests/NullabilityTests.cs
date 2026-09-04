@@ -37,8 +37,8 @@ public partial record NullabilityModel
 public sealed class NullabilityTests
 {
     private static bool IsColumnNullable(string columnName) =>
-        NullabilityModelParquetExtensions.Schema.DataFields
-            .Single(f => f.Name == columnName)
+        NullabilityModelParquetExtensions
+            .Schema.DataFields.Single(f => f.Name == columnName)
             .IsNullable;
 
     [Theory]
@@ -88,7 +88,9 @@ public sealed class NullabilityTests
         await written.WriteParquetAsync(stream);
         stream.Position = 0;
 
-        List<NullabilityModel> read = await NullabilityModelParquetExtensions.ReadParquetAsync(stream);
+        List<NullabilityModel> read = await NullabilityModelParquetExtensions.ReadParquetAsync(
+            stream
+        );
 
         Assert.Equal(2, read.Count);
         Assert.Null(read[0].OptionalId);

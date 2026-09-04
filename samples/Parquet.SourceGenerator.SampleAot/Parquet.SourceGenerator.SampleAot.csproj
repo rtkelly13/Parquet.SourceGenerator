@@ -1,22 +1,22 @@
 <Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net8.0</TargetFramework>
+        <PublishAot>true</PublishAot>
+        <IsPackable>false</IsPackable>
+        <RootNamespace>Parquet.SourceGenerator.SampleAot</RootNamespace>
+    </PropertyGroup>
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
-    <PublishAot>true</PublishAot>
-    <IsPackable>false</IsPackable>
-    <RootNamespace>Parquet.SourceGenerator.SampleAot</RootNamespace>
-  </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="Parquet.Net" Version="6.0.3" />
+    </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Parquet.Net" Version="6.0.3" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\Parquet.SourceGenerator.Attributes\Parquet.SourceGenerator.Attributes.csproj" />
-    <ProjectReference Include="..\..\src\Parquet.SourceGenerator\Parquet.SourceGenerator.csproj"
-                      OutputItemType="Analyzer"
-                      ReferenceOutputAssembly="false" />
-  </ItemGroup>
-
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\Parquet.SourceGenerator.Attributes\Parquet.SourceGenerator.Attributes.csproj" />
+        <ProjectReference
+            Include="..\..\src\Parquet.SourceGenerator\Parquet.SourceGenerator.csproj"
+            OutputItemType="Analyzer"
+            ReferenceOutputAssembly="false"
+        />
+    </ItemGroup>
 </Project>

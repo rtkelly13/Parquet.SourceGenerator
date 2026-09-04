@@ -1,6 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
-  <!--
+    <!--
     Deliberately NOT part of Parquet.SourceGenertor.sln.
 
     It consumes Parquet.SourceGenerator as a NuGet package at a version that only exists once
@@ -9,26 +8,25 @@
     CI builds it explicitly, after the pack step. See .github/workflows/ci.yml.
   -->
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
-    <Nullable>enable</Nullable>
-    <IsPackable>false</IsPackable>
-    <RootNamespace>PackageConsumption</RootNamespace>
-    <!-- A consumer's build must not be polluted by warnings from generated code. -->
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-  </PropertyGroup>
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+        <Nullable>enable</Nullable>
+        <IsPackable>false</IsPackable>
+        <RootNamespace>PackageConsumption</RootNamespace>
+        <!-- A consumer's build must not be polluted by warnings from generated code. -->
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <!--
+    <ItemGroup>
+        <!--
       This is the whole point of the test: reference ONLY the generator package plus Parquet.Net,
       the way a first-time user following the README would. Parquet.SourceGenerator.Attributes is
       deliberately NOT listed — it has to arrive as a transitive dependency of the generator
       package. If that dependency is missing from the .nupkg, [ParquetSerializable] does not
       resolve and this project fails to compile, which is exactly the regression to catch.
     -->
-    <PackageReference Include="Parquet.SourceGenerator" Version="$(GeneratorPackageVersion)" />
-    <PackageReference Include="Parquet.Net" Version="6.0.3" />
-  </ItemGroup>
-
+        <PackageReference Include="Parquet.SourceGenerator" Version="$(GeneratorPackageVersion)" />
+        <PackageReference Include="Parquet.Net" Version="6.0.3" />
+    </ItemGroup>
 </Project>

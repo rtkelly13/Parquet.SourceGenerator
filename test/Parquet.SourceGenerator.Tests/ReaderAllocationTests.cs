@@ -36,13 +36,17 @@ public sealed class ReaderAllocationTests
         var model = new TargetClassModel(
             Namespace: "TestNamespace",
             ClassName: "TestEntity",
-            Properties: new EquatableArray<PropertyModel>(SingleProperty));
+            Properties: new EquatableArray<PropertyModel>(SingleProperty)
+        );
 
         string source = CodeEmitter.EmitSource(model);
 
         // Sizing happens upfront from the summed row count, avoiding per-row-group reallocations.
         Assert.Contains("int totalRows = (int)global::System.Linq.Enumerable.Sum", source);
-        Assert.Contains("new global::System.Collections.Generic.List<TestEntity>(totalRows)", source);
+        Assert.Contains(
+            "new global::System.Collections.Generic.List<TestEntity>(totalRows)",
+            source
+        );
         Assert.DoesNotContain("results.Capacity", source);
     }
 
@@ -51,7 +55,8 @@ public sealed class ReaderAllocationTests
     {
         // 7 rows at 2 per group => 4 row groups, the last one partial. Reading back the full set in
         // order is what the removed Capacity assignment was silently taxing.
-        List<MultiRowGroupModel> written = Enumerable.Range(1, 7)
+        List<MultiRowGroupModel> written = Enumerable
+            .Range(1, 7)
             .Select(i => new MultiRowGroupModel { Id = i, Name = $"Item_{i}" })
             .ToList();
 
@@ -59,7 +64,9 @@ public sealed class ReaderAllocationTests
         await written.WriteParquetBatchedAsync(stream, rowGroupSize: 2);
         stream.Position = 0;
 
-        List<MultiRowGroupModel> read = await MultiRowGroupModelParquetExtensions.ReadParquetAsync(stream);
+        List<MultiRowGroupModel> read = await MultiRowGroupModelParquetExtensions.ReadParquetAsync(
+            stream
+        );
 
         Assert.Equal(7, read.Count);
         Assert.Equal(written.Select(x => x.Id), read.Select(x => x.Id));
@@ -69,7 +76,8 @@ public sealed class ReaderAllocationTests
     [Fact]
     public async Task ParallelReaderAgreesWithSequentialReaderAcrossRowGroups()
     {
-        List<MultiRowGroupModel> written = Enumerable.Range(1, 7)
+        List<MultiRowGroupModel> written = Enumerable
+            .Range(1, 7)
             .Select(i => new MultiRowGroupModel { Id = i, Name = $"Item_{i}" })
             .ToList();
 
@@ -77,10 +85,12 @@ public sealed class ReaderAllocationTests
         await written.WriteParquetBatchedAsync(stream, rowGroupSize: 2);
 
         stream.Position = 0;
-        List<MultiRowGroupModel> sequential = await MultiRowGroupModelParquetExtensions.ReadParquetAsync(stream);
+        List<MultiRowGroupModel> sequential =
+            await MultiRowGroupModelParquetExtensions.ReadParquetAsync(stream);
 
         stream.Position = 0;
-        List<MultiRowGroupModel> parallel = await MultiRowGroupModelParquetExtensions.ReadParquetParallelAsync(stream);
+        List<MultiRowGroupModel> parallel =
+            await MultiRowGroupModelParquetExtensions.ReadParquetParallelAsync(stream);
 
         Assert.Equal(sequential.Select(x => x.Id), parallel.Select(x => x.Id));
         Assert.Equal(sequential.Select(x => x.Name), parallel.Select(x => x.Name));

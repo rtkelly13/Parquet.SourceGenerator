@@ -162,12 +162,18 @@ internal static class Program
         await CheckAsync("all property kinds round-trip", WideRecordRoundtripAsync);
         await CheckAsync("nullable kinds round-trip with nulls present", NullableRoundtripAsync);
         await CheckAsync("[ParquetIgnore] member is not persisted", IgnoredMemberAsync);
-        await CheckAsync("microsecond timestamps keep sub-millisecond precision", MicrosecondPrecisionAsync);
+        await CheckAsync(
+            "microsecond timestamps keep sub-millisecond precision",
+            MicrosecondPrecisionAsync
+        );
         await CheckAsync("batched write produces multiple row groups", BatchedWriteAsync);
         await CheckAsync("parallel read across row groups", ParallelReadAsync);
         await CheckAsync("read from ReadOnlyMemory<byte>", MemoryReadAsync);
         await CheckAsync("IAsyncEnumerable streaming write", AsyncEnumerableWriteAsync);
-        await CheckAsync("schema field resolution by name (reordered columns)", ReorderedColumnsAsync);
+        await CheckAsync(
+            "schema field resolution by name (reordered columns)",
+            ReorderedColumnsAsync
+        );
         await CheckAsync("every compression codec round-trips", CompressionCodecsAsync);
 
         Console.WriteLine("=================================================");
@@ -179,8 +185,12 @@ internal static class Program
         }
 
         Console.WriteLine($"{_failures} of {_passes + _failures} AOT checks FAILED.");
-        Console.WriteLine("A failure here usually means a code path started depending on reflection,");
-        Console.WriteLine("on metadata the trimmer removed, or on dynamic loading AOT cannot honour.");
+        Console.WriteLine(
+            "A failure here usually means a code path started depending on reflection,"
+        );
+        Console.WriteLine(
+            "on metadata the trimmer removed, or on dynamic loading AOT cannot honour."
+        );
         Console.WriteLine("=================================================");
         return 1;
     }
@@ -211,23 +221,28 @@ internal static class Program
         }
     }
 
-    private static AotWideRecord SampleWide(int seed) => new()
-    {
-        Int32Value = seed,
-        Int64Value = seed * 1_000_000_000L,
-        DoubleValue = seed + 0.5,
-        FloatValue = seed + 0.25f,
-        BoolValue = seed % 2 == 0,
-        StringValue = $"row-{seed}",
-        DecimalValue = new decimal(seed) + 0.1234m,
-        // Whole milliseconds: the default DateTime column is not microsecond-encoded.
-        DateTimeValue = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddMilliseconds(seed),
-        MicrosecondValue = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddTicks((seed * 10) + 70),
-        TimeSpanValue = TimeSpan.FromMilliseconds(seed * 37),
-        GuidValue = new Guid(seed, 0x1234, 0x5678, 1, 2, 3, 4, 5, 6, 7, 8),
-        EnumValue = (AotStatus)(seed % 3),
-        ByteArrayValue = new byte[] { (byte)seed, 0xAA, 0xBB },
-    };
+    private static AotWideRecord SampleWide(int seed) =>
+        new()
+        {
+            Int32Value = seed,
+            Int64Value = seed * 1_000_000_000L,
+            DoubleValue = seed + 0.5,
+            FloatValue = seed + 0.25f,
+            BoolValue = seed % 2 == 0,
+            StringValue = $"row-{seed}",
+            DecimalValue = new decimal(seed) + 0.1234m,
+            // Whole milliseconds: the default DateTime column is not microsecond-encoded.
+            DateTimeValue = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddMilliseconds(
+                seed
+            ),
+            MicrosecondValue = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddTicks(
+                (seed * 10) + 70
+            ),
+            TimeSpanValue = TimeSpan.FromMilliseconds(seed * 37),
+            GuidValue = new Guid(seed, 0x1234, 0x5678, 1, 2, 3, 4, 5, 6, 7, 8),
+            EnumValue = (AotStatus)(seed % 3),
+            ByteArrayValue = new byte[] { (byte)seed, 0xAA, 0xBB },
+        };
 
     private static void ExpectWideEqual(AotWideRecord expected, AotWideRecord actual, int index)
     {
@@ -237,20 +252,31 @@ internal static class Program
         Expect(actual.FloatValue == expected.FloatValue, $"row {index}: float mismatch");
         Expect(actual.BoolValue == expected.BoolValue, $"row {index}: bool mismatch");
         Expect(actual.StringValue == expected.StringValue, $"row {index}: string mismatch");
-        Expect(actual.DecimalValue == expected.DecimalValue,
-            $"row {index}: decimal mismatch — expected {expected.DecimalValue}, got {actual.DecimalValue}");
-        Expect(actual.DateTimeValue == expected.DateTimeValue,
-            $"row {index}: DateTime mismatch — expected {expected.DateTimeValue:O}, got {actual.DateTimeValue:O}");
+        Expect(
+            actual.DecimalValue == expected.DecimalValue,
+            $"row {index}: decimal mismatch — expected {expected.DecimalValue}, got {actual.DecimalValue}"
+        );
+        Expect(
+            actual.DateTimeValue == expected.DateTimeValue,
+            $"row {index}: DateTime mismatch — expected {expected.DateTimeValue:O}, got {actual.DateTimeValue:O}"
+        );
         Expect(actual.TimeSpanValue == expected.TimeSpanValue, $"row {index}: TimeSpan mismatch");
-        Expect(actual.GuidValue == expected.GuidValue,
-            $"row {index}: Guid mismatch — expected {expected.GuidValue}, got {actual.GuidValue}");
+        Expect(
+            actual.GuidValue == expected.GuidValue,
+            $"row {index}: Guid mismatch — expected {expected.GuidValue}, got {actual.GuidValue}"
+        );
         Expect(actual.EnumValue == expected.EnumValue, $"row {index}: enum mismatch");
 
-        Expect(actual.ByteArrayValue.Length == expected.ByteArrayValue.Length,
-            $"row {index}: byte[] length mismatch");
+        Expect(
+            actual.ByteArrayValue.Length == expected.ByteArrayValue.Length,
+            $"row {index}: byte[] length mismatch"
+        );
         for (int b = 0; b < expected.ByteArrayValue.Length; b++)
         {
-            Expect(actual.ByteArrayValue[b] == expected.ByteArrayValue[b], $"row {index}: byte[{b}] mismatch");
+            Expect(
+                actual.ByteArrayValue[b] == expected.ByteArrayValue[b],
+                $"row {index}: byte[{b}] mismatch"
+            );
         }
     }
 
@@ -259,12 +285,18 @@ internal static class Program
         // The schema is a static readonly built at type-init, so a construction failure surfaces as
         // a TypeInitializationException the first time the class is touched. Reading it before
         // anything else keeps that distinguishable from a serialization fault.
-        Expect(AotWideRecordParquetExtensions.Schema.Fields.Count == 13,
-            $"expected 13 schema fields, found {AotWideRecordParquetExtensions.Schema.Fields.Count}");
-        Expect(AotNullableRecordParquetExtensions.Schema.Fields.Count == 10,
-            $"expected 10 nullable schema fields, found {AotNullableRecordParquetExtensions.Schema.Fields.Count}");
-        Expect(AotWideRecordParquetExtensions.Schema.Fields[0].Name == "f_int",
-            "schema field order does not follow the declared Order");
+        Expect(
+            AotWideRecordParquetExtensions.Schema.Fields.Count == 13,
+            $"expected 13 schema fields, found {AotWideRecordParquetExtensions.Schema.Fields.Count}"
+        );
+        Expect(
+            AotNullableRecordParquetExtensions.Schema.Fields.Count == 10,
+            $"expected 10 nullable schema fields, found {AotNullableRecordParquetExtensions.Schema.Fields.Count}"
+        );
+        Expect(
+            AotWideRecordParquetExtensions.Schema.Fields[0].Name == "f_int",
+            "schema field order does not follow the declared Order"
+        );
         return Task.CompletedTask;
     }
 
@@ -322,7 +354,9 @@ internal static class Program
         using var stream = new MemoryStream();
         await written.WriteParquetAsync(stream);
         stream.Position = 0;
-        List<AotNullableRecord> read = await AotNullableRecordParquetExtensions.ReadParquetAsync(stream);
+        List<AotNullableRecord> read = await AotNullableRecordParquetExtensions.ReadParquetAsync(
+            stream
+        );
 
         Expect(read.Count == 3, $"expected 3 rows, read {read.Count}");
 
@@ -332,7 +366,10 @@ internal static class Program
         Expect(read[0].BoolValue == true, "row 0: bool? value lost");
         Expect(read[0].StringValue == "present", "row 0: string? value lost");
         Expect(read[0].TimeSpanValue == TimeSpan.FromSeconds(90), "row 0: TimeSpan? value lost");
-        Expect(read[0].GuidValue == new Guid("11112222-3333-4444-5555-666677778888"), "row 0: Guid? value lost");
+        Expect(
+            read[0].GuidValue == new Guid("11112222-3333-4444-5555-666677778888"),
+            "row 0: Guid? value lost"
+        );
         Expect(read[0].EnumValue == AotStatus.Active, "row 0: enum? value lost");
 
         Expect(read[1].Int32Value is null, "row 1: int? should be null, got a value");
@@ -352,22 +389,32 @@ internal static class Program
 
     private static async Task IgnoredMemberAsync()
     {
-        var written = new List<AotWideRecord> { SampleWide(1) with { NotPersisted = "should not survive" } };
+        var written = new List<AotWideRecord>
+        {
+            SampleWide(1) with
+            {
+                NotPersisted = "should not survive",
+            },
+        };
 
         using var stream = new MemoryStream();
         await written.WriteParquetAsync(stream);
         stream.Position = 0;
         List<AotWideRecord> read = await AotWideRecordParquetExtensions.ReadParquetAsync(stream);
 
-        Expect(read[0].NotPersisted == "ignored",
-            $"[ParquetIgnore] member should come back at its initializer, got '{read[0].NotPersisted}'");
+        Expect(
+            read[0].NotPersisted == "ignored",
+            $"[ParquetIgnore] member should come back at its initializer, got '{read[0].NotPersisted}'"
+        );
     }
 
     private static async Task MicrosecondPrecisionAsync()
     {
         AotWideRecord sample = SampleWide(3);
-        Expect(sample.MicrosecondValue.Ticks % TimeSpan.TicksPerMillisecond != 0,
-            "test value must carry a sub-millisecond component to be meaningful");
+        Expect(
+            sample.MicrosecondValue.Ticks % TimeSpan.TicksPerMillisecond != 0,
+            "test value must carry a sub-millisecond component to be meaningful"
+        );
 
         using var stream = new MemoryStream();
         await new List<AotWideRecord> { sample }.WriteParquetAsync(stream);
@@ -377,8 +424,10 @@ internal static class Program
         const long ticksPerMicrosecond = TimeSpan.TicksPerMillisecond / 1000;
         long expected = sample.MicrosecondValue.Ticks / ticksPerMicrosecond;
         long actual = read[0].MicrosecondValue.Ticks / ticksPerMicrosecond;
-        Expect(expected == actual,
-            $"microsecond timestamp lost precision — expected {expected}us, got {actual}us");
+        Expect(
+            expected == actual,
+            $"microsecond timestamp lost precision — expected {expected}us, got {actual}us"
+        );
     }
 
     private static async Task BatchedWriteAsync()
@@ -413,8 +462,10 @@ internal static class Program
 
         // Exercises the threaded path as well as the converters, since row groups decode
         // concurrently.
-        List<AotWideRecord> read =
-            await AotWideRecordParquetExtensions.ReadParquetParallelAsync(stream, maxDegreeOfParallelism: 4);
+        List<AotWideRecord> read = await AotWideRecordParquetExtensions.ReadParquetParallelAsync(
+            stream,
+            maxDegreeOfParallelism: 4
+        );
 
         Expect(read.Count == 120, $"expected 120 rows from the parallel reader, read {read.Count}");
         for (int i = 0; i < written.Count; i++)
@@ -454,7 +505,9 @@ internal static class Program
         await StreamRecordsAsync(60).WriteParquetAsync(stream, rowGroupSize: 16);
         stream.Position = 0;
 
-        List<AotNarrowRecord> read = await AotNarrowRecordParquetExtensions.ReadParquetAsync(stream);
+        List<AotNarrowRecord> read = await AotNarrowRecordParquetExtensions.ReadParquetAsync(
+            stream
+        );
 
         Expect(read.Count == 60, $"expected 60 streamed rows, read {read.Count}");
         Expect(read[0].Label == "streamed-0", "first streamed row is wrong");
@@ -471,11 +524,15 @@ internal static class Program
         await written.WriteParquetAsync(stream);
         stream.Position = 0;
 
-        List<AotReorderedRecord> read = await AotReorderedRecordParquetExtensions.ReadParquetAsync(stream);
+        List<AotReorderedRecord> read = await AotReorderedRecordParquetExtensions.ReadParquetAsync(
+            stream
+        );
 
         Expect(read.Count == 1, $"expected 1 row, read {read.Count}");
-        Expect(read[0].Int32Value == written[0].Int32Value,
-            "columns resolved positionally instead of by name — int is wrong");
+        Expect(
+            read[0].Int32Value == written[0].Int32Value,
+            "columns resolved positionally instead of by name — int is wrong"
+        );
         Expect(read[0].Int64Value == written[0].Int64Value, "reordered long mismatch");
         Expect(read[0].DoubleValue == written[0].DoubleValue, "reordered double mismatch");
     }
@@ -500,11 +557,16 @@ internal static class Program
             var written = new List<AotWideRecord> { SampleWide(1), SampleWide(2) };
 
             using var stream = new MemoryStream();
-            await written.WriteParquetAsync(stream, new ParquetSerializerOptions { CompressionMethod = method });
+            await written.WriteParquetAsync(
+                stream,
+                new ParquetSerializerOptions { CompressionMethod = method }
+            );
             Expect(stream.Length > 0, $"{method}: write produced an empty stream");
 
             stream.Position = 0;
-            List<AotWideRecord> read = await AotWideRecordParquetExtensions.ReadParquetAsync(stream);
+            List<AotWideRecord> read = await AotWideRecordParquetExtensions.ReadParquetAsync(
+                stream
+            );
 
             Expect(read.Count == 2, $"{method}: expected 2 rows, read {read.Count}");
             ExpectWideEqual(written[0], read[0], 0);

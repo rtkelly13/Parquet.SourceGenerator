@@ -5,7 +5,11 @@ namespace Parquet.SourceGenerator;
 /// <summary>
 /// Configures precision and scale parameters for decimal columns.
 /// </summary>
-[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false, Inherited = true)]
+[AttributeUsage(
+    AttributeTargets.Property | AttributeTargets.Field,
+    AllowMultiple = false,
+    Inherited = true
+)]
 public sealed class ParquetDecimalAttribute : Attribute
 {
     /// <summary>

@@ -27,7 +27,8 @@ public sealed class RowGroupSizingTests
     private static async Task<int> RowGroupCountAsync(
         int? rowGroupSize,
         ParquetSerializerOptions? options,
-        int rowCount)
+        int rowCount
+    )
     {
         using var stream = new MemoryStream();
         await Rows(rowCount).WriteParquetBatchedAsync(stream, rowGroupSize, options);
@@ -46,7 +47,8 @@ public sealed class RowGroupSizingTests
         int groups = await RowGroupCountAsync(
             rowGroupSize: 2,
             options: new ParquetSerializerOptions { RowGroupSize = 10 },
-            rowCount: 6);
+            rowCount: 6
+        );
 
         Assert.Equal(3, groups);
     }
@@ -57,7 +59,8 @@ public sealed class RowGroupSizingTests
         int groups = await RowGroupCountAsync(
             rowGroupSize: null,
             options: new ParquetSerializerOptions { RowGroupSize = 2 },
-            rowCount: 6);
+            rowCount: 6
+        );
 
         Assert.Equal(3, groups);
     }
@@ -70,7 +73,8 @@ public sealed class RowGroupSizingTests
         int groups = await RowGroupCountAsync(
             rowGroupSize: 50_000,
             options: new ParquetSerializerOptions { RowGroupSize = 2 },
-            rowCount: 6);
+            rowCount: 6
+        );
 
         Assert.Equal(1, groups);
     }
@@ -80,13 +84,20 @@ public sealed class RowGroupSizingTests
     {
         using var stream = new MemoryStream();
 
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
-            () => Rows(2).WriteParquetBatchedAsync(stream, rowGroupSize: 0));
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
-            () => Rows(2).WriteParquetBatchedAsync(stream, rowGroupSize: -10));
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
-            () => Rows(2).WriteParquetBatchedAsync(
-                stream, null, new ParquetSerializerOptions { RowGroupSize = 0 }));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            Rows(2).WriteParquetBatchedAsync(stream, rowGroupSize: 0)
+        );
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            Rows(2).WriteParquetBatchedAsync(stream, rowGroupSize: -10)
+        );
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            Rows(2)
+                .WriteParquetBatchedAsync(
+                    stream,
+                    null,
+                    new ParquetSerializerOptions { RowGroupSize = 0 }
+                )
+        );
     }
 
     [Fact]

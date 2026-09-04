@@ -14,4 +14,5 @@ namespace Parquet.SourceGenerator.Models;
 public sealed record TargetClassModel(
     string Namespace,
     string ClassName,
-    EquatableArray<PropertyModel> Properties) : IEquatable<TargetClassModel>;
+    EquatableArray<PropertyModel> Properties
+) : IEquatable<TargetClassModel>;

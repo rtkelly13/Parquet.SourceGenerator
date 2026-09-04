@@ -15,9 +15,14 @@ public static class Program
 
     public static int Main(string[] args)
     {
-        string resultsDir = args.Length > 0 && !args[0].StartsWith("--", StringComparison.Ordinal) ? args[0] : "BenchmarkDotNet.Artifacts/results";
+        string resultsDir =
+            args.Length > 0 && !args[0].StartsWith("--", StringComparison.Ordinal)
+                ? args[0]
+                : "BenchmarkDotNet.Artifacts/results";
         bool updateReadme = args.Contains("--update-readme", StringComparer.Ordinal);
-        string? outputPath = args.FirstOrDefault(a => a != resultsDir && !a.StartsWith("--", StringComparison.Ordinal));
+        string? outputPath = args.FirstOrDefault(a =>
+            a != resultsDir && !a.StartsWith("--", StringComparison.Ordinal)
+        );
 
         if (!Directory.Exists(resultsDir))
         {
@@ -65,14 +70,18 @@ public static class Program
         {
             // Not a pass. A filter that matched nothing, or a run that crashed before exporting,
             // would otherwise be indistinguishable from a clean result.
-            Console.Error.WriteLine($"No benchmark results found in '{resultsDir}'. Nothing to compare.");
+            Console.Error.WriteLine(
+                $"No benchmark results found in '{resultsDir}'. Nothing to compare."
+            );
             return 1;
         }
 
         if (args.Contains("--update-baseline", StringComparer.Ordinal))
         {
             WriteBaselineFile(baselinePath, current);
-            Console.WriteLine($"Baseline updated with {current.Count} measurement(s): {baselinePath}");
+            Console.WriteLine(
+                $"Baseline updated with {current.Count} measurement(s): {baselinePath}"
+            );
             return 0;
         }
 
@@ -83,17 +92,31 @@ public static class Program
             // First run bootstraps rather than failing: there is nothing to regress against, and
             // demanding a baseline before one can exist would make the check impossible to adopt.
             WriteBaselineFile(baselinePath, current);
-            Console.WriteLine($"No baseline at '{baselinePath}' — recorded this run as the baseline ({current.Count} measurements).");
+            Console.WriteLine(
+                $"No baseline at '{baselinePath}' — recorded this run as the baseline ({current.Count} measurements)."
+            );
             Console.WriteLine("Commit it, and subsequent runs will be compared against it.");
             return 0;
         }
 
-        double allocationTolerance = ParseTolerance(args, "--alloc-tolerance", RegressionCheck.DefaultAllocationTolerance);
-        double timeTolerance = ParseTolerance(args, "--time-tolerance", RegressionCheck.DefaultTimeTolerance);
+        double allocationTolerance = ParseTolerance(
+            args,
+            "--alloc-tolerance",
+            RegressionCheck.DefaultAllocationTolerance
+        );
+        double timeTolerance = ParseTolerance(
+            args,
+            "--time-tolerance",
+            RegressionCheck.DefaultTimeTolerance
+        );
         bool failOnTime = args.Contains("--fail-on-time", StringComparer.Ordinal);
 
-        IReadOnlyList<BenchmarkComparison> comparisons =
-            RegressionCheck.Compare(baseline, current, allocationTolerance, timeTolerance);
+        IReadOnlyList<BenchmarkComparison> comparisons = RegressionCheck.Compare(
+            baseline,
+            current,
+            allocationTolerance,
+            timeTolerance
+        );
 
         string report = RegressionCheck.BuildReport(comparisons);
         Console.WriteLine(report);
@@ -107,7 +130,10 @@ public static class Program
         return RegressionCheck.HasFailures(comparisons, failOnTime) ? 1 : 0;
     }
 
-    private static void WriteBaselineFile(string path, IReadOnlyList<BenchmarkMeasurement> measurements)
+    private static void WriteBaselineFile(
+        string path,
+        IReadOnlyList<BenchmarkMeasurement> measurements
+    )
     {
         string? directory = Path.GetDirectoryName(path);
         if (!string.IsNullOrEmpty(directory))
@@ -124,7 +150,10 @@ public static class Program
     private static string? OptionValue(string[] args, string name)
     {
         int index = Array.IndexOf(args, name);
-        return index >= 0 && index + 1 < args.Length && !args[index + 1].StartsWith("--", StringComparison.Ordinal)
+        return
+            index >= 0
+            && index + 1 < args.Length
+            && !args[index + 1].StartsWith("--", StringComparison.Ordinal)
             ? args[index + 1]
             : null;
     }
@@ -132,9 +161,15 @@ public static class Program
     private static double ParseTolerance(string[] args, string name, double fallback)
     {
         string? raw = OptionValue(args, name);
-        return raw is not null &&
-               double.TryParse(raw, NumberStyles.Any, CultureInfo.InvariantCulture, out double value) &&
-               value >= 0
+        return
+            raw is not null
+            && double.TryParse(
+                raw,
+                NumberStyles.Any,
+                CultureInfo.InvariantCulture,
+                out double value
+            )
+            && value >= 0
             ? value
             : fallback;
     }
@@ -147,7 +182,8 @@ public static class Program
         foreach (string csvFile in csvFiles)
         {
             string[] lines = File.ReadAllLines(csvFile);
-            if (lines.Length <= 1) continue;
+            if (lines.Length <= 1)
+                continue;
 
             string[] headers = ParseCsvLine(lines[0]);
             int methodIdx = Array.IndexOf(headers, "Method");
@@ -160,18 +196,26 @@ public static class Program
             for (int i = 1; i < lines.Length; i++)
             {
                 string[] parts = ParseCsvLine(lines[i]);
-                if (parts.Length <= Math.Max(methodIdx, meanIdx)) continue;
+                if (parts.Length <= Math.Max(methodIdx, meanIdx))
+                    continue;
 
                 string method = methodIdx >= 0 && methodIdx < parts.Length ? parts[methodIdx] : "";
                 string countStr = countIdx >= 0 && countIdx < parts.Length ? parts[countIdx] : "0";
                 string meanStr = meanIdx >= 0 && meanIdx < parts.Length ? parts[meanIdx] : "";
                 string allocStr = allocIdx >= 0 && allocIdx < parts.Length ? parts[allocIdx] : "";
                 string ratioStr = ratioIdx >= 0 && ratioIdx < parts.Length ? parts[ratioIdx] : "";
-                string allocRatioStr = allocRatioIdx >= 0 && allocRatioIdx < parts.Length ? parts[allocRatioIdx] : "";
+                string allocRatioStr =
+                    allocRatioIdx >= 0 && allocRatioIdx < parts.Length ? parts[allocRatioIdx] : "";
 
-                if (string.IsNullOrWhiteSpace(meanStr) || meanStr == "NA") continue;
+                if (string.IsNullOrWhiteSpace(meanStr) || meanStr == "NA")
+                    continue;
 
-                _ = int.TryParse(countStr, NumberStyles.Integer, CultureInfo.InvariantCulture, out int count);
+                _ = int.TryParse(
+                    countStr,
+                    NumberStyles.Integer,
+                    CultureInfo.InvariantCulture,
+                    out int count
+                );
                 var entry = new BenchmarkEntry(
                     Method: method,
                     Count: count,
@@ -188,20 +232,54 @@ public static class Program
 
         var scenarios = new[]
         {
-            new Scenario("File Serialization (Write)", "ReflectionParquetSerializerV6Write", "SourceGeneratorWriteAsync", 100_000),
-            new Scenario("Streaming Batched Write", "ReflectionParquetSerializerV6Write", "SourceGeneratorWriteBatchedAsync", 100_000),
-            new Scenario("File Deserialization (Read)", "ReflectionParquetSerializerV6Read", "SourceGeneratorReadAsync", 100_000),
-            new Scenario("Parallel Deserialization (Read)", "ReflectionParquetSerializerV6Read", "SourceGeneratorReadParallelBufferAsync", 100_000),
-            new Scenario("Streaming Read (IAsyncEnumerable)", "ReflectionParquetSerializerV6Read", "SourceGeneratorReadStreamAsync", 100_000),
-            new Scenario("Guid Serialization", "ReflectionParquetSerializerGuidWrite", "SourceGeneratorGuidWriteAsync", 100_000),
+            new Scenario(
+                "File Serialization (Write)",
+                "ReflectionParquetSerializerV6Write",
+                "SourceGeneratorWriteAsync",
+                100_000
+            ),
+            new Scenario(
+                "Streaming Batched Write",
+                "ReflectionParquetSerializerV6Write",
+                "SourceGeneratorWriteBatchedAsync",
+                100_000
+            ),
+            new Scenario(
+                "File Deserialization (Read)",
+                "ReflectionParquetSerializerV6Read",
+                "SourceGeneratorReadAsync",
+                100_000
+            ),
+            new Scenario(
+                "Parallel Deserialization (Read)",
+                "ReflectionParquetSerializerV6Read",
+                "SourceGeneratorReadParallelBufferAsync",
+                100_000
+            ),
+            new Scenario(
+                "Streaming Read (IAsyncEnumerable)",
+                "ReflectionParquetSerializerV6Read",
+                "SourceGeneratorReadStreamAsync",
+                100_000
+            ),
+            new Scenario(
+                "Guid Serialization",
+                "ReflectionParquetSerializerGuidWrite",
+                "SourceGeneratorGuidWriteAsync",
+                100_000
+            ),
         };
 
         var sb = new StringBuilder();
         sb.AppendLine("## ⚡ Performance & Benchmarks");
         sb.AppendLine();
-        sb.AppendLine("Zero-reflection C# source generation vs **`ParquetSerializer` v6** reflection baseline:");
+        sb.AppendLine(
+            "Zero-reflection C# source generation vs **`ParquetSerializer` v6** reflection baseline:"
+        );
         sb.AppendLine();
-        sb.AppendLine("| Operation | Scale | Reflection Baseline | Source Generator | Speedup | Memory Reduction |");
+        sb.AppendLine(
+            "| Operation | Scale | Reflection Baseline | Source Generator | Speedup | Memory Reduction |"
+        );
         sb.AppendLine("|:--- |:---:|:---:|:---:|:---:|:---:|");
 
         bool hasRows = false;
@@ -215,8 +293,10 @@ public static class Program
             {
                 foreach (int altCount in new[] { 100_000, 10_000, 1_000 })
                 {
-                    if (entries.TryGetValue((s.BaselineMethod, altCount), out var bAlt) &&
-                        entries.TryGetValue((s.SgMethod, altCount), out var sgAlt))
+                    if (
+                        entries.TryGetValue((s.BaselineMethod, altCount), out var bAlt)
+                        && entries.TryGetValue((s.SgMethod, altCount), out var sgAlt)
+                    )
                     {
                         bEntry = bAlt;
                         sgEntry = sgAlt;
@@ -226,7 +306,8 @@ public static class Program
                 }
             }
 
-            if (bEntry == null || sgEntry == null) continue;
+            if (bEntry == null || sgEntry == null)
+                continue;
 
             string bTime = bEntry.MeanFormatted;
             string sgTime = sgEntry.MeanFormatted;
@@ -239,7 +320,11 @@ public static class Program
             {
                 speedup = 1.0 / sgEntry.RatioNumeric.Value;
             }
-            else if (bEntry.MeanNumeric.HasValue && sgEntry.MeanNumeric.HasValue && sgEntry.MeanNumeric.Value > 0)
+            else if (
+                bEntry.MeanNumeric.HasValue
+                && sgEntry.MeanNumeric.HasValue
+                && sgEntry.MeanNumeric.Value > 0
+            )
             {
                 speedup = bEntry.MeanNumeric.Value / sgEntry.MeanNumeric.Value;
             }
@@ -277,14 +362,20 @@ public static class Program
             }
 
             string countStr = count.ToString("N0", CultureInfo.InvariantCulture);
-            sb.AppendLine(CultureInfo.InvariantCulture, $"| **{s.Title}** | {countStr} items | {bTime} ({bAlloc}) | **{sgTime}** (**{sgAlloc}**) | {speedupStr} | {memStr} |");
+            sb.AppendLine(
+                CultureInfo.InvariantCulture,
+                $"| **{s.Title}** | {countStr} items | {bTime} ({bAlloc}) | **{sgTime}** (**{sgAlloc}**) | {speedupStr} | {memStr} |"
+            );
             hasRows = true;
         }
 
-        if (!hasRows) return string.Empty;
+        if (!hasRows)
+            return string.Empty;
 
         sb.AppendLine();
-        sb.AppendLine("> 📌 **Note**: BenchmarkDotNet results captured on GitHub Actions. Detailed multi-scale reports (1K, 10K, 100K, 1M rows) are in [docs/BENCHMARKS.md](https://github.com/rtkelly13/Parquet.SourceGenerator/blob/main/docs/BENCHMARKS.md).");
+        sb.AppendLine(
+            "> 📌 **Note**: BenchmarkDotNet results captured on GitHub Actions. Detailed multi-scale reports (1K, 10K, 100K, 1M rows) are in [docs/BENCHMARKS.md](https://github.com/rtkelly13/Parquet.SourceGenerator/blob/main/docs/BENCHMARKS.md)."
+        );
 
         return sb.ToString();
     }
@@ -302,7 +393,10 @@ public static class Program
 
         foreach (string mdFile in mdFiles)
         {
-            string suiteName = Path.GetFileNameWithoutExtension(mdFile).Replace("-report-github", "").Split('.').Last();
+            string suiteName = Path.GetFileNameWithoutExtension(mdFile)
+                .Replace("-report-github", "")
+                .Split('.')
+                .Last();
             sb.AppendLine(CultureInfo.InvariantCulture, $"### {suiteName}");
             sb.AppendLine();
             sb.AppendLine(File.ReadAllText(mdFile).Trim());
@@ -314,13 +408,18 @@ public static class Program
 
     private static void UpdateReadmeFile(string filepath, string tableMd)
     {
-        if (!File.Exists(filepath)) return;
+        if (!File.Exists(filepath))
+            return;
 
         string content = File.ReadAllText(filepath, Encoding.UTF8);
         string pattern = $"{Regex.Escape(StartMarker)}.*?{Regex.Escape(EndMarker)}";
         string replacement = $"{StartMarker}\n{tableMd}\n{EndMarker}";
 
-        var regex = new Regex(pattern, RegexOptions.Singleline | RegexOptions.ExplicitCapture, TimeSpan.FromSeconds(2));
+        var regex = new Regex(
+            pattern,
+            RegexOptions.Singleline | RegexOptions.ExplicitCapture,
+            TimeSpan.FromSeconds(2)
+        );
         if (regex.IsMatch(content))
         {
             string updated = regex.Replace(content, replacement);
@@ -331,16 +430,31 @@ public static class Program
 
     private static string FormatTime(string meanStr)
     {
-        if (string.IsNullOrWhiteSpace(meanStr) || meanStr == "NA" || meanStr == "?") return "N/A";
+        if (string.IsNullOrWhiteSpace(meanStr) || meanStr == "NA" || meanStr == "?")
+            return "N/A";
         string clean = meanStr.Replace(",", "").Trim();
         if (clean.EndsWith("μs", StringComparison.Ordinal))
         {
-            if (double.TryParse(clean.Replace("μs", "").Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double val))
+            if (
+                double.TryParse(
+                    clean.Replace("μs", "").Trim(),
+                    NumberStyles.Any,
+                    CultureInfo.InvariantCulture,
+                    out double val
+                )
+            )
                 return val >= 1000 ? $"{val / 1000:F2} ms" : $"{val:F1} μs";
         }
         else if (clean.EndsWith("ms", StringComparison.Ordinal))
         {
-            if (double.TryParse(clean.Replace("ms", "").Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double val))
+            if (
+                double.TryParse(
+                    clean.Replace("ms", "").Trim(),
+                    NumberStyles.Any,
+                    CultureInfo.InvariantCulture,
+                    out double val
+                )
+            )
                 return $"{val:F2} ms";
         }
         return meanStr;
@@ -348,16 +462,36 @@ public static class Program
 
     private static string FormatMemory(string allocStr)
     {
-        if (string.IsNullOrWhiteSpace(allocStr) || allocStr == "NA" || allocStr == "?" || allocStr == "-") return "N/A";
+        if (
+            string.IsNullOrWhiteSpace(allocStr)
+            || allocStr == "NA"
+            || allocStr == "?"
+            || allocStr == "-"
+        )
+            return "N/A";
         string clean = allocStr.Replace(",", "").Trim();
         if (clean.EndsWith("KB", StringComparison.OrdinalIgnoreCase))
         {
-            if (double.TryParse(clean.Replace("KB", "", StringComparison.OrdinalIgnoreCase).Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double val))
+            if (
+                double.TryParse(
+                    clean.Replace("KB", "", StringComparison.OrdinalIgnoreCase).Trim(),
+                    NumberStyles.Any,
+                    CultureInfo.InvariantCulture,
+                    out double val
+                )
+            )
                 return val >= 1024 ? $"{val / 1024:F2} MB" : $"{val:F1} KB";
         }
         else if (clean.EndsWith("MB", StringComparison.OrdinalIgnoreCase))
         {
-            if (double.TryParse(clean.Replace("MB", "", StringComparison.OrdinalIgnoreCase).Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double val))
+            if (
+                double.TryParse(
+                    clean.Replace("MB", "", StringComparison.OrdinalIgnoreCase).Trim(),
+                    NumberStyles.Any,
+                    CultureInfo.InvariantCulture,
+                    out double val
+                )
+            )
                 return $"{val:F2} MB";
         }
         return allocStr;
@@ -365,9 +499,24 @@ public static class Program
 
     private static double? ParseNumber(string str)
     {
-        if (string.IsNullOrWhiteSpace(str) || str == "NA" || str == "?") return null;
-        var match = Regex.Match(str.Replace(",", ""), @"[0-9.]+", RegexOptions.ExplicitCapture, TimeSpan.FromSeconds(2));
-        return match.Success && double.TryParse(match.Value, NumberStyles.Any, CultureInfo.InvariantCulture, out double val) ? val : null;
+        if (string.IsNullOrWhiteSpace(str) || str == "NA" || str == "?")
+            return null;
+        var match = Regex.Match(
+            str.Replace(",", ""),
+            @"[0-9.]+",
+            RegexOptions.ExplicitCapture,
+            TimeSpan.FromSeconds(2)
+        );
+        return
+            match.Success
+            && double.TryParse(
+                match.Value,
+                NumberStyles.Any,
+                CultureInfo.InvariantCulture,
+                out double val
+            )
+            ? val
+            : null;
     }
 
     /// <summary>
@@ -406,11 +555,13 @@ public static class Program
         double? MeanNumeric,
         string AllocatedFormatted,
         double? RatioNumeric,
-        double? AllocRatioNumeric);
+        double? AllocRatioNumeric
+    );
 
     private sealed record Scenario(
         string Title,
         string BaselineMethod,
         string SgMethod,
-        int TargetCount);
+        int TargetCount
+    );
 }

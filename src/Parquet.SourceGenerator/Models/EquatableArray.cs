@@ -27,7 +27,11 @@ public readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IEnume
     /// <summary>
     /// Gets an empty <see cref="EquatableArray{T}"/>.
     /// </summary>
-    [SuppressMessage("Design", "CA1000:Do not declare static members on generic types", Justification = "Standard pattern for generic equatable arrays in Roslyn generators")]
+    [SuppressMessage(
+        "Design",
+        "CA1000:Do not declare static members on generic types",
+        Justification = "Standard pattern for generic equatable arrays in Roslyn generators"
+    )]
     public static EquatableArray<T> Empty { get; } = new(Array.Empty<T>());
 
     /// <summary>
@@ -62,7 +66,8 @@ public readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IEnume
     /// </summary>
     public override int GetHashCode()
     {
-        if (_array is null) return 0;
+        if (_array is null)
+            return 0;
         int hashCode = 17;
         foreach (T item in _array)
         {
@@ -74,7 +79,8 @@ public readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IEnume
     /// <summary>
     /// Returns a read-only span over the array elements.
     /// </summary>
-    public ReadOnlySpan<T> AsSpan() => _array is null ? ReadOnlySpan<T>.Empty : new ReadOnlySpan<T>(_array);
+    public ReadOnlySpan<T> AsSpan() =>
+        _array is null ? ReadOnlySpan<T>.Empty : new ReadOnlySpan<T>(_array);
 
     /// <summary>
     /// Returns an enumerator that iterates through the array.
@@ -89,10 +95,12 @@ public readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IEnume
     /// <summary>
     /// Equality operator for <see cref="EquatableArray{T}"/>.
     /// </summary>
-    public static bool operator ==(EquatableArray<T> left, EquatableArray<T> right) => left.Equals(right);
+    public static bool operator ==(EquatableArray<T> left, EquatableArray<T> right) =>
+        left.Equals(right);
 
     /// <summary>
     /// Inequality operator for <see cref="EquatableArray{T}"/>.
     /// </summary>
-    public static bool operator !=(EquatableArray<T> left, EquatableArray<T> right) => !left.Equals(right);
+    public static bool operator !=(EquatableArray<T> left, EquatableArray<T> right) =>
+        !left.Equals(right);
 }

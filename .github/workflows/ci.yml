@@ -57,7 +57,13 @@ jobs:
       # Style and analyzer rules are enforced instead by the build below, via
       # EnforceCodeStyleInBuild plus -warnaserror, which uses the real compilation where generators
       # do run.
-      - name: Verify C# Code Formatting
+      - name: Restore local tools
+        run: dotnet tool restore
+
+      - name: Verify C# Code Formatting (CSharpier)
+        run: dotnet csharpier check .
+
+      - name: Verify C# Code Formatting (Whitespace)
         run: dotnet format whitespace --verify-no-changes --verbosity diagnostic
 
       - name: Generate Python Test Datasets (PyArrow v1 & v2)

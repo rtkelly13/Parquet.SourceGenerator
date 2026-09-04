@@ -1,50 +1,53 @@
 <Project>
-  <PropertyGroup>
-    <!--
+    <PropertyGroup>
+        <!--
       Development default only. Releases do not use this: release.yml derives the version from the
       pushed tag and passes -p:Version, which overrides it. Bumping this number does not release
       anything, and leaving it alone does not block a release.
     -->
-    <Version>0.0.1</Version>
-    <LangVersion>latest</LangVersion>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <AnalysisLevel>latest-recommended</AnalysisLevel>
-    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
-    <!--
+        <Version>0.0.1</Version>
+        <LangVersion>latest</LangVersion>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <AnalysisLevel>latest-recommended</AnalysisLevel>
+        <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+        <!--
       Warnings are NOT errors in local builds. CI passes `-warnaserror` explicitly instead.
       Enabling it here breaks the build for any contributor on a newer SDK the moment that SDK
       ships a new analyzer, which is friction paid by everyone to catch problems CI already
       catches once.
     -->
-  </PropertyGroup>
+    </PropertyGroup>
 
-  <!-- Package Metadata & SourceLink -->
-  <PropertyGroup>
-    <Authors>Ryan Kelly</Authors>
-    <Copyright>Copyright (c) 2022-2026 Ryan Kelly</Copyright>
-    <PackageLicenseFile>LICENSE</PackageLicenseFile>
-    <PackageProjectUrl>https://github.com/rtkelly13/Parquet.SourceGenerator</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/rtkelly13/Parquet.SourceGenerator.git</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
-    <PackageTags>parquet;source-generator;roslyn;aot;performance;serialization;dotnet</PackageTags>
-    <PackageReadmeFile>PACKAGE_README.md</PackageReadmeFile>
-    <PublishRepositoryUrl>true</PublishRepositoryUrl>
-    <EmbedUntrackedSources>true</EmbedUntrackedSources>
-    <DebugType>embedded</DebugType>
-    <DebugSymbols>true</DebugSymbols>
-  </PropertyGroup>
+    <!-- Package Metadata & SourceLink -->
+    <PropertyGroup>
+        <Authors>Ryan Kelly</Authors>
+        <Copyright>Copyright (c) 2022-2026 Ryan Kelly</Copyright>
+        <PackageLicenseFile>LICENSE</PackageLicenseFile>
+        <PackageProjectUrl>https://github.com/rtkelly13/Parquet.SourceGenerator</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/rtkelly13/Parquet.SourceGenerator.git</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageTags>parquet;source-generator;roslyn;aot;performance;serialization;dotnet</PackageTags>
+        <PackageReadmeFile>PACKAGE_README.md</PackageReadmeFile>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <EmbedUntrackedSources>true</EmbedUntrackedSources>
+        <DebugType>embedded</DebugType>
+        <DebugSymbols>true</DebugSymbols>
+    </PropertyGroup>
 
-  <ItemGroup Condition="'$(IsPackable)' != 'false'">
-    <None Include="$(MSBuildThisFileDirectory)PACKAGE_README.md" Pack="true" PackagePath="\" />
-    <None Include="$(MSBuildThisFileDirectory)LICENSE" Pack="true" PackagePath="\" />
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
-  </ItemGroup>
+    <ItemGroup Condition="'$(IsPackable)' != 'false'">
+        <None Include="$(MSBuildThisFileDirectory)PACKAGE_README.md" Pack="true" PackagePath="\" />
+        <None Include="$(MSBuildThisFileDirectory)LICENSE" Pack="true" PackagePath="\" />
+        <PackageReference
+            Include="Microsoft.SourceLink.GitHub"
+            Version="8.0.0"
+            PrivateAssets="All"
+        />
+    </ItemGroup>
 
-  <ItemGroup Condition="'$(IsTestProject)' != 'true'">
-    <PackageReference Include="Meziantou.Analyzer" Version="2.0.302" PrivateAssets="All">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-  </ItemGroup>
+    <ItemGroup Condition="'$(IsTestProject)' != 'true'">
+        <PackageReference Include="Meziantou.Analyzer" Version="2.0.302" PrivateAssets="All">
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+    </ItemGroup>
 </Project>
-
