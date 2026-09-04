@@ -46,7 +46,8 @@ internal static class PropertyMappingComponent
         string offsetExpr,
         string indexVar,
         string bufferPrefix = "buffer_",
-        string indent = "                ")
+        string indent = "                "
+    )
     {
         string targetSlot = string.IsNullOrEmpty(offsetExpr)
             ? $"{targetArray}[{indexVar}]"
@@ -75,7 +76,8 @@ internal static class PropertyMappingComponent
         string itemVar = "item",
         string indexVar = "i",
         string bufferPrefix = "buffer_",
-        string indent = "                    ")
+        string indent = "                    "
+    )
     {
         for (int p = 0; p < model.Properties.Length; p++)
         {

@@ -7,7 +7,11 @@ namespace Parquet.SourceGenerator.Models;
 /// Classifies a property's Parquet field kind at parse time, driving fast switch-based code emission
 /// rather than repeated TypeName string comparisons. Inspired by System.Text.Json's ConverterStrategy.
 /// </summary>
-[SuppressMessage("Naming", "CA1720:Identifier contains type name", Justification = "Enum members represent semantic property primitive types.")]
+[SuppressMessage(
+    "Naming",
+    "CA1720:Identifier contains type name",
+    Justification = "Enum members represent semantic property primitive types."
+)]
 public enum PropertyKind
 {
     /// <summary>int, long, double, float, bool, string — direct DataField passthrough.</summary>
@@ -46,4 +50,5 @@ public sealed record PropertyModel(
     int? DecimalPrecision,
     int? DecimalScale,
     PropertyKind Kind,
-    bool IsNullable) : IEquatable<PropertyModel>;
+    bool IsNullable
+) : IEquatable<PropertyModel>;

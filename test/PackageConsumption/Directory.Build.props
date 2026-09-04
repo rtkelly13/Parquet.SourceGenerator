@@ -1,5 +1,5 @@
 <Project>
-  <!--
+    <!--
     Intentionally empty, and intentionally NOT importing the repository's root
     Directory.Build.props.
 

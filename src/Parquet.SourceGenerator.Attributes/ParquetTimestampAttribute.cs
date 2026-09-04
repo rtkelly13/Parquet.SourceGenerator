@@ -26,7 +26,11 @@ public enum ParquetTimestampUnit
 /// <summary>
 /// Configures timestamp resolution for DateTime properties.
 /// </summary>
-[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false, Inherited = true)]
+[AttributeUsage(
+    AttributeTargets.Property | AttributeTargets.Field,
+    AllowMultiple = false,
+    Inherited = true
+)]
 public sealed class ParquetTimestampAttribute : Attribute
 {
     /// <summary>

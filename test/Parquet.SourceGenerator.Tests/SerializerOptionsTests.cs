@@ -44,9 +44,8 @@ public sealed class SerializerOptionsTests
     private static async Task<long> WriteAndMeasureAsync(ParquetCompressionMethod method)
     {
         using var stream = new MemoryStream();
-        await HighlyCompressibleRows(2_000).WriteParquetAsync(
-            stream,
-            new ParquetSerializerOptions { CompressionMethod = method });
+        await HighlyCompressibleRows(2_000)
+            .WriteParquetAsync(stream, new ParquetSerializerOptions { CompressionMethod = method });
         return stream.Length;
     }
 
@@ -64,10 +63,12 @@ public sealed class SerializerOptionsTests
 
         Assert.True(
             snappy < uncompressed / 2,
-            $"Snappy ({snappy} bytes) should be well under half of uncompressed ({uncompressed} bytes)");
+            $"Snappy ({snappy} bytes) should be well under half of uncompressed ({uncompressed} bytes)"
+        );
         Assert.True(
             gzip < uncompressed / 2,
-            $"Gzip ({gzip} bytes) should be well under half of uncompressed ({uncompressed} bytes)");
+            $"Gzip ({gzip} bytes) should be well under half of uncompressed ({uncompressed} bytes)"
+        );
     }
 
     [Fact]
@@ -75,15 +76,17 @@ public sealed class SerializerOptionsTests
     {
         // A mapping mistake — pointing at the wrong Parquet.Net enum member — would most likely
         // surface as a write or read failure rather than a wrong size.
-        foreach (ParquetCompressionMethod method in new[]
-                 {
-                     ParquetCompressionMethod.None,
-                     ParquetCompressionMethod.Snappy,
-                     ParquetCompressionMethod.Gzip,
-                     ParquetCompressionMethod.Lz4,
-                     ParquetCompressionMethod.Brotli,
-                     ParquetCompressionMethod.Zstd,
-                 })
+        foreach (
+            ParquetCompressionMethod method in new[]
+            {
+                ParquetCompressionMethod.None,
+                ParquetCompressionMethod.Snappy,
+                ParquetCompressionMethod.Gzip,
+                ParquetCompressionMethod.Lz4,
+                ParquetCompressionMethod.Brotli,
+                ParquetCompressionMethod.Zstd,
+            }
+        )
         {
             var written = new List<CompressibleRecord>
             {
@@ -92,10 +95,14 @@ public sealed class SerializerOptionsTests
             };
 
             using var stream = new MemoryStream();
-            await written.WriteParquetAsync(stream, new ParquetSerializerOptions { CompressionMethod = method });
+            await written.WriteParquetAsync(
+                stream,
+                new ParquetSerializerOptions { CompressionMethod = method }
+            );
             stream.Position = 0;
 
-            List<CompressibleRecord> read = await CompressibleRecordParquetExtensions.ReadParquetAsync(stream);
+            List<CompressibleRecord> read =
+                await CompressibleRecordParquetExtensions.ReadParquetAsync(stream);
 
             Assert.Equal(2, read.Count);
             Assert.Equal("first", read[0].Payload);
@@ -113,13 +120,18 @@ public sealed class SerializerOptionsTests
         var captured = new DateTime(2026, 8, 5, 12, 34, 56, DateTimeKind.Utc).AddTicks(7_890);
         Assert.NotEqual(0, captured.Ticks % TimeSpan.TicksPerMillisecond);
 
-        var written = new List<MicrosecondRecord> { new() { Id = 1, CapturedAt = captured } };
+        var written = new List<MicrosecondRecord>
+        {
+            new() { Id = 1, CapturedAt = captured },
+        };
 
         using var stream = new MemoryStream();
         await written.WriteParquetAsync(stream);
         stream.Position = 0;
 
-        List<MicrosecondRecord> read = await MicrosecondRecordParquetExtensions.ReadParquetAsync(stream);
+        List<MicrosecondRecord> read = await MicrosecondRecordParquetExtensions.ReadParquetAsync(
+            stream
+        );
 
         Assert.Single(read);
 
@@ -130,7 +142,9 @@ public sealed class SerializerOptionsTests
 
         // And the value is genuinely finer than millisecond resolution would allow.
         DateTime millisecondTruncated = new DateTime(
-            captured.Ticks - (captured.Ticks % TimeSpan.TicksPerMillisecond), DateTimeKind.Utc);
+            captured.Ticks - (captured.Ticks % TimeSpan.TicksPerMillisecond),
+            DateTimeKind.Utc
+        );
         Assert.NotEqual(millisecondTruncated, read[0].CapturedAt);
     }
 }

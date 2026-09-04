@@ -35,7 +35,7 @@ public enum ParquetCompressionMethod
     /// <summary>
     /// Zstd compression.
     /// </summary>
-    Zstd = 5
+    Zstd = 5,
 }
 
 /// <summary>
@@ -66,7 +66,7 @@ public enum ParquetCompressionLevel
     /// <summary>
     /// Favours compression ratio over speed.
     /// </summary>
-    SmallestSize = 3
+    SmallestSize = 3,
 }
 
 /// <summary>
@@ -114,7 +114,8 @@ public sealed class ParquetSerializerOptions
     /// <summary>
     /// Gets or sets the compression method to apply when creating Parquet files (default is Snappy).
     /// </summary>
-    public ParquetCompressionMethod CompressionMethod { get; set; } = ParquetCompressionMethod.Snappy;
+    public ParquetCompressionMethod CompressionMethod { get; set; } =
+        ParquetCompressionMethod.Snappy;
 
     /// <summary>
     /// Gets or sets how hard the compression method should work. Null leaves Parquet.Net's own

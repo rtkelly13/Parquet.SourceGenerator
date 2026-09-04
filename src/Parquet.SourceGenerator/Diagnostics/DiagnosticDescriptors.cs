@@ -16,7 +16,8 @@ public static class DiagnosticDescriptors
         messageFormat: "The type '{0}' is decorated with [ParquetSerializable] but is not declared as partial",
         category: "ParquetSourceGenerator",
         defaultSeverity: DiagnosticSeverity.Error,
-        isEnabledByDefault: true);
+        isEnabledByDefault: true
+    );
 
     /// <summary>
     /// PARQ002: Duplicate Parquet column name detected.
@@ -27,7 +28,8 @@ public static class DiagnosticDescriptors
         messageFormat: "The Parquet column name '{0}' is specified multiple times on type '{1}'",
         category: "ParquetSourceGenerator",
         defaultSeverity: DiagnosticSeverity.Error,
-        isEnabledByDefault: true);
+        isEnabledByDefault: true
+    );
 
     /// <summary>
     /// PARQ003: No public serializable properties found.
@@ -38,7 +40,8 @@ public static class DiagnosticDescriptors
         messageFormat: "The type '{0}' is decorated with [ParquetSerializable] but has no public serializable properties or fields",
         category: "ParquetSourceGenerator",
         defaultSeverity: DiagnosticSeverity.Warning,
-        isEnabledByDefault: true);
+        isEnabledByDefault: true
+    );
 
     /// <summary>
     /// PARQ004: Non-public property decorated with [ParquetColumn] will be ignored.
@@ -49,7 +52,8 @@ public static class DiagnosticDescriptors
         messageFormat: "The property '{0}' on type '{1}' is decorated with [ParquetColumn] but is not public and will be ignored",
         category: "ParquetSourceGenerator",
         defaultSeverity: DiagnosticSeverity.Warning,
-        isEnabledByDefault: true);
+        isEnabledByDefault: true
+    );
 
     /// <summary>
     /// PARQ005: Invalid ParquetDecimal precision or scale configuration.
@@ -60,7 +64,8 @@ public static class DiagnosticDescriptors
         messageFormat: "Invalid ParquetDecimal on property '{0}': precision ({1}) must be >= scale ({2}) and <= 38",
         category: "ParquetSourceGenerator",
         defaultSeverity: DiagnosticSeverity.Error,
-        isEnabledByDefault: true);
+        isEnabledByDefault: true
+    );
 
     /// <summary>
     /// PARQ006: Property or field type has no Parquet column representation.
@@ -77,7 +82,8 @@ public static class DiagnosticDescriptors
         messageFormat: "The member '{0}' on type '{2}' has type '{1}', which has no Parquet column representation. Remove it, mark it [ParquetIgnore], or change its type",
         category: "ParquetSourceGenerator",
         defaultSeverity: DiagnosticSeverity.Error,
-        isEnabledByDefault: true);
+        isEnabledByDefault: true
+    );
 
     /// <summary>
     /// PARQ007: Member cannot be assigned by the generated deserializer.
@@ -94,7 +100,8 @@ public static class DiagnosticDescriptors
         messageFormat: "The member '{0}' on type '{1}' cannot be assigned by the generated deserializer. Give it an accessible set or init accessor, or mark it [ParquetIgnore]",
         category: "ParquetSourceGenerator",
         defaultSeverity: DiagnosticSeverity.Error,
-        isEnabledByDefault: true);
+        isEnabledByDefault: true
+    );
 
     /// <summary>
     /// PARQ008: Reference type has no accessible parameterless constructor.
@@ -110,7 +117,8 @@ public static class DiagnosticDescriptors
         messageFormat: "The type '{0}' has no accessible parameterless constructor, so the generated deserializer cannot construct it. Add one, or declare the columns as settable members instead of primary constructor parameters",
         category: "ParquetSourceGenerator",
         defaultSeverity: DiagnosticSeverity.Error,
-        isEnabledByDefault: true);
+        isEnabledByDefault: true
+    );
 
     /// <summary>
     /// PARQ009: Nested target types are not supported.
@@ -127,7 +135,8 @@ public static class DiagnosticDescriptors
         messageFormat: "The type '{0}' is nested inside '{1}'. [ParquetSerializable] supports top-level types only — move it to namespace scope",
         category: "ParquetSourceGenerator",
         defaultSeverity: DiagnosticSeverity.Error,
-        isEnabledByDefault: true);
+        isEnabledByDefault: true
+    );
 
     /// <summary>
     /// PARQ010: Generic target types are not supported.
@@ -143,7 +152,8 @@ public static class DiagnosticDescriptors
         messageFormat: "The type '{0}' is generic. [ParquetSerializable] supports non-generic types only, because the emitted schema is a single static field and cannot vary by type argument",
         category: "ParquetSourceGenerator",
         defaultSeverity: DiagnosticSeverity.Error,
-        isEnabledByDefault: true);
+        isEnabledByDefault: true
+    );
 
     /// <summary>
     /// PARQ011: The member's type is supported by Parquet.Net 6 but not by the 4.x/5.x API.
@@ -159,5 +169,6 @@ public static class DiagnosticDescriptors
         messageFormat: "The member '{0}' on type '{2}' has type '{1}', which Parquet.Net 6 supports but the 4.x/5.x API does not. Use the Parquet.SourceGenerator package instead, or change its type",
         category: "ParquetSourceGenerator",
         defaultSeverity: DiagnosticSeverity.Error,
-        isEnabledByDefault: true);
+        isEnabledByDefault: true
+    );
 }

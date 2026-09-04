@@ -48,13 +48,14 @@ public sealed class BenchmarkBaselineEquivalenceTests
     public async Task BenchmarkScaleModelRoundTripMatchesBetweenGeneratorAndReflectionBaseline()
     {
         int count = 100;
-        List<BenchmarkScaleModel> original = Enumerable.Range(0, count)
+        List<BenchmarkScaleModel> original = Enumerable
+            .Range(0, count)
             .Select(i => new BenchmarkScaleModel
             {
                 Id = i,
                 ValA = i * 3.14159,
                 ValB = i * 1000L,
-                IsValid = i % 2 == 0
+                IsValid = i % 2 == 0,
             })
             .ToList();
 
@@ -64,7 +65,8 @@ public sealed class BenchmarkBaselineEquivalenceTests
 
         // 1. Verify Source Generator deserializes every single field correctly
         using var sgStream = new MemoryStream(bytes);
-        List<BenchmarkScaleModel> sgResult = await BenchmarkScaleModelParquetExtensions.ReadParquetAsync(sgStream);
+        List<BenchmarkScaleModel> sgResult =
+            await BenchmarkScaleModelParquetExtensions.ReadParquetAsync(sgStream);
 
         Assert.Equal(count, sgResult.Count);
         for (int i = 0; i < count; i++)
@@ -95,12 +97,13 @@ public sealed class BenchmarkBaselineEquivalenceTests
     {
         int count = 50;
         var baseTime = new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc);
-        List<BenchmarkGuidModel> original = Enumerable.Range(0, count)
+        List<BenchmarkGuidModel> original = Enumerable
+            .Range(0, count)
             .Select(i => new BenchmarkGuidModel
             {
                 Id = i,
                 CorrelationId = Guid.NewGuid(),
-                Timestamp = baseTime.AddMinutes(i)
+                Timestamp = baseTime.AddMinutes(i),
             })
             .ToList();
 
@@ -110,7 +113,8 @@ public sealed class BenchmarkBaselineEquivalenceTests
 
         // Source generator read
         using var sgStream = new MemoryStream(bytes);
-        List<BenchmarkGuidModel> sgResult = await BenchmarkGuidModelParquetExtensions.ReadParquetAsync(sgStream);
+        List<BenchmarkGuidModel> sgResult =
+            await BenchmarkGuidModelParquetExtensions.ReadParquetAsync(sgStream);
 
         // Reflection baseline read
         using var baselineStream = new MemoryStream(bytes);
@@ -134,16 +138,16 @@ public sealed class BenchmarkBaselineEquivalenceTests
 
     [Fact]
     public async Task SourceGeneratorDeserializesEqualOrLessMemoryThanReflectionBaseline()
-
     {
         int count = 10_000;
-        List<BenchmarkScaleModel> data = Enumerable.Range(0, count)
+        List<BenchmarkScaleModel> data = Enumerable
+            .Range(0, count)
             .Select(i => new BenchmarkScaleModel
             {
                 Id = i,
                 ValA = i * 3.14159,
                 ValB = i * 1000L,
-                IsValid = i % 2 == 0
+                IsValid = i % 2 == 0,
             })
             .ToList();
 
@@ -179,7 +183,9 @@ public sealed class BenchmarkBaselineEquivalenceTests
         long allocSGArray = GC.GetAllocatedBytesForCurrentThread() - b1;
 
         // Source generator array deserializer must allocate less than or equal to reflection baseline
-        Assert.True(allocSGArray <= allocBaseline,
-            $"Source generator allocated {allocSGArray:N0} bytes which exceeds reflection baseline {allocBaseline:N0} bytes");
+        Assert.True(
+            allocSGArray <= allocBaseline,
+            $"Source generator allocated {allocSGArray:N0} bytes which exceeds reflection baseline {allocBaseline:N0} bytes"
+        );
     }
 }

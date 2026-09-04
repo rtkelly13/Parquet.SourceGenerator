@@ -42,8 +42,22 @@ internal static class Program
     {
         var expected = new List<Measurement>
         {
-            new() { Id = 1, Val = 10.5, Payload = new byte[] { 1, 2, 3 }, Grade = MeasurementGrade.High, Label = "first" },
-            new() { Id = 2, Val = 20.5, Payload = null, Grade = null, Label = null },
+            new()
+            {
+                Id = 1,
+                Val = 10.5,
+                Payload = new byte[] { 1, 2, 3 },
+                Grade = MeasurementGrade.High,
+                Label = "first",
+            },
+            new()
+            {
+                Id = 2,
+                Val = 20.5,
+                Payload = null,
+                Grade = null,
+                Label = null,
+            },
         };
 
         using var stream = new MemoryStream();
@@ -56,7 +70,9 @@ internal static class Program
         }
 
         stream.Position = 0;
-        List<Measurement> actual = await MeasurementParquetLegacyExtensions.ReadParquetAsync(stream);
+        List<Measurement> actual = await MeasurementParquetLegacyExtensions.ReadParquetAsync(
+            stream
+        );
 
         if (actual.Count != expected.Count)
         {
@@ -81,7 +97,8 @@ internal static class Program
             if (actual[i].Grade != expected[i].Grade)
             {
                 Console.Error.WriteLine(
-                    $"FAILED: row {i} nullable enum round-tripped as {actual[i].Grade}, expected {expected[i].Grade}.");
+                    $"FAILED: row {i} nullable enum round-tripped as {actual[i].Grade}, expected {expected[i].Grade}."
+                );
                 return 1;
             }
 
@@ -111,8 +128,14 @@ internal static class Program
         // Distinct labels on purpose: with 4,000 identical strings Parquet.Net's dictionary encoding
         // would shrink the uncompressed file to nothing on its own, and the assertion below would
         // then be measuring dictionary encoding rather than compression.
-        List<Measurement> rows = Enumerable.Range(0, 4_000)
-            .Select(i => new Measurement { Id = i, Val = i, Label = "row-" + i + "-" + new string('a', 128) })
+        List<Measurement> rows = Enumerable
+            .Range(0, 4_000)
+            .Select(i => new Measurement
+            {
+                Id = i,
+                Val = i,
+                Label = "row-" + i + "-" + new string('a', 128),
+            })
             .ToList();
 
         long uncompressed = await WriteWithAsync(rows, ParquetCompressionMethod.None);
@@ -121,7 +144,8 @@ internal static class Program
         if (uncompressed <= compressed * 2)
         {
             Console.Error.WriteLine(
-                $"FAILED: compression option ignored — None wrote {uncompressed} bytes, Gzip wrote {compressed}.");
+                $"FAILED: compression option ignored — None wrote {uncompressed} bytes, Gzip wrote {compressed}."
+            );
             return false;
         }
 
@@ -135,8 +159,14 @@ internal static class Program
     /// </summary>
     private static async Task<bool> BatchedWriteRoundTripsAsync()
     {
-        List<Measurement> rows = Enumerable.Range(0, 250)
-            .Select(i => new Measurement { Id = i, Val = i * 1.5, Label = "r" + i })
+        List<Measurement> rows = Enumerable
+            .Range(0, 250)
+            .Select(i => new Measurement
+            {
+                Id = i,
+                Val = i * 1.5,
+                Label = "r" + i,
+            })
             .ToList();
 
         using var stream = new MemoryStream();
@@ -147,7 +177,9 @@ internal static class Program
 
         if (read.Count != rows.Count)
         {
-            Console.Error.WriteLine($"FAILED: batched write produced {read.Count} rows, expected {rows.Count}.");
+            Console.Error.WriteLine(
+                $"FAILED: batched write produced {read.Count} rows, expected {rows.Count}."
+            );
             return false;
         }
 
@@ -163,10 +195,16 @@ internal static class Program
         return true;
     }
 
-    private static async Task<long> WriteWithAsync(List<Measurement> rows, ParquetCompressionMethod method)
+    private static async Task<long> WriteWithAsync(
+        List<Measurement> rows,
+        ParquetCompressionMethod method
+    )
     {
         using var stream = new MemoryStream();
-        await rows.WriteParquetAsync(stream, new ParquetSerializerOptions { CompressionMethod = method });
+        await rows.WriteParquetAsync(
+            stream,
+            new ParquetSerializerOptions { CompressionMethod = method }
+        );
         return stream.Length;
     }
 

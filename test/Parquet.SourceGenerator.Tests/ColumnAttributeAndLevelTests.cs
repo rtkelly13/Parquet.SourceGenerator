@@ -35,7 +35,9 @@ public sealed class ColumnAttributeAndLevelTests
     [Fact]
     public void OrderOnlyAttributeReordersColumnsWithoutRenamingThem()
     {
-        string[] columns = OrderOnlyModelParquetExtensions.Schema.DataFields.Select(f => f.Name).ToArray();
+        string[] columns = OrderOnlyModelParquetExtensions
+            .Schema.DataFields.Select(f => f.Name)
+            .ToArray();
 
         // First and Third keep their member names; only Second was renamed.
         Assert.Equal(ExpectedColumnOrder, columns);
@@ -44,7 +46,15 @@ public sealed class ColumnAttributeAndLevelTests
     [Fact]
     public async Task OrderOnlyModelRoundTrips()
     {
-        var written = new List<OrderOnlyModel> { new() { First = 1, Second = 2, Third = 3 } };
+        var written = new List<OrderOnlyModel>
+        {
+            new()
+            {
+                First = 1,
+                Second = 2,
+                Third = 3,
+            },
+        };
 
         using var stream = new MemoryStream();
         await written.WriteParquetAsync(stream);
@@ -62,20 +72,23 @@ public sealed class ColumnAttributeAndLevelTests
     public async Task CompressionLevelIsAppliedAndEveryLevelRoundTrips()
     {
         static List<CompressionLevelModel> Rows() =>
-            Enumerable.Range(0, 2_000)
+            Enumerable
+                .Range(0, 2_000)
                 .Select(_ => new CompressionLevelModel { Payload = new string('a', 512) })
                 .ToList();
 
         async Task<long> WriteAsync(ParquetCompressionLevel? level)
         {
             using var stream = new MemoryStream();
-            await Rows().WriteParquetAsync(
-                stream,
-                new ParquetSerializerOptions
-                {
-                    CompressionMethod = ParquetCompressionMethod.Gzip,
-                    CompressionLevel = level,
-                });
+            await Rows()
+                .WriteParquetAsync(
+                    stream,
+                    new ParquetSerializerOptions
+                    {
+                        CompressionMethod = ParquetCompressionMethod.Gzip,
+                        CompressionLevel = level,
+                    }
+                );
             return stream.Length;
         }
 
@@ -90,7 +103,8 @@ public sealed class ColumnAttributeAndLevelTests
         // Parquet.Net or zlib change.
         Assert.True(
             noCompression > smallest * 2,
-            $"NoCompression ({noCompression} bytes) should be far larger than SmallestSize ({smallest} bytes)");
+            $"NoCompression ({noCompression} bytes) should be far larger than SmallestSize ({smallest} bytes)"
+        );
 
         // Unspecified must leave Parquet.Net's own default in place rather than picking a level.
         Assert.Equal(smallest, unspecified);
@@ -111,10 +125,12 @@ public sealed class ColumnAttributeAndLevelTests
         using var stream = new MemoryStream();
         await written.WriteParquetAsync(
             stream,
-            new ParquetSerializerOptions { CompressionLevel = ParquetCompressionLevel.Fastest });
+            new ParquetSerializerOptions { CompressionLevel = ParquetCompressionLevel.Fastest }
+        );
         stream.Position = 0;
 
-        List<CompressionLevelModel> read = await CompressionLevelModelParquetExtensions.ReadParquetAsync(stream);
+        List<CompressionLevelModel> read =
+            await CompressionLevelModelParquetExtensions.ReadParquetAsync(stream);
 
         Assert.Equal(2, read.Count);
         Assert.Equal("first", read[0].Payload);

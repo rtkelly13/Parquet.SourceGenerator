@@ -55,13 +55,20 @@ namespace Parquet.SourceGenerator.Tests
             // static call is the unambiguous way to exercise both in one file.
             using var salesStream = new System.IO.MemoryStream();
             await Sales.SharedNameParquetExtensions.WriteParquetAsync(
-                new System.Collections.Generic.List<Sales.SharedName> { new() { OrderId = 42 } }, salesStream);
+                new System.Collections.Generic.List<Sales.SharedName> { new() { OrderId = 42 } },
+                salesStream
+            );
             salesStream.Position = 0;
             var sales = await Sales.SharedNameParquetExtensions.ReadParquetAsync(salesStream);
 
             using var billingStream = new System.IO.MemoryStream();
             await Billing.SharedNameParquetExtensions.WriteParquetAsync(
-                new System.Collections.Generic.List<Billing.SharedName> { new() { InvoiceId = 99 } }, billingStream);
+                new System.Collections.Generic.List<Billing.SharedName>
+                {
+                    new() { InvoiceId = 99 },
+                },
+                billingStream
+            );
             billingStream.Position = 0;
             var billing = await Billing.SharedNameParquetExtensions.ReadParquetAsync(billingStream);
 

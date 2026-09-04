@@ -39,7 +39,8 @@ public sealed class ParallelReadTests
 {
     private static async Task<byte[]> WriteAsync(int rowCount, int rowGroupSize)
     {
-        List<ParallelRow> rows = Enumerable.Range(1, rowCount)
+        List<ParallelRow> rows = Enumerable
+            .Range(1, rowCount)
             .Select(i => new ParallelRow
             {
                 Id = i,
@@ -61,7 +62,8 @@ public sealed class ParallelReadTests
         byte[] bytes = await WriteAsync(rowCount: 1_050, rowGroupSize: 100);
 
         List<ParallelRow> read = await ParallelRowParquetExtensions.ReadParquetParallelAsync(
-            new ReadOnlyMemory<byte>(bytes));
+            new ReadOnlyMemory<byte>(bytes)
+        );
 
         Assert.Equal(1_050, read.Count);
         Assert.Equal(Enumerable.Range(1, 1_050), read.Select(r => r.Id));
@@ -73,9 +75,11 @@ public sealed class ParallelReadTests
         byte[] bytes = await WriteAsync(rowCount: 1_050, rowGroupSize: 100);
 
         List<ParallelRow> sequential = await ParallelRowParquetExtensions.ReadParquetAsync(
-            new ReadOnlyMemory<byte>(bytes));
+            new ReadOnlyMemory<byte>(bytes)
+        );
         List<ParallelRow> parallel = await ParallelRowParquetExtensions.ReadParquetParallelAsync(
-            new ReadOnlyMemory<byte>(bytes));
+            new ReadOnlyMemory<byte>(bytes)
+        );
 
         // Records compare structurally, so this covers the nullable column and the string column
         // as well as ordering — a buffer handed between workers would show up as a shifted value.
@@ -96,7 +100,8 @@ public sealed class ParallelReadTests
 
         List<ParallelRow> read = await ParallelRowParquetExtensions.ReadParquetParallelAsync(
             new ReadOnlyMemory<byte>(bytes),
-            maxDegreeOfParallelism);
+            maxDegreeOfParallelism
+        );
 
         Assert.Equal(500, read.Count);
         Assert.Equal(Enumerable.Range(1, 500), read.Select(r => r.Id));
@@ -113,7 +118,8 @@ public sealed class ParallelReadTests
 
         List<ParallelRow> read = await ParallelRowParquetExtensions.ReadParquetParallelAsync(
             new ReadOnlyMemory<byte>(bytes),
-            maxDegreeOfParallelism: 16);
+            maxDegreeOfParallelism: 16
+        );
 
         Assert.Equal(25, read.Count);
         Assert.Equal(Enumerable.Range(1, 25), read.Select(r => r.Id));
@@ -127,7 +133,8 @@ public sealed class ParallelReadTests
         List<ParallelRow> read = await ParallelRowParquetExtensions.ReadParquetParallelAsync(
             new ReadOnlyMemory<byte>(bytes),
             maxDegreeOfParallelism: -1,
-            new ParquetSerializerOptions { MaxDegreeOfParallelism = 2 });
+            new ParquetSerializerOptions { MaxDegreeOfParallelism = 2 }
+        );
 
         Assert.Equal(300, read.Count);
         Assert.Equal(Enumerable.Range(1, 300), read.Select(r => r.Id));
@@ -141,12 +148,14 @@ public sealed class ParallelReadTests
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(
-            () => ParallelRowParquetExtensions.ReadParquetParallelAsync(
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            ParallelRowParquetExtensions.ReadParquetParallelAsync(
                 new ReadOnlyMemory<byte>(bytes),
                 maxDegreeOfParallelism: 4,
                 options: null,
-                cancellationToken: cts.Token));
+                cancellationToken: cts.Token
+            )
+        );
     }
 
     [Fact]
@@ -159,7 +168,8 @@ public sealed class ParallelReadTests
         bytes.CopyTo(padded, 8);
 
         List<ParallelRow> read = await ParallelRowParquetExtensions.ReadParquetParallelAsync(
-            new ReadOnlyMemory<byte>(padded, 8, bytes.Length));
+            new ReadOnlyMemory<byte>(padded, 8, bytes.Length)
+        );
 
         Assert.Equal(400, read.Count);
         Assert.Equal(Enumerable.Range(1, 400), read.Select(r => r.Id));
@@ -186,11 +196,13 @@ public sealed class ParallelReadTests
 
         Assert.False(
             MemoryMarshal.TryGetArray(memory, out _),
-            "The buffer must not be array-backed, or this test exercises the wrong branch.");
+            "The buffer must not be array-backed, or this test exercises the wrong branch."
+        );
 
         List<ParallelRow> read = await ParallelRowParquetExtensions.ReadParquetParallelAsync(
             memory,
-            maxDegreeOfParallelism: 4);
+            maxDegreeOfParallelism: 4
+        );
 
         Assert.Equal(400, read.Count);
         Assert.Equal(Enumerable.Range(1, 400), read.Select(r => r.Id));
@@ -211,10 +223,24 @@ public sealed class ParallelReadTests
         var model = new TargetClassModel(
             Namespace: "TestNamespace",
             ClassName: "TestEntity",
-            Properties: new EquatableArray<PropertyModel>(new[]
-            {
-                new PropertyModel("Id", "id", "int", null, null, 1, null, null, PropertyKind.Primitive, false),
-            }));
+            Properties: new EquatableArray<PropertyModel>(
+                new[]
+                {
+                    new PropertyModel(
+                        "Id",
+                        "id",
+                        "int",
+                        null,
+                        null,
+                        1,
+                        null,
+                        null,
+                        PropertyKind.Primitive,
+                        false
+                    ),
+                }
+            )
+        );
 
         string source = CodeEmitter.EmitSource(model);
 
@@ -232,9 +258,11 @@ public sealed class ParallelReadTests
     private static int Occurrences(string haystack, string needle)
     {
         int count = 0;
-        for (int i = haystack.IndexOf(needle, StringComparison.Ordinal);
-             i >= 0;
-             i = haystack.IndexOf(needle, i + needle.Length, StringComparison.Ordinal))
+        for (
+            int i = haystack.IndexOf(needle, StringComparison.Ordinal);
+            i >= 0;
+            i = haystack.IndexOf(needle, i + needle.Length, StringComparison.Ordinal)
+        )
         {
             count++;
         }
@@ -259,9 +287,7 @@ public sealed class ParallelReadTests
 
         public override void Unpin() => throw new NotSupportedException();
 
-        protected override void Dispose(bool disposing)
-        {
-        }
+        protected override void Dispose(bool disposing) { }
     }
 
     [Fact]
@@ -275,10 +301,15 @@ public sealed class ParallelReadTests
         for (int attempt = 0; attempt < 10; attempt++)
         {
             List<ParallelRow>[] results = await Task.WhenAll(
-                Enumerable.Range(0, 4).Select(_ =>
-                    ParallelRowParquetExtensions.ReadParquetParallelAsync(
-                        new ReadOnlyMemory<byte>(bytes),
-                        maxDegreeOfParallelism: 4)));
+                Enumerable
+                    .Range(0, 4)
+                    .Select(_ =>
+                        ParallelRowParquetExtensions.ReadParquetParallelAsync(
+                            new ReadOnlyMemory<byte>(bytes),
+                            maxDegreeOfParallelism: 4
+                        )
+                    )
+            );
 
             foreach (List<ParallelRow> result in results)
             {
@@ -298,7 +329,9 @@ public sealed class ParallelReadTests
         Assert.Equal(1, fromStream[0].Id);
         Assert.Equal(50, fromStream[49].Id);
 
-        ParallelRow[] fromBuffer = await ParallelRowParquetExtensions.ReadParquetArrayAsync(new ReadOnlyMemory<byte>(bytes));
+        ParallelRow[] fromBuffer = await ParallelRowParquetExtensions.ReadParquetArrayAsync(
+            new ReadOnlyMemory<byte>(bytes)
+        );
         Assert.Equal(50, fromBuffer.Length);
         Assert.Equal(1, fromBuffer[0].Id);
         Assert.Equal(50, fromBuffer[49].Id);
@@ -310,14 +343,17 @@ public sealed class ParallelReadTests
         byte[] bytes = await WriteAsync(rowCount: 100, rowGroupSize: 25);
 
         using var stream = new MemoryStream(bytes);
-        ParallelRow[] fromStream = await ParallelRowParquetExtensions.ReadParquetParallelArrayAsync(stream);
+        ParallelRow[] fromStream = await ParallelRowParquetExtensions.ReadParquetParallelArrayAsync(
+            stream
+        );
         Assert.Equal(100, fromStream.Length);
         Assert.Equal(1, fromStream[0].Id);
         Assert.Equal(100, fromStream[99].Id);
 
         ParallelRow[] fromBuffer = await ParallelRowParquetExtensions.ReadParquetParallelArrayAsync(
             new ReadOnlyMemory<byte>(bytes),
-            maxDegreeOfParallelism: 4);
+            maxDegreeOfParallelism: 4
+        );
         Assert.Equal(100, fromBuffer.Length);
         Assert.Equal(1, fromBuffer[0].Id);
         Assert.Equal(100, fromBuffer[99].Id);
@@ -329,10 +365,24 @@ public sealed class ParallelReadTests
         var model = new TargetClassModel(
             Namespace: "TestNamespace",
             ClassName: "TestEntity",
-            Properties: new EquatableArray<PropertyModel>(new[]
-            {
-                new PropertyModel("Id", "id", "int", null, null, 1, null, null, PropertyKind.Primitive, false),
-            }));
+            Properties: new EquatableArray<PropertyModel>(
+                new[]
+                {
+                    new PropertyModel(
+                        "Id",
+                        "id",
+                        "int",
+                        null,
+                        null,
+                        1,
+                        null,
+                        null,
+                        PropertyKind.Primitive,
+                        false
+                    ),
+                }
+            )
+        );
 
         string source = CodeEmitter.EmitSource(model);
 
@@ -341,7 +391,10 @@ public sealed class ParallelReadTests
         Assert.Contains("Task<TestEntity[]> ReadParquetParallelArrayAsync(", source);
 
         // Threshold fast paths
-        Assert.Contains("if (items is global::System.Collections.Generic.IReadOnlyCollection<TestEntity> col && col.Count <= targetChunkSize)", source);
+        Assert.Contains(
+            "if (items is global::System.Collections.Generic.IReadOnlyCollection<TestEntity> col && col.Count <= targetChunkSize)",
+            source
+        );
         Assert.Contains("if (rowGroupCount <= 1 || totalRows <= 10_000)", source);
     }
 }

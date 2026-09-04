@@ -33,7 +33,9 @@ public sealed class EmitterEscapingTests
         // is faithful rather than merely syntactically valid — that it did not, say, drop the
         // backslash or turn \t into a literal "t".
         var names = new List<string>();
-        foreach (global::Parquet.Schema.Field field in AwkwardColumnNamesParquetExtensions.Schema.Fields)
+        foreach (
+            global::Parquet.Schema.Field field in AwkwardColumnNamesParquetExtensions.Schema.Fields
+        )
         {
             names.Add(field.Name);
         }
@@ -48,14 +50,21 @@ public sealed class EmitterEscapingTests
     {
         var written = new List<AwkwardColumnNames>
         {
-            new() { Quoted = 7, Backslash = 9, Tabbed = 11 },
+            new()
+            {
+                Quoted = 7,
+                Backslash = 9,
+                Tabbed = 11,
+            },
         };
 
         using var stream = new MemoryStream();
         await written.WriteParquetAsync(stream);
         stream.Position = 0;
 
-        List<AwkwardColumnNames> read = await AwkwardColumnNamesParquetExtensions.ReadParquetAsync(stream);
+        List<AwkwardColumnNames> read = await AwkwardColumnNamesParquetExtensions.ReadParquetAsync(
+            stream
+        );
 
         Assert.Single(read);
         Assert.Equal(7, read[0].Quoted);

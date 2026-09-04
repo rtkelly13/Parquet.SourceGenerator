@@ -64,8 +64,12 @@ public partial record TestLargeFlatRecord
 
 public sealed class TestDataIntegrationTests
 {
-    private static readonly string TestDataRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "data"));
-    private static readonly string TestDataCSharpRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "data_csharp"));
+    private static readonly string TestDataRoot = Path.GetFullPath(
+        Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "data")
+    );
+    private static readonly string TestDataCSharpRoot = Path.GetFullPath(
+        Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "data_csharp")
+    );
 
     [Fact]
     public async Task ReadParquetAsyncDeserializesPyArrowV1Dataset()
@@ -106,7 +110,11 @@ public sealed class TestDataIntegrationTests
     [Fact]
     public async Task ReadParquetAsyncDeserializesCSharpV3Dataset()
     {
-        string filePath = Path.Combine(TestDataCSharpRoot, "v3", "01_small_flat_primitives.parquet");
+        string filePath = Path.Combine(
+            TestDataCSharpRoot,
+            "v3",
+            "01_small_flat_primitives.parquet"
+        );
         Assert.True(System.IO.File.Exists(filePath), $"File not found: {filePath}");
 
         using var stream = System.IO.File.OpenRead(filePath);
@@ -121,7 +129,11 @@ public sealed class TestDataIntegrationTests
     [Fact]
     public async Task ReadParquetAsyncDeserializesNullableDataset()
     {
-        string filePath = Path.Combine(TestDataCSharpRoot, "v3", "02_medium_nullable_types.parquet");
+        string filePath = Path.Combine(
+            TestDataCSharpRoot,
+            "v3",
+            "02_medium_nullable_types.parquet"
+        );
         Assert.True(System.IO.File.Exists(filePath), $"File not found: {filePath}");
 
         using var stream = System.IO.File.OpenRead(filePath);

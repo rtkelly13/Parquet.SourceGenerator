@@ -88,7 +88,10 @@ public sealed class DiagnosticTests
 
         var (diagnostics, _) = RunGenerator(source);
 
-        Assert.Contains(diagnostics, d => d.Id == DiagnosticDescriptors.NonPublicPropertyIgnored.Id);
+        Assert.Contains(
+            diagnostics,
+            d => d.Id == DiagnosticDescriptors.NonPublicPropertyIgnored.Id
+        );
     }
 
     [Fact]
@@ -108,7 +111,10 @@ public sealed class DiagnosticTests
 
         var (diagnostics, _) = RunGenerator(source);
 
-        Assert.Contains(diagnostics, d => d.Id == DiagnosticDescriptors.InvalidDecimalPrecisionScale.Id);
+        Assert.Contains(
+            diagnostics,
+            d => d.Id == DiagnosticDescriptors.InvalidDecimalPrecisionScale.Id
+        );
     }
 
     [Theory]
@@ -184,7 +190,10 @@ public sealed class DiagnosticTests
 
         var (diagnostics, _) = RunGenerator(source);
 
-        Assert.DoesNotContain(diagnostics, d => d.Id == DiagnosticDescriptors.UnsupportedPropertyType.Id);
+        Assert.DoesNotContain(
+            diagnostics,
+            d => d.Id == DiagnosticDescriptors.UnsupportedPropertyType.Id
+        );
     }
 
     [Fact]
@@ -254,8 +263,14 @@ public sealed class DiagnosticTests
 
         var (diagnostics, _) = RunGenerator(source);
 
-        Assert.DoesNotContain(diagnostics, d => d.Id == DiagnosticDescriptors.MemberNotAssignable.Id);
-        Assert.DoesNotContain(diagnostics, d => d.Id == DiagnosticDescriptors.UnsupportedPropertyType.Id);
+        Assert.DoesNotContain(
+            diagnostics,
+            d => d.Id == DiagnosticDescriptors.MemberNotAssignable.Id
+        );
+        Assert.DoesNotContain(
+            diagnostics,
+            d => d.Id == DiagnosticDescriptors.UnsupportedPropertyType.Id
+        );
     }
 
     [Fact]
@@ -273,7 +288,10 @@ public sealed class DiagnosticTests
 
         var (diagnostics, _) = RunGenerator(source);
 
-        Assert.Contains(diagnostics, d => d.Id == DiagnosticDescriptors.NoParameterlessConstructor.Id);
+        Assert.Contains(
+            diagnostics,
+            d => d.Id == DiagnosticDescriptors.NoParameterlessConstructor.Id
+        );
     }
 
     [Fact]
@@ -294,7 +312,10 @@ public sealed class DiagnosticTests
 
         var (diagnostics, _) = RunGenerator(source);
 
-        Assert.Contains(diagnostics, d => d.Id == DiagnosticDescriptors.NoParameterlessConstructor.Id);
+        Assert.Contains(
+            diagnostics,
+            d => d.Id == DiagnosticDescriptors.NoParameterlessConstructor.Id
+        );
     }
 
     [Fact]
@@ -314,7 +335,10 @@ public sealed class DiagnosticTests
 
         var (diagnostics, _) = RunGenerator(source);
 
-        Assert.DoesNotContain(diagnostics, d => d.Id == DiagnosticDescriptors.NoParameterlessConstructor.Id);
+        Assert.DoesNotContain(
+            diagnostics,
+            d => d.Id == DiagnosticDescriptors.NoParameterlessConstructor.Id
+        );
     }
 
     [Fact]
@@ -399,24 +423,35 @@ public sealed class DiagnosticTests
 
         var (diagnostics, _) = RunGenerator(source);
 
-        Assert.DoesNotContain(diagnostics, d => d.Id == DiagnosticDescriptors.NestedTypeNotSupported.Id);
-        Assert.DoesNotContain(diagnostics, d => d.Id == DiagnosticDescriptors.GenericTypeNotSupported.Id);
+        Assert.DoesNotContain(
+            diagnostics,
+            d => d.Id == DiagnosticDescriptors.NestedTypeNotSupported.Id
+        );
+        Assert.DoesNotContain(
+            diagnostics,
+            d => d.Id == DiagnosticDescriptors.GenericTypeNotSupported.Id
+        );
     }
 
-    private static (IReadOnlyList<Diagnostic> Diagnostics, IReadOnlyList<SyntaxTree> OutputTrees) RunGenerator(string source)
+    private static (
+        IReadOnlyList<Diagnostic> Diagnostics,
+        IReadOnlyList<SyntaxTree> OutputTrees
+    ) RunGenerator(string source)
     {
         SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(source);
         var references = new[]
         {
             MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(Attribute).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(ParquetSerializableAttribute).Assembly.Location),
+            MetadataReference.CreateFromFile(
+                typeof(ParquetSerializableAttribute).Assembly.Location
+            ),
             MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location),
             // Needed so the types exercised below resolve for real. An unresolved type becomes an
             // error type, which the parser deliberately skips — so without these references the
             // supported-type cases would pass without ever reaching the allowlist.
             MetadataReference.CreateFromFile(Assembly.Load("System.Runtime.Numerics").Location),
-            MetadataReference.CreateFromFile(Assembly.Load("System.Collections").Location)
+            MetadataReference.CreateFromFile(Assembly.Load("System.Collections").Location),
         };
 
         CSharpCompilation compilation = CSharpCompilation.Create(
@@ -428,11 +463,17 @@ public sealed class DiagnosticTests
             // type rendering as "string?" and so missing the PARQ006 allowlist — cannot reproduce.
             new CSharpCompilationOptions(
                 OutputKind.DynamicallyLinkedLibrary,
-                nullableContextOptions: NullableContextOptions.Enable));
+                nullableContextOptions: NullableContextOptions.Enable
+            )
+        );
 
         var generator = new ParquetIncrementalGenerator();
         GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
-        driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out Compilation outputCompilation, out var diagnostics);
+        driver = driver.RunGeneratorsAndUpdateCompilation(
+            compilation,
+            out Compilation outputCompilation,
+            out var diagnostics
+        );
 
         return (diagnostics, outputCompilation.SyntaxTrees.ToList());
     }

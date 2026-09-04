@@ -53,9 +53,24 @@ public sealed class SchemaFieldResolutionTests
     {
         var written = new List<ForwardOrder>
         {
-            new() { Alpha = 1, Beta = "one", Gamma = 1.5 },
-            new() { Alpha = 2, Beta = "two", Gamma = 2.5 },
-            new() { Alpha = 3, Beta = "three", Gamma = 3.5 },
+            new()
+            {
+                Alpha = 1,
+                Beta = "one",
+                Gamma = 1.5,
+            },
+            new()
+            {
+                Alpha = 2,
+                Beta = "two",
+                Gamma = 2.5,
+            },
+            new()
+            {
+                Alpha = 3,
+                Beta = "three",
+                Gamma = 3.5,
+            },
         };
 
         using var stream = new MemoryStream();
@@ -85,14 +100,23 @@ public sealed class SchemaFieldResolutionTests
         var written = new List<ForwardOrder>();
         for (int i = 0; i < 50; i++)
         {
-            written.Add(new ForwardOrder { Alpha = i, Beta = $"row_{i}", Gamma = i * 0.25 });
+            written.Add(
+                new ForwardOrder
+                {
+                    Alpha = i,
+                    Beta = $"row_{i}",
+                    Gamma = i * 0.25,
+                }
+            );
         }
 
         using var stream = new MemoryStream();
         await written.WriteParquetBatchedAsync(stream, rowGroupSize: 10);
         stream.Position = 0;
 
-        List<ReversedOrder> read = await ReversedOrderParquetExtensions.ReadParquetParallelAsync(stream);
+        List<ReversedOrder> read = await ReversedOrderParquetExtensions.ReadParquetParallelAsync(
+            stream
+        );
 
         Assert.Equal(written.Count, read.Count);
         for (int i = 0; i < written.Count; i++)
@@ -109,7 +133,12 @@ public sealed class SchemaFieldResolutionTests
         // Guards the common case against a regression in the resolver's index check.
         var written = new List<ForwardOrder>
         {
-            new() { Alpha = 7, Beta = "seven", Gamma = 7.75 },
+            new()
+            {
+                Alpha = 7,
+                Beta = "seven",
+                Gamma = 7.75,
+            },
         };
 
         using var stream = new MemoryStream();
@@ -138,7 +167,12 @@ public sealed class SchemaFieldResolutionTests
         stream.Position = 0;
 
         // ForwardOrder requires 'gamma' (non-nullable double). Reading partial stream should throw InvalidDataException.
-        var ex = await Assert.ThrowsAsync<InvalidDataException>(() => ForwardOrderParquetExtensions.ReadParquetAsync(stream));
-        Assert.Contains("Required column 'gamma' was not found in the Parquet file schema", ex.Message);
+        var ex = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            ForwardOrderParquetExtensions.ReadParquetAsync(stream)
+        );
+        Assert.Contains(
+            "Required column 'gamma' was not found in the Parquet file schema",
+            ex.Message
+        );
     }
 }

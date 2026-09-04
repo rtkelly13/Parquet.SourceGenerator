@@ -17,7 +17,8 @@ internal static class RowGroupLayoutComponent
         string maxRowVar = "maxRowCount",
         string rowGroupCountVar = "rowGroupCount",
         bool declareRowGroupCount = true,
-        string indent = "        ")
+        string indent = "        "
+    )
     {
         if (declareRowGroupCount)
         {
@@ -44,7 +45,8 @@ internal static class RowGroupLayoutComponent
         string rowCountVar = "totalRows",
         string maxRowVar = "maxRowGroupSize",
         bool declareVariables = true,
-        string indent = "        ")
+        string indent = "        "
+    )
     {
         if (declareVariables)
         {

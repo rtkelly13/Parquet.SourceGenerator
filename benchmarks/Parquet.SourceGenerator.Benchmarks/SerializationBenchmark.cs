@@ -40,7 +40,6 @@ public partial record GuidEvent
     public DateTime Timestamp { get; init; }
 }
 
-
 [MemoryDiagnoser]
 [InProcess]
 [Orderer(BenchmarkDotNet.Order.SummaryOrderPolicy.FastestToSlowest)]
@@ -55,13 +54,14 @@ public class ScalingSerializationBenchmark
     [GlobalSetup]
     public void Setup()
     {
-        _data = Enumerable.Range(0, Count)
+        _data = Enumerable
+            .Range(0, Count)
             .Select(i => new ScaleEvent
             {
                 Id = i,
                 ValA = i * 3.14159,
                 ValB = i * 1000L,
-                IsValid = i % 2 == 0
+                IsValid = i % 2 == 0,
             })
             .ToList();
     }
@@ -112,13 +112,14 @@ public class ScalingDeserializationBenchmark
     [GlobalSetup]
     public void Setup()
     {
-        var data = Enumerable.Range(0, Count)
+        var data = Enumerable
+            .Range(0, Count)
             .Select(i => new ScaleEvent
             {
                 Id = i,
                 ValA = i * 3.14159,
                 ValB = i * 1000L,
-                IsValid = i % 2 == 0
+                IsValid = i % 2 == 0,
             })
             .ToList();
 
@@ -128,13 +129,21 @@ public class ScalingDeserializationBenchmark
 
         // Guard: ensure the reflection baseline genuinely deserializes column data rather than skipping
         using var verifyStream = new MemoryStream(_parquetBytes);
-        var baselineCheck = ParquetSerializer.DeserializeAsync<ScaleEvent>(verifyStream).GetAwaiter().GetResult();
-        if (baselineCheck.Data.Count != Count || baselineCheck.Data[0].Id != 0 || baselineCheck.Data[Count - 1].Id != Count - 1)
+        var baselineCheck = ParquetSerializer
+            .DeserializeAsync<ScaleEvent>(verifyStream)
+            .GetAwaiter()
+            .GetResult();
+        if (
+            baselineCheck.Data.Count != Count
+            || baselineCheck.Data[0].Id != 0
+            || baselineCheck.Data[Count - 1].Id != Count - 1
+        )
         {
-            throw new InvalidOperationException("Reflection baseline failed to deserialize column values.");
+            throw new InvalidOperationException(
+                "Reflection baseline failed to deserialize column values."
+            );
         }
     }
-
 
     /// <summary>
     /// v6 ParquetSerializer baseline deserializer — compiled Expression trees.
@@ -176,7 +185,9 @@ public class ScalingDeserializationBenchmark
     [Benchmark]
     public async Task<List<ScaleEvent>> SourceGeneratorReadBufferAsync()
     {
-        return await ScaleEventParquetExtensions.ReadParquetAsync(new ReadOnlyMemory<byte>(_parquetBytes));
+        return await ScaleEventParquetExtensions.ReadParquetAsync(
+            new ReadOnlyMemory<byte>(_parquetBytes)
+        );
     }
 
     /// <summary>
@@ -194,7 +205,8 @@ public class ScalingDeserializationBenchmark
     {
         return await ScaleEventParquetExtensions.ReadParquetParallelAsync(
             new ReadOnlyMemory<byte>(_parquetBytes),
-            maxDegreeOfParallelism: 4);
+            maxDegreeOfParallelism: 4
+        );
     }
 
     /// <summary>
@@ -213,7 +225,9 @@ public class ScalingDeserializationBenchmark
     [Benchmark]
     public async Task<ScaleEvent[]> SourceGeneratorReadBufferArrayAsync()
     {
-        return await ScaleEventParquetExtensions.ReadParquetArrayAsync(new ReadOnlyMemory<byte>(_parquetBytes));
+        return await ScaleEventParquetExtensions.ReadParquetArrayAsync(
+            new ReadOnlyMemory<byte>(_parquetBytes)
+        );
     }
 
     /// <summary>
@@ -224,7 +238,8 @@ public class ScalingDeserializationBenchmark
     {
         return await ScaleEventParquetExtensions.ReadParquetParallelArrayAsync(
             new ReadOnlyMemory<byte>(_parquetBytes),
-            maxDegreeOfParallelism: 4);
+            maxDegreeOfParallelism: 4
+        );
     }
 
     /// <summary>
@@ -257,12 +272,13 @@ public class GuidInterchangeBenchmark
     [GlobalSetup]
     public void Setup()
     {
-        _guidData = Enumerable.Range(0, Count)
+        _guidData = Enumerable
+            .Range(0, Count)
             .Select(i => new GuidEvent
             {
                 Id = i,
                 CorrelationId = Guid.NewGuid(),
-                Timestamp = DateTime.UtcNow
+                Timestamp = DateTime.UtcNow,
             })
             .ToList();
     }

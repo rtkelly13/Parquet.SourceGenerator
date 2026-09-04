@@ -105,12 +105,14 @@ internal static class Program
 
         for (int i = 0; i < expected.Count; i++)
         {
-            if (actual[i].SensorId != expected[i].SensorId
+            if (
+                actual[i].SensorId != expected[i].SensorId
                 || Math.Abs(actual[i].Celsius - expected[i].Celsius) > 1e-9
                 || actual[i].CapturedAtMs != expected[i].CapturedAtMs
                 || actual[i].IsCalibrated != expected[i].IsCalibrated
                 || actual[i].DeviceId != expected[i].DeviceId
-                || actual[i].Status != expected[i].Status)
+                || actual[i].Status != expected[i].Status
+            )
             {
                 return Fail($"Record {i} did not round-trip correctly.");
             }
@@ -123,12 +125,16 @@ internal static class Program
 
         if (actual[0].Scratch != "not persisted")
         {
-            return Fail($"Expected [ParquetIgnore] member to be left at its initializer, got '{actual[0].Scratch}'.");
+            return Fail(
+                $"Expected [ParquetIgnore] member to be left at its initializer, got '{actual[0].Scratch}'."
+            );
         }
 
         if (ReadingParquetExtensions.Schema.Fields.Count != 7)
         {
-            return Fail($"Expected 7 schema fields, found {ReadingParquetExtensions.Schema.Fields.Count}.");
+            return Fail(
+                $"Expected 7 schema fields, found {ReadingParquetExtensions.Schema.Fields.Count}."
+            );
         }
 
         // Test multi-row-group batched write and parallel reader over byte buffer
@@ -143,8 +149,10 @@ internal static class Program
             return 1;
         }
 
-        Console.WriteLine($"Package consumption OK: round-tripped {actual.Count} records across all entry points, schema has "
-                          + $"{ReadingParquetExtensions.Schema.Fields.Count} fields.");
+        Console.WriteLine(
+            $"Package consumption OK: round-tripped {actual.Count} records across all entry points, schema has "
+                + $"{ReadingParquetExtensions.Schema.Fields.Count} fields."
+        );
         return 0;
     }
 
@@ -153,7 +161,8 @@ internal static class Program
         const int totalCount = 1_000;
         const int rowGroupSize = 200; // Produces 5 row groups
 
-        List<Reading> data = Enumerable.Range(0, totalCount)
+        List<Reading> data = Enumerable
+            .Range(0, totalCount)
             .Select(i => new Reading
             {
                 SensorId = $"sensor-{i % 10}",
@@ -171,32 +180,43 @@ internal static class Program
         byte[] bytes = mem.ToArray();
 
         // 1. Sequential buffer read
-        List<Reading> sequentialRead = await ReadingParquetExtensions.ReadParquetAsync(new ReadOnlyMemory<byte>(bytes));
+        List<Reading> sequentialRead = await ReadingParquetExtensions.ReadParquetAsync(
+            new ReadOnlyMemory<byte>(bytes)
+        );
         if (sequentialRead.Count != totalCount)
         {
-            Console.Error.WriteLine($"FAILED: ReadParquetAsync(buffer) expected {totalCount} rows, got {sequentialRead.Count}.");
+            Console.Error.WriteLine(
+                $"FAILED: ReadParquetAsync(buffer) expected {totalCount} rows, got {sequentialRead.Count}."
+            );
             return false;
         }
 
         // 2. Parallel buffer read with degree of parallelism = 4
         List<Reading> parallelRead = await ReadingParquetExtensions.ReadParquetParallelAsync(
             new ReadOnlyMemory<byte>(bytes),
-            maxDegreeOfParallelism: 4);
+            maxDegreeOfParallelism: 4
+        );
 
         if (parallelRead.Count != totalCount)
         {
-            Console.Error.WriteLine($"FAILED: ReadParquetParallelAsync(buffer) expected {totalCount} rows, got {parallelRead.Count}.");
+            Console.Error.WriteLine(
+                $"FAILED: ReadParquetParallelAsync(buffer) expected {totalCount} rows, got {parallelRead.Count}."
+            );
             return false;
         }
 
         // Validate ordering and data equality between sequential and parallel
         for (int i = 0; i < totalCount; i++)
         {
-            if (sequentialRead[i].CapturedAtMs != parallelRead[i].CapturedAtMs
+            if (
+                sequentialRead[i].CapturedAtMs != parallelRead[i].CapturedAtMs
                 || sequentialRead[i].DeviceId != parallelRead[i].DeviceId
-                || sequentialRead[i].Status != parallelRead[i].Status)
+                || sequentialRead[i].Status != parallelRead[i].Status
+            )
             {
-                Console.Error.WriteLine($"FAILED: Parallel read row {i} does not match sequential read in file order.");
+                Console.Error.WriteLine(
+                    $"FAILED: Parallel read row {i} does not match sequential read in file order."
+                );
                 return false;
             }
         }
@@ -215,7 +235,9 @@ internal static class Program
 
         if (count != expectedCount)
         {
-            Console.Error.WriteLine($"FAILED: ReadParquetStreamAsync streamed {count} records, expected {expectedCount}.");
+            Console.Error.WriteLine(
+                $"FAILED: ReadParquetStreamAsync streamed {count} records, expected {expectedCount}."
+            );
             return false;
         }
 

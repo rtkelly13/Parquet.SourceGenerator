@@ -9,19 +9,24 @@ namespace Parquet.SourceGenerator.Models;
 public readonly record struct DiagnosticInfo(
     DiagnosticDescriptor Descriptor,
     Location Location,
-    string[] MessageArgs) : IEquatable<DiagnosticInfo>
+    string[] MessageArgs
+) : IEquatable<DiagnosticInfo>
 {
     /// <summary>
     /// Checks value equality against another <see cref="DiagnosticInfo"/>.
     /// </summary>
     public bool Equals(DiagnosticInfo other)
     {
-        if (Descriptor.Id != other.Descriptor.Id) return false;
-        if (!Equals(Location, other.Location)) return false;
-        if (MessageArgs.Length != other.MessageArgs.Length) return false;
+        if (Descriptor.Id != other.Descriptor.Id)
+            return false;
+        if (!Equals(Location, other.Location))
+            return false;
+        if (MessageArgs.Length != other.MessageArgs.Length)
+            return false;
         for (int i = 0; i < MessageArgs.Length; i++)
         {
-            if (MessageArgs[i] != other.MessageArgs[i]) return false;
+            if (MessageArgs[i] != other.MessageArgs[i])
+                return false;
         }
         return true;
     }

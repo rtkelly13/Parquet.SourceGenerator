@@ -30,13 +30,14 @@ public class BaselineDifferentialTests
     public async Task SourceGeneratorCanReadDataWrittenByParquetSerializerReflection()
     {
         // 1. Arrange baseline records
-        var expected = Enumerable.Range(1, 100)
+        var expected = Enumerable
+            .Range(1, 100)
             .Select(i => new BaselineRecord
             {
                 Id = i,
                 Name = $"user_{i}",
                 Score = i * 2.5,
-                IsActive = i % 2 == 0
+                IsActive = i % 2 == 0,
             })
             .ToList();
 
@@ -46,7 +47,9 @@ public class BaselineDifferentialTests
 
         // 3. Deserialize using Parquet.SourceGenerator stream reader (AOT-safe, source generated)
         stream.Position = 0;
-        List<BaselineRecord> actual = await BaselineRecordParquetExtensions.ReadParquetAsync(stream);
+        List<BaselineRecord> actual = await BaselineRecordParquetExtensions.ReadParquetAsync(
+            stream
+        );
 
         // 4. Assert symmetric identity
         Assert.Equal(expected.Count, actual.Count);
@@ -63,13 +66,14 @@ public class BaselineDifferentialTests
     public async Task ParquetSerializerReflectionCanReadDataWrittenBySourceGenerator()
     {
         // 1. Arrange baseline records
-        var expected = Enumerable.Range(1, 100)
+        var expected = Enumerable
+            .Range(1, 100)
             .Select(i => new BaselineRecord
             {
                 Id = i,
                 Name = $"user_{i}",
                 Score = i * 2.5,
-                IsActive = i % 2 == 0
+                IsActive = i % 2 == 0,
             })
             .ToList();
 

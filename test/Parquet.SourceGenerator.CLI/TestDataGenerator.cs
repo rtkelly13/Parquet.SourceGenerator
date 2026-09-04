@@ -8,7 +8,9 @@ namespace Parquet.SourceGenerator.CLI;
 
 public static class TestDataGenerator
 {
-    private static readonly string BaseOutputDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "data_csharp"));
+    private static readonly string BaseOutputDir = Path.GetFullPath(
+        Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "data_csharp")
+    );
     private static readonly string V3OutputDir = Path.Combine(BaseOutputDir, "v3");
 
     public static async Task GenerateAllAsync()
@@ -66,7 +68,8 @@ public static class TestDataGenerator
         var ids = Enumerable.Range(0, count).ToArray();
 
         var nullableInts = ids.Select(i => i % 5 == 0 ? (int?)null : i * 10).ToArray();
-        var nullableDoubles = ids.Select(i => i % 5 == 0 ? (double?)null : (i * 3.14159) % 1000.0).ToArray();
+        var nullableDoubles = ids.Select(i => i % 5 == 0 ? (double?)null : (i * 3.14159) % 1000.0)
+            .ToArray();
         var nullableStrings = ids.Select(i => i % 5 == 0 ? null : $"str_val_{i}").ToArray();
         var nullableBools = ids.Select(i => i % 5 == 0 ? (bool?)null : (i % 3 == 0)).ToArray();
 
@@ -102,7 +105,8 @@ public static class TestDataGenerator
         const int count = 5_000;
         var ids = Enumerable.Range(0, count).ToArray();
 
-        var guidStrs = ids.Select(i => new Guid((i + 1), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0).ToString()).ToArray();
+        var guidStrs = ids.Select(i => new Guid((i + 1), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0).ToString())
+            .ToArray();
         var decimals = ids.Select(i => (decimal)((i * 123.4567) % 99999.9999)).ToArray();
         var timestampsUs = ids.Select(i => 1700000000000L + (i * 100000L)).ToArray();
         var categories = ids.Select(i => i % 4).ToArray();
@@ -113,7 +117,13 @@ public static class TestDataGenerator
         var timestampField = new DataField<long>("timestamp_us");
         var categoryField = new DataField<int>("category");
 
-        var schema = new ParquetSchema(idField, guidField, decimalField, timestampField, categoryField);
+        var schema = new ParquetSchema(
+            idField,
+            guidField,
+            decimalField,
+            timestampField,
+            categoryField
+        );
 
         string filePath = Path.Combine(V3OutputDir, "03_complex_decimals_guids.parquet");
         await using (var stream = System.IO.File.Create(filePath))
@@ -138,7 +148,10 @@ public static class TestDataGenerator
     {
         const int count = 100_000;
         var ids = Enumerable.Range(0, count).Select(i => (long)i).ToArray();
-        var payloads = Enumerable.Range(0, count).Select(i => $"payload_data_string_buffer_segment_{i % 500}").ToArray();
+        var payloads = Enumerable
+            .Range(0, count)
+            .Select(i => $"payload_data_string_buffer_segment_{i % 500}")
+            .ToArray();
         var valA = Enumerable.Range(0, count).Select(i => i * 7).ToArray();
         var valB = Enumerable.Range(0, count).Select(i => i * 0.123456789).ToArray();
         var isValid = Enumerable.Range(0, count).Select(i => i % 7 != 0).ToArray();

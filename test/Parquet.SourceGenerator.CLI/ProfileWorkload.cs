@@ -27,16 +27,19 @@ public static class ProfileWorkload
 {
     public static async Task ExecuteAsync(int iterations = 100, int rowCount = 20_000)
     {
-        Console.WriteLine($"🔥 Starting Profile Workload ({iterations} iterations x {rowCount} rows)...");
+        Console.WriteLine(
+            $"🔥 Starting Profile Workload ({iterations} iterations x {rowCount} rows)..."
+        );
         var sw = Stopwatch.StartNew();
 
-        var items = Enumerable.Range(0, rowCount)
+        var items = Enumerable
+            .Range(0, rowCount)
             .Select(i => new ProfileEvent
             {
                 Id = i,
                 Name = $"user_profile_event_{i}",
                 Score = i * 1.618,
-                IsActive = i % 2 == 0
+                IsActive = i % 2 == 0,
             })
             .ToList();
 
@@ -52,12 +55,16 @@ public static class ProfileWorkload
             List<ProfileEvent> readItems = await ProfileEventParquetExtensions.ReadParquetAsync(ms);
             if (readItems.Count != rowCount)
             {
-                throw new InvalidOperationException($"Mismatch at iteration {iteration}: expected {rowCount}, got {readItems.Count}");
+                throw new InvalidOperationException(
+                    $"Mismatch at iteration {iteration}: expected {rowCount}, got {readItems.Count}"
+                );
             }
 
             if (iteration % 20 == 0)
             {
-                Console.WriteLine($"   Completed iteration {iteration}/{iterations} ({sw.ElapsedMilliseconds} ms elapsed)...");
+                Console.WriteLine(
+                    $"   Completed iteration {iteration}/{iterations} ({sw.ElapsedMilliseconds} ms elapsed)..."
+                );
             }
         }
 
@@ -65,6 +72,8 @@ public static class ProfileWorkload
         Console.WriteLine($"✅ Profile Workload Complete!");
         Console.WriteLine($"   Total Time: {sw.ElapsedMilliseconds} ms");
         Console.WriteLine($"   Total Data Processed: {totalBytesWritten / 1024.0 / 1024.0:F2} MB");
-        Console.WriteLine($"   Throughput: {(totalBytesWritten / 1024.0 / 1024.0) / (sw.ElapsedMilliseconds / 1000.0):F2} MB/s");
+        Console.WriteLine(
+            $"   Throughput: {(totalBytesWritten / 1024.0 / 1024.0) / (sw.ElapsedMilliseconds / 1000.0):F2} MB/s"
+        );
     }
 }

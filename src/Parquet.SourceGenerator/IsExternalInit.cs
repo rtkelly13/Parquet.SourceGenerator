@@ -4,7 +4,5 @@ namespace System.Runtime.CompilerServices;
 /// <summary>
 /// Reserved to be used by the compiler for tracking metadata.
 /// </summary>
-internal static class IsExternalInit
-{
-}
+internal static class IsExternalInit { }
 #endif
