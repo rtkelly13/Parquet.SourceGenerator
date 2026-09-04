@@ -92,14 +92,46 @@ Because row generation uses strict deterministic mathematical formulas based on 
 
 ---
 
-## 🛠️ Regeneration Commands
+## 🏛️ Git LFS Provenanced Benchmark Datasets
 
-### Python Generator (PyArrow via `uv`)
+In addition to synthetic unit test fixtures, the repository maintains real-world, fixed public datasets under [`benchmarks/data/`](../benchmarks/data/) tracked via **Git LFS**. Each dataset is cryptographically pinned and accompanied by a machine-readable [`provenance.json`](../benchmarks/data/provenance.json) and human-readable [`PROVENANCE.md`](../benchmarks/data/PROVENANCE.md).
+
+### Registered Public Datasets
+
+1. **`tpch_lineitem_sf001.parquet`** (60,175 rows, 1.34 MB)
+   - **Origin**: TPC-H SF 0.01 via Hugging Face (`liangyc/tpch-sf-0_01`, commit `a91e9442ea`)
+   - **License**: Apache-2.0
+   - **Profile**: 16 columns across 4 `Int64` keys, 4 `Decimal(15,2)` financial amounts, 3 `Date` timestamps, 4 dictionary-encoded strings (`l_returnflag`, `l_linestatus`, `l_shipinstruct`, `l_shipmode`), and 1 plain free-text string (`l_comment`).
+2. **`adult_census_income.parquet`** (32,561 rows, 554 KB)
+   - **Origin**: Adult Census Income via Hugging Face (`scikit-learn/adult-census-income`, commit `aefa0f0f1b`)
+   - **License**: CC-BY-4.0
+   - **Profile**: 15 columns with heavy categorical dictionary encoding (9 string columns including `workclass`, `education`, `occupation`, `relationship`, `income`).
+3. **`diamonds.parquet`** (53,940 rows, 785 KB)
+   - **Origin**: Diamonds regression benchmark via Hugging Face (`inria-soda/tabular-benchmark`, commit `cb2bcee34f`)
+   - **License**: CC0-1.0
+   - **Profile**: 10 columns testing floating-point precision (`carat`, `depth`, `table`, `x`, `y`, `z`, `price`) and ordinal categories.
+
+---
+
+## 🛠️ Verification & Synchronization Commands
+
+### Python Provenance Verification (`uv`)
+```bash
+uv run scripts/verify_provenance.py
+```
+
+### Re-fetching & Re-profiling Datasets (`uv`)
+```bash
+uv run scripts/fetch_benchmark_datasets.py
+```
+
+### Python Synthetic Test Generator (PyArrow via `uv`)
 ```bash
 uv run scripts/generate_test_data.py
 ```
 
-### C# Generator (`Parquet.Net` via `dotnet run`)
+### C# Synthetic Generator (`Parquet.Net` via `dotnet run`)
 ```bash
 dotnet run --project test/Parquet.SourceGenerator.CLI/Parquet.SourceGenerator.CLI.csproj
 ```
+
