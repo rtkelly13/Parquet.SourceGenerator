@@ -16,17 +16,17 @@
       ],
       "rollForward": false
     },
-    "dotnet-inspect": {
-      "version": "0.24.0",
-      "commands": [
-        "dotnet-inspect"
-      ],
-      "rollForward": false
-    },
     "dotnet-dump": {
       "version": "10.0.731102",
       "commands": [
         "dotnet-dump"
+      ],
+      "rollForward": false
+    },
+    "dotnet-inspect": {
+      "version": "0.24.0",
+      "commands": [
+        "dotnet-inspect"
       ],
       "rollForward": false
     }
