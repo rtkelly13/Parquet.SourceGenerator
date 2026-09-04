@@ -16,7 +16,7 @@ public static class Program
     public static int Main(string[] args)
     {
         string resultsDir = args.Length > 0 && !args[0].StartsWith("--", StringComparison.Ordinal) ? args[0] : "BenchmarkDotNet.Artifacts/results";
-        bool updateReadme = args.Contains("--update-readme");
+        bool updateReadme = args.Contains("--update-readme", StringComparer.Ordinal);
         string? outputPath = args.FirstOrDefault(a => a != resultsDir && !a.StartsWith("--", StringComparison.Ordinal));
 
         if (!Directory.Exists(resultsDir))
@@ -69,7 +69,7 @@ public static class Program
             return 1;
         }
 
-        if (args.Contains("--update-baseline"))
+        if (args.Contains("--update-baseline", StringComparer.Ordinal))
         {
             WriteBaselineFile(baselinePath, current);
             Console.WriteLine($"Baseline updated with {current.Count} measurement(s): {baselinePath}");
@@ -90,7 +90,7 @@ public static class Program
 
         double allocationTolerance = ParseTolerance(args, "--alloc-tolerance", RegressionCheck.DefaultAllocationTolerance);
         double timeTolerance = ParseTolerance(args, "--time-tolerance", RegressionCheck.DefaultTimeTolerance);
-        bool failOnTime = args.Contains("--fail-on-time");
+        bool failOnTime = args.Contains("--fail-on-time", StringComparer.Ordinal);
 
         IReadOnlyList<BenchmarkComparison> comparisons =
             RegressionCheck.Compare(baseline, current, allocationTolerance, timeTolerance);
@@ -171,7 +171,7 @@ public static class Program
 
                 if (string.IsNullOrWhiteSpace(meanStr) || meanStr == "NA") continue;
 
-                _ = int.TryParse(countStr, out int count);
+                _ = int.TryParse(countStr, NumberStyles.Integer, CultureInfo.InvariantCulture, out int count);
                 var entry = new BenchmarkEntry(
                     Method: method,
                     Count: count,
@@ -320,7 +320,7 @@ public static class Program
         string pattern = $"{Regex.Escape(StartMarker)}.*?{Regex.Escape(EndMarker)}";
         string replacement = $"{StartMarker}\n{tableMd}\n{EndMarker}";
 
-        var regex = new Regex(pattern, RegexOptions.Singleline);
+        var regex = new Regex(pattern, RegexOptions.Singleline | RegexOptions.ExplicitCapture, TimeSpan.FromSeconds(2));
         if (regex.IsMatch(content))
         {
             string updated = regex.Replace(content, replacement);
@@ -366,8 +366,8 @@ public static class Program
     private static double? ParseNumber(string str)
     {
         if (string.IsNullOrWhiteSpace(str) || str == "NA" || str == "?") return null;
-        var match = Regex.Match(str.Replace(",", ""), @"([0-9.]+)");
-        return match.Success && double.TryParse(match.Groups[1].Value, NumberStyles.Any, CultureInfo.InvariantCulture, out double val) ? val : null;
+        var match = Regex.Match(str.Replace(",", ""), @"[0-9.]+", RegexOptions.ExplicitCapture, TimeSpan.FromSeconds(2));
+        return match.Success && double.TryParse(match.Value, NumberStyles.Any, CultureInfo.InvariantCulture, out double val) ? val : null;
     }
 
     /// <summary>

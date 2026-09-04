@@ -33,7 +33,7 @@ public readonly record struct DiagnosticInfo(
     {
         unchecked
         {
-            int hash = Descriptor.Id.GetHashCode();
+            int hash = StringComparer.Ordinal.GetHashCode(Descriptor.Id);
             hash = (hash * 397) ^ (Location?.GetHashCode() ?? 0);
             hash = (hash * 397) ^ MessageArgs.Length;
             return hash;
