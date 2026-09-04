@@ -23,7 +23,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           lfs: true
 
@@ -57,7 +57,7 @@ jobs:
           echo "PR diff check passed: zero unauthorized Python files introduced."
 
       - name: Setup .NET SDK
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
         with:
           dotnet-version: |
             8.0.x
@@ -68,12 +68,12 @@ jobs:
         run: dotnet run scripts/VerifyProvenance.cs
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: '3.11'
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
 
       - name: Restore solution dependencies
         run: dotnet restore Parquet.SourceGenertor.sln
@@ -241,13 +241,13 @@ jobs:
             -p:RestorePackagesPath="$RUNNER_TEMP/consumption-packages-legacy-net472"
 
       - name: Upload Test Coverage Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: code-coverage
           path: test/Parquet.SourceGenerator.Tests/TestResults/*/coverage.cobertura.xml
 
       - name: Upload Build & Package Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: nuget-packages
           path: ./artifacts/*.nupkg
