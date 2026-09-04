@@ -27,6 +27,34 @@ jobs:
         with:
           lfs: true
 
+      # Policy: Python (.py) files are strictly forbidden in this repository. All automation,
+      # scripts, and benchmarks must be authored in C# (.cs) executed via dotnet run.
+      - name: Enforce No Python Files Policy
+        run: |
+          echo "Scanning repository for forbidden Python (.py) files..."
+          py_files=$(git ls-files '*.py')
+          if [ -n "$py_files" ]; then
+            echo "::error::Python (.py) files are strictly forbidden in this repository."
+            echo "Found forbidden file(s):"
+            echo "$py_files"
+            echo "Please remove all .py files and use C# (.cs) scripts or .NET tooling instead."
+            exit 1
+          fi
+          echo "Policy verified: 0 Python (.py) files found."
+
+      - name: Verify No Python Files in PR Diff
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "Checking PR diff for forbidden Python (.py) files..."
+          git fetch origin ${{ github.base_ref }} --depth=1
+          new_py=$(git diff --name-only --diff-filter=ACMR origin/${{ github.base_ref }}...HEAD | grep -E '\.py$' || true)
+          if [ -n "$new_py" ]; then
+            echo "::error::Pull request introduces forbidden Python (.py) files:"
+            echo "$new_py"
+            exit 1
+          fi
+          echo "PR diff check passed: zero Python files introduced."
+
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
@@ -37,14 +65,6 @@ jobs:
 
       - name: Verify Benchmark Data LFS Hydration & Provenance Integrity
         run: dotnet run scripts/VerifyProvenance.cs
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v3
 
       - name: Restore solution dependencies
         run: dotnet restore Parquet.SourceGenertor.sln
@@ -70,9 +90,6 @@ jobs:
 
       - name: Verify C# Code Formatting (Whitespace)
         run: dotnet format whitespace --verify-no-changes --verbosity diagnostic
-
-      - name: Generate Python Test Datasets (PyArrow v1 & v2)
-        run: uv run scripts/generate_test_data.py
 
       - name: Generate C# Test Datasets (Parquet.Net v3)
         run: dotnet run --project test/Parquet.SourceGenerator.CLI/Parquet.SourceGenerator.CLI.csproj

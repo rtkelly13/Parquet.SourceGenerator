@@ -79,8 +79,7 @@ public static partial class LegacyRecordParquetLegacyExtensions
     /// decoding hints (<c>TreatByteArrayAsString</c> and friends) that this generator does not
     /// currently expose, so the returned instance is deliberately left at its defaults.
     /// </remarks>
-    private static global::Parquet.ParquetOptions BuildFormatOptions(
-        global::Parquet.SourceGenerator.ParquetSerializerOptions options)
+    private static global::Parquet.ParquetOptions BuildFormatOptions(global::Parquet.SourceGenerator.ParquetSerializerOptions options)
     {
         return new global::Parquet.ParquetOptions();
     }
@@ -190,7 +189,11 @@ public static partial class LegacyRecordParquetLegacyExtensions
         if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));
 
         options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
-        using (var writer = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken).ConfigureAwait(false))
+        using (var writer = await global::Parquet.ParquetWriter.CreateAsync(
+            Schema,
+            stream,
+            BuildFormatOptions(options),
+            cancellationToken: cancellationToken).ConfigureAwait(false))
         {
             ApplyCompression(writer, options);
             await writer.WriteRowGroupAsync(items, cancellationToken).ConfigureAwait(false);
@@ -219,7 +222,11 @@ public static partial class LegacyRecordParquetLegacyExtensions
 
         if (items is global::System.Collections.Generic.IReadOnlyList<LegacyRecord> list && list.Count <= batchSize)
         {
-            using (var singleWriter = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken).ConfigureAwait(false))
+            using (var singleWriter = await global::Parquet.ParquetWriter.CreateAsync(
+                Schema,
+                stream,
+                BuildFormatOptions(options),
+                cancellationToken: cancellationToken).ConfigureAwait(false))
             {
                 ApplyCompression(singleWriter, options);
                 await singleWriter.WriteRowGroupAsync(list, cancellationToken).ConfigureAwait(false);
@@ -227,7 +234,11 @@ public static partial class LegacyRecordParquetLegacyExtensions
             return;
         }
 
-        using (var writer = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken).ConfigureAwait(false))
+        using (var writer = await global::Parquet.ParquetWriter.CreateAsync(
+            Schema,
+            stream,
+            BuildFormatOptions(options),
+            cancellationToken: cancellationToken).ConfigureAwait(false))
         {
             ApplyCompression(writer, options);
             var chunk = new global::System.Collections.Generic.List<LegacyRecord>(batchSize);
@@ -272,7 +283,10 @@ public static partial class LegacyRecordParquetLegacyExtensions
         if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));
 
         options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
-        using (var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken).ConfigureAwait(false))
+        using (var reader = await global::Parquet.ParquetReader.CreateAsync(
+            stream,
+            BuildFormatOptions(options),
+            cancellationToken: cancellationToken).ConfigureAwait(false))
         {
             int totalRows = 0;
             for (int r = 0; r < reader.RowGroupCount; r++)

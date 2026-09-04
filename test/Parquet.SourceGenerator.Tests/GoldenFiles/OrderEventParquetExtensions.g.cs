@@ -82,8 +82,7 @@ public static partial class OrderEventParquetExtensions
     /// <summary>
     /// Translates the generator's options into the Parquet.Net options the writer accepts.
     /// </summary>
-    private static global::Parquet.ParquetOptions BuildFormatOptions(
-        global::Parquet.SourceGenerator.ParquetSerializerOptions options)
+    private static global::Parquet.ParquetOptions BuildFormatOptions(global::Parquet.SourceGenerator.ParquetSerializerOptions options)
     {
         var formatOptions = new global::Parquet.ParquetOptions
         {
@@ -220,15 +219,40 @@ public static partial class OrderEventParquetExtensions
 
             using (var groupWriter = writer.CreateRowGroup())
             {
-                await groupWriter.WriteAsync<int>(_field_0, new global::System.ReadOnlyMemory<int>(buffer_0, 0, count), cancellationToken: cancellationToken);
-                await groupWriter.WriteAsync(_field_1, new global::System.ArraySegment<string?>(buffer_1, 0, count));
-                await groupWriter.WriteAsync<double>(_field_2, new global::System.ReadOnlyMemory<double>(buffer_2, 0, count), cancellationToken: cancellationToken);
-                await groupWriter.WriteAsync<decimal>(_field_3, new global::System.ReadOnlyMemory<decimal>(buffer_3, 0, count), cancellationToken: cancellationToken);
-                await groupWriter.WriteAsync<System.DateTime>(_field_4, new global::System.ReadOnlyMemory<System.DateTime>(buffer_4, 0, count), cancellationToken: cancellationToken);
-                await groupWriter.WriteAsync<System.TimeSpan>(_field_5, new global::System.ReadOnlyMemory<System.TimeSpan>(buffer_5, 0, count), cancellationToken: cancellationToken);
-                await groupWriter.WriteAsync<global::System.Guid>(_field_6, new global::System.ReadOnlyMemory<global::System.Guid>(buffer_6, 0, count), cancellationToken: cancellationToken);
-                await groupWriter.WriteAsync<global::System.Guid>(_field_7, new global::System.ReadOnlyMemory<global::System.Guid?>(buffer_7, 0, count), cancellationToken: cancellationToken);
-                await groupWriter.WriteAsync(_field_8, new global::System.ArraySegment<byte[]?>(buffer_8, 0, count));
+                await groupWriter.WriteAsync<int>(
+                    _field_0,
+                    new global::System.ReadOnlyMemory<int>(buffer_0, 0, count),
+                    cancellationToken: cancellationToken);
+                await groupWriter.WriteAsync(
+                    _field_1,
+                    new global::System.ArraySegment<string?>(buffer_1, 0, count));
+                await groupWriter.WriteAsync<double>(
+                    _field_2,
+                    new global::System.ReadOnlyMemory<double>(buffer_2, 0, count),
+                    cancellationToken: cancellationToken);
+                await groupWriter.WriteAsync<decimal>(
+                    _field_3,
+                    new global::System.ReadOnlyMemory<decimal>(buffer_3, 0, count),
+                    cancellationToken: cancellationToken);
+                await groupWriter.WriteAsync<System.DateTime>(
+                    _field_4,
+                    new global::System.ReadOnlyMemory<System.DateTime>(buffer_4, 0, count),
+                    cancellationToken: cancellationToken);
+                await groupWriter.WriteAsync<System.TimeSpan>(
+                    _field_5,
+                    new global::System.ReadOnlyMemory<System.TimeSpan>(buffer_5, 0, count),
+                    cancellationToken: cancellationToken);
+                await groupWriter.WriteAsync<global::System.Guid>(
+                    _field_6,
+                    new global::System.ReadOnlyMemory<global::System.Guid>(buffer_6, 0, count),
+                    cancellationToken: cancellationToken);
+                await groupWriter.WriteAsync<global::System.Guid>(
+                    _field_7,
+                    new global::System.ReadOnlyMemory<global::System.Guid?>(buffer_7, 0, count),
+                    cancellationToken: cancellationToken);
+                await groupWriter.WriteAsync(
+                    _field_8,
+                    new global::System.ArraySegment<byte[]?>(buffer_8, 0, count));
             }
         }
         finally
@@ -260,7 +284,11 @@ public static partial class OrderEventParquetExtensions
 
         options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
 
-        await using var writer = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken);
+        await using var writer = await global::Parquet.ParquetWriter.CreateAsync(
+            Schema,
+            stream,
+            BuildFormatOptions(options),
+            cancellationToken: cancellationToken);
         await writer.WriteParquetRowGroupAsync(items, cancellationToken);
     }
 
@@ -286,12 +314,20 @@ public static partial class OrderEventParquetExtensions
 
         if (items is global::System.Collections.Generic.IReadOnlyCollection<OrderEvent> col && col.Count <= targetChunkSize)
         {
-            await using var singleWriter = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken);
+            await using var singleWriter = await global::Parquet.ParquetWriter.CreateAsync(
+                Schema,
+                stream,
+                BuildFormatOptions(options),
+                cancellationToken: cancellationToken);
             await singleWriter.WriteParquetRowGroupAsync(col, cancellationToken);
             return;
         }
 
-        await using var writer = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken);
+        await using var writer = await global::Parquet.ParquetWriter.CreateAsync(
+            Schema,
+            stream,
+            BuildFormatOptions(options),
+            cancellationToken: cancellationToken);
         var buffer = new global::System.Collections.Generic.List<OrderEvent>(targetChunkSize);
         foreach (var item in items)
         {
@@ -327,7 +363,11 @@ public static partial class OrderEventParquetExtensions
         if (targetChunkSize <= 0)
             throw new global::System.ArgumentOutOfRangeException(nameof(options), "ParquetSerializerOptions.RowGroupSize must be greater than zero.");
 
-        await using var writer = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken);
+        await using var writer = await global::Parquet.ParquetWriter.CreateAsync(
+            Schema,
+            stream,
+            BuildFormatOptions(options),
+            cancellationToken: cancellationToken);
         var buffer = new global::System.Collections.Generic.List<OrderEvent>(targetChunkSize);
         await foreach (var item in items)
         {
@@ -356,7 +396,10 @@ public static partial class OrderEventParquetExtensions
 
         options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
 
-        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken);
+        await using var reader = await global::Parquet.ParquetReader.CreateAsync(
+            stream,
+            BuildFormatOptions(options),
+            cancellationToken: cancellationToken);
         int totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);
 #if NET8_0_OR_GREATER
         var results = new global::System.Collections.Generic.List<OrderEvent>(totalRows);
@@ -397,15 +440,42 @@ public static partial class OrderEventParquetExtensions
 
             try
             {
-                await groupReader.ReadAsync<int>(field_0, new global::System.Memory<int>(buffer_0, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync(field_1, new global::System.Memory<string?>(buffer_1, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<double>(field_2, new global::System.Memory<double>(buffer_2, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<decimal>(field_3, new global::System.Memory<decimal>(buffer_3, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<System.DateTime>(field_4, new global::System.Memory<System.DateTime>(buffer_4, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<System.TimeSpan>(field_5, new global::System.Memory<System.TimeSpan>(buffer_5, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<global::System.Guid>(field_6, new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<global::System.Guid>(field_7, new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync(field_8, new global::System.Memory<byte[]?>(buffer_8, 0, rowCount), cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<int>(
+                    field_0,
+                    new global::System.Memory<int>(buffer_0, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync(
+                    field_1,
+                    new global::System.Memory<string?>(buffer_1, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<double>(
+                    field_2,
+                    new global::System.Memory<double>(buffer_2, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<decimal>(
+                    field_3,
+                    new global::System.Memory<decimal>(buffer_3, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<System.DateTime>(
+                    field_4,
+                    new global::System.Memory<System.DateTime>(buffer_4, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<System.TimeSpan>(
+                    field_5,
+                    new global::System.Memory<System.TimeSpan>(buffer_5, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<global::System.Guid>(
+                    field_6,
+                    new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<global::System.Guid>(
+                    field_7,
+                    new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync(
+                    field_8,
+                    new global::System.Memory<byte[]?>(buffer_8, 0, rowCount),
+                    cancellationToken: cancellationToken);
 
 #if NET8_0_OR_GREATER
                 void PopulateSpan()
@@ -477,7 +547,10 @@ public static partial class OrderEventParquetExtensions
 
         options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
 
-        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken);
+        await using var reader = await global::Parquet.ParquetReader.CreateAsync(
+            stream,
+            BuildFormatOptions(options),
+            cancellationToken: cancellationToken);
         int totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);
         var results = new OrderEvent[totalRows];
         int currentOffset = 0;
@@ -513,15 +586,42 @@ public static partial class OrderEventParquetExtensions
 
             try
             {
-                await groupReader.ReadAsync<int>(field_0, new global::System.Memory<int>(buffer_0, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync(field_1, new global::System.Memory<string?>(buffer_1, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<double>(field_2, new global::System.Memory<double>(buffer_2, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<decimal>(field_3, new global::System.Memory<decimal>(buffer_3, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<System.DateTime>(field_4, new global::System.Memory<System.DateTime>(buffer_4, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<System.TimeSpan>(field_5, new global::System.Memory<System.TimeSpan>(buffer_5, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<global::System.Guid>(field_6, new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<global::System.Guid>(field_7, new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync(field_8, new global::System.Memory<byte[]?>(buffer_8, 0, rowCount), cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<int>(
+                    field_0,
+                    new global::System.Memory<int>(buffer_0, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync(
+                    field_1,
+                    new global::System.Memory<string?>(buffer_1, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<double>(
+                    field_2,
+                    new global::System.Memory<double>(buffer_2, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<decimal>(
+                    field_3,
+                    new global::System.Memory<decimal>(buffer_3, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<System.DateTime>(
+                    field_4,
+                    new global::System.Memory<System.DateTime>(buffer_4, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<System.TimeSpan>(
+                    field_5,
+                    new global::System.Memory<System.TimeSpan>(buffer_5, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<global::System.Guid>(
+                    field_6,
+                    new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<global::System.Guid>(
+                    field_7,
+                    new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync(
+                    field_8,
+                    new global::System.Memory<byte[]?>(buffer_8, 0, rowCount),
+                    cancellationToken: cancellationToken);
 
                 for (int i = 0; i < rowCount; i++)
                 {
@@ -582,7 +682,10 @@ public static partial class OrderEventParquetExtensions
 
         options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
 
-        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken);
+        await using var reader = await global::Parquet.ParquetReader.CreateAsync(
+            stream,
+            BuildFormatOptions(options),
+            cancellationToken: cancellationToken);
         int rgCount = reader.RowGroupCount;
         if (rgCount == 0) return global::System.Array.Empty<OrderEvent>();
 
@@ -628,15 +731,42 @@ public static partial class OrderEventParquetExtensions
 
             try
             {
-                await groupReader.ReadAsync<int>(field_0, new global::System.Memory<int>(buffer_0, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync(field_1, new global::System.Memory<string?>(buffer_1, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<double>(field_2, new global::System.Memory<double>(buffer_2, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<decimal>(field_3, new global::System.Memory<decimal>(buffer_3, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<System.DateTime>(field_4, new global::System.Memory<System.DateTime>(buffer_4, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<System.TimeSpan>(field_5, new global::System.Memory<System.TimeSpan>(buffer_5, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<global::System.Guid>(field_6, new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<global::System.Guid>(field_7, new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync(field_8, new global::System.Memory<byte[]?>(buffer_8, 0, rowCount), cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<int>(
+                    field_0,
+                    new global::System.Memory<int>(buffer_0, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync(
+                    field_1,
+                    new global::System.Memory<string?>(buffer_1, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<double>(
+                    field_2,
+                    new global::System.Memory<double>(buffer_2, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<decimal>(
+                    field_3,
+                    new global::System.Memory<decimal>(buffer_3, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<System.DateTime>(
+                    field_4,
+                    new global::System.Memory<System.DateTime>(buffer_4, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<System.TimeSpan>(
+                    field_5,
+                    new global::System.Memory<System.TimeSpan>(buffer_5, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<global::System.Guid>(
+                    field_6,
+                    new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<global::System.Guid>(
+                    field_7,
+                    new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync(
+                    field_8,
+                    new global::System.Memory<byte[]?>(buffer_8, 0, rowCount),
+                    cancellationToken: cancellationToken);
 
                 for (int i = 0; i < rowCount; i++)
                 {
@@ -698,7 +828,10 @@ public static partial class OrderEventParquetExtensions
 
         options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
 
-        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken);
+        await using var reader = await global::Parquet.ParquetReader.CreateAsync(
+            stream,
+            BuildFormatOptions(options),
+            cancellationToken: cancellationToken);
         var fileFields = reader.Schema.DataFields;
 
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
@@ -729,15 +862,42 @@ public static partial class OrderEventParquetExtensions
             var buffer_8 = global::System.Buffers.ArrayPool<byte[]>.Shared.Rent(rowCount);
             try
             {
-                await groupReader.ReadAsync<int>(field_0, new global::System.Memory<int>(buffer_0, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync(field_1, new global::System.Memory<string?>(buffer_1, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<double>(field_2, new global::System.Memory<double>(buffer_2, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<decimal>(field_3, new global::System.Memory<decimal>(buffer_3, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<System.DateTime>(field_4, new global::System.Memory<System.DateTime>(buffer_4, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<System.TimeSpan>(field_5, new global::System.Memory<System.TimeSpan>(buffer_5, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<global::System.Guid>(field_6, new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<global::System.Guid>(field_7, new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync(field_8, new global::System.Memory<byte[]?>(buffer_8, 0, rowCount), cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<int>(
+                    field_0,
+                    new global::System.Memory<int>(buffer_0, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync(
+                    field_1,
+                    new global::System.Memory<string?>(buffer_1, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<double>(
+                    field_2,
+                    new global::System.Memory<double>(buffer_2, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<decimal>(
+                    field_3,
+                    new global::System.Memory<decimal>(buffer_3, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<System.DateTime>(
+                    field_4,
+                    new global::System.Memory<System.DateTime>(buffer_4, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<System.TimeSpan>(
+                    field_5,
+                    new global::System.Memory<System.TimeSpan>(buffer_5, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<global::System.Guid>(
+                    field_6,
+                    new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<global::System.Guid>(
+                    field_7,
+                    new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync(
+                    field_8,
+                    new global::System.Memory<byte[]?>(buffer_8, 0, rowCount),
+                    cancellationToken: cancellationToken);
 
                 for (int i = 0; i < rowCount; i++)
                 {
@@ -817,7 +977,10 @@ public static partial class OrderEventParquetExtensions
         int[] rowOffsets;
         using (var probeStream = CreateBufferStream(sourceBytes))
         {
-            await using var probe = await global::Parquet.ParquetReader.CreateAsync(probeStream, formatOptions, cancellationToken: cancellationToken);
+            await using var probe = await global::Parquet.ParquetReader.CreateAsync(
+                probeStream,
+                formatOptions,
+                cancellationToken: cancellationToken);
             rowGroupCount = probe.RowGroupCount;
             totalRows = 0;
             maxRowGroupSize = 0;
@@ -851,7 +1014,15 @@ public static partial class OrderEventParquetExtensions
 
         if (workerCount == 1)
         {
-            await ReadRowGroupsIntoAsync(sourceBytes, formatOptions, resultArray, rowOffsets, cursor, rowGroupCount, maxRowGroupSize, linkedCts, workerToken);
+            await ReadRowGroupsIntoAsync(sourceBytes,
+                formatOptions,
+                resultArray,
+                rowOffsets,
+                cursor,
+                rowGroupCount,
+                maxRowGroupSize,
+                linkedCts,
+                workerToken);
         }
         else
         {
@@ -859,7 +1030,15 @@ public static partial class OrderEventParquetExtensions
             for (int w = 0; w < workerCount; w++)
             {
                 workers[w] = global::System.Threading.Tasks.Task.Run(
-                    () => ReadRowGroupsIntoAsync(sourceBytes, formatOptions, resultArray, rowOffsets, cursor, rowGroupCount, maxRowGroupSize, linkedCts, workerToken),
+                    () => ReadRowGroupsIntoAsync(sourceBytes,
+                        formatOptions,
+                        resultArray,
+                        rowOffsets,
+                        cursor,
+                        rowGroupCount,
+                        maxRowGroupSize,
+                        linkedCts,
+                        workerToken),
                     workerToken);
             }
 
@@ -913,7 +1092,10 @@ public static partial class OrderEventParquetExtensions
         try
         {
             using var stream = CreateBufferStream(parquetBytes);
-            await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, formatOptions, cancellationToken: cancellationToken);
+            await using var reader = await global::Parquet.ParquetReader.CreateAsync(
+                stream,
+                formatOptions,
+                cancellationToken: cancellationToken);
 
             var fileFields = reader.Schema.DataFields;
 
@@ -950,15 +1132,42 @@ public static partial class OrderEventParquetExtensions
                     int rowCount = (int)groupReader.RowCount;
                     int startIdx = rowOffsets[r];
 
-                    await groupReader.ReadAsync<int>(field_0, new global::System.Memory<int>(buffer_0, 0, rowCount), cancellationToken: cancellationToken);
-                    await groupReader.ReadAsync(field_1, new global::System.Memory<string?>(buffer_1, 0, rowCount), cancellationToken: cancellationToken);
-                    await groupReader.ReadAsync<double>(field_2, new global::System.Memory<double>(buffer_2, 0, rowCount), cancellationToken: cancellationToken);
-                    await groupReader.ReadAsync<decimal>(field_3, new global::System.Memory<decimal>(buffer_3, 0, rowCount), cancellationToken: cancellationToken);
-                    await groupReader.ReadAsync<System.DateTime>(field_4, new global::System.Memory<System.DateTime>(buffer_4, 0, rowCount), cancellationToken: cancellationToken);
-                    await groupReader.ReadAsync<System.TimeSpan>(field_5, new global::System.Memory<System.TimeSpan>(buffer_5, 0, rowCount), cancellationToken: cancellationToken);
-                    await groupReader.ReadAsync<global::System.Guid>(field_6, new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount), cancellationToken: cancellationToken);
-                    await groupReader.ReadAsync<global::System.Guid>(field_7, new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount), cancellationToken: cancellationToken);
-                    await groupReader.ReadAsync(field_8, new global::System.Memory<byte[]?>(buffer_8, 0, rowCount), cancellationToken: cancellationToken);
+                    await groupReader.ReadAsync<int>(
+                        field_0,
+                        new global::System.Memory<int>(buffer_0, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                    await groupReader.ReadAsync(
+                        field_1,
+                        new global::System.Memory<string?>(buffer_1, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                    await groupReader.ReadAsync<double>(
+                        field_2,
+                        new global::System.Memory<double>(buffer_2, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                    await groupReader.ReadAsync<decimal>(
+                        field_3,
+                        new global::System.Memory<decimal>(buffer_3, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                    await groupReader.ReadAsync<System.DateTime>(
+                        field_4,
+                        new global::System.Memory<System.DateTime>(buffer_4, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                    await groupReader.ReadAsync<System.TimeSpan>(
+                        field_5,
+                        new global::System.Memory<System.TimeSpan>(buffer_5, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                    await groupReader.ReadAsync<global::System.Guid>(
+                        field_6,
+                        new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                    await groupReader.ReadAsync<global::System.Guid>(
+                        field_7,
+                        new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                    await groupReader.ReadAsync(
+                        field_8,
+                        new global::System.Memory<byte[]?>(buffer_8, 0, rowCount),
+                        cancellationToken: cancellationToken);
 
                     for (int i = 0; i < rowCount; i++)
                     {
@@ -1007,7 +1216,10 @@ public static partial class OrderEventParquetExtensions
     {
         options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
         using var stream = CreateBufferStream(parquetBytes);
-        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken);
+        await using var reader = await global::Parquet.ParquetReader.CreateAsync(
+            stream,
+            BuildFormatOptions(options),
+            cancellationToken: cancellationToken);
         int rowGroupCount = reader.RowGroupCount;
         if (rowGroupCount == 0) return global::System.Array.Empty<OrderEvent>();
 
@@ -1054,15 +1266,42 @@ public static partial class OrderEventParquetExtensions
                 int rowCount = (int)groupReader.RowCount;
                 if (rowCount == 0) continue;
 
-                await groupReader.ReadAsync<int>(field_0, new global::System.Memory<int>(buffer_0, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync(field_1, new global::System.Memory<string?>(buffer_1, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<double>(field_2, new global::System.Memory<double>(buffer_2, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<decimal>(field_3, new global::System.Memory<decimal>(buffer_3, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<System.DateTime>(field_4, new global::System.Memory<System.DateTime>(buffer_4, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<System.TimeSpan>(field_5, new global::System.Memory<System.TimeSpan>(buffer_5, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<global::System.Guid>(field_6, new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<global::System.Guid>(field_7, new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync(field_8, new global::System.Memory<byte[]?>(buffer_8, 0, rowCount), cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<int>(
+                    field_0,
+                    new global::System.Memory<int>(buffer_0, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync(
+                    field_1,
+                    new global::System.Memory<string?>(buffer_1, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<double>(
+                    field_2,
+                    new global::System.Memory<double>(buffer_2, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<decimal>(
+                    field_3,
+                    new global::System.Memory<decimal>(buffer_3, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<System.DateTime>(
+                    field_4,
+                    new global::System.Memory<System.DateTime>(buffer_4, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<System.TimeSpan>(
+                    field_5,
+                    new global::System.Memory<System.TimeSpan>(buffer_5, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<global::System.Guid>(
+                    field_6,
+                    new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<global::System.Guid>(
+                    field_7,
+                    new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync(
+                    field_8,
+                    new global::System.Memory<byte[]?>(buffer_8, 0, rowCount),
+                    cancellationToken: cancellationToken);
 
                 for (int i = 0; i < rowCount; i++)
                 {

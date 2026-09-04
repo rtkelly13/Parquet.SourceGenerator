@@ -124,9 +124,8 @@ public static class CodeEmitter
             "    /// Translates the generator's options into the Parquet.Net options the writer accepts."
         );
         builder.AppendLine("    /// </summary>");
-        builder.AppendLine("    private static global::Parquet.ParquetOptions BuildFormatOptions(");
         builder.AppendLine(
-            "        global::Parquet.SourceGenerator.ParquetSerializerOptions options)"
+            "    private static global::Parquet.ParquetOptions BuildFormatOptions(global::Parquet.SourceGenerator.ParquetSerializerOptions options)"
         );
         builder.AppendLine("    {");
         builder.AppendLine("        var formatOptions = new global::Parquet.ParquetOptions");
@@ -195,7 +194,8 @@ public static class CodeEmitter
     private static string GetWritePrimitiveCall(
         PropertyModel prop,
         string fieldAccess,
-        string bufName
+        string bufName,
+        string indent = "                "
     )
     {
         bool isString = prop.Kind == PropertyKind.Primitive && prop.TypeName.Contains("string");
@@ -203,41 +203,36 @@ public static class CodeEmitter
 
         if (isString)
         {
-            return $"await groupWriter.WriteAsync({fieldAccess}, new global::System.ArraySegment<string?>({bufName}, 0, count));";
+            return $"{indent}await groupWriter.WriteAsync(\n{indent}    {fieldAccess},\n{indent}    new global::System.ArraySegment<string?>({bufName}, 0, count));";
         }
         else if (isByteArray)
         {
-            return $"await groupWriter.WriteAsync({fieldAccess}, new global::System.ArraySegment<byte[]?>({bufName}, 0, count));";
+            return $"{indent}await groupWriter.WriteAsync(\n{indent}    {fieldAccess},\n{indent}    new global::System.ArraySegment<byte[]?>({bufName}, 0, count));";
         }
         else if (prop.Kind == PropertyKind.Guid)
         {
-            if (prop.IsNullable)
-                return $"await groupWriter.WriteAsync<global::System.Guid>({fieldAccess}, new global::System.ReadOnlyMemory<global::System.Guid?>({bufName}, 0, count), cancellationToken: cancellationToken);";
-            else
-                return $"await groupWriter.WriteAsync<global::System.Guid>({fieldAccess}, new global::System.ReadOnlyMemory<global::System.Guid>({bufName}, 0, count), cancellationToken: cancellationToken);";
+            string memType = prop.IsNullable ? "global::System.Guid?" : "global::System.Guid";
+            return $"{indent}await groupWriter.WriteAsync<global::System.Guid>(\n{indent}    {fieldAccess},\n{indent}    new global::System.ReadOnlyMemory<{memType}>({bufName}, 0, count),\n{indent}    cancellationToken: cancellationToken);";
         }
         else if (prop.Kind == PropertyKind.Enum)
         {
             string underlying = prop.EnumUnderlyingTypeName ?? "int";
-            if (prop.IsNullable)
-                return $"await groupWriter.WriteAsync<{underlying}>({fieldAccess}, new global::System.ReadOnlyMemory<{underlying}?>({bufName}, 0, count), cancellationToken: cancellationToken);";
-            else
-                return $"await groupWriter.WriteAsync<{underlying}>({fieldAccess}, new global::System.ReadOnlyMemory<{underlying}>({bufName}, 0, count), cancellationToken: cancellationToken);";
+            string memType = prop.IsNullable ? $"{underlying}?" : underlying;
+            return $"{indent}await groupWriter.WriteAsync<{underlying}>(\n{indent}    {fieldAccess},\n{indent}    new global::System.ReadOnlyMemory<{memType}>({bufName}, 0, count),\n{indent}    cancellationToken: cancellationToken);";
         }
         else
         {
             string structType = prop.TypeName.TrimEnd('?');
-            if (prop.IsNullable)
-                return $"await groupWriter.WriteAsync<{structType}>({fieldAccess}, new global::System.ReadOnlyMemory<{structType}?>({bufName}, 0, count), cancellationToken: cancellationToken);";
-            else
-                return $"await groupWriter.WriteAsync<{structType}>({fieldAccess}, new global::System.ReadOnlyMemory<{structType}>({bufName}, 0, count), cancellationToken: cancellationToken);";
+            string memType = prop.IsNullable ? $"{structType}?" : structType;
+            return $"{indent}await groupWriter.WriteAsync<{structType}>(\n{indent}    {fieldAccess},\n{indent}    new global::System.ReadOnlyMemory<{memType}>({bufName}, 0, count),\n{indent}    cancellationToken: cancellationToken);";
         }
     }
 
     private static string GetReadPrimitiveCall(
         PropertyModel prop,
         string fieldAccess,
-        string bufName
+        string bufName,
+        string indent = "                "
     )
     {
         bool isString = prop.Kind == PropertyKind.Primitive && prop.TypeName.Contains("string");
@@ -245,34 +240,28 @@ public static class CodeEmitter
 
         if (isString)
         {
-            return $"await groupReader.ReadAsync({fieldAccess}, new global::System.Memory<string?>({bufName}, 0, rowCount), cancellationToken: cancellationToken);";
+            return $"{indent}await groupReader.ReadAsync(\n{indent}    {fieldAccess},\n{indent}    new global::System.Memory<string?>({bufName}, 0, rowCount),\n{indent}    cancellationToken: cancellationToken);";
         }
         else if (isByteArray)
         {
-            return $"await groupReader.ReadAsync({fieldAccess}, new global::System.Memory<byte[]?>({bufName}, 0, rowCount), cancellationToken: cancellationToken);";
+            return $"{indent}await groupReader.ReadAsync(\n{indent}    {fieldAccess},\n{indent}    new global::System.Memory<byte[]?>({bufName}, 0, rowCount),\n{indent}    cancellationToken: cancellationToken);";
         }
         else if (prop.Kind == PropertyKind.Guid)
         {
-            if (prop.IsNullable)
-                return $"await groupReader.ReadAsync<global::System.Guid>({fieldAccess}, new global::System.Memory<global::System.Guid?>({bufName}, 0, rowCount), cancellationToken: cancellationToken);";
-            else
-                return $"await groupReader.ReadAsync<global::System.Guid>({fieldAccess}, new global::System.Memory<global::System.Guid>({bufName}, 0, rowCount), cancellationToken: cancellationToken);";
+            string memType = prop.IsNullable ? "global::System.Guid?" : "global::System.Guid";
+            return $"{indent}await groupReader.ReadAsync<global::System.Guid>(\n{indent}    {fieldAccess},\n{indent}    new global::System.Memory<{memType}>({bufName}, 0, rowCount),\n{indent}    cancellationToken: cancellationToken);";
         }
         else if (prop.Kind == PropertyKind.Enum)
         {
             string underlying = prop.EnumUnderlyingTypeName ?? "int";
-            if (prop.IsNullable)
-                return $"await groupReader.ReadAsync<{underlying}>({fieldAccess}, new global::System.Memory<{underlying}?>({bufName}, 0, rowCount), cancellationToken: cancellationToken);";
-            else
-                return $"await groupReader.ReadAsync<{underlying}>({fieldAccess}, new global::System.Memory<{underlying}>({bufName}, 0, rowCount), cancellationToken: cancellationToken);";
+            string memType = prop.IsNullable ? $"{underlying}?" : underlying;
+            return $"{indent}await groupReader.ReadAsync<{underlying}>(\n{indent}    {fieldAccess},\n{indent}    new global::System.Memory<{memType}>({bufName}, 0, rowCount),\n{indent}    cancellationToken: cancellationToken);";
         }
         else
         {
             string structType = prop.TypeName.TrimEnd('?');
-            if (prop.IsNullable)
-                return $"await groupReader.ReadAsync<{structType}>({fieldAccess}, new global::System.Memory<{structType}?>({bufName}, 0, rowCount), cancellationToken: cancellationToken);";
-            else
-                return $"await groupReader.ReadAsync<{structType}>({fieldAccess}, new global::System.Memory<{structType}>({bufName}, 0, rowCount), cancellationToken: cancellationToken);";
+            string memType = prop.IsNullable ? $"{structType}?" : structType;
+            return $"{indent}await groupReader.ReadAsync<{structType}>(\n{indent}    {fieldAccess},\n{indent}    new global::System.Memory<{memType}>({bufName}, 0, rowCount),\n{indent}    cancellationToken: cancellationToken);";
         }
     }
 
@@ -372,8 +361,7 @@ public static class CodeEmitter
         {
             PropertyModel prop = model.Properties[i];
             string fieldAccess = $"_field_{i}";
-            string writeCall = GetWritePrimitiveCall(prop, fieldAccess, $"buffer_{i}");
-            builder.AppendLine($"                {writeCall}");
+            builder.AppendLine(GetWritePrimitiveCall(prop, fieldAccess, $"buffer_{i}"));
         }
 
         builder.AppendLine("            }");
@@ -421,8 +409,12 @@ public static class CodeEmitter
         );
         builder.AppendLine();
         builder.AppendLine(
-            "        await using var writer = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken);"
+            "        await using var writer = await global::Parquet.ParquetWriter.CreateAsync("
         );
+        builder.AppendLine("            Schema,");
+        builder.AppendLine("            stream,");
+        builder.AppendLine("            BuildFormatOptions(options),");
+        builder.AppendLine("            cancellationToken: cancellationToken);");
         builder.AppendLine(
             "        await writer.WriteParquetRowGroupAsync(items, cancellationToken);"
         );
@@ -464,8 +456,12 @@ public static class CodeEmitter
         );
         builder.AppendLine("        {");
         builder.AppendLine(
-            "            await using var singleWriter = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken);"
+            "            await using var singleWriter = await global::Parquet.ParquetWriter.CreateAsync("
         );
+        builder.AppendLine("                Schema,");
+        builder.AppendLine("                stream,");
+        builder.AppendLine("                BuildFormatOptions(options),");
+        builder.AppendLine("                cancellationToken: cancellationToken);");
         builder.AppendLine(
             "            await singleWriter.WriteParquetRowGroupAsync(col, cancellationToken);"
         );
@@ -473,8 +469,12 @@ public static class CodeEmitter
         builder.AppendLine("        }");
         builder.AppendLine();
         builder.AppendLine(
-            "        await using var writer = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken);"
+            "        await using var writer = await global::Parquet.ParquetWriter.CreateAsync("
         );
+        builder.AppendLine("            Schema,");
+        builder.AppendLine("            stream,");
+        builder.AppendLine("            BuildFormatOptions(options),");
+        builder.AppendLine("            cancellationToken: cancellationToken);");
         builder.AppendLine(
             $"        var buffer = new global::System.Collections.Generic.List<{model.ClassName}>(targetChunkSize);"
         );
@@ -528,8 +528,12 @@ public static class CodeEmitter
         EmitRowGroupSizeResolution(builder);
         builder.AppendLine();
         builder.AppendLine(
-            "        await using var writer = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken);"
+            "        await using var writer = await global::Parquet.ParquetWriter.CreateAsync("
         );
+        builder.AppendLine("            Schema,");
+        builder.AppendLine("            stream,");
+        builder.AppendLine("            BuildFormatOptions(options),");
+        builder.AppendLine("            cancellationToken: cancellationToken);");
         builder.AppendLine(
             $"        var buffer = new global::System.Collections.Generic.List<{model.ClassName}>(targetChunkSize);"
         );
@@ -591,8 +595,11 @@ public static class CodeEmitter
         );
         builder.AppendLine();
         builder.AppendLine(
-            "        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken);"
+            "        await using var reader = await global::Parquet.ParquetReader.CreateAsync("
         );
+        builder.AppendLine("            stream,");
+        builder.AppendLine("            BuildFormatOptions(options),");
+        builder.AppendLine("            cancellationToken: cancellationToken);");
         builder.AppendLine(
             "        int totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);"
         );
@@ -644,8 +651,7 @@ public static class CodeEmitter
         {
             PropertyModel prop = model.Properties[i];
             string fieldAccess = $"field_{i}";
-            string readCall = GetReadPrimitiveCall(prop, fieldAccess, $"buffer_{i}");
-            builder.AppendLine($"                {readCall}");
+            builder.AppendLine(GetReadPrimitiveCall(prop, fieldAccess, $"buffer_{i}"));
         }
 
         builder.AppendLine();
@@ -733,8 +739,11 @@ public static class CodeEmitter
         );
         builder.AppendLine();
         builder.AppendLine(
-            "        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken);"
+            "        await using var reader = await global::Parquet.ParquetReader.CreateAsync("
         );
+        builder.AppendLine("            stream,");
+        builder.AppendLine("            BuildFormatOptions(options),");
+        builder.AppendLine("            cancellationToken: cancellationToken);");
         builder.AppendLine(
             "        int totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);"
         );
@@ -775,8 +784,7 @@ public static class CodeEmitter
         {
             PropertyModel prop = model.Properties[i];
             string fieldAccess = $"field_{i}";
-            string readCall = GetReadPrimitiveCall(prop, fieldAccess, $"buffer_{i}");
-            builder.AppendLine($"                {readCall}");
+            builder.AppendLine(GetReadPrimitiveCall(prop, fieldAccess, $"buffer_{i}"));
         }
 
         builder.AppendLine();
@@ -835,8 +843,11 @@ public static class CodeEmitter
         );
         builder.AppendLine();
         builder.AppendLine(
-            "        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken);"
+            "        await using var reader = await global::Parquet.ParquetReader.CreateAsync("
         );
+        builder.AppendLine("            stream,");
+        builder.AppendLine("            BuildFormatOptions(options),");
+        builder.AppendLine("            cancellationToken: cancellationToken);");
         builder.AppendLine("        var fileFields = reader.Schema.DataFields;");
         builder.AppendLine();
 
@@ -870,8 +881,7 @@ public static class CodeEmitter
         {
             PropertyModel prop = model.Properties[i];
             string fieldAccess = $"field_{i}";
-            string readCall = GetReadPrimitiveCall(prop, fieldAccess, $"buffer_{i}");
-            builder.AppendLine($"                {readCall}");
+            builder.AppendLine(GetReadPrimitiveCall(prop, fieldAccess, $"buffer_{i}"));
         }
 
         builder.AppendLine();
@@ -1036,8 +1046,11 @@ public static class CodeEmitter
         );
         builder.AppendLine("        using var stream = CreateBufferStream(parquetBytes);");
         builder.AppendLine(
-            "        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken);"
+            "        await using var reader = await global::Parquet.ParquetReader.CreateAsync("
         );
+        builder.AppendLine("            stream,");
+        builder.AppendLine("            BuildFormatOptions(options),");
+        builder.AppendLine("            cancellationToken: cancellationToken);");
         builder.AppendLine("        int rowGroupCount = reader.RowGroupCount;");
         builder.AppendLine(
             $"        if (rowGroupCount == 0) return global::System.Array.Empty<{model.ClassName}>();"
@@ -1084,8 +1097,7 @@ public static class CodeEmitter
         for (int i = 0; i < model.Properties.Length; i++)
         {
             PropertyModel prop = model.Properties[i];
-            string readCall = GetReadPrimitiveCall(prop, $"field_{i}", $"buffer_{i}");
-            builder.AppendLine($"                {readCall}");
+            builder.AppendLine(GetReadPrimitiveCall(prop, $"field_{i}", $"buffer_{i}"));
         }
 
         builder.AppendLine();
@@ -1168,8 +1180,11 @@ public static class CodeEmitter
         );
         builder.AppendLine();
         builder.AppendLine(
-            "        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken);"
+            "        await using var reader = await global::Parquet.ParquetReader.CreateAsync("
         );
+        builder.AppendLine("            stream,");
+        builder.AppendLine("            BuildFormatOptions(options),");
+        builder.AppendLine("            cancellationToken: cancellationToken);");
         builder.AppendLine("        int rgCount = reader.RowGroupCount;");
         builder.AppendLine(
             $"        if (rgCount == 0) return global::System.Array.Empty<{model.ClassName}>();"
@@ -1217,8 +1232,7 @@ public static class CodeEmitter
         {
             PropertyModel prop = model.Properties[i];
             string fieldAccess = $"field_{i}";
-            string readCall = GetReadPrimitiveCall(prop, fieldAccess, $"buffer_{i}");
-            builder.AppendLine($"                {readCall}");
+            builder.AppendLine(GetReadPrimitiveCall(prop, fieldAccess, $"buffer_{i}"));
         }
         builder.AppendLine();
         builder.AppendLine("                for (int i = 0; i < rowCount; i++)");
@@ -1315,8 +1329,11 @@ public static class CodeEmitter
         builder.AppendLine("        using (var probeStream = CreateBufferStream(sourceBytes))");
         builder.AppendLine("        {");
         builder.AppendLine(
-            "            await using var probe = await global::Parquet.ParquetReader.CreateAsync(probeStream, formatOptions, cancellationToken: cancellationToken);"
+            "            await using var probe = await global::Parquet.ParquetReader.CreateAsync("
         );
+        builder.AppendLine("                probeStream,");
+        builder.AppendLine("                formatOptions,");
+        builder.AppendLine("                cancellationToken: cancellationToken);");
         RowGroupLayoutComponent.EmitIndexedLayoutProbe(
             builder,
             "probe",
@@ -1361,9 +1378,15 @@ public static class CodeEmitter
         builder.AppendLine();
         builder.AppendLine("        if (workerCount == 1)");
         builder.AppendLine("        {");
-        builder.AppendLine(
-            "            await ReadRowGroupsIntoAsync(sourceBytes, formatOptions, resultArray, rowOffsets, cursor, rowGroupCount, maxRowGroupSize, linkedCts, workerToken);"
-        );
+        builder.AppendLine("            await ReadRowGroupsIntoAsync(sourceBytes,");
+        builder.AppendLine("                formatOptions,");
+        builder.AppendLine("                resultArray,");
+        builder.AppendLine("                rowOffsets,");
+        builder.AppendLine("                cursor,");
+        builder.AppendLine("                rowGroupCount,");
+        builder.AppendLine("                maxRowGroupSize,");
+        builder.AppendLine("                linkedCts,");
+        builder.AppendLine("                workerToken);");
         builder.AppendLine("        }");
         builder.AppendLine("        else");
         builder.AppendLine("        {");
@@ -1373,9 +1396,15 @@ public static class CodeEmitter
         builder.AppendLine("            for (int w = 0; w < workerCount; w++)");
         builder.AppendLine("            {");
         builder.AppendLine("                workers[w] = global::System.Threading.Tasks.Task.Run(");
-        builder.AppendLine(
-            "                    () => ReadRowGroupsIntoAsync(sourceBytes, formatOptions, resultArray, rowOffsets, cursor, rowGroupCount, maxRowGroupSize, linkedCts, workerToken),"
-        );
+        builder.AppendLine("                    () => ReadRowGroupsIntoAsync(sourceBytes,");
+        builder.AppendLine("                        formatOptions,");
+        builder.AppendLine("                        resultArray,");
+        builder.AppendLine("                        rowOffsets,");
+        builder.AppendLine("                        cursor,");
+        builder.AppendLine("                        rowGroupCount,");
+        builder.AppendLine("                        maxRowGroupSize,");
+        builder.AppendLine("                        linkedCts,");
+        builder.AppendLine("                        workerToken),");
         builder.AppendLine("                    workerToken);");
         builder.AppendLine("            }");
         builder.AppendLine();
@@ -1459,8 +1488,11 @@ public static class CodeEmitter
         builder.AppendLine("        {");
         builder.AppendLine("            using var stream = CreateBufferStream(parquetBytes);");
         builder.AppendLine(
-            "            await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, formatOptions, cancellationToken: cancellationToken);"
+            "            await using var reader = await global::Parquet.ParquetReader.CreateAsync("
         );
+        builder.AppendLine("                stream,");
+        builder.AppendLine("                formatOptions,");
+        builder.AppendLine("                cancellationToken: cancellationToken);");
         builder.AppendLine();
         builder.AppendLine("            var fileFields = reader.Schema.DataFields;");
         builder.AppendLine();
@@ -1500,8 +1532,14 @@ public static class CodeEmitter
         for (int i = 0; i < model.Properties.Length; i++)
         {
             PropertyModel prop = model.Properties[i];
-            string readCall = GetReadPrimitiveCall(prop, $"field_{i}", $"buffer_{i}");
-            builder.AppendLine($"                    {readCall}");
+            builder.AppendLine(
+                GetReadPrimitiveCall(
+                    prop,
+                    $"field_{i}",
+                    $"buffer_{i}",
+                    indent: "                    "
+                )
+            );
         }
         builder.AppendLine();
         builder.AppendLine("                    for (int i = 0; i < rowCount; i++)");

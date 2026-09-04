@@ -125,10 +125,8 @@ dotnet run scripts/VerifyProvenance.cs
 dotnet run scripts/FetchBenchmarkDatasets.cs
 ```
 
-### Python Synthetic Test Generator (PyArrow via `uv`)
-```bash
-uv run scripts/generate_test_data.py
-```
+### Synthetic Test Datasets (PyArrow Format Compatibility)
+The datasets under `test/data/v1/` and `test/data/v2/` are committed deterministic test fixtures generated to guarantee cross-engine format compatibility. Python (`.py`) files are forbidden in the repository; all repository tooling and scripts are authored in C#.
 
 ### C# Synthetic Generator (`Parquet.Net` via `dotnet run`)
 ```bash

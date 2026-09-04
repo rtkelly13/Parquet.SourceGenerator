@@ -164,10 +164,8 @@ public class LegacyEmitterTests
             Prop("Id", "id", "int", LegacyModels::PropertyKind.Primitive, isNullable: false)
         );
 
-        Assert.Contains(
-            "global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken)",
-            code
-        );
+        Assert.Contains("global::Parquet.ParquetReader.CreateAsync(", code);
+        Assert.Contains("BuildFormatOptions(options)", code);
     }
 
     /// <summary>
