@@ -234,15 +234,31 @@ public static class Program
             string sgAlloc = sgEntry.AllocatedFormatted;
 
             string speedupStr = "—";
+            double? speedup = null;
             if (sgEntry.RatioNumeric.HasValue && sgEntry.RatioNumeric.Value > 0)
             {
-                double r = sgEntry.RatioNumeric.Value;
-                speedupStr = r < 1.0 ? $"⚡ **{1.0 / r:F1}x faster**" : $"{r:F2}x baseline";
+                speedup = 1.0 / sgEntry.RatioNumeric.Value;
             }
             else if (bEntry.MeanNumeric.HasValue && sgEntry.MeanNumeric.HasValue && sgEntry.MeanNumeric.Value > 0)
             {
-                double speedup = bEntry.MeanNumeric.Value / sgEntry.MeanNumeric.Value;
-                speedupStr = $"⚡ **{speedup:F1}x faster**";
+                speedup = bEntry.MeanNumeric.Value / sgEntry.MeanNumeric.Value;
+            }
+
+            if (speedup.HasValue)
+            {
+                if (speedup.Value >= 1.095)
+                {
+                    speedupStr = $"⚡ **{speedup.Value:F1}x faster**";
+                }
+                else if (speedup.Value >= 0.995)
+                {
+                    speedupStr = "~1.0x (parity)";
+                }
+                else
+                {
+                    double baselineRatio = 1.0 / speedup.Value;
+                    speedupStr = $"{baselineRatio:F2}x baseline";
+                }
             }
 
             string memStr = "—";
