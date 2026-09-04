@@ -56,6 +56,11 @@ Welcome to the **Parquet.SourceGenerator** documentation repository. This folder
    - Intermediate Language (IL) disassembly and decompilation workflow with `ilspycmd` and `dotnet-inspect`.
    - Automated boxing detection (`box`), devirtualization checks, and branch diffing.
 
+10. **[09 - Performance & Memory Triage with dotnet-dump](./09-PERFORMANCE-TRIAGE-DOTNET-DUMP.md)**
+   - Managed memory dump capture and automated SOS triage analysis.
+   - Diagnosing heap allocations, buffer leaks, Large Object Heap (LOH), and Pinned Object Heap (POH).
+
+
 ---
 
 ## ⚡ Quick Summary of Intent
