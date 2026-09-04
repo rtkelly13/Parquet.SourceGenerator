@@ -27,6 +27,35 @@ jobs:
         with:
           lfs: true
 
+      # Policy: Python (.py) files are strictly forbidden in this repository, with the sole exception
+      # of scripts/generate_test_data.py used to generate cross-engine PyArrow format-compatibility datasets.
+      # All automation, benchmarks, and tooling must be authored in C# (.cs) executed via dotnet run.
+      - name: Enforce No Python Files Policy (Excluding PyArrow Test Data Generator)
+        run: |
+          echo "Scanning repository for forbidden Python (.py) files..."
+          forbidden_py=$(git ls-files '*.py' | grep -v '^scripts/generate_test_data\.py$' || true)
+          if [ -n "$forbidden_py" ]; then
+            echo "::error::Unauthorized Python (.py) files found in repository:"
+            echo "$forbidden_py"
+            echo "All new scripts, benchmarks, and tooling must be authored in C# (.cs)."
+            exit 1
+          fi
+          echo "Policy verified: Only authorized test data generator found."
+
+      - name: Verify No Python Files in PR Diff
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "Checking PR diff for forbidden Python (.py) files..."
+          git fetch origin ${{ github.base_ref }} --depth=1
+          new_py=$(git diff --name-only --diff-filter=ACMR origin/${{ github.base_ref }}...HEAD | grep -E '\.py$' | grep -v '^scripts/generate_test_data\.py$' || true)
+          if [ -n "$new_py" ]; then
+            echo "::error::Pull request introduces forbidden Python (.py) files:"
+            echo "$new_py"
+            echo "Python files cannot be added to the repository. Author scripts in C# (.cs) instead."
+            exit 1
+          fi
+          echo "PR diff check passed: zero unauthorized Python files introduced."
+
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:

@@ -80,8 +80,7 @@ public static partial class ScalarMetricParquetExtensions
     /// <summary>
     /// Translates the generator's options into the Parquet.Net options the writer accepts.
     /// </summary>
-    private static global::Parquet.ParquetOptions BuildFormatOptions(
-        global::Parquet.SourceGenerator.ParquetSerializerOptions options)
+    private static global::Parquet.ParquetOptions BuildFormatOptions(global::Parquet.SourceGenerator.ParquetSerializerOptions options)
     {
         var formatOptions = new global::Parquet.ParquetOptions
         {
@@ -213,14 +212,38 @@ public static partial class ScalarMetricParquetExtensions
 
             using (var groupWriter = writer.CreateRowGroup())
             {
-                await groupWriter.WriteAsync<long>(_field_0, new global::System.ReadOnlyMemory<long>(buffer_0, 0, count), cancellationToken: cancellationToken);
-                await groupWriter.WriteAsync<bool>(_field_1, new global::System.ReadOnlyMemory<bool>(buffer_1, 0, count), cancellationToken: cancellationToken);
-                await groupWriter.WriteAsync<bool>(_field_2, new global::System.ReadOnlyMemory<bool?>(buffer_2, 0, count), cancellationToken: cancellationToken);
-                await groupWriter.WriteAsync<int>(_field_3, new global::System.ReadOnlyMemory<int>(buffer_3, 0, count), cancellationToken: cancellationToken);
-                await groupWriter.WriteAsync<int>(_field_4, new global::System.ReadOnlyMemory<int?>(buffer_4, 0, count), cancellationToken: cancellationToken);
-                await groupWriter.WriteAsync<byte>(_field_5, new global::System.ReadOnlyMemory<byte>(buffer_5, 0, count), cancellationToken: cancellationToken);
-                await groupWriter.WriteAsync<short>(_field_6, new global::System.ReadOnlyMemory<short>(buffer_6, 0, count), cancellationToken: cancellationToken);
-                await groupWriter.WriteAsync<float>(_field_7, new global::System.ReadOnlyMemory<float>(buffer_7, 0, count), cancellationToken: cancellationToken);
+                await groupWriter.WriteAsync<long>(
+                    _field_0,
+                    new global::System.ReadOnlyMemory<long>(buffer_0, 0, count),
+                    cancellationToken: cancellationToken);
+                await groupWriter.WriteAsync<bool>(
+                    _field_1,
+                    new global::System.ReadOnlyMemory<bool>(buffer_1, 0, count),
+                    cancellationToken: cancellationToken);
+                await groupWriter.WriteAsync<bool>(
+                    _field_2,
+                    new global::System.ReadOnlyMemory<bool?>(buffer_2, 0, count),
+                    cancellationToken: cancellationToken);
+                await groupWriter.WriteAsync<int>(
+                    _field_3,
+                    new global::System.ReadOnlyMemory<int>(buffer_3, 0, count),
+                    cancellationToken: cancellationToken);
+                await groupWriter.WriteAsync<int>(
+                    _field_4,
+                    new global::System.ReadOnlyMemory<int?>(buffer_4, 0, count),
+                    cancellationToken: cancellationToken);
+                await groupWriter.WriteAsync<byte>(
+                    _field_5,
+                    new global::System.ReadOnlyMemory<byte>(buffer_5, 0, count),
+                    cancellationToken: cancellationToken);
+                await groupWriter.WriteAsync<short>(
+                    _field_6,
+                    new global::System.ReadOnlyMemory<short>(buffer_6, 0, count),
+                    cancellationToken: cancellationToken);
+                await groupWriter.WriteAsync<float>(
+                    _field_7,
+                    new global::System.ReadOnlyMemory<float>(buffer_7, 0, count),
+                    cancellationToken: cancellationToken);
             }
         }
         finally
@@ -251,7 +274,11 @@ public static partial class ScalarMetricParquetExtensions
 
         options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
 
-        await using var writer = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken);
+        await using var writer = await global::Parquet.ParquetWriter.CreateAsync(
+            Schema,
+            stream,
+            BuildFormatOptions(options),
+            cancellationToken: cancellationToken);
         await writer.WriteParquetRowGroupAsync(items, cancellationToken);
     }
 
@@ -277,12 +304,20 @@ public static partial class ScalarMetricParquetExtensions
 
         if (items is global::System.Collections.Generic.IReadOnlyCollection<ScalarMetric> col && col.Count <= targetChunkSize)
         {
-            await using var singleWriter = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken);
+            await using var singleWriter = await global::Parquet.ParquetWriter.CreateAsync(
+                Schema,
+                stream,
+                BuildFormatOptions(options),
+                cancellationToken: cancellationToken);
             await singleWriter.WriteParquetRowGroupAsync(col, cancellationToken);
             return;
         }
 
-        await using var writer = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken);
+        await using var writer = await global::Parquet.ParquetWriter.CreateAsync(
+            Schema,
+            stream,
+            BuildFormatOptions(options),
+            cancellationToken: cancellationToken);
         var buffer = new global::System.Collections.Generic.List<ScalarMetric>(targetChunkSize);
         foreach (var item in items)
         {
@@ -318,7 +353,11 @@ public static partial class ScalarMetricParquetExtensions
         if (targetChunkSize <= 0)
             throw new global::System.ArgumentOutOfRangeException(nameof(options), "ParquetSerializerOptions.RowGroupSize must be greater than zero.");
 
-        await using var writer = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken);
+        await using var writer = await global::Parquet.ParquetWriter.CreateAsync(
+            Schema,
+            stream,
+            BuildFormatOptions(options),
+            cancellationToken: cancellationToken);
         var buffer = new global::System.Collections.Generic.List<ScalarMetric>(targetChunkSize);
         await foreach (var item in items)
         {
@@ -347,7 +386,10 @@ public static partial class ScalarMetricParquetExtensions
 
         options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
 
-        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken);
+        await using var reader = await global::Parquet.ParquetReader.CreateAsync(
+            stream,
+            BuildFormatOptions(options),
+            cancellationToken: cancellationToken);
         int totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);
 #if NET8_0_OR_GREATER
         var results = new global::System.Collections.Generic.List<ScalarMetric>(totalRows);
@@ -386,14 +428,38 @@ public static partial class ScalarMetricParquetExtensions
 
             try
             {
-                await groupReader.ReadAsync<long>(field_0, new global::System.Memory<long>(buffer_0, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<bool>(field_1, new global::System.Memory<bool>(buffer_1, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<bool>(field_2, new global::System.Memory<bool?>(buffer_2, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<int>(field_3, new global::System.Memory<int>(buffer_3, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<int>(field_4, new global::System.Memory<int?>(buffer_4, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<byte>(field_5, new global::System.Memory<byte>(buffer_5, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<short>(field_6, new global::System.Memory<short>(buffer_6, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<float>(field_7, new global::System.Memory<float>(buffer_7, 0, rowCount), cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<long>(
+                    field_0,
+                    new global::System.Memory<long>(buffer_0, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<bool>(
+                    field_1,
+                    new global::System.Memory<bool>(buffer_1, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<bool>(
+                    field_2,
+                    new global::System.Memory<bool?>(buffer_2, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<int>(
+                    field_3,
+                    new global::System.Memory<int>(buffer_3, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<int>(
+                    field_4,
+                    new global::System.Memory<int?>(buffer_4, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<byte>(
+                    field_5,
+                    new global::System.Memory<byte>(buffer_5, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<short>(
+                    field_6,
+                    new global::System.Memory<short>(buffer_6, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<float>(
+                    field_7,
+                    new global::System.Memory<float>(buffer_7, 0, rowCount),
+                    cancellationToken: cancellationToken);
 
 #if NET8_0_OR_GREATER
                 void PopulateSpan()
@@ -462,7 +528,10 @@ public static partial class ScalarMetricParquetExtensions
 
         options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
 
-        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken);
+        await using var reader = await global::Parquet.ParquetReader.CreateAsync(
+            stream,
+            BuildFormatOptions(options),
+            cancellationToken: cancellationToken);
         int totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);
         var results = new ScalarMetric[totalRows];
         int currentOffset = 0;
@@ -496,14 +565,38 @@ public static partial class ScalarMetricParquetExtensions
 
             try
             {
-                await groupReader.ReadAsync<long>(field_0, new global::System.Memory<long>(buffer_0, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<bool>(field_1, new global::System.Memory<bool>(buffer_1, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<bool>(field_2, new global::System.Memory<bool?>(buffer_2, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<int>(field_3, new global::System.Memory<int>(buffer_3, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<int>(field_4, new global::System.Memory<int?>(buffer_4, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<byte>(field_5, new global::System.Memory<byte>(buffer_5, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<short>(field_6, new global::System.Memory<short>(buffer_6, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<float>(field_7, new global::System.Memory<float>(buffer_7, 0, rowCount), cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<long>(
+                    field_0,
+                    new global::System.Memory<long>(buffer_0, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<bool>(
+                    field_1,
+                    new global::System.Memory<bool>(buffer_1, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<bool>(
+                    field_2,
+                    new global::System.Memory<bool?>(buffer_2, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<int>(
+                    field_3,
+                    new global::System.Memory<int>(buffer_3, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<int>(
+                    field_4,
+                    new global::System.Memory<int?>(buffer_4, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<byte>(
+                    field_5,
+                    new global::System.Memory<byte>(buffer_5, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<short>(
+                    field_6,
+                    new global::System.Memory<short>(buffer_6, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<float>(
+                    field_7,
+                    new global::System.Memory<float>(buffer_7, 0, rowCount),
+                    cancellationToken: cancellationToken);
 
                 for (int i = 0; i < rowCount; i++)
                 {
@@ -562,7 +655,10 @@ public static partial class ScalarMetricParquetExtensions
 
         options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
 
-        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken);
+        await using var reader = await global::Parquet.ParquetReader.CreateAsync(
+            stream,
+            BuildFormatOptions(options),
+            cancellationToken: cancellationToken);
         int rgCount = reader.RowGroupCount;
         if (rgCount == 0) return global::System.Array.Empty<ScalarMetric>();
 
@@ -606,14 +702,38 @@ public static partial class ScalarMetricParquetExtensions
 
             try
             {
-                await groupReader.ReadAsync<long>(field_0, new global::System.Memory<long>(buffer_0, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<bool>(field_1, new global::System.Memory<bool>(buffer_1, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<bool>(field_2, new global::System.Memory<bool?>(buffer_2, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<int>(field_3, new global::System.Memory<int>(buffer_3, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<int>(field_4, new global::System.Memory<int?>(buffer_4, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<byte>(field_5, new global::System.Memory<byte>(buffer_5, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<short>(field_6, new global::System.Memory<short>(buffer_6, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<float>(field_7, new global::System.Memory<float>(buffer_7, 0, rowCount), cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<long>(
+                    field_0,
+                    new global::System.Memory<long>(buffer_0, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<bool>(
+                    field_1,
+                    new global::System.Memory<bool>(buffer_1, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<bool>(
+                    field_2,
+                    new global::System.Memory<bool?>(buffer_2, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<int>(
+                    field_3,
+                    new global::System.Memory<int>(buffer_3, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<int>(
+                    field_4,
+                    new global::System.Memory<int?>(buffer_4, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<byte>(
+                    field_5,
+                    new global::System.Memory<byte>(buffer_5, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<short>(
+                    field_6,
+                    new global::System.Memory<short>(buffer_6, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<float>(
+                    field_7,
+                    new global::System.Memory<float>(buffer_7, 0, rowCount),
+                    cancellationToken: cancellationToken);
 
                 for (int i = 0; i < rowCount; i++)
                 {
@@ -673,7 +793,10 @@ public static partial class ScalarMetricParquetExtensions
 
         options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
 
-        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken);
+        await using var reader = await global::Parquet.ParquetReader.CreateAsync(
+            stream,
+            BuildFormatOptions(options),
+            cancellationToken: cancellationToken);
         var fileFields = reader.Schema.DataFields;
 
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
@@ -702,14 +825,38 @@ public static partial class ScalarMetricParquetExtensions
             var buffer_7 = global::System.Buffers.ArrayPool<float>.Shared.Rent(rowCount);
             try
             {
-                await groupReader.ReadAsync<long>(field_0, new global::System.Memory<long>(buffer_0, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<bool>(field_1, new global::System.Memory<bool>(buffer_1, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<bool>(field_2, new global::System.Memory<bool?>(buffer_2, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<int>(field_3, new global::System.Memory<int>(buffer_3, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<int>(field_4, new global::System.Memory<int?>(buffer_4, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<byte>(field_5, new global::System.Memory<byte>(buffer_5, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<short>(field_6, new global::System.Memory<short>(buffer_6, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<float>(field_7, new global::System.Memory<float>(buffer_7, 0, rowCount), cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<long>(
+                    field_0,
+                    new global::System.Memory<long>(buffer_0, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<bool>(
+                    field_1,
+                    new global::System.Memory<bool>(buffer_1, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<bool>(
+                    field_2,
+                    new global::System.Memory<bool?>(buffer_2, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<int>(
+                    field_3,
+                    new global::System.Memory<int>(buffer_3, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<int>(
+                    field_4,
+                    new global::System.Memory<int?>(buffer_4, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<byte>(
+                    field_5,
+                    new global::System.Memory<byte>(buffer_5, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<short>(
+                    field_6,
+                    new global::System.Memory<short>(buffer_6, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<float>(
+                    field_7,
+                    new global::System.Memory<float>(buffer_7, 0, rowCount),
+                    cancellationToken: cancellationToken);
 
                 for (int i = 0; i < rowCount; i++)
                 {
@@ -787,7 +934,10 @@ public static partial class ScalarMetricParquetExtensions
         int[] rowOffsets;
         using (var probeStream = CreateBufferStream(sourceBytes))
         {
-            await using var probe = await global::Parquet.ParquetReader.CreateAsync(probeStream, formatOptions, cancellationToken: cancellationToken);
+            await using var probe = await global::Parquet.ParquetReader.CreateAsync(
+                probeStream,
+                formatOptions,
+                cancellationToken: cancellationToken);
             rowGroupCount = probe.RowGroupCount;
             totalRows = 0;
             maxRowGroupSize = 0;
@@ -821,7 +971,15 @@ public static partial class ScalarMetricParquetExtensions
 
         if (workerCount == 1)
         {
-            await ReadRowGroupsIntoAsync(sourceBytes, formatOptions, resultArray, rowOffsets, cursor, rowGroupCount, maxRowGroupSize, linkedCts, workerToken);
+            await ReadRowGroupsIntoAsync(sourceBytes,
+                formatOptions,
+                resultArray,
+                rowOffsets,
+                cursor,
+                rowGroupCount,
+                maxRowGroupSize,
+                linkedCts,
+                workerToken);
         }
         else
         {
@@ -829,7 +987,15 @@ public static partial class ScalarMetricParquetExtensions
             for (int w = 0; w < workerCount; w++)
             {
                 workers[w] = global::System.Threading.Tasks.Task.Run(
-                    () => ReadRowGroupsIntoAsync(sourceBytes, formatOptions, resultArray, rowOffsets, cursor, rowGroupCount, maxRowGroupSize, linkedCts, workerToken),
+                    () => ReadRowGroupsIntoAsync(sourceBytes,
+                        formatOptions,
+                        resultArray,
+                        rowOffsets,
+                        cursor,
+                        rowGroupCount,
+                        maxRowGroupSize,
+                        linkedCts,
+                        workerToken),
                     workerToken);
             }
 
@@ -883,7 +1049,10 @@ public static partial class ScalarMetricParquetExtensions
         try
         {
             using var stream = CreateBufferStream(parquetBytes);
-            await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, formatOptions, cancellationToken: cancellationToken);
+            await using var reader = await global::Parquet.ParquetReader.CreateAsync(
+                stream,
+                formatOptions,
+                cancellationToken: cancellationToken);
 
             var fileFields = reader.Schema.DataFields;
 
@@ -918,14 +1087,38 @@ public static partial class ScalarMetricParquetExtensions
                     int rowCount = (int)groupReader.RowCount;
                     int startIdx = rowOffsets[r];
 
-                    await groupReader.ReadAsync<long>(field_0, new global::System.Memory<long>(buffer_0, 0, rowCount), cancellationToken: cancellationToken);
-                    await groupReader.ReadAsync<bool>(field_1, new global::System.Memory<bool>(buffer_1, 0, rowCount), cancellationToken: cancellationToken);
-                    await groupReader.ReadAsync<bool>(field_2, new global::System.Memory<bool?>(buffer_2, 0, rowCount), cancellationToken: cancellationToken);
-                    await groupReader.ReadAsync<int>(field_3, new global::System.Memory<int>(buffer_3, 0, rowCount), cancellationToken: cancellationToken);
-                    await groupReader.ReadAsync<int>(field_4, new global::System.Memory<int?>(buffer_4, 0, rowCount), cancellationToken: cancellationToken);
-                    await groupReader.ReadAsync<byte>(field_5, new global::System.Memory<byte>(buffer_5, 0, rowCount), cancellationToken: cancellationToken);
-                    await groupReader.ReadAsync<short>(field_6, new global::System.Memory<short>(buffer_6, 0, rowCount), cancellationToken: cancellationToken);
-                    await groupReader.ReadAsync<float>(field_7, new global::System.Memory<float>(buffer_7, 0, rowCount), cancellationToken: cancellationToken);
+                    await groupReader.ReadAsync<long>(
+                        field_0,
+                        new global::System.Memory<long>(buffer_0, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                    await groupReader.ReadAsync<bool>(
+                        field_1,
+                        new global::System.Memory<bool>(buffer_1, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                    await groupReader.ReadAsync<bool>(
+                        field_2,
+                        new global::System.Memory<bool?>(buffer_2, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                    await groupReader.ReadAsync<int>(
+                        field_3,
+                        new global::System.Memory<int>(buffer_3, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                    await groupReader.ReadAsync<int>(
+                        field_4,
+                        new global::System.Memory<int?>(buffer_4, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                    await groupReader.ReadAsync<byte>(
+                        field_5,
+                        new global::System.Memory<byte>(buffer_5, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                    await groupReader.ReadAsync<short>(
+                        field_6,
+                        new global::System.Memory<short>(buffer_6, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                    await groupReader.ReadAsync<float>(
+                        field_7,
+                        new global::System.Memory<float>(buffer_7, 0, rowCount),
+                        cancellationToken: cancellationToken);
 
                     for (int i = 0; i < rowCount; i++)
                     {
@@ -972,7 +1165,10 @@ public static partial class ScalarMetricParquetExtensions
     {
         options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
         using var stream = CreateBufferStream(parquetBytes);
-        await using var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken);
+        await using var reader = await global::Parquet.ParquetReader.CreateAsync(
+            stream,
+            BuildFormatOptions(options),
+            cancellationToken: cancellationToken);
         int rowGroupCount = reader.RowGroupCount;
         if (rowGroupCount == 0) return global::System.Array.Empty<ScalarMetric>();
 
@@ -1017,14 +1213,38 @@ public static partial class ScalarMetricParquetExtensions
                 int rowCount = (int)groupReader.RowCount;
                 if (rowCount == 0) continue;
 
-                await groupReader.ReadAsync<long>(field_0, new global::System.Memory<long>(buffer_0, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<bool>(field_1, new global::System.Memory<bool>(buffer_1, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<bool>(field_2, new global::System.Memory<bool?>(buffer_2, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<int>(field_3, new global::System.Memory<int>(buffer_3, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<int>(field_4, new global::System.Memory<int?>(buffer_4, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<byte>(field_5, new global::System.Memory<byte>(buffer_5, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<short>(field_6, new global::System.Memory<short>(buffer_6, 0, rowCount), cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<float>(field_7, new global::System.Memory<float>(buffer_7, 0, rowCount), cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<long>(
+                    field_0,
+                    new global::System.Memory<long>(buffer_0, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<bool>(
+                    field_1,
+                    new global::System.Memory<bool>(buffer_1, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<bool>(
+                    field_2,
+                    new global::System.Memory<bool?>(buffer_2, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<int>(
+                    field_3,
+                    new global::System.Memory<int>(buffer_3, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<int>(
+                    field_4,
+                    new global::System.Memory<int?>(buffer_4, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<byte>(
+                    field_5,
+                    new global::System.Memory<byte>(buffer_5, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<short>(
+                    field_6,
+                    new global::System.Memory<short>(buffer_6, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<float>(
+                    field_7,
+                    new global::System.Memory<float>(buffer_7, 0, rowCount),
+                    cancellationToken: cancellationToken);
 
                 for (int i = 0; i < rowCount; i++)
                 {

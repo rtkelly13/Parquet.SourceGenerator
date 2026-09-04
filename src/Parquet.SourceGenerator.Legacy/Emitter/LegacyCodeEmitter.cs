@@ -118,9 +118,8 @@ public static class LegacyCodeEmitter
             "    /// currently expose, so the returned instance is deliberately left at its defaults."
         );
         builder.AppendLine("    /// </remarks>");
-        builder.AppendLine("    private static global::Parquet.ParquetOptions BuildFormatOptions(");
         builder.AppendLine(
-            "        global::Parquet.SourceGenerator.ParquetSerializerOptions options)"
+            "    private static global::Parquet.ParquetOptions BuildFormatOptions(global::Parquet.SourceGenerator.ParquetSerializerOptions options)"
         );
         builder.AppendLine("    {");
         builder.AppendLine("        return new global::Parquet.ParquetOptions();");
@@ -340,7 +339,13 @@ public static class LegacyCodeEmitter
             "        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;"
         );
         builder.AppendLine(
-            "        using (var writer = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken).ConfigureAwait(false))"
+            "        using (var writer = await global::Parquet.ParquetWriter.CreateAsync("
+        );
+        builder.AppendLine("            Schema,");
+        builder.AppendLine("            stream,");
+        builder.AppendLine("            BuildFormatOptions(options),");
+        builder.AppendLine(
+            "            cancellationToken: cancellationToken).ConfigureAwait(false))"
         );
         builder.AppendLine("        {");
         builder.AppendLine("            ApplyCompression(writer, options);");
@@ -386,7 +391,13 @@ public static class LegacyCodeEmitter
         );
         builder.AppendLine("        {");
         builder.AppendLine(
-            "            using (var singleWriter = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken).ConfigureAwait(false))"
+            "            using (var singleWriter = await global::Parquet.ParquetWriter.CreateAsync("
+        );
+        builder.AppendLine("                Schema,");
+        builder.AppendLine("                stream,");
+        builder.AppendLine("                BuildFormatOptions(options),");
+        builder.AppendLine(
+            "                cancellationToken: cancellationToken).ConfigureAwait(false))"
         );
         builder.AppendLine("            {");
         builder.AppendLine("                ApplyCompression(singleWriter, options);");
@@ -398,7 +409,13 @@ public static class LegacyCodeEmitter
         builder.AppendLine("        }");
         builder.AppendLine();
         builder.AppendLine(
-            "        using (var writer = await global::Parquet.ParquetWriter.CreateAsync(Schema, stream, BuildFormatOptions(options), cancellationToken: cancellationToken).ConfigureAwait(false))"
+            "        using (var writer = await global::Parquet.ParquetWriter.CreateAsync("
+        );
+        builder.AppendLine("            Schema,");
+        builder.AppendLine("            stream,");
+        builder.AppendLine("            BuildFormatOptions(options),");
+        builder.AppendLine(
+            "            cancellationToken: cancellationToken).ConfigureAwait(false))"
         );
         builder.AppendLine("        {");
         builder.AppendLine("            ApplyCompression(writer, options);");
@@ -487,7 +504,12 @@ public static class LegacyCodeEmitter
             "        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;"
         );
         builder.AppendLine(
-            "        using (var reader = await global::Parquet.ParquetReader.CreateAsync(stream, BuildFormatOptions(options), cancellationToken: cancellationToken).ConfigureAwait(false))"
+            "        using (var reader = await global::Parquet.ParquetReader.CreateAsync("
+        );
+        builder.AppendLine("            stream,");
+        builder.AppendLine("            BuildFormatOptions(options),");
+        builder.AppendLine(
+            "            cancellationToken: cancellationToken).ConfigureAwait(false))"
         );
         builder.AppendLine("        {");
 
