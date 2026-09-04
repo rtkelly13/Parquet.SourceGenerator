@@ -148,7 +148,7 @@ static void PrintUsage()
 
 static void EnsureDotnetTools()
 {
-    var (exitCode, _, stderr) = RunDotnet("tool restore");
+    var (exitCode, _, stderr) = RunDotnet("tool restore --disable-parallel");
     if (exitCode != 0)
     {
         Console.WriteLine($"Note: dotnet tool restore reported: {stderr}");
