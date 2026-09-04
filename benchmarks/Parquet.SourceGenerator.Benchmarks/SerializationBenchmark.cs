@@ -14,31 +14,32 @@ namespace Parquet.SourceGenerator.Benchmarks;
 [ParquetSerializable]
 public partial record ScaleEvent
 {
-    [ParquetColumn("id")]
+    [ParquetColumn("Id")]
     public int Id { get; init; }
 
-    [ParquetColumn("val_a")]
+    [ParquetColumn("ValA")]
     public double ValA { get; init; }
 
-    [ParquetColumn("val_b")]
+    [ParquetColumn("ValB")]
     public long ValB { get; init; }
 
-    [ParquetColumn("is_valid")]
+    [ParquetColumn("IsValid")]
     public bool IsValid { get; init; }
 }
 
 [ParquetSerializable]
 public partial record GuidEvent
 {
-    [ParquetColumn("id")]
+    [ParquetColumn("Id")]
     public int Id { get; init; }
 
-    [ParquetColumn("correlation_id")]
+    [ParquetColumn("CorrelationId")]
     public Guid CorrelationId { get; init; }
 
-    [ParquetColumn("timestamp")]
+    [ParquetColumn("Timestamp")]
     public DateTime Timestamp { get; init; }
 }
+
 
 [MemoryDiagnoser]
 [InProcess]
@@ -124,7 +125,16 @@ public class ScalingDeserializationBenchmark
         using var stream = new MemoryStream();
         data.WriteParquetBatchedAsync(stream, rowGroupSize: 20_000).GetAwaiter().GetResult();
         _parquetBytes = stream.ToArray();
+
+        // Guard: ensure the reflection baseline genuinely deserializes column data rather than skipping
+        using var verifyStream = new MemoryStream(_parquetBytes);
+        var baselineCheck = ParquetSerializer.DeserializeAsync<ScaleEvent>(verifyStream).GetAwaiter().GetResult();
+        if (baselineCheck.Data.Count != Count || baselineCheck.Data[0].Id != 0 || baselineCheck.Data[Count - 1].Id != Count - 1)
+        {
+            throw new InvalidOperationException("Reflection baseline failed to deserialize column values.");
+        }
     }
+
 
     /// <summary>
     /// v6 ParquetSerializer baseline deserializer — compiled Expression trees.
