@@ -39,4 +39,11 @@ public sealed class ParquetColumnAttribute : Attribute
     /// Gets or sets the explicit column index order.
     /// </summary>
     public int Order { get; set; } = -1;
+
+    /// <summary>
+    /// Gets or sets whether string values in this column should be deduplicated during deserialization.
+    /// When true, identical string values within a row group share the same object reference,
+    /// reducing managed heap allocations and memory footprint for low-cardinality columns.
+    /// </summary>
+    public bool Deduplicate { get; set; }
 }

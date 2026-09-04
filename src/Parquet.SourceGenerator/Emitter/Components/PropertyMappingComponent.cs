@@ -27,12 +27,23 @@ internal static class PropertyMappingComponent
     /// </summary>
     public static string GetReadExpression(PropertyModel prop, string valueExpression)
     {
-        if (prop.Kind != PropertyKind.Enum)
-            return valueExpression;
+        if (prop.Kind == PropertyKind.Enum)
+        {
+            return prop.IsNullable
+                ? $"{valueExpression} is null ? ({prop.TypeName})null : ({prop.TypeName.TrimEnd('?')}){valueExpression}!"
+                : $"({prop.TypeName.TrimEnd('?')}){valueExpression}";
+        }
 
-        return prop.IsNullable
-            ? $"{valueExpression} is null ? ({prop.TypeName})null : ({prop.TypeName.TrimEnd('?')}){valueExpression}!"
-            : $"({prop.TypeName.TrimEnd('?')}){valueExpression}";
+        if (prop.Kind == PropertyKind.Primitive && prop.TypeName.Contains("string"))
+        {
+            if (prop.Deduplicate)
+            {
+                return $"stringDeduplicator.Deduplicate({valueExpression})";
+            }
+            return $"(deduplicateStrings ? stringDeduplicator.Deduplicate({valueExpression}) : {valueExpression})";
+        }
+
+        return valueExpression;
     }
 
     /// <summary>

@@ -175,6 +175,7 @@ public static class TargetParser
 
             string columnName = member.Name;
             int order = -1;
+            bool deduplicate = false;
 
             if (columnAttr is not null)
             {
@@ -196,6 +197,8 @@ public static class TargetParser
                         order = customOrder;
                     else if (namedArg.Key == "Name" && namedArg.Value.Value is string namedColName)
                         columnName = namedColName;
+                    else if (namedArg.Key == "Deduplicate" && namedArg.Value.Value is bool dedupe)
+                        deduplicate = dedupe;
                 }
             }
 
@@ -356,7 +359,8 @@ public static class TargetParser
                     DecimalPrecision: precision,
                     DecimalScale: scale,
                     Kind: kind,
-                    IsNullable: isNullable
+                    IsNullable: isNullable,
+                    Deduplicate: deduplicate
                 )
             );
         }

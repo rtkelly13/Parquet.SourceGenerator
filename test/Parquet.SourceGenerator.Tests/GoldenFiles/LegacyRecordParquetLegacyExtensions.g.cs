@@ -85,6 +85,54 @@ public static partial class LegacyRecordParquetLegacyExtensions
     }
 
     /// <summary>
+    /// Lightweight, zero-allocation L1 string cache for deduplicating repeated string instances
+    /// across columnar reads, slashing managed heap allocations on categorical string columns.
+    /// </summary>
+    private struct StringDeduplicator : global::System.IDisposable
+    {
+        private string?[]? _entries;
+        private readonly int _mask;
+
+        public StringDeduplicator(int capacity = 512)
+        {
+            _entries = global::System.Buffers.ArrayPool<string?>.Shared.Rent(capacity);
+            _mask = capacity - 1;
+            global::System.Array.Clear(_entries, 0, capacity);
+        }
+
+        [global::System.Runtime.CompilerServices.MethodImpl(
+            global::System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        public string? Deduplicate(string? value)
+        {
+            if (value is null) return null;
+            if (value.Length == 0) return string.Empty;
+
+            var entries = _entries;
+            if (entries is null) return value;
+
+            int index = value.GetHashCode() & _mask;
+            string? candidate = entries[index];
+            if (candidate is not null && string.Equals(candidate, value, global::System.StringComparison.Ordinal))
+            {
+                return candidate;
+            }
+
+            entries[index] = value;
+            return value;
+        }
+
+        public void Dispose()
+        {
+            var entries = _entries;
+            if (entries != null)
+            {
+                _entries = null;
+                global::System.Buffers.ArrayPool<string?>.Shared.Return(entries, clearArray: true);
+            }
+        }
+    }
+
+    /// <summary>
     /// Applies the requested compression settings to a v4/v5 writer.
     /// </summary>
     /// <remarks>
@@ -304,6 +352,9 @@ public static partial class LegacyRecordParquetLegacyExtensions
             var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
             var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
 
+            using var stringDeduplicator = new StringDeduplicator(512);
+            bool deduplicateStrings = options.DeduplicateStrings;
+
             for (int r = 0; r < reader.RowGroupCount; r++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -326,7 +377,7 @@ public static partial class LegacyRecordParquetLegacyExtensions
                         results[currentOffset + k] = new LegacyRecord
                         {
                             Id = data_0[k],
-                            Description = data_1[k],
+                            Description = (deduplicateStrings ? stringDeduplicator.Deduplicate(data_1[k]) : data_1[k]),
                             RawData = data_2[k],
                             Level = (SampleDomain.Models.AccessLevel)data_3[k],
                         };

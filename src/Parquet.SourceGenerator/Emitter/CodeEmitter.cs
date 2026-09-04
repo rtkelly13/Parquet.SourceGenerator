@@ -54,6 +54,12 @@ public static class CodeEmitter
         EmitBuildFormatOptions(builder);
         builder.AppendLine();
 
+        if (StringDeduplicatorComponent.HasStringProperties(model))
+        {
+            StringDeduplicatorComponent.EmitStringDeduplicator(builder);
+            builder.AppendLine();
+        }
+
         // Streaming row group writer — low level primitives, 100M+ scale, Native AOT compatible
         EmitWriteRowGroupAsync(builder, model);
         builder.AppendLine();
@@ -634,6 +640,8 @@ public static class CodeEmitter
             builder.AppendLine();
         }
 
+        StringDeduplicatorComponent.EmitDeduplicatorDeclaration(builder, model);
+
         builder.AppendLine("        for (int r = 0; r < reader.RowGroupCount; r++)");
         builder.AppendLine("        {");
         builder.AppendLine("            cancellationToken.ThrowIfCancellationRequested();");
@@ -767,6 +775,8 @@ public static class CodeEmitter
             builder.AppendLine();
         }
 
+        StringDeduplicatorComponent.EmitDeduplicatorDeclaration(builder, model);
+
         builder.AppendLine("        for (int r = 0; r < reader.RowGroupCount; r++)");
         builder.AppendLine("        {");
         builder.AppendLine("            cancellationToken.ThrowIfCancellationRequested();");
@@ -864,6 +874,8 @@ public static class CodeEmitter
             }
             builder.AppendLine();
         }
+
+        StringDeduplicatorComponent.EmitDeduplicatorDeclaration(builder, model);
 
         builder.AppendLine("        for (int r = 0; r < reader.RowGroupCount; r++)");
         builder.AppendLine("        {");
@@ -1082,8 +1094,10 @@ public static class CodeEmitter
 
         builder.AppendLine();
         BufferPoolComponent.EmitRentals(builder, model, "maxRowCount");
-
         builder.AppendLine();
+
+        StringDeduplicatorComponent.EmitDeduplicatorDeclaration(builder, model);
+
         builder.AppendLine("        try");
         builder.AppendLine("        {");
         builder.AppendLine("            for (int r = 0; r < rowGroupCount; r++)");
@@ -1217,6 +1231,9 @@ public static class CodeEmitter
             }
             builder.AppendLine();
         }
+
+        StringDeduplicatorComponent.EmitDeduplicatorDeclaration(builder, model);
+
         builder.AppendLine("        for (int r = 0; r < rgCount; r++)");
         builder.AppendLine("        {");
         builder.AppendLine("            cancellationToken.ThrowIfCancellationRequested();");
@@ -1385,6 +1402,10 @@ public static class CodeEmitter
         builder.AppendLine("                cursor,");
         builder.AppendLine("                rowGroupCount,");
         builder.AppendLine("                maxRowGroupSize,");
+        if (StringDeduplicatorComponent.HasStringProperties(model))
+        {
+            builder.AppendLine("                options.DeduplicateStrings,");
+        }
         builder.AppendLine("                linkedCts,");
         builder.AppendLine("                workerToken);");
         builder.AppendLine("        }");
@@ -1403,6 +1424,10 @@ public static class CodeEmitter
         builder.AppendLine("                        cursor,");
         builder.AppendLine("                        rowGroupCount,");
         builder.AppendLine("                        maxRowGroupSize,");
+        if (StringDeduplicatorComponent.HasStringProperties(model))
+        {
+            builder.AppendLine("                        options.DeduplicateStrings,");
+        }
         builder.AppendLine("                        linkedCts,");
         builder.AppendLine("                        workerToken),");
         builder.AppendLine("                    workerToken);");
@@ -1481,6 +1506,10 @@ public static class CodeEmitter
         builder.AppendLine("        int[] cursor,");
         builder.AppendLine("        int rowGroupCount,");
         builder.AppendLine("        int maxRowGroupSize,");
+        if (StringDeduplicatorComponent.HasStringProperties(model))
+        {
+            builder.AppendLine("        bool deduplicateStrings,");
+        }
         builder.AppendLine("        global::System.Threading.CancellationTokenSource linkedCts,");
         builder.AppendLine("        global::System.Threading.CancellationToken cancellationToken)");
         builder.AppendLine("    {");
@@ -1515,6 +1544,13 @@ public static class CodeEmitter
         builder.AppendLine();
         builder.AppendLine("            try");
         builder.AppendLine("            {");
+        if (StringDeduplicatorComponent.HasStringProperties(model))
+        {
+            builder.AppendLine(
+                "                using var stringDeduplicator = new StringDeduplicator(512);"
+            );
+            builder.AppendLine();
+        }
         builder.AppendLine("                while (true)");
         builder.AppendLine("                {");
         builder.AppendLine(

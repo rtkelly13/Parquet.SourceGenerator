@@ -121,6 +121,54 @@ public static partial class OrderEventParquetExtensions
     }
 
     /// <summary>
+    /// Lightweight, zero-allocation L1 string cache for deduplicating repeated string instances
+    /// across columnar reads, slashing managed heap allocations on categorical string columns.
+    /// </summary>
+    private struct StringDeduplicator : global::System.IDisposable
+    {
+        private string?[]? _entries;
+        private readonly int _mask;
+
+        public StringDeduplicator(int capacity = 512)
+        {
+            _entries = global::System.Buffers.ArrayPool<string?>.Shared.Rent(capacity);
+            _mask = capacity - 1;
+            global::System.Array.Clear(_entries, 0, capacity);
+        }
+
+        [global::System.Runtime.CompilerServices.MethodImpl(
+            global::System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        public string? Deduplicate(string? value)
+        {
+            if (value is null) return null;
+            if (value.Length == 0) return string.Empty;
+
+            var entries = _entries;
+            if (entries is null) return value;
+
+            int index = value.GetHashCode() & _mask;
+            string? candidate = entries[index];
+            if (candidate is not null && string.Equals(candidate, value, global::System.StringComparison.Ordinal))
+            {
+                return candidate;
+            }
+
+            entries[index] = value;
+            return value;
+        }
+
+        public void Dispose()
+        {
+            var entries = _entries;
+            if (entries != null)
+            {
+                _entries = null;
+                global::System.Buffers.ArrayPool<string?>.Shared.Return(entries, clearArray: true);
+            }
+        }
+    }
+
+    /// <summary>
     /// Writes a single row group chunk using Parquet.Net low-level primitives for maximum speed and Native AOT compatibility.
     /// </summary>
     public static async global::System.Threading.Tasks.Task WriteParquetRowGroupAsync(
@@ -422,6 +470,9 @@ public static partial class OrderEventParquetExtensions
         var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName);
         var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName);
 
+        using var stringDeduplicator = new StringDeduplicator(512);
+        bool deduplicateStrings = options.DeduplicateStrings;
+
         for (int r = 0; r < reader.RowGroupCount; r++)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -486,7 +537,7 @@ public static partial class OrderEventParquetExtensions
                         span[currentOffset + i] = new OrderEvent
                         {
                             Id = buffer_0[i],
-                            Name = buffer_1[i],
+                            Name = (deduplicateStrings ? stringDeduplicator.Deduplicate(buffer_1[i]) : buffer_1[i]),
                             Score = buffer_2[i],
                             Price = buffer_3[i],
                             CreatedAt = buffer_4[i],
@@ -504,7 +555,7 @@ public static partial class OrderEventParquetExtensions
                     results.Add(new OrderEvent
                     {
                         Id = buffer_0[i],
-                        Name = buffer_1[i],
+                        Name = (deduplicateStrings ? stringDeduplicator.Deduplicate(buffer_1[i]) : buffer_1[i]),
                         Score = buffer_2[i],
                         Price = buffer_3[i],
                         CreatedAt = buffer_4[i],
@@ -568,6 +619,9 @@ public static partial class OrderEventParquetExtensions
         var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName);
         var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName);
 
+        using var stringDeduplicator = new StringDeduplicator(512);
+        bool deduplicateStrings = options.DeduplicateStrings;
+
         for (int r = 0; r < reader.RowGroupCount; r++)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -628,7 +682,7 @@ public static partial class OrderEventParquetExtensions
                     results[currentOffset + i] = new OrderEvent
                     {
                         Id = buffer_0[i],
-                        Name = buffer_1[i],
+                        Name = (deduplicateStrings ? stringDeduplicator.Deduplicate(buffer_1[i]) : buffer_1[i]),
                         Score = buffer_2[i],
                         Price = buffer_3[i],
                         CreatedAt = buffer_4[i],
@@ -712,6 +766,9 @@ public static partial class OrderEventParquetExtensions
         var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName);
         var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName);
 
+        using var stringDeduplicator = new StringDeduplicator(512);
+        bool deduplicateStrings = options.DeduplicateStrings;
+
         for (int r = 0; r < rgCount; r++)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -773,7 +830,7 @@ public static partial class OrderEventParquetExtensions
                     resultArray[startIdx + i] = new OrderEvent
                     {
                         Id = buffer_0[i],
-                        Name = buffer_1[i],
+                        Name = (deduplicateStrings ? stringDeduplicator.Deduplicate(buffer_1[i]) : buffer_1[i]),
                         Score = buffer_2[i],
                         Price = buffer_3[i],
                         CreatedAt = buffer_4[i],
@@ -845,6 +902,9 @@ public static partial class OrderEventParquetExtensions
         var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName);
         var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName);
 
+        using var stringDeduplicator = new StringDeduplicator(512);
+        bool deduplicateStrings = options.DeduplicateStrings;
+
         for (int r = 0; r < reader.RowGroupCount; r++)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -904,7 +964,7 @@ public static partial class OrderEventParquetExtensions
                     yield return new OrderEvent
                     {
                         Id = buffer_0[i],
-                        Name = buffer_1[i],
+                        Name = (deduplicateStrings ? stringDeduplicator.Deduplicate(buffer_1[i]) : buffer_1[i]),
                         Score = buffer_2[i],
                         Price = buffer_3[i],
                         CreatedAt = buffer_4[i],
@@ -1021,6 +1081,7 @@ public static partial class OrderEventParquetExtensions
                 cursor,
                 rowGroupCount,
                 maxRowGroupSize,
+                options.DeduplicateStrings,
                 linkedCts,
                 workerToken);
         }
@@ -1037,6 +1098,7 @@ public static partial class OrderEventParquetExtensions
                         cursor,
                         rowGroupCount,
                         maxRowGroupSize,
+                        options.DeduplicateStrings,
                         linkedCts,
                         workerToken),
                     workerToken);
@@ -1086,6 +1148,7 @@ public static partial class OrderEventParquetExtensions
         int[] cursor,
         int rowGroupCount,
         int maxRowGroupSize,
+        bool deduplicateStrings,
         global::System.Threading.CancellationTokenSource linkedCts,
         global::System.Threading.CancellationToken cancellationToken)
     {
@@ -1122,6 +1185,8 @@ public static partial class OrderEventParquetExtensions
 
             try
             {
+                using var stringDeduplicator = new StringDeduplicator(512);
+
                 while (true)
                 {
                     int r = global::System.Threading.Interlocked.Increment(ref cursor[0]) - 1;
@@ -1174,7 +1239,7 @@ public static partial class OrderEventParquetExtensions
                         target[startIdx + i] = new OrderEvent
                         {
                             Id = buffer_0[i],
-                            Name = buffer_1[i],
+                            Name = (deduplicateStrings ? stringDeduplicator.Deduplicate(buffer_1[i]) : buffer_1[i]),
                             Score = buffer_2[i],
                             Price = buffer_3[i],
                             CreatedAt = buffer_4[i],
@@ -1257,6 +1322,9 @@ public static partial class OrderEventParquetExtensions
         var buffer_7 = global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Rent(maxRowCount);
         var buffer_8 = global::System.Buffers.ArrayPool<byte[]>.Shared.Rent(maxRowCount);
 
+        using var stringDeduplicator = new StringDeduplicator(512);
+        bool deduplicateStrings = options.DeduplicateStrings;
+
         try
         {
             for (int r = 0; r < rowGroupCount; r++)
@@ -1308,7 +1376,7 @@ public static partial class OrderEventParquetExtensions
                     results[currentOffset + i] = new OrderEvent
                     {
                         Id = buffer_0[i],
-                        Name = buffer_1[i],
+                        Name = (deduplicateStrings ? stringDeduplicator.Deduplicate(buffer_1[i]) : buffer_1[i]),
                         Score = buffer_2[i],
                         Price = buffer_3[i],
                         CreatedAt = buffer_4[i],

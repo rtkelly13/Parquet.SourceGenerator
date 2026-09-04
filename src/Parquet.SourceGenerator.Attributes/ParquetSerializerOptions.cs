@@ -127,6 +127,13 @@ public sealed class ParquetSerializerOptions
     /// </remarks>
     public ParquetCompressionLevel? CompressionLevel { get; set; }
 
+    /// <summary>
+    /// Gets or sets whether to deduplicate string instances during deserialization (default is false).
+    /// When enabled, identical string values within a row group share the same object reference,
+    /// dramatically reducing managed heap allocations and memory footprint for low-cardinality columns.
+    /// </summary>
+    public bool DeduplicateStrings { get; set; }
+
     // UseMicrosecondTimestamps has been removed. It could never have worked: the schema is emitted
     // at compile time into a `static readonly ParquetSchema Schema`, so no runtime flag can change
     // a column's encoding. Per-property [ParquetTimestamp(ParquetTimestampUnit.Microseconds)] is

@@ -50,5 +50,39 @@ public sealed record PropertyModel(
     int? DecimalPrecision,
     int? DecimalScale,
     PropertyKind Kind,
-    bool IsNullable
-) : IEquatable<PropertyModel>;
+    bool IsNullable,
+    bool Deduplicate = false
+) : IEquatable<PropertyModel>
+{
+    /// <summary>
+    /// Backwards-compatible constructor overload without deduplication flag.
+    /// </summary>
+    public PropertyModel(
+        string Name,
+        string ParquetColumnName,
+        string TypeName,
+        string? TimestampUnit,
+        string? EnumUnderlyingTypeName,
+        int Order,
+        int? DecimalPrecision,
+        int? DecimalScale,
+        PropertyKind Kind,
+        bool IsNullable
+    )
+        : this(
+            Name,
+            ParquetColumnName,
+            TypeName,
+            TimestampUnit,
+            EnumUnderlyingTypeName,
+            Order,
+            DecimalPrecision,
+            DecimalScale,
+            Kind,
+            IsNullable,
+            false
+        )
+    {
+        // Backwards-compatible overload
+    }
+}
