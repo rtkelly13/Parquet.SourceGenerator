@@ -81,5 +81,8 @@ public sealed record PropertyModel(
             Kind,
             IsNullable,
             false
-        ) { }
+        )
+    {
+        // Backwards-compatible overload
+    }
 }
