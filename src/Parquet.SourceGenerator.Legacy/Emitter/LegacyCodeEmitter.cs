@@ -51,6 +51,12 @@ public static class LegacyCodeEmitter
         EmitBuildFormatOptions(builder);
         builder.AppendLine();
 
+        if (StringDeduplicatorComponent.HasStringProperties(model))
+        {
+            StringDeduplicatorComponent.EmitStringDeduplicator(builder);
+            builder.AppendLine();
+        }
+
         EmitApplyCompression(builder);
         builder.AppendLine();
 
@@ -545,6 +551,11 @@ public static class LegacyCodeEmitter
         }
 
         builder.AppendLine();
+        StringDeduplicatorComponent.EmitDeduplicatorDeclaration(
+            builder,
+            model,
+            indent: "            "
+        );
         builder.AppendLine("            for (int r = 0; r < reader.RowGroupCount; r++)");
         builder.AppendLine("            {");
         builder.AppendLine("                cancellationToken.ThrowIfCancellationRequested();");

@@ -1,1 +1,5 @@
 #nullable enable
+Parquet.SourceGenerator.ParquetColumnAttribute.Deduplicate.get -> bool
+Parquet.SourceGenerator.ParquetColumnAttribute.Deduplicate.set -> void
+Parquet.SourceGenerator.ParquetSerializerOptions.DeduplicateStrings.get -> bool
+Parquet.SourceGenerator.ParquetSerializerOptions.DeduplicateStrings.set -> void
