@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Jobs;
@@ -12,106 +13,140 @@ namespace Parquet.SourceGenerator.Benchmarks;
 [ParquetSerializable]
 public partial record BenchmarkTpchLineItem
 {
-    [ParquetColumn("l_orderkey")]
+    [JsonPropertyName("l_orderkey")]
     public long? OrderKey { get; init; }
 
-    [ParquetColumn("l_partkey")]
+    [JsonPropertyName("l_partkey")]
     public long? PartKey { get; init; }
 
-    [ParquetColumn("l_suppkey")]
+    [JsonPropertyName("l_suppkey")]
     public long? SuppKey { get; init; }
 
-    [ParquetColumn("l_linenumber")]
+    [JsonPropertyName("l_linenumber")]
     public long? LineNumber { get; init; }
 
-    [ParquetColumn("l_quantity")]
+    [JsonPropertyName("l_quantity")]
     [ParquetDecimal(15, 2)]
     public decimal? Quantity { get; init; }
 
-    [ParquetColumn("l_extendedprice")]
+    [JsonPropertyName("l_extendedprice")]
     [ParquetDecimal(15, 2)]
     public decimal? ExtendedPrice { get; init; }
 
-    [ParquetColumn("l_discount")]
+    [JsonPropertyName("l_discount")]
     [ParquetDecimal(15, 2)]
     public decimal? Discount { get; init; }
 
-    [ParquetColumn("l_tax")]
+    [JsonPropertyName("l_tax")]
     [ParquetDecimal(15, 2)]
     public decimal? Tax { get; init; }
 
-    [ParquetColumn("l_returnflag")]
+    [JsonPropertyName("l_returnflag")]
     public string? ReturnFlag { get; init; }
 
-    [ParquetColumn("l_linestatus")]
+    [JsonPropertyName("l_linestatus")]
     public string? LineStatus { get; init; }
 
-    [ParquetColumn("l_shipdate")]
+    [JsonPropertyName("l_shipdate")]
     public DateTime? ShipDate { get; init; }
 
-    [ParquetColumn("l_commitdate")]
+    [JsonPropertyName("l_commitdate")]
     public DateTime? CommitDate { get; init; }
 
-    [ParquetColumn("l_receiptdate")]
+    [JsonPropertyName("l_receiptdate")]
     public DateTime? ReceiptDate { get; init; }
 
-    [ParquetColumn("l_shipinstruct")]
+    [JsonPropertyName("l_shipinstruct")]
     public string? ShipInstruct { get; init; }
 
-    [ParquetColumn("l_shipmode")]
+    [JsonPropertyName("l_shipmode")]
     public string? ShipMode { get; init; }
 
-    [ParquetColumn("l_comment")]
+    [JsonPropertyName("l_comment")]
     public string? Comment { get; init; }
 }
 
 [ParquetSerializable]
 public partial record BenchmarkAdultCensus
 {
-    [ParquetColumn("age")]
+    [JsonPropertyName("age")]
     public long? Age { get; init; }
 
-    [ParquetColumn("workclass")]
+    [JsonPropertyName("workclass")]
     public string? Workclass { get; init; }
 
-    [ParquetColumn("fnlwgt")]
+    [JsonPropertyName("fnlwgt")]
     public long? Fnlwgt { get; init; }
 
-    [ParquetColumn("education")]
+    [JsonPropertyName("education")]
     public string? Education { get; init; }
 
-    [ParquetColumn("education.num")]
+    [JsonPropertyName("education.num")]
     public long? EducationNum { get; init; }
 
-    [ParquetColumn("marital.status")]
+    [JsonPropertyName("marital.status")]
     public string? MaritalStatus { get; init; }
 
-    [ParquetColumn("occupation")]
+    [JsonPropertyName("occupation")]
     public string? Occupation { get; init; }
 
-    [ParquetColumn("relationship")]
+    [JsonPropertyName("relationship")]
     public string? Relationship { get; init; }
 
-    [ParquetColumn("race")]
+    [JsonPropertyName("race")]
     public string? Race { get; init; }
 
-    [ParquetColumn("sex")]
+    [JsonPropertyName("sex")]
     public string? Sex { get; init; }
 
-    [ParquetColumn("capital.gain")]
+    [JsonPropertyName("capital.gain")]
     public long? CapitalGain { get; init; }
 
-    [ParquetColumn("capital.loss")]
+    [JsonPropertyName("capital.loss")]
     public long? CapitalLoss { get; init; }
 
-    [ParquetColumn("hours.per.week")]
+    [JsonPropertyName("hours.per.week")]
     public long? HoursPerWeek { get; init; }
 
-    [ParquetColumn("native.country")]
+    [JsonPropertyName("native.country")]
     public string? NativeCountry { get; init; }
 
-    [ParquetColumn("income")]
+    [JsonPropertyName("income")]
     public string? Income { get; init; }
+}
+
+[ParquetSerializable]
+public partial record BenchmarkDiamonds
+{
+    [JsonPropertyName("carat")]
+    public double? Carat { get; init; }
+
+    [JsonPropertyName("cut")]
+    public long? Cut { get; init; }
+
+    [JsonPropertyName("color")]
+    public long? Color { get; init; }
+
+    [JsonPropertyName("clarity")]
+    public long? Clarity { get; init; }
+
+    [JsonPropertyName("depth")]
+    public double? Depth { get; init; }
+
+    [JsonPropertyName("table")]
+    public double? Table { get; init; }
+
+    [JsonPropertyName("x")]
+    public double? X { get; init; }
+
+    [JsonPropertyName("y")]
+    public double? Y { get; init; }
+
+    [JsonPropertyName("z")]
+    public double? Z { get; init; }
+
+    [JsonPropertyName("price")]
+    public double? Price { get; init; }
 }
 
 [MemoryDiagnoser]
@@ -333,6 +368,81 @@ public class AdultCensusBenchmark
         int count = 0;
         await foreach (
             var item in BenchmarkAdultCensusParquetExtensions.ReadParquetStreamAsync(stream)
+        )
+        {
+            count++;
+        }
+        return count;
+    }
+}
+
+[MemoryDiagnoser]
+[InProcess]
+[Orderer(BenchmarkDotNet.Order.SummaryOrderPolicy.FastestToSlowest)]
+[SuppressMessage("Naming", "CA1707:Identifiers should not contain underscores")]
+public class DiamondsBenchmark
+{
+    private byte[] _rawBytes = null!;
+
+    [GlobalSetup]
+    public void Setup()
+    {
+        string dataPath = Path.Combine(AppContext.BaseDirectory, "data", "diamonds.parquet");
+        if (!System.IO.File.Exists(dataPath))
+        {
+            dataPath = Path.GetFullPath(
+                Path.Combine(
+                    AppContext.BaseDirectory,
+                    "..",
+                    "..",
+                    "..",
+                    "..",
+                    "benchmarks",
+                    "data",
+                    "diamonds.parquet"
+                )
+            );
+        }
+
+        if (!System.IO.File.Exists(dataPath))
+        {
+            throw new FileNotFoundException($"Cannot locate benchmark dataset: {dataPath}");
+        }
+
+        _rawBytes = System.IO.File.ReadAllBytes(dataPath);
+    }
+
+    [Benchmark(Baseline = true)]
+    public async Task<IList<BenchmarkDiamonds>> ReflectionParquetSerializerDiamondsRead()
+    {
+        using var stream = new MemoryStream(_rawBytes);
+        var result = await ParquetSerializer.DeserializeAsync<BenchmarkDiamonds>(stream);
+        return result.Data;
+    }
+
+    [Benchmark]
+    public async Task<List<BenchmarkDiamonds>> SourceGeneratorDiamondsReadAsync()
+    {
+        using var stream = new MemoryStream(_rawBytes);
+        return await BenchmarkDiamondsParquetExtensions.ReadParquetAsync(stream);
+    }
+
+    [Benchmark]
+    public async Task<List<BenchmarkDiamonds>> SourceGeneratorDiamondsReadParallelBufferAsync()
+    {
+        return await BenchmarkDiamondsParquetExtensions.ReadParquetParallelAsync(
+            new ReadOnlyMemory<byte>(_rawBytes),
+            maxDegreeOfParallelism: 4
+        );
+    }
+
+    [Benchmark]
+    public async Task<int> SourceGeneratorDiamondsReadStreamAsync()
+    {
+        using var stream = new MemoryStream(_rawBytes);
+        int count = 0;
+        await foreach (
+            var item in BenchmarkDiamondsParquetExtensions.ReadParquetStreamAsync(stream)
         )
         {
             count++;
