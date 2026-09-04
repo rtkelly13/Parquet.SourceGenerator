@@ -14,5 +14,21 @@ namespace Parquet.SourceGenerator.Models;
 public sealed record TargetClassModel(
     string Namespace,
     string ClassName,
-    EquatableArray<PropertyModel> Properties
-) : IEquatable<TargetClassModel>;
+    EquatableArray<PropertyModel> Properties,
+    bool IsValueType = false,
+    bool IsUnmanaged = false
+) : IEquatable<TargetClassModel>
+{
+    /// <summary>
+    /// Backwards-compatible constructor overload without value type / unmanaged metadata.
+    /// </summary>
+    public TargetClassModel(
+        string Namespace,
+        string ClassName,
+        EquatableArray<PropertyModel> Properties
+    )
+        : this(Namespace, ClassName, Properties, false, false)
+    {
+        // Backwards-compatible overload
+    }
+}

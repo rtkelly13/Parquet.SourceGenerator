@@ -310,53 +310,114 @@ public static class CodeEmitter
         builder.AppendLine("        try");
         builder.AppendLine("        {");
 
-        // List fast path
-        builder.AppendLine(
-            $"            if (chunk is global::System.Collections.Generic.List<{model.ClassName}> listItems)"
-        );
-        builder.AppendLine("            {");
-        builder.AppendLine("#if NET6_0_OR_GREATER");
-        builder.AppendLine("                void ExtractSpan()");
-        builder.AppendLine("                {");
-        builder.AppendLine(
-            "                    var span = global::System.Runtime.InteropServices.CollectionsMarshal.AsSpan(listItems);"
-        );
-        builder.AppendLine("                    for (int i = 0; i < count; i++)");
-        builder.AppendLine("                    {");
-        builder.AppendLine("                        var item = span[i];");
-        EmitPropertyAssignments(builder, model, "buffer_", prefix: "                        ");
-        builder.AppendLine("                    }");
-        builder.AppendLine("                }");
-        builder.AppendLine("                ExtractSpan();");
-        builder.AppendLine("#else");
-        builder.AppendLine("                for (int i = 0; i < count; i++)");
-        builder.AppendLine("                {");
-        builder.AppendLine($"                    var item = listItems[i];");
-        EmitPropertyAssignments(builder, model, "buffer_", prefix: "                    ");
-        builder.AppendLine("                }");
-        builder.AppendLine("#endif");
-        builder.AppendLine("            }");
+        if (PropertyMappingComponent.IsSingleFieldBlittableStruct(model))
+        {
+            string elemType = PropertyMappingComponent.GetSingleFieldBufferElementType(model);
+            PropertyModel prop = model.Properties[0];
+            builder.AppendLine(
+                $"            if (chunk is global::System.Collections.Generic.List<{model.ClassName}> listItems)"
+            );
+            builder.AppendLine("            {");
+            builder.AppendLine("#if NET6_0_OR_GREATER");
+            builder.AppendLine(
+                "                var span = global::System.Runtime.InteropServices.CollectionsMarshal.AsSpan(listItems);"
+            );
+            builder.AppendLine(
+                $"                global::System.Runtime.InteropServices.MemoryMarshal.Cast<{model.ClassName}, {elemType}>(span.Slice(0, count))"
+            );
+            builder.AppendLine("                    .CopyTo(buffer_0.AsSpan(0, count));");
+            builder.AppendLine("#else");
+            builder.AppendLine("                for (int i = 0; i < count; i++)");
+            builder.AppendLine("                {");
+            builder.AppendLine($"                    var item = listItems[i];");
+            EmitPropertyAssignments(builder, model, "buffer_", prefix: "                    ");
+            builder.AppendLine("                }");
+            builder.AppendLine("#endif");
+            builder.AppendLine("            }");
+            builder.AppendLine($"            else if (chunk is {model.ClassName}[] arrayItems)");
+            builder.AppendLine("            {");
+            builder.AppendLine("#if NET6_0_OR_GREATER");
+            builder.AppendLine(
+                $"                global::System.Runtime.InteropServices.MemoryMarshal.Cast<{model.ClassName}, {elemType}>(arrayItems.AsSpan(0, count))"
+            );
+            builder.AppendLine("                    .CopyTo(buffer_0.AsSpan(0, count));");
+            builder.AppendLine("#else");
+            builder.AppendLine("                for (int i = 0; i < count; i++)");
+            builder.AppendLine("                {");
+            builder.AppendLine($"                    buffer_0[i] = arrayItems[i].{prop.Name};");
+            builder.AppendLine("                }");
+            builder.AppendLine("#endif");
+            builder.AppendLine("            }");
+            builder.AppendLine("            else");
+            builder.AppendLine("            {");
+            builder.AppendLine("                int idx = 0;");
+            builder.AppendLine("                foreach (var item in chunk)");
+            builder.AppendLine("                {");
+            EmitPropertyAssignmentsIndexed(
+                builder,
+                model,
+                "buffer_",
+                prefix: "                    "
+            );
+            builder.AppendLine("                    idx++;");
+            builder.AppendLine("                }");
+            builder.AppendLine("            }");
+        }
+        else
+        {
+            // List fast path
+            builder.AppendLine(
+                $"            if (chunk is global::System.Collections.Generic.List<{model.ClassName}> listItems)"
+            );
+            builder.AppendLine("            {");
+            builder.AppendLine("#if NET6_0_OR_GREATER");
+            builder.AppendLine("                void ExtractSpan()");
+            builder.AppendLine("                {");
+            builder.AppendLine(
+                "                    var span = global::System.Runtime.InteropServices.CollectionsMarshal.AsSpan(listItems);"
+            );
+            builder.AppendLine("                    for (int i = 0; i < count; i++)");
+            builder.AppendLine("                    {");
+            builder.AppendLine("                        var item = span[i];");
+            EmitPropertyAssignments(builder, model, "buffer_", prefix: "                        ");
+            builder.AppendLine("                    }");
+            builder.AppendLine("                }");
+            builder.AppendLine("                ExtractSpan();");
+            builder.AppendLine("#else");
+            builder.AppendLine("                for (int i = 0; i < count; i++)");
+            builder.AppendLine("                {");
+            builder.AppendLine($"                    var item = listItems[i];");
+            EmitPropertyAssignments(builder, model, "buffer_", prefix: "                    ");
+            builder.AppendLine("                }");
+            builder.AppendLine("#endif");
+            builder.AppendLine("            }");
 
-        // Array fast path
-        builder.AppendLine($"            else if (chunk is {model.ClassName}[] arrayItems)");
-        builder.AppendLine("            {");
-        builder.AppendLine("                for (int i = 0; i < count; i++)");
-        builder.AppendLine("                {");
-        builder.AppendLine($"                    var item = arrayItems[i];");
-        EmitPropertyAssignments(builder, model, "buffer_", prefix: "                    ");
-        builder.AppendLine("                }");
-        builder.AppendLine("            }");
+            // Array fast path
+            builder.AppendLine($"            else if (chunk is {model.ClassName}[] arrayItems)");
+            builder.AppendLine("            {");
+            builder.AppendLine("                for (int i = 0; i < count; i++)");
+            builder.AppendLine("                {");
+            builder.AppendLine($"                    var item = arrayItems[i];");
+            EmitPropertyAssignments(builder, model, "buffer_", prefix: "                    ");
+            builder.AppendLine("                }");
+            builder.AppendLine("            }");
 
-        // Enumerable fallback
-        builder.AppendLine("            else");
-        builder.AppendLine("            {");
-        builder.AppendLine("                int idx = 0;");
-        builder.AppendLine("                foreach (var item in chunk)");
-        builder.AppendLine("                {");
-        EmitPropertyAssignmentsIndexed(builder, model, "buffer_", prefix: "                    ");
-        builder.AppendLine("                    idx++;");
-        builder.AppendLine("                }");
-        builder.AppendLine("            }");
+            // Enumerable fallback
+            builder.AppendLine("            else");
+            builder.AppendLine("            {");
+            builder.AppendLine("                int idx = 0;");
+            builder.AppendLine("                foreach (var item in chunk)");
+            builder.AppendLine("                {");
+            EmitPropertyAssignmentsIndexed(
+                builder,
+                model,
+                "buffer_",
+                prefix: "                    "
+            );
+            builder.AppendLine("                    idx++;");
+            builder.AppendLine("                }");
+            builder.AppendLine("            }");
+        }
         builder.AppendLine();
 
         // Write row group using static pre-allocated DataFields
@@ -663,46 +724,74 @@ public static class CodeEmitter
         }
 
         builder.AppendLine();
-        builder.AppendLine("#if NET8_0_OR_GREATER");
-        builder.AppendLine("                void PopulateSpan()");
-        builder.AppendLine("                {");
-        builder.AppendLine(
-            "                    var span = global::System.Runtime.InteropServices.CollectionsMarshal.AsSpan(results);"
-        );
-        builder.AppendLine("                    for (int i = 0; i < rowCount; i++)");
-        builder.AppendLine("                    {");
-        builder.AppendLine(
-            $"                        span[currentOffset + i] = new {model.ClassName}"
-        );
-        builder.AppendLine("                        {");
-
-        for (int i = 0; i < model.Properties.Length; i++)
+        if (PropertyMappingComponent.IsSingleFieldBlittableStruct(model))
         {
-            PropertyModel prop = model.Properties[i];
-            string readExpr = GetReadExpression(prop, $"buffer_{i}[i]");
-            builder.AppendLine($"                            {prop.Name} = {readExpr},");
+            string elemType = PropertyMappingComponent.GetSingleFieldBufferElementType(model);
+            PropertyModel prop = model.Properties[0];
+            builder.AppendLine("#if NET8_0_OR_GREATER");
+            builder.AppendLine("                void PopulateSpan()");
+            builder.AppendLine("                {");
+            builder.AppendLine(
+                "                    var span = global::System.Runtime.InteropServices.CollectionsMarshal.AsSpan(results);"
+            );
+            builder.AppendLine(
+                $"                    global::System.Runtime.InteropServices.MemoryMarshal.Cast<{elemType}, {model.ClassName}>(buffer_0.AsSpan(0, rowCount)).CopyTo(span.Slice(currentOffset, rowCount));"
+            );
+            builder.AppendLine("                }");
+            builder.AppendLine("                PopulateSpan();");
+            builder.AppendLine("#else");
+            builder.AppendLine("                for (int i = 0; i < rowCount; i++)");
+            builder.AppendLine("                {");
+            builder.AppendLine($"                    results.Add(new {model.ClassName}");
+            builder.AppendLine("                    {");
+            builder.AppendLine($"                        {prop.Name} = buffer_0[i],");
+            builder.AppendLine("                    });");
+            builder.AppendLine("                }");
+            builder.AppendLine("#endif");
         }
-
-        builder.AppendLine("                        };");
-        builder.AppendLine("                    }");
-        builder.AppendLine("                }");
-        builder.AppendLine("                PopulateSpan();");
-        builder.AppendLine("#else");
-        builder.AppendLine("                for (int i = 0; i < rowCount; i++)");
-        builder.AppendLine("                {");
-        builder.AppendLine($"                    results.Add(new {model.ClassName}");
-        builder.AppendLine("                    {");
-
-        for (int i = 0; i < model.Properties.Length; i++)
+        else
         {
-            PropertyModel prop = model.Properties[i];
-            string readExpr = GetReadExpression(prop, $"buffer_{i}[i]");
-            builder.AppendLine($"                        {prop.Name} = {readExpr},");
-        }
+            builder.AppendLine("#if NET8_0_OR_GREATER");
+            builder.AppendLine("                void PopulateSpan()");
+            builder.AppendLine("                {");
+            builder.AppendLine(
+                "                    var span = global::System.Runtime.InteropServices.CollectionsMarshal.AsSpan(results);"
+            );
+            builder.AppendLine("                    for (int i = 0; i < rowCount; i++)");
+            builder.AppendLine("                    {");
+            builder.AppendLine(
+                $"                        span[currentOffset + i] = new {model.ClassName}"
+            );
+            builder.AppendLine("                        {");
 
-        builder.AppendLine("                    });");
-        builder.AppendLine("                }");
-        builder.AppendLine("#endif");
+            for (int i = 0; i < model.Properties.Length; i++)
+            {
+                PropertyModel prop = model.Properties[i];
+                string readExpr = GetReadExpression(prop, $"buffer_{i}[i]");
+                builder.AppendLine($"                            {prop.Name} = {readExpr},");
+            }
+
+            builder.AppendLine("                        };");
+            builder.AppendLine("                    }");
+            builder.AppendLine("                }");
+            builder.AppendLine("                PopulateSpan();");
+            builder.AppendLine("#else");
+            builder.AppendLine("                for (int i = 0; i < rowCount; i++)");
+            builder.AppendLine("                {");
+            builder.AppendLine($"                    results.Add(new {model.ClassName}");
+            builder.AppendLine("                    {");
+
+            for (int i = 0; i < model.Properties.Length; i++)
+            {
+                PropertyModel prop = model.Properties[i];
+                string readExpr = GetReadExpression(prop, $"buffer_{i}[i]");
+                builder.AppendLine($"                        {prop.Name} = {readExpr},");
+            }
+
+            builder.AppendLine("                    });");
+            builder.AppendLine("                }");
+            builder.AppendLine("#endif");
+        }
         builder.AppendLine("                currentOffset += rowCount;");
         builder.AppendLine("            }");
         builder.AppendLine("            finally");
@@ -798,17 +887,13 @@ public static class CodeEmitter
         }
 
         builder.AppendLine();
-        builder.AppendLine("                for (int i = 0; i < rowCount; i++)");
-        builder.AppendLine("                {");
-        PropertyMappingComponent.EmitObjectMaterialization(
+        PropertyMappingComponent.EmitArrayMaterialization(
             builder,
             model,
             "results",
             "currentOffset",
-            "i",
-            indent: "                    "
+            indent: "                "
         );
-        builder.AppendLine("                }");
         builder.AppendLine("                currentOffset += rowCount;");
         builder.AppendLine("            }");
         builder.AppendLine("            finally");
@@ -1115,17 +1200,13 @@ public static class CodeEmitter
         }
 
         builder.AppendLine();
-        builder.AppendLine("                for (int i = 0; i < rowCount; i++)");
-        builder.AppendLine("                {");
-        PropertyMappingComponent.EmitObjectMaterialization(
+        PropertyMappingComponent.EmitArrayMaterialization(
             builder,
             model,
             "results",
             "currentOffset",
-            "i",
-            indent: "                    "
+            indent: "                "
         );
-        builder.AppendLine("                }");
         builder.AppendLine("                currentOffset += rowCount;");
         builder.AppendLine("            }");
         builder.AppendLine("        }");
@@ -1252,17 +1333,13 @@ public static class CodeEmitter
             builder.AppendLine(GetReadPrimitiveCall(prop, fieldAccess, $"buffer_{i}"));
         }
         builder.AppendLine();
-        builder.AppendLine("                for (int i = 0; i < rowCount; i++)");
-        builder.AppendLine("                {");
-        PropertyMappingComponent.EmitObjectMaterialization(
+        PropertyMappingComponent.EmitArrayMaterialization(
             builder,
             model,
             "resultArray",
             "startIdx",
-            "i",
-            indent: "                    "
+            indent: "                "
         );
-        builder.AppendLine("                }");
         builder.AppendLine("            }");
         builder.AppendLine("            finally");
         builder.AppendLine("            {");
@@ -1578,17 +1655,13 @@ public static class CodeEmitter
             );
         }
         builder.AppendLine();
-        builder.AppendLine("                    for (int i = 0; i < rowCount; i++)");
-        builder.AppendLine("                    {");
-        PropertyMappingComponent.EmitObjectMaterialization(
+        PropertyMappingComponent.EmitArrayMaterialization(
             builder,
             model,
             "target",
             "startIdx",
-            "i",
-            indent: "                        "
+            indent: "                    "
         );
-        builder.AppendLine("                    }");
         builder.AppendLine("                }");
         builder.AppendLine("            }");
         builder.AppendLine("            finally");

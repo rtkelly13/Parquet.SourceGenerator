@@ -281,20 +281,70 @@ public static class LegacyCodeEmitter
         }
 
         builder.AppendLine();
-        builder.AppendLine("        for (int k = 0; k < count; k++)");
-        builder.AppendLine("        {");
-        builder.AppendLine("            var item = items[k];");
+        if (PropertyMappingComponent.IsSingleFieldBlittableStruct(model))
+        {
+            string elemType = PropertyMappingComponent.GetSingleFieldBufferElementType(model);
+            PropertyModel prop = model.Properties[0];
+            builder.AppendLine(
+                $"        if (items is global::System.Collections.Generic.List<{model.ClassName}> listItems)"
+            );
+            builder.AppendLine("        {");
+            builder.AppendLine("#if NET6_0_OR_GREATER");
+            builder.AppendLine("            void ExtractSpan()");
+            builder.AppendLine("            {");
+            builder.AppendLine(
+                "                var span = global::System.Runtime.InteropServices.CollectionsMarshal.AsSpan(listItems);"
+            );
+            builder.AppendLine(
+                $"                global::System.Runtime.InteropServices.MemoryMarshal.Cast<{model.ClassName}, {elemType}>(span.Slice(0, count)).CopyTo(colArray_0.AsSpan(0, count));"
+            );
+            builder.AppendLine("            }");
+            builder.AppendLine("            ExtractSpan();");
+            builder.AppendLine("#else");
+            builder.AppendLine("            for (int k = 0; k < count; k++)");
+            builder.AppendLine("            {");
+            builder.AppendLine($"                colArray_0[k] = listItems[k].{prop.Name};");
+            builder.AppendLine("            }");
+            builder.AppendLine("#endif");
+            builder.AppendLine("        }");
+            builder.AppendLine($"        else if (items is {model.ClassName}[] arrayItems)");
+            builder.AppendLine("        {");
+            builder.AppendLine("#if NET6_0_OR_GREATER");
+            builder.AppendLine(
+                $"            global::System.Runtime.InteropServices.MemoryMarshal.Cast<{model.ClassName}, {elemType}>(arrayItems.AsSpan(0, count)).CopyTo(colArray_0.AsSpan(0, count));"
+            );
+            builder.AppendLine("#else");
+            builder.AppendLine("            for (int k = 0; k < count; k++)");
+            builder.AppendLine("            {");
+            builder.AppendLine($"                colArray_0[k] = arrayItems[k].{prop.Name};");
+            builder.AppendLine("            }");
+            builder.AppendLine("#endif");
+            builder.AppendLine("        }");
+            builder.AppendLine("        else");
+            builder.AppendLine("        {");
+            builder.AppendLine("            for (int k = 0; k < count; k++)");
+            builder.AppendLine("            {");
+            builder.AppendLine($"                colArray_0[k] = items[k].{prop.Name};");
+            builder.AppendLine("            }");
+            builder.AppendLine("        }");
+        }
+        else
+        {
+            builder.AppendLine("        for (int k = 0; k < count; k++)");
+            builder.AppendLine("        {");
+            builder.AppendLine("            var item = items[k];");
 
-        PropertyMappingComponent.EmitPropertyAssignments(
-            builder,
-            model,
-            itemVar: "item",
-            indexVar: "k",
-            bufferPrefix: "colArray_",
-            indent: "            "
-        );
+            PropertyMappingComponent.EmitPropertyAssignments(
+                builder,
+                model,
+                itemVar: "item",
+                indexVar: "k",
+                bufferPrefix: "colArray_",
+                indent: "            "
+            );
 
-        builder.AppendLine("        }");
+            builder.AppendLine("        }");
+        }
         builder.AppendLine();
         builder.AppendLine("        using (var rgWriter = writer.CreateRowGroup())");
         builder.AppendLine("        {");
@@ -578,18 +628,16 @@ public static class LegacyCodeEmitter
         }
 
         builder.AppendLine();
-        builder.AppendLine("                    for (int k = 0; k < groupRows; k++)");
-        builder.AppendLine("                    {");
-        PropertyMappingComponent.EmitObjectMaterialization(
+        PropertyMappingComponent.EmitArrayMaterialization(
             builder,
             model,
             "results",
             "currentOffset",
-            "k",
+            rowCountVar: "groupRows",
+            indexVar: "k",
             bufferPrefix: "data_",
-            indent: "                        "
+            indent: "                    "
         );
-        builder.AppendLine("                    }");
         builder.AppendLine("                    currentOffset += groupRows;");
         builder.AppendLine("                }");
         builder.AppendLine("            }");
