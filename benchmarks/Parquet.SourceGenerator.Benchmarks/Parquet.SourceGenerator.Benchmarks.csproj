@@ -22,7 +22,15 @@
     </ItemGroup>
 
     <ItemGroup>
-        <None Include="..\data\*.parquet" CopyToOutputDirectory="PreserveNewest" Link="data\%(Filename)%(Extension)" />
-        <None Include="..\data\*.json" CopyToOutputDirectory="PreserveNewest" Link="data\%(Filename)%(Extension)" />
+        <None
+            Include="..\data\*.parquet"
+            CopyToOutputDirectory="PreserveNewest"
+            Link="data\%(Filename)%(Extension)"
+        />
+        <None
+            Include="..\data\*.json"
+            CopyToOutputDirectory="PreserveNewest"
+            Link="data\%(Filename)%(Extension)"
+        />
     </ItemGroup>
 </Project>

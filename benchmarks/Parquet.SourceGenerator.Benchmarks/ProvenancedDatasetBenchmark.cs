@@ -126,37 +126,52 @@ public class TpchLineItemBenchmark
     private readonly ParquetSerializerOptions _snappyOptions = new()
     {
         CompressionMethod = ParquetCompressionMethod.Snappy,
-        RowGroupSize = 20_000
+        RowGroupSize = 20_000,
     };
 
     private readonly ParquetSerializerOptions _zstdFastestOptions = new()
     {
         CompressionMethod = ParquetCompressionMethod.Zstd,
         CompressionLevel = ParquetCompressionLevel.Fastest,
-        RowGroupSize = 20_000
+        RowGroupSize = 20_000,
     };
 
     private readonly ParquetSerializerOptions _zstdOptimalOptions = new()
     {
         CompressionMethod = ParquetCompressionMethod.Zstd,
         CompressionLevel = ParquetCompressionLevel.Optimal,
-        RowGroupSize = 20_000
+        RowGroupSize = 20_000,
     };
 
     private readonly ParquetSerializerOptions _uncompressedOptions = new()
     {
         CompressionMethod = ParquetCompressionMethod.None,
-        RowGroupSize = 20_000
+        RowGroupSize = 20_000,
     };
 
     [GlobalSetup]
     public void Setup()
     {
-        string dataPath = Path.Combine(AppContext.BaseDirectory, "data", "tpch_lineitem_sf001.parquet");
+        string dataPath = Path.Combine(
+            AppContext.BaseDirectory,
+            "data",
+            "tpch_lineitem_sf001.parquet"
+        );
         if (!System.IO.File.Exists(dataPath))
         {
             // Fallback for execution from source tree root
-            dataPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "benchmarks", "data", "tpch_lineitem_sf001.parquet"));
+            dataPath = Path.GetFullPath(
+                Path.Combine(
+                    AppContext.BaseDirectory,
+                    "..",
+                    "..",
+                    "..",
+                    "..",
+                    "benchmarks",
+                    "data",
+                    "tpch_lineitem_sf001.parquet"
+                )
+            );
         }
 
         if (!System.IO.File.Exists(dataPath))
@@ -167,11 +182,16 @@ public class TpchLineItemBenchmark
         _rawBytes = System.IO.File.ReadAllBytes(dataPath);
 
         using var ms = new MemoryStream(_rawBytes);
-        _records = BenchmarkTpchLineItemParquetExtensions.ReadParquetAsync(ms).GetAwaiter().GetResult();
+        _records = BenchmarkTpchLineItemParquetExtensions
+            .ReadParquetAsync(ms)
+            .GetAwaiter()
+            .GetResult();
 
         if (_records.Count != 60175)
         {
-            throw new InvalidOperationException($"Expected 60,175 records in TPC-H dataset, but loaded {_records.Count}");
+            throw new InvalidOperationException(
+                $"Expected 60,175 records in TPC-H dataset, but loaded {_records.Count}"
+            );
         }
     }
 
@@ -195,7 +215,8 @@ public class TpchLineItemBenchmark
     {
         return await BenchmarkTpchLineItemParquetExtensions.ReadParquetParallelAsync(
             new ReadOnlyMemory<byte>(_rawBytes),
-            maxDegreeOfParallelism: 4);
+            maxDegreeOfParallelism: 4
+        );
     }
 
     [Benchmark]
@@ -203,7 +224,9 @@ public class TpchLineItemBenchmark
     {
         using var stream = new MemoryStream(_rawBytes);
         int count = 0;
-        await foreach (var item in BenchmarkTpchLineItemParquetExtensions.ReadParquetStreamAsync(stream))
+        await foreach (
+            var item in BenchmarkTpchLineItemParquetExtensions.ReadParquetStreamAsync(stream)
+        )
         {
             count++;
         }
@@ -250,10 +273,25 @@ public class AdultCensusBenchmark
     [GlobalSetup]
     public void Setup()
     {
-        string dataPath = Path.Combine(AppContext.BaseDirectory, "data", "adult_census_income.parquet");
+        string dataPath = Path.Combine(
+            AppContext.BaseDirectory,
+            "data",
+            "adult_census_income.parquet"
+        );
         if (!System.IO.File.Exists(dataPath))
         {
-            dataPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "benchmarks", "data", "adult_census_income.parquet"));
+            dataPath = Path.GetFullPath(
+                Path.Combine(
+                    AppContext.BaseDirectory,
+                    "..",
+                    "..",
+                    "..",
+                    "..",
+                    "benchmarks",
+                    "data",
+                    "adult_census_income.parquet"
+                )
+            );
         }
 
         if (!System.IO.File.Exists(dataPath))
@@ -284,7 +322,8 @@ public class AdultCensusBenchmark
     {
         return await BenchmarkAdultCensusParquetExtensions.ReadParquetParallelAsync(
             new ReadOnlyMemory<byte>(_rawBytes),
-            maxDegreeOfParallelism: 4);
+            maxDegreeOfParallelism: 4
+        );
     }
 
     [Benchmark]
@@ -292,7 +331,9 @@ public class AdultCensusBenchmark
     {
         using var stream = new MemoryStream(_rawBytes);
         int count = 0;
-        await foreach (var item in BenchmarkAdultCensusParquetExtensions.ReadParquetStreamAsync(stream))
+        await foreach (
+            var item in BenchmarkAdultCensusParquetExtensions.ReadParquetStreamAsync(stream)
+        )
         {
             count++;
         }

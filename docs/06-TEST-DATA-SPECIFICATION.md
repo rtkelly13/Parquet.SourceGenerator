@@ -115,14 +115,14 @@ In addition to synthetic unit test fixtures, the repository maintains real-world
 
 ## 🛠️ Verification & Synchronization Commands
 
-### Python Provenance Verification (`uv`)
+### Standalone C# Provenance Verification (.NET 10 via `dotnet run`)
 ```bash
-uv run scripts/verify_provenance.py
+dotnet run scripts/VerifyProvenance.cs
 ```
 
-### Re-fetching & Re-profiling Datasets (`uv`)
+### Re-fetching & Re-profiling Datasets (.NET 10 via `dotnet run`)
 ```bash
-uv run scripts/fetch_benchmark_datasets.py
+dotnet run scripts/FetchBenchmarkDatasets.cs
 ```
 
 ### Python Synthetic Test Generator (PyArrow via `uv`)

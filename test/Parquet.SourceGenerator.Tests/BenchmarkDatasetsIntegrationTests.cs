@@ -147,7 +147,8 @@ public partial record DiamondRecord
 public sealed class BenchmarkDatasetsIntegrationTests
 {
     private static readonly string BenchmarkDataRoot = Path.GetFullPath(
-        Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "benchmarks", "data"));
+        Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "benchmarks", "data")
+    );
 
     [Fact]
     public async Task ReadParquetAsyncDeserializesTpchLineitemDataset()
@@ -248,12 +249,14 @@ public sealed class BenchmarkDatasetsIntegrationTests
         var snappyOptions = new ParquetSerializerOptions
         {
             CompressionMethod = ParquetCompressionMethod.Snappy,
-            RowGroupSize = 20_000
+            RowGroupSize = 20_000,
         };
         await original.WriteParquetAsync(snappyStream, options: snappyOptions);
         snappyStream.Position = 0;
 
-        var roundtrippedSnappy = await TpchLineItemRecordParquetExtensions.ReadParquetAsync(snappyStream);
+        var roundtrippedSnappy = await TpchLineItemRecordParquetExtensions.ReadParquetAsync(
+            snappyStream
+        );
         Assert.Equal(original.Count, roundtrippedSnappy.Count);
         Assert.Equal(original[0].OrderKey, roundtrippedSnappy[0].OrderKey);
         Assert.Equal(original[0].Quantity, roundtrippedSnappy[0].Quantity);
@@ -265,12 +268,14 @@ public sealed class BenchmarkDatasetsIntegrationTests
         {
             CompressionMethod = ParquetCompressionMethod.Zstd,
             CompressionLevel = ParquetCompressionLevel.Optimal,
-            RowGroupSize = 20_000
+            RowGroupSize = 20_000,
         };
         await original.WriteParquetAsync(zstdStream, options: zstdOptions);
         zstdStream.Position = 0;
 
-        var roundtrippedZstd = await TpchLineItemRecordParquetExtensions.ReadParquetAsync(zstdStream);
+        var roundtrippedZstd = await TpchLineItemRecordParquetExtensions.ReadParquetAsync(
+            zstdStream
+        );
         Assert.Equal(original.Count, roundtrippedZstd.Count);
         Assert.Equal(original[100].ExtendedPrice, roundtrippedZstd[100].ExtendedPrice);
         Assert.Equal(original[100].ShipInstruct, roundtrippedZstd[100].ShipInstruct);

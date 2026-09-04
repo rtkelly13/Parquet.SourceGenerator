@@ -314,52 +314,8 @@ public static class Program
             string bAlloc = bEntry.AllocatedFormatted;
             string sgAlloc = sgEntry.AllocatedFormatted;
 
-            string speedupStr = "—";
-            double? speedup = null;
-            if (sgEntry.RatioNumeric.HasValue && sgEntry.RatioNumeric.Value > 0)
-            {
-                speedup = 1.0 / sgEntry.RatioNumeric.Value;
-            }
-            else if (
-                bEntry.MeanNumeric.HasValue
-                && sgEntry.MeanNumeric.HasValue
-                && sgEntry.MeanNumeric.Value > 0
-            )
-            {
-                speedup = bEntry.MeanNumeric.Value / sgEntry.MeanNumeric.Value;
-            }
-
-            if (speedup.HasValue)
-            {
-                if (speedup.Value >= 1.095)
-                {
-                    speedupStr = $"⚡ **{speedup.Value:F1}x faster**";
-                }
-                else if (speedup.Value >= 0.995)
-                {
-                    speedupStr = "~1.0x (parity)";
-                }
-                else
-                {
-                    double baselineRatio = 1.0 / speedup.Value;
-                    speedupStr = $"{baselineRatio:F2}x baseline";
-                }
-            }
-
-            string memStr = "—";
-            if (sgEntry.AllocRatioNumeric.HasValue && sgEntry.AllocRatioNumeric.Value > 0)
-            {
-                double ar = sgEntry.AllocRatioNumeric.Value;
-                if (ar < 1.0)
-                {
-                    int savedPct = (int)Math.Round((1.0 - ar) * 100);
-                    memStr = $"📉 **{savedPct}% less memory**";
-                }
-                else
-                {
-                    memStr = $"{ar:F2}x alloc";
-                }
-            }
+            string speedupStr = FormatSpeedup(bEntry, sgEntry);
+            string memStr = FormatMemoryReduction(sgEntry);
 
             string countStr = count.ToString("N0", CultureInfo.InvariantCulture);
             sb.AppendLine(
@@ -380,11 +336,245 @@ public static class Program
         return sb.ToString();
     }
 
+    private static string BuildRealWorldDatasetTable(string resultsDir)
+    {
+        var entries = new Dictionary<string, BenchmarkEntry>(StringComparer.OrdinalIgnoreCase);
+        string[] csvFiles = Directory.GetFiles(resultsDir, "*-report.csv");
+
+        foreach (string csvFile in csvFiles)
+        {
+            string[] lines = File.ReadAllLines(csvFile);
+            if (lines.Length <= 1)
+                continue;
+
+            string[] headers = ParseCsvLine(lines[0]);
+            int methodIdx = Array.IndexOf(headers, "Method");
+            int meanIdx = Array.IndexOf(headers, "Mean");
+            int allocIdx = Array.IndexOf(headers, "Allocated");
+            int ratioIdx = Array.IndexOf(headers, "Ratio");
+            int allocRatioIdx = Array.IndexOf(headers, "Alloc Ratio");
+
+            for (int i = 1; i < lines.Length; i++)
+            {
+                string[] parts = ParseCsvLine(lines[i]);
+                if (parts.Length <= Math.Max(methodIdx, meanIdx))
+                    continue;
+
+                string method = methodIdx >= 0 && methodIdx < parts.Length ? parts[methodIdx] : "";
+                string meanStr = meanIdx >= 0 && meanIdx < parts.Length ? parts[meanIdx] : "";
+                string allocStr = allocIdx >= 0 && allocIdx < parts.Length ? parts[allocIdx] : "";
+                string ratioStr = ratioIdx >= 0 && ratioIdx < parts.Length ? parts[ratioIdx] : "";
+                string allocRatioStr =
+                    allocRatioIdx >= 0 && allocRatioIdx < parts.Length ? parts[allocRatioIdx] : "";
+
+                if (string.IsNullOrWhiteSpace(meanStr) || meanStr == "NA")
+                    continue;
+
+                entries[method] = new BenchmarkEntry(
+                    Method: method,
+                    Count: 0,
+                    MeanFormatted: FormatTime(meanStr),
+                    MeanNumeric: ParseNumber(meanStr),
+                    AllocatedFormatted: FormatMemory(allocStr),
+                    RatioNumeric: ParseNumber(ratioStr),
+                    AllocRatioNumeric: ParseNumber(allocRatioStr)
+                );
+            }
+        }
+
+        var readScenarios = new[]
+        {
+            new RealWorldScenario(
+                "TPC-H LineItem Deserialization",
+                "60,175 rows",
+                "ReflectionParquetSerializerTpchRead",
+                "SourceGeneratorTpchReadAsync"
+            ),
+            new RealWorldScenario(
+                "TPC-H LineItem Parallel Deserialization",
+                "60,175 rows",
+                "ReflectionParquetSerializerTpchRead",
+                "SourceGeneratorTpchReadParallelBufferAsync"
+            ),
+            new RealWorldScenario(
+                "TPC-H LineItem Streaming Deserialization",
+                "60,175 rows",
+                "ReflectionParquetSerializerTpchRead",
+                "SourceGeneratorTpchReadStreamAsync"
+            ),
+            new RealWorldScenario(
+                "Adult Census Deserialization (Dictionaries)",
+                "32,561 rows",
+                "ReflectionParquetSerializerCensusRead",
+                "SourceGeneratorCensusReadAsync"
+            ),
+            new RealWorldScenario(
+                "Adult Census Parallel Deserialization",
+                "32,561 rows",
+                "ReflectionParquetSerializerCensusRead",
+                "SourceGeneratorCensusReadParallelBufferAsync"
+            ),
+            new RealWorldScenario(
+                "Adult Census Streaming Deserialization",
+                "32,561 rows",
+                "ReflectionParquetSerializerCensusRead",
+                "SourceGeneratorCensusReadStreamAsync"
+            ),
+        };
+
+        var sb = new StringBuilder();
+        bool hasReadRows = false;
+
+        foreach (var s in readScenarios)
+        {
+            if (
+                entries.TryGetValue(s.BaselineMethod, out var bEntry)
+                && entries.TryGetValue(s.SgMethod, out var sgEntry)
+            )
+            {
+                if (!hasReadRows)
+                {
+                    sb.AppendLine("## 🌐 Real-World Provenanced Dataset Benchmarks");
+                    sb.AppendLine();
+                    sb.AppendLine(
+                        "Fixed public datasets tracked under Git LFS with full cryptographic SHA-256 data provenance:"
+                    );
+                    sb.AppendLine(
+                        "- **TPC-H SF 0.01 LineItem**: 60,175 rows, 16 columns (decimals, dates, strings, dictionary encoding)"
+                    );
+                    sb.AppendLine(
+                        "- **Adult Census Income**: 32,561 rows, 15 columns (9 categorical dictionary columns)"
+                    );
+                    sb.AppendLine();
+                    sb.AppendLine(
+                        "| Operation | Scale | Reflection Baseline | Source Generator | Speedup | Memory Reduction |"
+                    );
+                    sb.AppendLine("|:--- |:---:|:---:|:---:|:---:|:---:|");
+                }
+
+                string bTime = bEntry.MeanFormatted;
+                string sgTime = sgEntry.MeanFormatted;
+                string bAlloc = bEntry.AllocatedFormatted;
+                string sgAlloc = sgEntry.AllocatedFormatted;
+
+                string speedupStr = FormatSpeedup(bEntry, sgEntry);
+                string memStr = FormatMemoryReduction(sgEntry);
+
+                sb.AppendLine(
+                    CultureInfo.InvariantCulture,
+                    $"| **{s.Title}** | {s.Scale} | {bTime} ({bAlloc}) | **{sgTime}** (**{sgAlloc}**) | {speedupStr} | {memStr} |"
+                );
+                hasReadRows = true;
+            }
+        }
+
+        var writeMethods = new (string Codec, string Method)[]
+        {
+            ("Snappy", "WriteSnappyAsync"),
+            ("Zstandard (Fastest)", "WriteZstdFastestAsync"),
+            ("Zstandard (Optimal)", "WriteZstdOptimalAsync"),
+            ("Uncompressed", "WriteUncompressedAsync"),
+        };
+
+        bool hasWrites = writeMethods.Any(w => entries.ContainsKey(w.Method));
+        if (hasWrites)
+        {
+            if (hasReadRows)
+            {
+                sb.AppendLine();
+            }
+            else
+            {
+                sb.AppendLine("## 🌐 Real-World Provenanced Dataset Benchmarks");
+                sb.AppendLine();
+            }
+
+            sb.AppendLine(
+                "### 🗜️ TPC-H LineItem Multi-Codec Serialization Throughput (60,175 rows)"
+            );
+            sb.AppendLine();
+            sb.AppendLine(
+                "| Codec | Compression Profile | Serialization Time | Allocated Memory |"
+            );
+            sb.AppendLine("|:--- |:---:|:---:|:---:|");
+
+            foreach (var (codec, method) in writeMethods)
+            {
+                if (entries.TryGetValue(method, out var wEntry))
+                {
+                    sb.AppendLine(
+                        CultureInfo.InvariantCulture,
+                        $"| **{codec}** | Generator Built-in | **{wEntry.MeanFormatted}** | **{wEntry.AllocatedFormatted}** |"
+                    );
+                }
+            }
+        }
+
+        return sb.ToString().TrimEnd();
+    }
+
+    private static string FormatSpeedup(BenchmarkEntry? bEntry, BenchmarkEntry sgEntry)
+    {
+        double? speedup = null;
+        if (sgEntry.RatioNumeric.HasValue && sgEntry.RatioNumeric.Value > 0)
+        {
+            speedup = 1.0 / sgEntry.RatioNumeric.Value;
+        }
+        else if (
+            bEntry?.MeanNumeric.HasValue == true
+            && sgEntry.MeanNumeric.HasValue
+            && sgEntry.MeanNumeric.Value > 0
+        )
+        {
+            speedup = bEntry.MeanNumeric.Value / sgEntry.MeanNumeric.Value;
+        }
+
+        if (speedup.HasValue)
+        {
+            if (speedup.Value >= 1.095)
+            {
+                return $"⚡ **{speedup.Value:F1}x faster**";
+            }
+            if (speedup.Value >= 0.995)
+            {
+                return "~1.0x (parity)";
+            }
+            double baselineRatio = 1.0 / speedup.Value;
+            return $"{baselineRatio:F2}x baseline";
+        }
+
+        return "—";
+    }
+
+    private static string FormatMemoryReduction(BenchmarkEntry sgEntry)
+    {
+        if (sgEntry.AllocRatioNumeric.HasValue && sgEntry.AllocRatioNumeric.Value > 0)
+        {
+            double ar = sgEntry.AllocRatioNumeric.Value;
+            if (ar < 1.0)
+            {
+                int savedPct = (int)Math.Round((1.0 - ar) * 100);
+                return $"📉 **{savedPct}% less memory**";
+            }
+            return $"{ar:F2}x alloc";
+        }
+
+        return "—";
+    }
+
     private static string BuildFullReport(string resultsDir, string headlineTable)
     {
         var sb = new StringBuilder();
         sb.AppendLine(headlineTable);
         sb.AppendLine();
+
+        string realWorldTable = BuildRealWorldDatasetTable(resultsDir);
+        if (!string.IsNullOrEmpty(realWorldTable))
+        {
+            sb.AppendLine(realWorldTable);
+            sb.AppendLine();
+        }
+
         sb.AppendLine("## 📊 Detailed BenchmarkDotNet Reports");
         sb.AppendLine();
 
@@ -563,5 +753,12 @@ public static class Program
         string BaselineMethod,
         string SgMethod,
         int TargetCount
+    );
+
+    private sealed record RealWorldScenario(
+        string Title,
+        string Scale,
+        string BaselineMethod,
+        string SgMethod
     );
 }
