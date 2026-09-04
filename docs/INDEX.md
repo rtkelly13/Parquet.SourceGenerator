@@ -52,6 +52,10 @@ Welcome to the **Parquet.SourceGenerator** documentation repository. This folder
    - Parquet.Net version/TFM matrix and what a net472-capable backend actually requires.
    - Sequenced remediation order; items are marked ✅ as they are closed.
 
+9. **[08 - IL Interrogation & Performance Verification](./08-IL-INTERROGATION.md)**
+   - Intermediate Language (IL) disassembly and decompilation workflow with `ilspycmd` and `dotnet-inspect`.
+   - Automated boxing detection (`box`), devirtualization checks, and branch diffing.
+
 ---
 
 ## ⚡ Quick Summary of Intent
