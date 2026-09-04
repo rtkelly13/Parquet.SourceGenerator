@@ -13,16 +13,11 @@ indent_size = 2
 
 [*.cs]
 # C# style preferences.
-#
-# These are deliberately `suggestion`, not `warning`. `dotnet format` only rewrites rules at
-# `warning` or above by default, and CI runs `dotnet format --verify-no-changes`; at `warning`
-# these preferences turn every stylistic difference of opinion into a build failure rather than
-# an editor hint. Promote an individual rule to `warning` only once the tree already complies.
-csharp_using_directive_placement = outside_namespace:suggestion
+csharp_using_directive_placement = outside_namespace:warning
+csharp_style_namespace_declarations = file_scoped:warning
 csharp_style_expression_bodied_methods = when_possible:suggestion
 csharp_style_expression_bodied_constructors = when_possible:suggestion
 csharp_style_expression_bodied_properties = when_possible:suggestion
-csharp_style_namespace_declarations = file_scoped:suggestion
 csharp_style_prefer_primary_constructors = true:suggestion
 
 # Pattern Matching & Types
@@ -32,11 +27,41 @@ csharp_style_prefer_switch_expression = true:suggestion
 csharp_style_var_for_built_in_types = false:suggestion
 csharp_style_var_when_type_is_apparent = true:suggestion
 
-# Formatting. `csharp_new_line_before_open_brace` must match the brace style actually used in
-# the tree (Allman — brace on its own line); the previous value of `none` described K&R and so
-# asked `dotnet format` to rewrite every file in the repository.
-dotnet_sort_system_directives_first = true
+# Formatting
+dotnet_sort_system_directives_first = true:warning
 csharp_new_line_before_open_brace = all
 csharp_new_line_before_else = true
 csharp_new_line_before_catch = true
 csharp_new_line_before_finally = true
+
+# Naming Conventions
+dotnet_naming_rule.interface_should_be_prefixed_with_i.severity = warning
+dotnet_naming_rule.interface_should_be_prefixed_with_i.symbols = interface_symbols
+dotnet_naming_rule.interface_should_be_prefixed_with_i.style = prefix_interface_with_i
+
+dotnet_naming_symbols.interface_symbols.applicable_kinds = interface
+dotnet_naming_symbols.interface_symbols.applicable_accessibilities = *
+
+dotnet_naming_style.prefix_interface_with_i.required_prefix = I
+dotnet_naming_style.prefix_interface_with_i.capitalization = pascal_case
+
+dotnet_naming_rule.types_should_be_pascal_case.severity = warning
+dotnet_naming_rule.types_should_be_pascal_case.symbols = type_symbols
+dotnet_naming_rule.types_should_be_pascal_case.style = pascal_case_style
+
+dotnet_naming_symbols.type_symbols.applicable_kinds = class, struct, enum, delegate
+dotnet_naming_symbols.type_symbols.applicable_accessibilities = *
+
+dotnet_naming_style.pascal_case_style.capitalization = pascal_case
+
+dotnet_naming_rule.private_fields_should_be_camel_case.severity = warning
+dotnet_naming_rule.private_fields_should_be_camel_case.symbols = private_field_symbols
+dotnet_naming_rule.private_fields_should_be_camel_case.style = prefix_field_with_underscore
+
+dotnet_naming_symbols.private_field_symbols.applicable_kinds = field
+dotnet_naming_symbols.private_field_symbols.applicable_accessibilities = private
+dotnet_naming_symbols.private_field_symbols.required_modifiers = 
+
+dotnet_naming_style.prefix_field_with_underscore.required_prefix = _
+dotnet_naming_style.prefix_field_with_underscore.capitalization = camel_case
+
