@@ -9,6 +9,83 @@ namespace Parquet.SourceGenerator.Emitter.Components;
 internal static class PropertyMappingComponent
 {
     /// <summary>
+    /// Returns true if the model is an unmanaged/blittable struct containing exactly one non-nullable primitive property.
+    /// In this case, the in-memory array layout of TStruct[] is 100% bit-for-bit identical to TField[], enabling
+    /// zero-copy hardware memory copying via MemoryMarshal.Cast.
+    /// </summary>
+    public static bool IsSingleFieldBlittableStruct(TargetClassModel model)
+    {
+        if (!model.IsValueType || !model.IsUnmanaged || model.Properties.Length != 1)
+            return false;
+
+        PropertyModel prop = model.Properties[0];
+        if (prop.IsNullable)
+            return false;
+
+        return prop.Kind == PropertyKind.Primitive && !prop.TypeName.Contains("string");
+    }
+
+    /// <summary>
+    /// Returns the buffer element type of the single primitive field in a single-field blittable struct.
+    /// </summary>
+    public static string GetSingleFieldBufferElementType(TargetClassModel model)
+    {
+        return model.Properties[0].TypeName;
+    }
+
+    /// <summary>
+    /// Emits either a zero-copy MemoryMarshal.Cast block (if single-field blittable struct) or a standard loop calling EmitObjectMaterialization.
+    /// </summary>
+    public static void EmitArrayMaterialization(
+        StringBuilder builder,
+        TargetClassModel model,
+        string targetArrayVar,
+        string startOffsetVar,
+        string rowCountVar = "rowCount",
+        string indexVar = "i",
+        string bufferPrefix = "buffer_",
+        string indent = "                "
+    )
+    {
+        if (IsSingleFieldBlittableStruct(model))
+        {
+            string elemType = GetSingleFieldBufferElementType(model);
+            PropertyModel prop = model.Properties[0];
+            builder.AppendLine($"{indent}#if NET6_0_OR_GREATER");
+            builder.AppendLine(
+                $"{indent}global::System.Runtime.InteropServices.MemoryMarshal.Cast<{elemType}, {model.ClassName}>({bufferPrefix}0.AsSpan(0, {rowCountVar})).CopyTo({targetArrayVar}.AsSpan({startOffsetVar}, {rowCountVar}));"
+            );
+            builder.AppendLine($"{indent}#else");
+            builder.AppendLine(
+                $"{indent}for (int {indexVar} = 0; {indexVar} < {rowCountVar}; {indexVar}++)"
+            );
+            builder.AppendLine($"{indent}{{");
+            builder.AppendLine(
+                $"{indent}    {targetArrayVar}[{startOffsetVar} + {indexVar}] = new {model.ClassName} {{ {prop.Name} = {bufferPrefix}0[{indexVar}] }};"
+            );
+            builder.AppendLine($"{indent}}}");
+            builder.AppendLine($"{indent}#endif");
+        }
+        else
+        {
+            builder.AppendLine(
+                $"{indent}for (int {indexVar} = 0; {indexVar} < {rowCountVar}; {indexVar}++)"
+            );
+            builder.AppendLine($"{indent}{{");
+            EmitObjectMaterialization(
+                builder,
+                model,
+                targetArrayVar,
+                startOffsetVar,
+                indexVar,
+                bufferPrefix: bufferPrefix,
+                indent: indent + "    "
+            );
+            builder.AppendLine($"{indent}}}");
+        }
+    }
+
+    /// <summary>
     /// The expression that converts a model member into its column/buffer representation (handling enum conversions).
     /// </summary>
     public static string GetWriteExpression(PropertyModel prop, string valueExpression)

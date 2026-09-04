@@ -418,7 +418,9 @@ public static class TargetParser
             ? new TargetClassModel(
                 Namespace: namespaceName,
                 ClassName: className,
-                Properties: new EquatableArray<PropertyModel>(orderedProperties.ToArray())
+                Properties: new EquatableArray<PropertyModel>(orderedProperties.ToArray()),
+                IsValueType: typeSymbol.IsValueType,
+                IsUnmanaged: typeSymbol.IsUnmanagedType
             )
             : null;
 

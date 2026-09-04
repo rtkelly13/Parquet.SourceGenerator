@@ -2,3 +2,8 @@
 Parquet.SourceGenerator.Models.PropertyModel.Deduplicate.get -> bool
 Parquet.SourceGenerator.Models.PropertyModel.Deduplicate.init -> void
 Parquet.SourceGenerator.Models.PropertyModel.PropertyModel(string! Name, string! ParquetColumnName, string! TypeName, string? TimestampUnit, string? EnumUnderlyingTypeName, int Order, int? DecimalPrecision, int? DecimalScale, Parquet.SourceGenerator.Models.PropertyKind Kind, bool IsNullable, bool Deduplicate = false) -> void
+Parquet.SourceGenerator.Models.TargetClassModel.IsUnmanaged.get -> bool
+Parquet.SourceGenerator.Models.TargetClassModel.IsUnmanaged.init -> void
+Parquet.SourceGenerator.Models.TargetClassModel.IsValueType.get -> bool
+Parquet.SourceGenerator.Models.TargetClassModel.IsValueType.init -> void
+Parquet.SourceGenerator.Models.TargetClassModel.TargetClassModel(string! Namespace, string! ClassName, Parquet.SourceGenerator.Models.EquatableArray<Parquet.SourceGenerator.Models.PropertyModel!> Properties, bool IsValueType = false, bool IsUnmanaged = false) -> void
