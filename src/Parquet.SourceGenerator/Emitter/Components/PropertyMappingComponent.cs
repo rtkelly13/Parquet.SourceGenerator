@@ -8,6 +8,44 @@ namespace Parquet.SourceGenerator.Emitter.Components;
 /// </summary>
 internal static class PropertyMappingComponent
 {
+    private static readonly global::System.Collections.Generic.HashSet<string> BlittablePrimitiveTypeNames =
+        new(global::System.StringComparer.Ordinal)
+        {
+            "sbyte",
+            "System.SByte",
+            "global::System.SByte",
+            "byte",
+            "System.Byte",
+            "global::System.Byte",
+            "short",
+            "System.Int16",
+            "global::System.Int16",
+            "ushort",
+            "System.UInt16",
+            "global::System.UInt16",
+            "int",
+            "System.Int32",
+            "global::System.Int32",
+            "uint",
+            "System.UInt32",
+            "global::System.UInt32",
+            "long",
+            "System.Int64",
+            "global::System.Int64",
+            "ulong",
+            "System.UInt64",
+            "global::System.UInt64",
+            "float",
+            "System.Single",
+            "global::System.Single",
+            "double",
+            "System.Double",
+            "global::System.Double",
+            "bool",
+            "System.Boolean",
+            "global::System.Boolean",
+        };
+
     /// <summary>
     /// Returns true if the model is an unmanaged/blittable struct containing exactly one non-nullable primitive property.
     /// In this case, the in-memory array layout of TStruct[] is 100% bit-for-bit identical to TField[], enabling
@@ -15,14 +53,20 @@ internal static class PropertyMappingComponent
     /// </summary>
     public static bool IsSingleFieldBlittableStruct(TargetClassModel model)
     {
-        if (!model.IsValueType || !model.IsUnmanaged || model.Properties.Length != 1)
+        if (
+            !model.IsValueType
+            || !model.IsUnmanaged
+            || !model.HasSingleInstanceField
+            || model.Properties.Length != 1
+        )
             return false;
 
         PropertyModel prop = model.Properties[0];
         if (prop.IsNullable)
             return false;
 
-        return prop.Kind == PropertyKind.Primitive && !prop.TypeName.Contains("string");
+        return prop.Kind == PropertyKind.Primitive
+            && BlittablePrimitiveTypeNames.Contains(prop.TypeName);
     }
 
     /// <summary>
@@ -53,8 +97,24 @@ internal static class PropertyMappingComponent
             PropertyModel prop = model.Properties[0];
             builder.AppendLine($"{indent}#if NET6_0_OR_GREATER");
             builder.AppendLine(
-                $"{indent}global::System.Runtime.InteropServices.MemoryMarshal.Cast<{elemType}, {model.ClassName}>({bufferPrefix}0.AsSpan(0, {rowCountVar})).CopyTo({targetArrayVar}.AsSpan({startOffsetVar}, {rowCountVar}));"
+                $"{indent}if (global::System.Runtime.CompilerServices.Unsafe.SizeOf<{model.ClassName}>() == global::System.Runtime.CompilerServices.Unsafe.SizeOf<{elemType}>())"
             );
+            builder.AppendLine($"{indent}{{");
+            builder.AppendLine(
+                $"{indent}    global::System.Runtime.InteropServices.MemoryMarshal.Cast<{elemType}, {model.ClassName}>({bufferPrefix}0.AsSpan(0, {rowCountVar})).CopyTo({targetArrayVar}.AsSpan({startOffsetVar}, {rowCountVar}));"
+            );
+            builder.AppendLine($"{indent}}}");
+            builder.AppendLine($"{indent}else");
+            builder.AppendLine($"{indent}{{");
+            builder.AppendLine(
+                $"{indent}    for (int {indexVar} = 0; {indexVar} < {rowCountVar}; {indexVar}++)"
+            );
+            builder.AppendLine($"{indent}    {{");
+            builder.AppendLine(
+                $"{indent}        {targetArrayVar}[{startOffsetVar} + {indexVar}] = new {model.ClassName} {{ {prop.Name} = {bufferPrefix}0[{indexVar}] }};"
+            );
+            builder.AppendLine($"{indent}    }}");
+            builder.AppendLine($"{indent}}}");
             builder.AppendLine($"{indent}#else");
             builder.AppendLine(
                 $"{indent}for (int {indexVar} = 0; {indexVar} < {rowCountVar}; {indexVar}++)"

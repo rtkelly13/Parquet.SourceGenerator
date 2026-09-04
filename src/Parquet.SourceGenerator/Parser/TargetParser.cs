@@ -497,13 +497,47 @@ public static class TargetParser
             && !isNested
             && !isGeneric;
 
+        bool hasSingleInstanceField = false;
+        if (typeSymbol.IsValueType && typeSymbol.IsUnmanagedType)
+        {
+            var instanceFields = typeSymbol
+                .GetMembers()
+                .OfType<IFieldSymbol>()
+                .Where(f => !f.IsStatic)
+                .ToList();
+
+            // StructLayout check: Explicit layout or custom Size > 0 alters memory layout
+            bool hasExplicitOrCustomSizeLayout = typeSymbol
+                .GetAttributes()
+                .Any(a =>
+                {
+                    if (
+                        a.AttributeClass?.ToDisplayString()
+                        != "System.Runtime.InteropServices.StructLayoutAttribute"
+                    )
+                        return false;
+                    if (
+                        a.ConstructorArguments.Length > 0
+                        && a.ConstructorArguments[0].Value is int layoutKind
+                        && layoutKind == 2 /* LayoutKind.Explicit */
+                    )
+                        return true;
+                    return a.NamedArguments.Any(na =>
+                        na.Key == "Size" && na.Value.Value is int size && size > 0
+                    );
+                });
+
+            hasSingleInstanceField = instanceFields.Count == 1 && !hasExplicitOrCustomSizeLayout;
+        }
+
         TargetClassModel? model = canEmit
             ? new TargetClassModel(
                 Namespace: namespaceName,
                 ClassName: className,
                 Properties: new EquatableArray<PropertyModel>(orderedProperties.ToArray()),
                 IsValueType: typeSymbol.IsValueType,
-                IsUnmanaged: typeSymbol.IsUnmanagedType
+                IsUnmanaged: typeSymbol.IsUnmanagedType,
+                HasSingleInstanceField: hasSingleInstanceField
             )
             : null;
 

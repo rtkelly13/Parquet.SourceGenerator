@@ -293,11 +293,25 @@ public static class LegacyCodeEmitter
             builder.AppendLine("            void ExtractSpan()");
             builder.AppendLine("            {");
             builder.AppendLine(
-                "                var span = global::System.Runtime.InteropServices.CollectionsMarshal.AsSpan(listItems);"
+                $"                if (global::System.Runtime.CompilerServices.Unsafe.SizeOf<{model.ClassName}>() == global::System.Runtime.CompilerServices.Unsafe.SizeOf<{elemType}>())"
+            );
+            builder.AppendLine("                {");
+            builder.AppendLine(
+                "                    var span = global::System.Runtime.InteropServices.CollectionsMarshal.AsSpan(listItems);"
             );
             builder.AppendLine(
-                $"                global::System.Runtime.InteropServices.MemoryMarshal.Cast<{model.ClassName}, {elemType}>(span.Slice(0, count)).CopyTo(colArray_0.AsSpan(0, count));"
+                $"                    global::System.Runtime.InteropServices.MemoryMarshal.Cast<{model.ClassName}, {elemType}>(span.Slice(0, count)).CopyTo(colArray_0.AsSpan(0, count));"
             );
+            builder.AppendLine("                }");
+            builder.AppendLine("                else");
+            builder.AppendLine("                {");
+            builder.AppendLine("                    for (int k = 0; k < count; k++)");
+            builder.AppendLine("                    {");
+            builder.AppendLine(
+                $"                        colArray_0[k] = listItems[k].{prop.Name};"
+            );
+            builder.AppendLine("                    }");
+            builder.AppendLine("                }");
             builder.AppendLine("            }");
             builder.AppendLine("            ExtractSpan();");
             builder.AppendLine("#else");
@@ -311,8 +325,20 @@ public static class LegacyCodeEmitter
             builder.AppendLine("        {");
             builder.AppendLine("#if NET6_0_OR_GREATER");
             builder.AppendLine(
-                $"            global::System.Runtime.InteropServices.MemoryMarshal.Cast<{model.ClassName}, {elemType}>(arrayItems.AsSpan(0, count)).CopyTo(colArray_0.AsSpan(0, count));"
+                $"            if (global::System.Runtime.CompilerServices.Unsafe.SizeOf<{model.ClassName}>() == global::System.Runtime.CompilerServices.Unsafe.SizeOf<{elemType}>())"
             );
+            builder.AppendLine("            {");
+            builder.AppendLine(
+                $"                global::System.Runtime.InteropServices.MemoryMarshal.Cast<{model.ClassName}, {elemType}>(arrayItems.AsSpan(0, count)).CopyTo(colArray_0.AsSpan(0, count));"
+            );
+            builder.AppendLine("            }");
+            builder.AppendLine("            else");
+            builder.AppendLine("            {");
+            builder.AppendLine("                for (int k = 0; k < count; k++)");
+            builder.AppendLine("                {");
+            builder.AppendLine($"                    colArray_0[k] = arrayItems[k].{prop.Name};");
+            builder.AppendLine("                }");
+            builder.AppendLine("            }");
             builder.AppendLine("#else");
             builder.AppendLine("            for (int k = 0; k < count; k++)");
             builder.AppendLine("            {");
