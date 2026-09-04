@@ -40,4 +40,11 @@
     <None Include="$(MSBuildThisFileDirectory)LICENSE" Pack="true" PackagePath="\" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
   </ItemGroup>
+
+  <ItemGroup Condition="'$(IsTestProject)' != 'true'">
+    <PackageReference Include="Meziantou.Analyzer" Version="2.0.302" PrivateAssets="All">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
 </Project>
+

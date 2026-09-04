@@ -8,7 +8,7 @@ sealed partial class Program
 {
     static async Task Main(string[] args)
     {
-        if (args.Contains("--profile") || args.Contains("profile"))
+        if (args.Contains("--profile", StringComparer.Ordinal) || args.Contains("profile", StringComparer.Ordinal))
         {
             await ProfileWorkload.ExecuteAsync();
         }
