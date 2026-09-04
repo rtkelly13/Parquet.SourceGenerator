@@ -57,8 +57,8 @@ Zero-reflection C# source generation vs **`ParquetSerializer` v6** reflection ba
 | **File Serialization (Write)** | 100,000 items | 8.50 ms (11.00 MB) | **3.92 ms** (**5.74 MB**) | ⚡ **2.2x faster** | 📉 **48% less memory** |
 | **Streaming Batched Write** | 100,000 items | 8.50 ms (11.00 MB) | **3.81 ms** (**5.03 MB**) | ⚡ **2.2x faster** | 📉 **54% less memory** |
 | **File Deserialization (Read)** | 100,000 items | 6.26 ms (4.62 MB) | **6.46 ms** (**8.99 MB**) | 1.03x baseline | 1.94x alloc |
-| **Parallel Deserialization (Read)** | 100,000 items | 6.26 ms (4.62 MB) | **6.17 ms** (**9.86 MB**) | ⚡ **1.0x faster** | 2.13x alloc |
-| **Streaming Read (IAsyncEnumerable)** | 100,000 items | 6.26 ms (4.62 MB) | **6.13 ms** (**8.22 MB**) | ⚡ **1.0x faster** | 1.78x alloc |
+| **Parallel Deserialization (Read)** | 100,000 items | 6.26 ms (4.62 MB) | **6.17 ms** (**9.86 MB**) | ~1.0x (parity) | 2.13x alloc |
+| **Streaming Read (IAsyncEnumerable)** | 100,000 items | 6.26 ms (4.62 MB) | **6.13 ms** (**8.22 MB**) | ~1.0x (parity) | 1.78x alloc |
 | **Guid Serialization** | 100,000 items | 20.59 ms (26.86 MB) | **15.85 ms** (**19.85 MB**) | ⚡ **1.3x faster** | 📉 **26% less memory** |
 
 > 📌 **Note**: BenchmarkDotNet results captured on GitHub Actions. Detailed multi-scale reports (1K, 10K, 100K, 1M rows) are in [docs/BENCHMARKS.md](https://github.com/rtkelly13/Parquet.SourceGenerator/blob/main/docs/BENCHMARKS.md).
