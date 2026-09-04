@@ -15,7 +15,7 @@ public static partial class OrderEventParquetExtensions
         new global::Parquet.Schema.DataField("score", typeof(double), isNullable: false),
         new global::Parquet.Schema.DecimalDataField("price", 18, 4, isNullable: false),
         new global::Parquet.Schema.DateTimeDataField("created_at", global::Parquet.Schema.DateTimeFormat.DateAndTimeMicros, isNullable: false),
-        new global::Parquet.Schema.TimeSpanDataField("duration", global::Parquet.Schema.TimeSpanFormat.MilliSeconds, isNullable: false),
+        new global::Parquet.Schema.TimeDataField("duration", global::Parquet.Schema.TimeUnitPrecision.Millis, isNullable: false),
         new global::Parquet.Schema.DataField("correlation_id", typeof(global::System.Guid), isNullable: false),
         new global::Parquet.Schema.DataField("optional_guid", typeof(global::System.Guid), isNullable: true),
         new global::Parquet.Schema.DataField("payload", typeof(byte[]), isNullable: true)
@@ -187,7 +187,7 @@ public static partial class OrderEventParquetExtensions
         var buffer_2 = global::System.Buffers.ArrayPool<double>.Shared.Rent(count);
         var buffer_3 = global::System.Buffers.ArrayPool<decimal>.Shared.Rent(count);
         var buffer_4 = global::System.Buffers.ArrayPool<System.DateTime>.Shared.Rent(count);
-        var buffer_5 = global::System.Buffers.ArrayPool<System.TimeSpan>.Shared.Rent(count);
+        var buffer_5 = global::System.Buffers.ArrayPool<int>.Shared.Rent(count);
         var buffer_6 = global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Rent(count);
         var buffer_7 = global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Rent(count);
         var buffer_8 = global::System.Buffers.ArrayPool<byte[]>.Shared.Rent(count);
@@ -208,7 +208,7 @@ public static partial class OrderEventParquetExtensions
                         buffer_2[i] = item.Score;
                         buffer_3[i] = item.Price;
                         buffer_4[i] = item.CreatedAt;
-                        buffer_5[i] = item.Duration;
+                        buffer_5[i] = (int)item.Duration.TotalMilliseconds;
                         buffer_6[i] = item.CorrelationId;
                         buffer_7[i] = item.OptionalGuid;
                         buffer_8[i] = item.Payload;
@@ -224,7 +224,7 @@ public static partial class OrderEventParquetExtensions
                     buffer_2[i] = item.Score;
                     buffer_3[i] = item.Price;
                     buffer_4[i] = item.CreatedAt;
-                    buffer_5[i] = item.Duration;
+                    buffer_5[i] = (int)item.Duration.TotalMilliseconds;
                     buffer_6[i] = item.CorrelationId;
                     buffer_7[i] = item.OptionalGuid;
                     buffer_8[i] = item.Payload;
@@ -241,7 +241,7 @@ public static partial class OrderEventParquetExtensions
                     buffer_2[i] = item.Score;
                     buffer_3[i] = item.Price;
                     buffer_4[i] = item.CreatedAt;
-                    buffer_5[i] = item.Duration;
+                    buffer_5[i] = (int)item.Duration.TotalMilliseconds;
                     buffer_6[i] = item.CorrelationId;
                     buffer_7[i] = item.OptionalGuid;
                     buffer_8[i] = item.Payload;
@@ -257,7 +257,7 @@ public static partial class OrderEventParquetExtensions
                     buffer_2[idx] = item.Score;
                     buffer_3[idx] = item.Price;
                     buffer_4[idx] = item.CreatedAt;
-                    buffer_5[idx] = item.Duration;
+                    buffer_5[idx] = (int)item.Duration.TotalMilliseconds;
                     buffer_6[idx] = item.CorrelationId;
                     buffer_7[idx] = item.OptionalGuid;
                     buffer_8[idx] = item.Payload;
@@ -286,9 +286,9 @@ public static partial class OrderEventParquetExtensions
                     _field_4,
                     new global::System.ReadOnlyMemory<System.DateTime>(buffer_4, 0, count),
                     cancellationToken: cancellationToken);
-                await groupWriter.WriteAsync<System.TimeSpan>(
+                await groupWriter.WriteAsync<int>(
                     _field_5,
-                    new global::System.ReadOnlyMemory<System.TimeSpan>(buffer_5, 0, count),
+                    new global::System.ReadOnlyMemory<int>(buffer_5, 0, count),
                     cancellationToken: cancellationToken);
                 await groupWriter.WriteAsync<global::System.Guid>(
                     _field_6,
@@ -310,7 +310,7 @@ public static partial class OrderEventParquetExtensions
             global::System.Buffers.ArrayPool<double>.Shared.Return(buffer_2, clearArray: false);
             global::System.Buffers.ArrayPool<decimal>.Shared.Return(buffer_3, clearArray: false);
             global::System.Buffers.ArrayPool<System.DateTime>.Shared.Return(buffer_4, clearArray: false);
-            global::System.Buffers.ArrayPool<System.TimeSpan>.Shared.Return(buffer_5, clearArray: false);
+            global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_5, clearArray: false);
             global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(buffer_6, clearArray: false);
             global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Return(buffer_7, clearArray: false);
             global::System.Buffers.ArrayPool<byte[]>.Shared.Return(buffer_8, clearArray: true);
@@ -484,7 +484,7 @@ public static partial class OrderEventParquetExtensions
             var buffer_2 = global::System.Buffers.ArrayPool<double>.Shared.Rent(rowCount);
             var buffer_3 = global::System.Buffers.ArrayPool<decimal>.Shared.Rent(rowCount);
             var buffer_4 = global::System.Buffers.ArrayPool<System.DateTime>.Shared.Rent(rowCount);
-            var buffer_5 = global::System.Buffers.ArrayPool<System.TimeSpan>.Shared.Rent(rowCount);
+            var buffer_5 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
             var buffer_6 = global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Rent(rowCount);
             var buffer_7 = global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Rent(rowCount);
             var buffer_8 = global::System.Buffers.ArrayPool<byte[]>.Shared.Rent(rowCount);
@@ -511,9 +511,9 @@ public static partial class OrderEventParquetExtensions
                     field_4,
                     new global::System.Memory<System.DateTime>(buffer_4, 0, rowCount),
                     cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<System.TimeSpan>(
+                await groupReader.ReadAsync<int>(
                     field_5,
-                    new global::System.Memory<System.TimeSpan>(buffer_5, 0, rowCount),
+                    new global::System.Memory<int>(buffer_5, 0, rowCount),
                     cancellationToken: cancellationToken);
                 await groupReader.ReadAsync<global::System.Guid>(
                     field_6,
@@ -541,7 +541,7 @@ public static partial class OrderEventParquetExtensions
                             Score = buffer_2[i],
                             Price = buffer_3[i],
                             CreatedAt = buffer_4[i],
-                            Duration = buffer_5[i],
+                            Duration = global::System.TimeSpan.FromMilliseconds(buffer_5[i]),
                             CorrelationId = buffer_6[i],
                             OptionalGuid = buffer_7[i],
                             Payload = buffer_8[i],
@@ -559,7 +559,7 @@ public static partial class OrderEventParquetExtensions
                         Score = buffer_2[i],
                         Price = buffer_3[i],
                         CreatedAt = buffer_4[i],
-                        Duration = buffer_5[i],
+                        Duration = global::System.TimeSpan.FromMilliseconds(buffer_5[i]),
                         CorrelationId = buffer_6[i],
                         OptionalGuid = buffer_7[i],
                         Payload = buffer_8[i],
@@ -575,7 +575,7 @@ public static partial class OrderEventParquetExtensions
                 global::System.Buffers.ArrayPool<double>.Shared.Return(buffer_2, clearArray: false);
                 global::System.Buffers.ArrayPool<decimal>.Shared.Return(buffer_3, clearArray: false);
                 global::System.Buffers.ArrayPool<System.DateTime>.Shared.Return(buffer_4, clearArray: false);
-                global::System.Buffers.ArrayPool<System.TimeSpan>.Shared.Return(buffer_5, clearArray: false);
+                global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_5, clearArray: false);
                 global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(buffer_6, clearArray: false);
                 global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Return(buffer_7, clearArray: false);
                 global::System.Buffers.ArrayPool<byte[]>.Shared.Return(buffer_8, clearArray: true);
@@ -633,7 +633,7 @@ public static partial class OrderEventParquetExtensions
             var buffer_2 = global::System.Buffers.ArrayPool<double>.Shared.Rent(rowCount);
             var buffer_3 = global::System.Buffers.ArrayPool<decimal>.Shared.Rent(rowCount);
             var buffer_4 = global::System.Buffers.ArrayPool<System.DateTime>.Shared.Rent(rowCount);
-            var buffer_5 = global::System.Buffers.ArrayPool<System.TimeSpan>.Shared.Rent(rowCount);
+            var buffer_5 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
             var buffer_6 = global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Rent(rowCount);
             var buffer_7 = global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Rent(rowCount);
             var buffer_8 = global::System.Buffers.ArrayPool<byte[]>.Shared.Rent(rowCount);
@@ -660,9 +660,9 @@ public static partial class OrderEventParquetExtensions
                     field_4,
                     new global::System.Memory<System.DateTime>(buffer_4, 0, rowCount),
                     cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<System.TimeSpan>(
+                await groupReader.ReadAsync<int>(
                     field_5,
-                    new global::System.Memory<System.TimeSpan>(buffer_5, 0, rowCount),
+                    new global::System.Memory<int>(buffer_5, 0, rowCount),
                     cancellationToken: cancellationToken);
                 await groupReader.ReadAsync<global::System.Guid>(
                     field_6,
@@ -686,7 +686,7 @@ public static partial class OrderEventParquetExtensions
                         Score = buffer_2[i],
                         Price = buffer_3[i],
                         CreatedAt = buffer_4[i],
-                        Duration = buffer_5[i],
+                        Duration = global::System.TimeSpan.FromMilliseconds(buffer_5[i]),
                         CorrelationId = buffer_6[i],
                         OptionalGuid = buffer_7[i],
                         Payload = buffer_8[i],
@@ -701,7 +701,7 @@ public static partial class OrderEventParquetExtensions
                 global::System.Buffers.ArrayPool<double>.Shared.Return(buffer_2, clearArray: false);
                 global::System.Buffers.ArrayPool<decimal>.Shared.Return(buffer_3, clearArray: false);
                 global::System.Buffers.ArrayPool<System.DateTime>.Shared.Return(buffer_4, clearArray: false);
-                global::System.Buffers.ArrayPool<System.TimeSpan>.Shared.Return(buffer_5, clearArray: false);
+                global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_5, clearArray: false);
                 global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(buffer_6, clearArray: false);
                 global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Return(buffer_7, clearArray: false);
                 global::System.Buffers.ArrayPool<byte[]>.Shared.Return(buffer_8, clearArray: true);
@@ -781,7 +781,7 @@ public static partial class OrderEventParquetExtensions
             var buffer_2 = global::System.Buffers.ArrayPool<double>.Shared.Rent(rowCount);
             var buffer_3 = global::System.Buffers.ArrayPool<decimal>.Shared.Rent(rowCount);
             var buffer_4 = global::System.Buffers.ArrayPool<System.DateTime>.Shared.Rent(rowCount);
-            var buffer_5 = global::System.Buffers.ArrayPool<System.TimeSpan>.Shared.Rent(rowCount);
+            var buffer_5 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
             var buffer_6 = global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Rent(rowCount);
             var buffer_7 = global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Rent(rowCount);
             var buffer_8 = global::System.Buffers.ArrayPool<byte[]>.Shared.Rent(rowCount);
@@ -808,9 +808,9 @@ public static partial class OrderEventParquetExtensions
                     field_4,
                     new global::System.Memory<System.DateTime>(buffer_4, 0, rowCount),
                     cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<System.TimeSpan>(
+                await groupReader.ReadAsync<int>(
                     field_5,
-                    new global::System.Memory<System.TimeSpan>(buffer_5, 0, rowCount),
+                    new global::System.Memory<int>(buffer_5, 0, rowCount),
                     cancellationToken: cancellationToken);
                 await groupReader.ReadAsync<global::System.Guid>(
                     field_6,
@@ -834,7 +834,7 @@ public static partial class OrderEventParquetExtensions
                         Score = buffer_2[i],
                         Price = buffer_3[i],
                         CreatedAt = buffer_4[i],
-                        Duration = buffer_5[i],
+                        Duration = global::System.TimeSpan.FromMilliseconds(buffer_5[i]),
                         CorrelationId = buffer_6[i],
                         OptionalGuid = buffer_7[i],
                         Payload = buffer_8[i],
@@ -848,7 +848,7 @@ public static partial class OrderEventParquetExtensions
                 global::System.Buffers.ArrayPool<double>.Shared.Return(buffer_2, clearArray: false);
                 global::System.Buffers.ArrayPool<decimal>.Shared.Return(buffer_3, clearArray: false);
                 global::System.Buffers.ArrayPool<System.DateTime>.Shared.Return(buffer_4, clearArray: false);
-                global::System.Buffers.ArrayPool<System.TimeSpan>.Shared.Return(buffer_5, clearArray: false);
+                global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_5, clearArray: false);
                 global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(buffer_6, clearArray: false);
                 global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Return(buffer_7, clearArray: false);
                 global::System.Buffers.ArrayPool<byte[]>.Shared.Return(buffer_8, clearArray: true);
@@ -916,7 +916,7 @@ public static partial class OrderEventParquetExtensions
             var buffer_2 = global::System.Buffers.ArrayPool<double>.Shared.Rent(rowCount);
             var buffer_3 = global::System.Buffers.ArrayPool<decimal>.Shared.Rent(rowCount);
             var buffer_4 = global::System.Buffers.ArrayPool<System.DateTime>.Shared.Rent(rowCount);
-            var buffer_5 = global::System.Buffers.ArrayPool<System.TimeSpan>.Shared.Rent(rowCount);
+            var buffer_5 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
             var buffer_6 = global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Rent(rowCount);
             var buffer_7 = global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Rent(rowCount);
             var buffer_8 = global::System.Buffers.ArrayPool<byte[]>.Shared.Rent(rowCount);
@@ -942,9 +942,9 @@ public static partial class OrderEventParquetExtensions
                     field_4,
                     new global::System.Memory<System.DateTime>(buffer_4, 0, rowCount),
                     cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<System.TimeSpan>(
+                await groupReader.ReadAsync<int>(
                     field_5,
-                    new global::System.Memory<System.TimeSpan>(buffer_5, 0, rowCount),
+                    new global::System.Memory<int>(buffer_5, 0, rowCount),
                     cancellationToken: cancellationToken);
                 await groupReader.ReadAsync<global::System.Guid>(
                     field_6,
@@ -968,7 +968,7 @@ public static partial class OrderEventParquetExtensions
                         Score = buffer_2[i],
                         Price = buffer_3[i],
                         CreatedAt = buffer_4[i],
-                        Duration = buffer_5[i],
+                        Duration = global::System.TimeSpan.FromMilliseconds(buffer_5[i]),
                         CorrelationId = buffer_6[i],
                         OptionalGuid = buffer_7[i],
                         Payload = buffer_8[i],
@@ -982,7 +982,7 @@ public static partial class OrderEventParquetExtensions
                 global::System.Buffers.ArrayPool<double>.Shared.Return(buffer_2, clearArray: false);
                 global::System.Buffers.ArrayPool<decimal>.Shared.Return(buffer_3, clearArray: false);
                 global::System.Buffers.ArrayPool<System.DateTime>.Shared.Return(buffer_4, clearArray: false);
-                global::System.Buffers.ArrayPool<System.TimeSpan>.Shared.Return(buffer_5, clearArray: false);
+                global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_5, clearArray: false);
                 global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(buffer_6, clearArray: false);
                 global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Return(buffer_7, clearArray: false);
                 global::System.Buffers.ArrayPool<byte[]>.Shared.Return(buffer_8, clearArray: true);
@@ -1178,7 +1178,7 @@ public static partial class OrderEventParquetExtensions
             var buffer_2 = global::System.Buffers.ArrayPool<double>.Shared.Rent(maxRowGroupSize);
             var buffer_3 = global::System.Buffers.ArrayPool<decimal>.Shared.Rent(maxRowGroupSize);
             var buffer_4 = global::System.Buffers.ArrayPool<System.DateTime>.Shared.Rent(maxRowGroupSize);
-            var buffer_5 = global::System.Buffers.ArrayPool<System.TimeSpan>.Shared.Rent(maxRowGroupSize);
+            var buffer_5 = global::System.Buffers.ArrayPool<int>.Shared.Rent(maxRowGroupSize);
             var buffer_6 = global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Rent(maxRowGroupSize);
             var buffer_7 = global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Rent(maxRowGroupSize);
             var buffer_8 = global::System.Buffers.ArrayPool<byte[]>.Shared.Rent(maxRowGroupSize);
@@ -1217,9 +1217,9 @@ public static partial class OrderEventParquetExtensions
                         field_4,
                         new global::System.Memory<System.DateTime>(buffer_4, 0, rowCount),
                         cancellationToken: cancellationToken);
-                    await groupReader.ReadAsync<System.TimeSpan>(
+                    await groupReader.ReadAsync<int>(
                         field_5,
-                        new global::System.Memory<System.TimeSpan>(buffer_5, 0, rowCount),
+                        new global::System.Memory<int>(buffer_5, 0, rowCount),
                         cancellationToken: cancellationToken);
                     await groupReader.ReadAsync<global::System.Guid>(
                         field_6,
@@ -1243,7 +1243,7 @@ public static partial class OrderEventParquetExtensions
                             Score = buffer_2[i],
                             Price = buffer_3[i],
                             CreatedAt = buffer_4[i],
-                            Duration = buffer_5[i],
+                            Duration = global::System.TimeSpan.FromMilliseconds(buffer_5[i]),
                             CorrelationId = buffer_6[i],
                             OptionalGuid = buffer_7[i],
                             Payload = buffer_8[i],
@@ -1258,7 +1258,7 @@ public static partial class OrderEventParquetExtensions
                 global::System.Buffers.ArrayPool<double>.Shared.Return(buffer_2, clearArray: false);
                 global::System.Buffers.ArrayPool<decimal>.Shared.Return(buffer_3, clearArray: false);
                 global::System.Buffers.ArrayPool<System.DateTime>.Shared.Return(buffer_4, clearArray: false);
-                global::System.Buffers.ArrayPool<System.TimeSpan>.Shared.Return(buffer_5, clearArray: false);
+                global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_5, clearArray: false);
                 global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(buffer_6, clearArray: false);
                 global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Return(buffer_7, clearArray: false);
                 global::System.Buffers.ArrayPool<byte[]>.Shared.Return(buffer_8, clearArray: true);
@@ -1317,7 +1317,7 @@ public static partial class OrderEventParquetExtensions
         var buffer_2 = global::System.Buffers.ArrayPool<double>.Shared.Rent(maxRowCount);
         var buffer_3 = global::System.Buffers.ArrayPool<decimal>.Shared.Rent(maxRowCount);
         var buffer_4 = global::System.Buffers.ArrayPool<System.DateTime>.Shared.Rent(maxRowCount);
-        var buffer_5 = global::System.Buffers.ArrayPool<System.TimeSpan>.Shared.Rent(maxRowCount);
+        var buffer_5 = global::System.Buffers.ArrayPool<int>.Shared.Rent(maxRowCount);
         var buffer_6 = global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Rent(maxRowCount);
         var buffer_7 = global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Rent(maxRowCount);
         var buffer_8 = global::System.Buffers.ArrayPool<byte[]>.Shared.Rent(maxRowCount);
@@ -1354,9 +1354,9 @@ public static partial class OrderEventParquetExtensions
                     field_4,
                     new global::System.Memory<System.DateTime>(buffer_4, 0, rowCount),
                     cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<System.TimeSpan>(
+                await groupReader.ReadAsync<int>(
                     field_5,
-                    new global::System.Memory<System.TimeSpan>(buffer_5, 0, rowCount),
+                    new global::System.Memory<int>(buffer_5, 0, rowCount),
                     cancellationToken: cancellationToken);
                 await groupReader.ReadAsync<global::System.Guid>(
                     field_6,
@@ -1380,7 +1380,7 @@ public static partial class OrderEventParquetExtensions
                         Score = buffer_2[i],
                         Price = buffer_3[i],
                         CreatedAt = buffer_4[i],
-                        Duration = buffer_5[i],
+                        Duration = global::System.TimeSpan.FromMilliseconds(buffer_5[i]),
                         CorrelationId = buffer_6[i],
                         OptionalGuid = buffer_7[i],
                         Payload = buffer_8[i],
@@ -1396,7 +1396,7 @@ public static partial class OrderEventParquetExtensions
             global::System.Buffers.ArrayPool<double>.Shared.Return(buffer_2, clearArray: false);
             global::System.Buffers.ArrayPool<decimal>.Shared.Return(buffer_3, clearArray: false);
             global::System.Buffers.ArrayPool<System.DateTime>.Shared.Return(buffer_4, clearArray: false);
-            global::System.Buffers.ArrayPool<System.TimeSpan>.Shared.Return(buffer_5, clearArray: false);
+            global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_5, clearArray: false);
             global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(buffer_6, clearArray: false);
             global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Return(buffer_7, clearArray: false);
             global::System.Buffers.ArrayPool<byte[]>.Shared.Return(buffer_8, clearArray: true);

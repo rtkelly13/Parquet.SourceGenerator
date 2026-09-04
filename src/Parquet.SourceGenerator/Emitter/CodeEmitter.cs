@@ -226,6 +226,16 @@ public static class CodeEmitter
             string memType = prop.IsNullable ? $"{underlying}?" : underlying;
             return $"{indent}await groupWriter.WriteAsync<{underlying}>(\n{indent}    {fieldAccess},\n{indent}    new global::System.ReadOnlyMemory<{memType}>({bufName}, 0, count),\n{indent}    cancellationToken: cancellationToken);";
         }
+        else if (prop.Kind == PropertyKind.TimeSpan)
+        {
+            string memType = prop.IsNullable ? "int?" : "int";
+            return $"{indent}await groupWriter.WriteAsync<int>(\n{indent}    {fieldAccess},\n{indent}    new global::System.ReadOnlyMemory<{memType}>({bufName}, 0, count),\n{indent}    cancellationToken: cancellationToken);";
+        }
+        else if (prop.Kind == PropertyKind.TimeOnly)
+        {
+            string memType = prop.IsNullable ? "long?" : "long";
+            return $"{indent}await groupWriter.WriteAsync<long>(\n{indent}    {fieldAccess},\n{indent}    new global::System.ReadOnlyMemory<{memType}>({bufName}, 0, count),\n{indent}    cancellationToken: cancellationToken);";
+        }
         else
         {
             string structType = prop.TypeName.TrimEnd('?');
@@ -262,6 +272,16 @@ public static class CodeEmitter
             string underlying = prop.EnumUnderlyingTypeName ?? "int";
             string memType = prop.IsNullable ? $"{underlying}?" : underlying;
             return $"{indent}await groupReader.ReadAsync<{underlying}>(\n{indent}    {fieldAccess},\n{indent}    new global::System.Memory<{memType}>({bufName}, 0, rowCount),\n{indent}    cancellationToken: cancellationToken);";
+        }
+        else if (prop.Kind == PropertyKind.TimeSpan)
+        {
+            string memType = prop.IsNullable ? "int?" : "int";
+            return $"{indent}await groupReader.ReadAsync<int>(\n{indent}    {fieldAccess},\n{indent}    new global::System.Memory<{memType}>({bufName}, 0, rowCount),\n{indent}    cancellationToken: cancellationToken);";
+        }
+        else if (prop.Kind == PropertyKind.TimeOnly)
+        {
+            string memType = prop.IsNullable ? "long?" : "long";
+            return $"{indent}await groupReader.ReadAsync<long>(\n{indent}    {fieldAccess},\n{indent}    new global::System.Memory<{memType}>({bufName}, 0, rowCount),\n{indent}    cancellationToken: cancellationToken);";
         }
         else
         {

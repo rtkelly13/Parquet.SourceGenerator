@@ -630,7 +630,6 @@ public static class TargetParser
         "double",
         "string",
         "System.DateOnly",
-        "System.TimeOnly",
         "System.Numerics.BigInteger",
         "System.ReadOnlyMemory<byte>",
         "System.ReadOnlyMemory<char>",
@@ -703,6 +702,9 @@ public static class TargetParser
                 return true;
             case "System.TimeSpan":
                 kind = PropertyKind.TimeSpan;
+                return true;
+            case "System.TimeOnly":
+                kind = PropertyKind.TimeOnly;
                 return true;
             case "System.Guid":
                 kind = PropertyKind.Guid;

@@ -16,6 +16,10 @@ internal static class BufferPoolComponent
             PropertyKind.Guid => "global::System.Guid",
             PropertyKind.Enum when prop.IsNullable => $"{prop.EnumUnderlyingTypeName ?? "int"}?",
             PropertyKind.Enum => prop.EnumUnderlyingTypeName ?? "int",
+            PropertyKind.TimeSpan when prop.IsNullable => "int?",
+            PropertyKind.TimeSpan => "int",
+            PropertyKind.TimeOnly when prop.IsNullable => "long?",
+            PropertyKind.TimeOnly => "long",
             _ => prop.TypeName,
         };
     }

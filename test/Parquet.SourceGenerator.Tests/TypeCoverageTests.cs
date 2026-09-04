@@ -62,6 +62,19 @@ public partial record NullableTypeCoverageRecord
     public EventStatus? Status { get; init; }
 }
 
+[ParquetSerializable]
+public partial record TimeOnlyCoverageRecord
+{
+    [ParquetColumn("id")]
+    public int Id { get; init; }
+
+    [ParquetColumn("time_of_day")]
+    public TimeOnly TimeOfDay { get; init; }
+
+    [ParquetColumn("optional_time")]
+    public TimeOnly? OptionalTime { get; init; }
+}
+
 // ── Tests ──────────────────────────────────────────────────────────────────
 
 public sealed class TypeCoverageTests
@@ -368,5 +381,43 @@ public sealed class TypeCoverageTests
         Assert.Null(result[0].Status);
         Assert.Equal(id1, result[1].CorrelationId);
         Assert.Equal(EventStatus.Closed, result[1].Status);
+    }
+
+    [Fact]
+    public async Task TimeOnlyRoundtripsCorrectly()
+    {
+        var t1 = new TimeOnly(14, 30, 45, 123);
+        var t2 = new TimeOnly(9, 15, 0, 500);
+
+        var items = new List<TimeOnlyCoverageRecord>
+        {
+            new()
+            {
+                Id = 1,
+                TimeOfDay = t1,
+                OptionalTime = null,
+            },
+            new()
+            {
+                Id = 2,
+                TimeOfDay = t2,
+                OptionalTime = t1,
+            },
+        };
+
+        var stream = new MemoryStream();
+        await items.WriteParquetAsync(stream);
+        stream.Position = 0;
+
+        var result = await TimeOnlyCoverageRecordParquetExtensions.ReadParquetAsync(stream);
+
+        Assert.Equal(2, result.Count);
+        Assert.Equal(1, result[0].Id);
+        Assert.Equal(t1, result[0].TimeOfDay);
+        Assert.Null(result[0].OptionalTime);
+
+        Assert.Equal(2, result[1].Id);
+        Assert.Equal(t2, result[1].TimeOfDay);
+        Assert.Equal(t1, result[1].OptionalTime);
     }
 }

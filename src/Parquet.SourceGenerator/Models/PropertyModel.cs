@@ -34,6 +34,9 @@ public enum PropertyKind
 
     /// <summary>byte[] → DataField&lt;byte[]&gt; passthrough.</summary>
     ByteArray,
+
+    /// <summary>TimeOnly → TimeDataField (Micros).</summary>
+    TimeOnly,
 }
 
 /// <summary>
