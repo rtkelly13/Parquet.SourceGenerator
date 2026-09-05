@@ -69,6 +69,11 @@ Welcome to the **Parquet.SourceGenerator** documentation repository. This folder
     - Empirical performance and IL boxing baseline across generated serializers.
     - Evaluation of zero-boxing string serialization mechanisms and L1 string deduplicator cache efficiency.
 
+13. **[12 - Buffer Reuse & Column Extraction Strategies](./12-BUFFER-REUSE-AND-EXTRACTION-STRATEGIES.md)**
+    - Empirical evaluation of Row-Oriented Single Pass vs Column-Pipelined extraction.
+    - CPU cache spatial locality vs multi-pass traversal analysis.
+    - Eager progressive buffer return mechanics and single `try / finally` exception safety.
+
 
 ---
 
