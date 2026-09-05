@@ -138,6 +138,7 @@ public sealed class ParserAndEmitterTests
         Assert.Contains("DateTimeDataField", source);
         Assert.Contains("TimeDataField", source);
         Assert.Contains("WriteParquetRowGroupAsync", source);
+        Assert.Contains("WriteAllPartsAsync", source);
         Assert.Contains("ReadParquetParallelAsync", source);
     }
 

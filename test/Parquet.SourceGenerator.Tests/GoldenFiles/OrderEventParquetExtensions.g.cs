@@ -189,7 +189,9 @@ public static partial class OrderEventParquetExtensions
         var buffer_4 = global::System.Buffers.ArrayPool<System.DateTime>.Shared.Rent(count);
         var buffer_5 = global::System.Buffers.ArrayPool<int>.Shared.Rent(count);
         var buffer_6 = global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Rent(count);
-        var buffer_7 = global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Rent(count);
+        var buffer_7 = global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Rent(count);
+        var defLevels_7 = global::System.Buffers.ArrayPool<int>.Shared.Rent(count);
+        int nonNullCount_7 = 0;
         var buffer_8 = global::System.Buffers.ArrayPool<global::System.ReadOnlyMemory<byte>?>.Shared.Rent(count);
 
         try
@@ -208,9 +210,18 @@ public static partial class OrderEventParquetExtensions
                         buffer_2[i] = item.Score;
                         buffer_3[i] = item.Price;
                         buffer_4[i] = item.CreatedAt;
-                        buffer_5[i] = (int)item.Duration.TotalMilliseconds;
+                        buffer_5[i] = checked((int)item.Duration.TotalMilliseconds);
                         buffer_6[i] = item.CorrelationId;
-                        buffer_7[i] = item.OptionalGuid;
+                        var val_7 = item.OptionalGuid;
+                        if (val_7.HasValue)
+                        {
+                            buffer_7[nonNullCount_7++] = val_7.Value;
+                            defLevels_7[i] = 1;
+                        }
+                        else
+                        {
+                            defLevels_7[i] = 0;
+                        }
                         buffer_8[i] = item.Payload is null ? (global::System.ReadOnlyMemory<byte>?)null : global::System.MemoryExtensions.AsMemory(item.Payload);
                     }
                 }
@@ -224,9 +235,18 @@ public static partial class OrderEventParquetExtensions
                     buffer_2[i] = item.Score;
                     buffer_3[i] = item.Price;
                     buffer_4[i] = item.CreatedAt;
-                    buffer_5[i] = (int)item.Duration.TotalMilliseconds;
+                    buffer_5[i] = checked((int)item.Duration.TotalMilliseconds);
                     buffer_6[i] = item.CorrelationId;
-                    buffer_7[i] = item.OptionalGuid;
+                    var val_7 = item.OptionalGuid;
+                    if (val_7.HasValue)
+                    {
+                        buffer_7[nonNullCount_7++] = val_7.Value;
+                        defLevels_7[i] = 1;
+                    }
+                    else
+                    {
+                        defLevels_7[i] = 0;
+                    }
                     buffer_8[i] = item.Payload is null ? (global::System.ReadOnlyMemory<byte>?)null : global::System.MemoryExtensions.AsMemory(item.Payload);
                 }
 #endif
@@ -241,9 +261,18 @@ public static partial class OrderEventParquetExtensions
                     buffer_2[i] = item.Score;
                     buffer_3[i] = item.Price;
                     buffer_4[i] = item.CreatedAt;
-                    buffer_5[i] = (int)item.Duration.TotalMilliseconds;
+                    buffer_5[i] = checked((int)item.Duration.TotalMilliseconds);
                     buffer_6[i] = item.CorrelationId;
-                    buffer_7[i] = item.OptionalGuid;
+                    var val_7 = item.OptionalGuid;
+                    if (val_7.HasValue)
+                    {
+                        buffer_7[nonNullCount_7++] = val_7.Value;
+                        defLevels_7[i] = 1;
+                    }
+                    else
+                    {
+                        defLevels_7[i] = 0;
+                    }
                     buffer_8[i] = item.Payload is null ? (global::System.ReadOnlyMemory<byte>?)null : global::System.MemoryExtensions.AsMemory(item.Payload);
                 }
             }
@@ -257,9 +286,18 @@ public static partial class OrderEventParquetExtensions
                     buffer_2[idx] = item.Score;
                     buffer_3[idx] = item.Price;
                     buffer_4[idx] = item.CreatedAt;
-                    buffer_5[idx] = (int)item.Duration.TotalMilliseconds;
+                    buffer_5[idx] = checked((int)item.Duration.TotalMilliseconds);
                     buffer_6[idx] = item.CorrelationId;
-                    buffer_7[idx] = item.OptionalGuid;
+                    var val_7 = item.OptionalGuid;
+                    if (val_7.HasValue)
+                    {
+                        buffer_7[nonNullCount_7++] = val_7.Value;
+                        defLevels_7[idx] = 1;
+                    }
+                    else
+                    {
+                        defLevels_7[idx] = 0;
+                    }
                     buffer_8[idx] = item.Payload is null ? (global::System.ReadOnlyMemory<byte>?)null : global::System.MemoryExtensions.AsMemory(item.Payload);
                     idx++;
                 }
@@ -295,9 +333,11 @@ public static partial class OrderEventParquetExtensions
                     _field_6,
                     new global::System.ReadOnlyMemory<global::System.Guid>(buffer_6, 0, count),
                     cancellationToken: cancellationToken);
-                await groupWriter.WriteAsync<global::System.Guid>(
+                await groupWriter.WriteAllPartsAsync<global::System.Guid>(
                     _field_7,
-                    new global::System.ReadOnlyMemory<global::System.Guid?>(buffer_7, 0, count),
+                    new global::System.ReadOnlyMemory<global::System.Guid>(buffer_7, 0, nonNullCount_7),
+                    new global::System.ReadOnlyMemory<int>(defLevels_7, 0, count),
+                    null,
                     cancellationToken: cancellationToken);
                 await groupWriter.WriteAsync<global::System.ReadOnlyMemory<byte>>(
                     _field_8,
@@ -314,7 +354,8 @@ public static partial class OrderEventParquetExtensions
             global::System.Buffers.ArrayPool<System.DateTime>.Shared.Return(buffer_4, clearArray: false);
             global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_5, clearArray: false);
             global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(buffer_6, clearArray: false);
-            global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Return(buffer_7, clearArray: false);
+            global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(buffer_7, clearArray: false);
+            global::System.Buffers.ArrayPool<int>.Shared.Return(defLevels_7, clearArray: false);
             global::System.Buffers.ArrayPool<global::System.ReadOnlyMemory<byte>?>.Shared.Return(buffer_8, clearArray: true);
         }
     }

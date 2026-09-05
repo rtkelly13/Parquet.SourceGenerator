@@ -1,4 +1,4 @@
-#:package Parquet.Net@6.0.3
+#:package Parquet.Net@6.1.0
 
 using System;
 using System.Collections.Generic;

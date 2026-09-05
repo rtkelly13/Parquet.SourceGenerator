@@ -201,13 +201,24 @@ public static class CodeEmitter
         PropertyModel prop,
         string fieldAccess,
         string bufName,
+        int propIndex,
         string indent = "                "
     )
     {
         bool isString = prop.Kind == PropertyKind.Primitive && prop.TypeName.Contains("string");
         bool isByteArray = prop.Kind == PropertyKind.ByteArray;
 
-        if (isString)
+        if (BufferPoolComponent.UsesWriteAllParts(prop))
+        {
+            string nonNullType = BufferPoolComponent.GetNonNullableBufferType(prop);
+            return $"{indent}await groupWriter.WriteAllPartsAsync<{nonNullType}>(\n"
+                + $"{indent}    {fieldAccess},\n"
+                + $"{indent}    new global::System.ReadOnlyMemory<{nonNullType}>({bufName}, 0, nonNullCount_{propIndex}),\n"
+                + $"{indent}    new global::System.ReadOnlyMemory<int>(defLevels_{propIndex}, 0, count),\n"
+                + $"{indent}    null,\n"
+                + $"{indent}    cancellationToken: cancellationToken);";
+        }
+        else if (isString)
         {
             string memType = prop.IsNullable
                 ? "global::System.ReadOnlyMemory<char>?"
@@ -223,14 +234,16 @@ public static class CodeEmitter
         }
         else if (prop.Kind == PropertyKind.Guid)
         {
-            string memType = prop.IsNullable ? "global::System.Guid?" : "global::System.Guid";
-            return $"{indent}await groupWriter.WriteAsync<global::System.Guid>(\n{indent}    {fieldAccess},\n{indent}    new global::System.ReadOnlyMemory<{memType}>({bufName}, 0, count),\n{indent}    cancellationToken: cancellationToken);";
+            return $"{indent}await groupWriter.WriteAsync<global::System.Guid>(\n{indent}    {fieldAccess},\n{indent}    new global::System.ReadOnlyMemory<global::System.Guid>({bufName}, 0, count),\n{indent}    cancellationToken: cancellationToken);";
         }
         else if (prop.Kind == PropertyKind.Enum)
         {
             string underlying = prop.EnumUnderlyingTypeName ?? "int";
-            string memType = prop.IsNullable ? $"{underlying}?" : underlying;
-            return $"{indent}await groupWriter.WriteAsync<{underlying}>(\n{indent}    {fieldAccess},\n{indent}    new global::System.ReadOnlyMemory<{memType}>({bufName}, 0, count),\n{indent}    cancellationToken: cancellationToken);";
+            return $"{indent}await groupWriter.WriteAsync<{underlying}>(\n{indent}    {fieldAccess},\n{indent}    new global::System.ReadOnlyMemory<{underlying}>({bufName}, 0, count),\n{indent}    cancellationToken: cancellationToken);";
+        }
+        else if (prop.Kind == PropertyKind.TimeSpan)
+        {
+            return $"{indent}await groupWriter.WriteAsync<int>(\n{indent}    {fieldAccess},\n{indent}    new global::System.ReadOnlyMemory<int>({bufName}, 0, count),\n{indent}    cancellationToken: cancellationToken);";
         }
         else if (prop.Kind == PropertyKind.TimeSpan)
         {
@@ -245,8 +258,7 @@ public static class CodeEmitter
         else
         {
             string structType = prop.TypeName.TrimEnd('?');
-            string memType = prop.IsNullable ? $"{structType}?" : structType;
-            return $"{indent}await groupWriter.WriteAsync<{structType}>(\n{indent}    {fieldAccess},\n{indent}    new global::System.ReadOnlyMemory<{memType}>({bufName}, 0, count),\n{indent}    cancellationToken: cancellationToken);";
+            return $"{indent}await groupWriter.WriteAsync<{structType}>(\n{indent}    {fieldAccess},\n{indent}    new global::System.ReadOnlyMemory<{structType}>({bufName}, 0, count),\n{indent}    cancellationToken: cancellationToken);";
         }
     }
 
@@ -330,7 +342,7 @@ public static class CodeEmitter
         builder.AppendLine("        if (count == 0) return;");
         builder.AppendLine();
 
-        BufferPoolComponent.EmitRentals(builder, model, "count", isWrite: true);
+        BufferPoolComponent.EmitWriteRentals(builder, model, "count");
 
         builder.AppendLine();
         builder.AppendLine("        try");
@@ -478,7 +490,7 @@ public static class CodeEmitter
         {
             PropertyModel prop = model.Properties[i];
             string fieldAccess = $"_field_{i}";
-            builder.AppendLine(GetWritePrimitiveCall(prop, fieldAccess, $"buffer_{i}"));
+            builder.AppendLine(GetWritePrimitiveCall(prop, fieldAccess, $"buffer_{i}", i));
         }
 
         builder.AppendLine("            }");
@@ -486,7 +498,7 @@ public static class CodeEmitter
         builder.AppendLine("        finally");
         builder.AppendLine("        {");
 
-        BufferPoolComponent.EmitReturns(builder, model, isWrite: true);
+        BufferPoolComponent.EmitWriteReturns(builder, model);
 
         builder.AppendLine("        }");
         builder.AppendLine("    }");
@@ -1755,8 +1767,34 @@ public static class CodeEmitter
         for (int i = 0; i < model.Properties.Length; i++)
         {
             PropertyModel prop = model.Properties[i];
-            string writeExpr = GetWriteExpression(prop, $"item.{prop.Name}");
-            builder.AppendLine($"{prefix}{bufPrefix}{i}[i] = {writeExpr};");
+            if (BufferPoolComponent.UsesWriteAllParts(prop))
+            {
+                string valVar = $"val_{i}";
+                builder.AppendLine($"{prefix}var {valVar} = item.{prop.Name};");
+                builder.AppendLine($"{prefix}if ({valVar}.HasValue)");
+                builder.AppendLine($"{prefix}{{");
+                string nonNullExpr = prop.Kind switch
+                {
+                    PropertyKind.Enum => $"({prop.EnumUnderlyingTypeName ?? "int"}){valVar}.Value",
+                    PropertyKind.TimeSpan => $"checked((int){valVar}.Value.TotalMilliseconds)",
+                    PropertyKind.TimeOnly => $"{valVar}.Value.Ticks / 10L",
+                    _ => $"{valVar}.Value",
+                };
+                builder.AppendLine(
+                    $"{prefix}    {bufPrefix}{i}[nonNullCount_{i}++] = {nonNullExpr};"
+                );
+                builder.AppendLine($"{prefix}    defLevels_{i}[i] = 1;");
+                builder.AppendLine($"{prefix}}}");
+                builder.AppendLine($"{prefix}else");
+                builder.AppendLine($"{prefix}{{");
+                builder.AppendLine($"{prefix}    defLevels_{i}[i] = 0;");
+                builder.AppendLine($"{prefix}}}");
+            }
+            else
+            {
+                string writeExpr = GetWriteExpression(prop, $"item.{prop.Name}");
+                builder.AppendLine($"{prefix}{bufPrefix}{i}[i] = {writeExpr};");
+            }
         }
     }
 
@@ -1770,8 +1808,34 @@ public static class CodeEmitter
         for (int i = 0; i < model.Properties.Length; i++)
         {
             PropertyModel prop = model.Properties[i];
-            string writeExpr = GetWriteExpression(prop, $"item.{prop.Name}");
-            builder.AppendLine($"{prefix}{bufPrefix}{i}[idx] = {writeExpr};");
+            if (BufferPoolComponent.UsesWriteAllParts(prop))
+            {
+                string valVar = $"val_{i}";
+                builder.AppendLine($"{prefix}var {valVar} = item.{prop.Name};");
+                builder.AppendLine($"{prefix}if ({valVar}.HasValue)");
+                builder.AppendLine($"{prefix}{{");
+                string nonNullExpr = prop.Kind switch
+                {
+                    PropertyKind.Enum => $"({prop.EnumUnderlyingTypeName ?? "int"}){valVar}.Value",
+                    PropertyKind.TimeSpan => $"checked((int){valVar}.Value.TotalMilliseconds)",
+                    PropertyKind.TimeOnly => $"{valVar}.Value.Ticks / 10L",
+                    _ => $"{valVar}.Value",
+                };
+                builder.AppendLine(
+                    $"{prefix}    {bufPrefix}{i}[nonNullCount_{i}++] = {nonNullExpr};"
+                );
+                builder.AppendLine($"{prefix}    defLevels_{i}[idx] = 1;");
+                builder.AppendLine($"{prefix}}}");
+                builder.AppendLine($"{prefix}else");
+                builder.AppendLine($"{prefix}{{");
+                builder.AppendLine($"{prefix}    defLevels_{i}[idx] = 0;");
+                builder.AppendLine($"{prefix}}}");
+            }
+            else
+            {
+                string writeExpr = GetWriteExpression(prop, $"item.{prop.Name}");
+                builder.AppendLine($"{prefix}{bufPrefix}{i}[idx] = {writeExpr};");
+            }
         }
     }
 

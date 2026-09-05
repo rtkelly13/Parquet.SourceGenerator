@@ -182,8 +182,8 @@ internal static class PropertyMappingComponent
         if (prop.Kind == PropertyKind.TimeSpan)
         {
             return prop.IsNullable
-                ? $"{valueExpression} is null ? (int?)null : (int){valueExpression}.Value.TotalMilliseconds"
-                : $"(int){valueExpression}.TotalMilliseconds";
+                ? $"{valueExpression} is null ? (int?)null : checked((int){valueExpression}.Value.TotalMilliseconds)"
+                : $"checked((int){valueExpression}.TotalMilliseconds)";
         }
 
         if (prop.Kind == PropertyKind.TimeOnly)
