@@ -16,6 +16,10 @@ public sealed class AttributesTests
         Assert.Equal(ParquetCompressionMethod.Snappy, options.CompressionMethod);
         Assert.Null(options.CompressionLevel);
         Assert.False(options.DeduplicateStrings);
+        Assert.Null(options.DictionaryEncodingThreshold);
+        Assert.Null(options.DictionaryEncodingSampleSize);
+        Assert.NotNull(options.ColumnEncodingHints);
+        Assert.Empty(options.ColumnEncodingHints);
 
         // Default returns a fresh instance each time to prevent accidental mutation of shared state
         var options2 = ParquetSerializerOptions.Default;
@@ -32,6 +36,9 @@ public sealed class AttributesTests
             CompressionMethod = ParquetCompressionMethod.Zstd,
             CompressionLevel = ParquetCompressionLevel.SmallestSize,
             DeduplicateStrings = true,
+            DictionaryEncodingThreshold = 0.5,
+            DictionaryEncodingSampleSize = 500,
+            ColumnEncodingHints = { ["test_col"] = ParquetColumnEncoding.DeltaBinaryPacked },
         };
 
         Assert.Equal(10_000, options.RowGroupSize);
@@ -39,6 +46,23 @@ public sealed class AttributesTests
         Assert.Equal(ParquetCompressionMethod.Zstd, options.CompressionMethod);
         Assert.Equal(ParquetCompressionLevel.SmallestSize, options.CompressionLevel);
         Assert.True(options.DeduplicateStrings);
+        Assert.Equal(0.5, options.DictionaryEncodingThreshold);
+        Assert.Equal(500, options.DictionaryEncodingSampleSize);
+        Assert.Single(options.ColumnEncodingHints);
+        Assert.Equal(
+            ParquetColumnEncoding.DeltaBinaryPacked,
+            options.ColumnEncodingHints["test_col"]
+        );
+    }
+
+    [Theory]
+    [InlineData(ParquetColumnEncoding.Default)]
+    [InlineData(ParquetColumnEncoding.Dictionary)]
+    [InlineData(ParquetColumnEncoding.DeltaBinaryPacked)]
+    [InlineData(ParquetColumnEncoding.ByteSplitStream)]
+    public void ParquetColumnEncodingEnumValuesAreValid(ParquetColumnEncoding encoding)
+    {
+        Assert.True(Enum.IsDefined(encoding));
     }
 
     [Theory]
@@ -66,10 +90,15 @@ public sealed class AttributesTests
     [Fact]
     public void ParquetColumnAttributeStoresProperties()
     {
-        var attr = new ParquetColumnAttribute("test_col") { Order = 42 };
+        var attr = new ParquetColumnAttribute("test_col")
+        {
+            Order = 42,
+            Encoding = ParquetColumnEncoding.DeltaBinaryPacked,
+        };
 
         Assert.Equal("test_col", attr.Name);
         Assert.Equal(42, attr.Order);
+        Assert.Equal(ParquetColumnEncoding.DeltaBinaryPacked, attr.Encoding);
     }
 
     [Fact]

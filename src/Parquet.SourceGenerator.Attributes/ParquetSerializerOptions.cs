@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace Parquet.SourceGenerator;
 
@@ -133,6 +134,27 @@ public sealed class ParquetSerializerOptions
     /// dramatically reducing managed heap allocations and memory footprint for low-cardinality columns.
     /// </summary>
     public bool DeduplicateStrings { get; set; }
+
+    /// <summary>
+    /// Gets or sets the dictionary uniqueness threshold, which is a value from 0 (no unique values) to 1 (all values are unique)
+    /// indicating when dictionary encoding is applied. Uniqueness factor needs to be less than or equal to this threshold.
+    /// Null leaves Parquet.Net's default in place (0.8).
+    /// </summary>
+    public double? DictionaryEncodingThreshold { get; set; }
+
+    /// <summary>
+    /// Gets or sets the number of values to sample before attempting full dictionary encoding.
+    /// When positive, a quick uniqueness check is performed on the first sample to determine if dictionary encoding should be applied,
+    /// avoiding expensive full-column scans on high-cardinality data. Default is null (leaving Parquet.Net's default of 0 / full scan).
+    /// </summary>
+    public int? DictionaryEncodingSampleSize { get; set; }
+
+    /// <summary>
+    /// Specifies runtime encoding hints to the writer for specific columns by column path or name.
+    /// Takes precedence over or supplements compile-time attribute annotations.
+    /// </summary>
+    public IDictionary<string, ParquetColumnEncoding> ColumnEncodingHints { get; } =
+        new Dictionary<string, ParquetColumnEncoding>(StringComparer.Ordinal);
 
     // UseMicrosecondTimestamps has been removed. It could never have worked: the schema is emitted
     // at compile time into a `static readonly ParquetSchema Schema`, so no runtime flag can change

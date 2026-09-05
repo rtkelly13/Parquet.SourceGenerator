@@ -1,8 +1,16 @@
 #nullable enable
+Parquet.SourceGenerator.Models.ColumnEncoding
+Parquet.SourceGenerator.Models.ColumnEncoding.ByteSplitStream = 3 -> Parquet.SourceGenerator.Models.ColumnEncoding
+Parquet.SourceGenerator.Models.ColumnEncoding.Default = 0 -> Parquet.SourceGenerator.Models.ColumnEncoding
+Parquet.SourceGenerator.Models.ColumnEncoding.DeltaBinaryPacked = 2 -> Parquet.SourceGenerator.Models.ColumnEncoding
+Parquet.SourceGenerator.Models.ColumnEncoding.Dictionary = 1 -> Parquet.SourceGenerator.Models.ColumnEncoding
 Parquet.SourceGenerator.Models.PropertyKind.TimeOnly = 7 -> Parquet.SourceGenerator.Models.PropertyKind
 Parquet.SourceGenerator.Models.PropertyModel.Deduplicate.get -> bool
 Parquet.SourceGenerator.Models.PropertyModel.Deduplicate.init -> void
-Parquet.SourceGenerator.Models.PropertyModel.PropertyModel(string! Name, string! ParquetColumnName, string! TypeName, string? TimestampUnit, string? EnumUnderlyingTypeName, int Order, int? DecimalPrecision, int? DecimalScale, Parquet.SourceGenerator.Models.PropertyKind Kind, bool IsNullable, bool Deduplicate = false) -> void
+Parquet.SourceGenerator.Models.PropertyModel.Encoding.get -> Parquet.SourceGenerator.Models.ColumnEncoding
+Parquet.SourceGenerator.Models.PropertyModel.Encoding.init -> void
+Parquet.SourceGenerator.Models.PropertyModel.PropertyModel(string! Name, string! ParquetColumnName, string! TypeName, string? TimestampUnit, string? EnumUnderlyingTypeName, int Order, int? DecimalPrecision, int? DecimalScale, Parquet.SourceGenerator.Models.PropertyKind Kind, bool IsNullable, bool Deduplicate) -> void
+Parquet.SourceGenerator.Models.PropertyModel.PropertyModel(string! Name, string! ParquetColumnName, string! TypeName, string? TimestampUnit, string? EnumUnderlyingTypeName, int Order, int? DecimalPrecision, int? DecimalScale, Parquet.SourceGenerator.Models.PropertyKind Kind, bool IsNullable, bool Deduplicate = false, Parquet.SourceGenerator.Models.ColumnEncoding Encoding = Parquet.SourceGenerator.Models.ColumnEncoding.Default) -> void
 Parquet.SourceGenerator.Models.TargetClassModel.HasSingleInstanceField.get -> bool
 Parquet.SourceGenerator.Models.TargetClassModel.HasSingleInstanceField.init -> void
 Parquet.SourceGenerator.Models.TargetClassModel.IsUnmanaged.get -> bool

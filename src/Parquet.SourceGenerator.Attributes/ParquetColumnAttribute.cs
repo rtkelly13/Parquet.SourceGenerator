@@ -46,4 +46,37 @@ public sealed class ParquetColumnAttribute : Attribute
     /// reducing managed heap allocations and memory footprint for low-cardinality columns.
     /// </summary>
     public bool Deduplicate { get; set; }
+
+    /// <summary>
+    /// Gets or sets the physical column encoding hint to use when serializing this column.
+    /// </summary>
+    public ParquetColumnEncoding Encoding { get; set; } = ParquetColumnEncoding.Default;
+}
+
+/// <summary>
+/// Specifies the physical column encoding hint to apply when serializing column data.
+/// </summary>
+public enum ParquetColumnEncoding
+{
+    /// <summary>
+    /// Default encoding, chosen automatically based on data type and cardinality heuristics.
+    /// </summary>
+    Default = 0,
+
+    /// <summary>
+    /// Dictionary encoding (PLAIN_DICTIONARY / RLE_DICTIONARY). Applies to string and byte[] fields.
+    /// </summary>
+    Dictionary = 1,
+
+    /// <summary>
+    /// Delta binary packed encoding (DELTA_BINARY_PACKED). Applies to 32-bit and 64-bit integer fields.
+    /// Highly effective for monotonic sequence numbers, IDs, and timestamps.
+    /// </summary>
+    DeltaBinaryPacked = 2,
+
+    /// <summary>
+    /// Byte stream split encoding (BYTE_STREAM_SPLIT). Applies to floating-point (float, double) and integer fields.
+    /// Transposes floating point bytes to group exponent and mantissa bytes contiguously.
+    /// </summary>
+    ByteSplitStream = 3,
 }

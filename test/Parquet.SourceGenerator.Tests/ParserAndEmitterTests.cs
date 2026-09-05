@@ -195,6 +195,91 @@ public sealed class ParserAndEmitterTests
         Assert.Equal("PARQ001", diagnostic.Id);
     }
 
+    [Fact]
+    public void PropertyModelEncodingEqualityAndCodeEmission()
+    {
+        var propDefault = new PropertyModel(
+            "Id",
+            "id",
+            "int",
+            null,
+            null,
+            1,
+            null,
+            null,
+            PropertyKind.Primitive,
+            false
+        );
+
+        var propDelta = new PropertyModel(
+            "Id",
+            "id",
+            "int",
+            null,
+            null,
+            1,
+            null,
+            null,
+            PropertyKind.Primitive,
+            false,
+            Encoding: ColumnEncoding.DeltaBinaryPacked
+        );
+
+        var propDictionary = new PropertyModel(
+            "Tag",
+            "tag",
+            "string",
+            null,
+            null,
+            2,
+            null,
+            null,
+            PropertyKind.Primitive,
+            false,
+            Encoding: ColumnEncoding.Dictionary
+        );
+
+        var propByteSplit = new PropertyModel(
+            "Value",
+            "value",
+            "double",
+            null,
+            null,
+            3,
+            null,
+            null,
+            PropertyKind.Primitive,
+            false,
+            Encoding: ColumnEncoding.ByteSplitStream
+        );
+
+        Assert.Equal(ColumnEncoding.Default, propDefault.Encoding);
+        Assert.Equal(ColumnEncoding.DeltaBinaryPacked, propDelta.Encoding);
+        Assert.NotEqual(propDefault, propDelta);
+
+        var targetClass = new TargetClassModel(
+            Namespace: "TestEncodingNamespace",
+            ClassName: "TestEncodingEntity",
+            Properties: new EquatableArray<PropertyModel>(
+                new[] { propDelta, propDictionary, propByteSplit }
+            )
+        );
+
+        string source = CodeEmitter.EmitSource(targetClass);
+        Assert.Contains(
+            "formatOptions.ColumnEncodingHints[\"id\"] = global::Parquet.EncodingHint.DeltaBinaryPacked;",
+            source
+        );
+        Assert.Contains(
+            "formatOptions.ColumnEncodingHints[\"tag\"] = global::Parquet.EncodingHint.Dictionary;",
+            source
+        );
+        Assert.Contains(
+            "formatOptions.ColumnEncodingHints[\"value\"] = global::Parquet.EncodingHint.ByteSplitStream;",
+            source
+        );
+    }
+
     // ── Parquet.Net Contract Enforcement Tests ─────────────────────────────
 
     [Fact]

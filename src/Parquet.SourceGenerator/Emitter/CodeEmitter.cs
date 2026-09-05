@@ -51,7 +51,7 @@ public static class CodeEmitter
             builder.AppendLine();
         }
 
-        EmitBuildFormatOptions(builder);
+        EmitBuildFormatOptions(builder, model);
         builder.AppendLine();
 
         if (StringDeduplicatorComponent.HasStringProperties(model))
@@ -123,7 +123,7 @@ public static class CodeEmitter
     //  FORMAT OPTIONS & PRIMITIVES
     // ──────────────────────────────────────────────────────────
 
-    private static void EmitBuildFormatOptions(StringBuilder builder)
+    private static void EmitBuildFormatOptions(StringBuilder builder, TargetClassModel model)
     {
         builder.AppendLine("    /// <summary>");
         builder.AppendLine(
@@ -190,6 +190,62 @@ public static class CodeEmitter
         builder.AppendLine(
             "                _ => global::System.IO.Compression.CompressionLevel.SmallestSize,"
         );
+        builder.AppendLine("            };");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        if (options.DictionaryEncodingThreshold.HasValue)");
+        builder.AppendLine("        {");
+        builder.AppendLine(
+            "            formatOptions.DictionaryEncodingThreshold = options.DictionaryEncodingThreshold.Value;"
+        );
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        if (options.DictionaryEncodingSampleSize.HasValue)");
+        builder.AppendLine("        {");
+        builder.AppendLine(
+            "            formatOptions.DictionaryEncodingSampleSize = options.DictionaryEncodingSampleSize.Value;"
+        );
+        builder.AppendLine("        }");
+
+        foreach (var prop in model.Properties)
+        {
+            if (prop.Encoding != ColumnEncoding.Default)
+            {
+                string hintValue = prop.Encoding switch
+                {
+                    ColumnEncoding.Dictionary => "global::Parquet.EncodingHint.Dictionary",
+                    ColumnEncoding.DeltaBinaryPacked =>
+                        "global::Parquet.EncodingHint.DeltaBinaryPacked",
+                    ColumnEncoding.ByteSplitStream =>
+                        "global::Parquet.EncodingHint.ByteSplitStream",
+                    _ => "global::Parquet.EncodingHint.Default",
+                };
+                builder.AppendLine(
+                    $"        formatOptions.ColumnEncodingHints[\"{prop.ParquetColumnName}\"] = {hintValue};"
+                );
+            }
+        }
+
+        builder.AppendLine();
+        builder.AppendLine("        foreach (var kvp in options.ColumnEncodingHints)");
+        builder.AppendLine("        {");
+        builder.AppendLine(
+            "            formatOptions.ColumnEncodingHints[kvp.Key] = kvp.Value switch"
+        );
+        builder.AppendLine("            {");
+        builder.AppendLine(
+            "                global::Parquet.SourceGenerator.ParquetColumnEncoding.Dictionary =>"
+        );
+        builder.AppendLine("                    global::Parquet.EncodingHint.Dictionary,");
+        builder.AppendLine(
+            "                global::Parquet.SourceGenerator.ParquetColumnEncoding.DeltaBinaryPacked =>"
+        );
+        builder.AppendLine("                    global::Parquet.EncodingHint.DeltaBinaryPacked,");
+        builder.AppendLine(
+            "                global::Parquet.SourceGenerator.ParquetColumnEncoding.ByteSplitStream =>"
+        );
+        builder.AppendLine("                    global::Parquet.EncodingHint.ByteSplitStream,");
+        builder.AppendLine("                _ => global::Parquet.EncodingHint.Default,");
         builder.AppendLine("            };");
         builder.AppendLine("        }");
         builder.AppendLine();
