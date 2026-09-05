@@ -46,6 +46,8 @@ Welcome to the **Parquet.SourceGenerator** documentation repository. This folder
    - Deterministic test dataset matrix (01 through 05).
    - Mathematical row generation formulas and null rules.
    - Python (`PyArrow` via `uv`) and C# (`Parquet.Net` via `dotnet run`) dataset generation tooling.
+   - Cryptographic hash-based regression suite and bit-for-bit determinism validation.
+
 
 8. **[07 - Known Limitations & Remediation Plan](./07-KNOWN-LIMITATIONS.md)**
    - Audited gaps between intended design and observed behaviour, with severity markers.
