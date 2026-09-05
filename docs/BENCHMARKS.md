@@ -10,10 +10,12 @@ The following baseline metrics compare **`Parquet.SourceGenerator`** against **`
 
 | Operation | Scale | Reflection Baseline | Source Generator | Speedup | Memory Reduction |
 |:--- |:---:|:---:|:---:|:---:|:---:|
-| **File Serialization (Write)** | 100,000 items | 7.71 ms (12.63 MB) | **3.65 ms** (**7.02 MB**) | ⚡ **2.1x faster** | 📉 **44% less memory** |
-| **Streaming Batched Write** | 100,000 items | 7.71 ms (12.63 MB) | **4.41 ms** (**5.45 MB**) | ⚡ **1.8x faster** | 📉 **57% less memory** |
-| **File Deserialization (Read)** | 100,000 items | 5.05 ms (4.62 MB) | **6.29 ms** (**10.91 MB**) | 1.25x baseline | 2.36x alloc |
-| **Guid Serialization** | 100,000 items | 14.70 ms (29.50 MB) | **9.11 ms** (**18.10 MB**) | ⚡ **1.6x faster** | 📉 **39% less memory** |
+| **File Serialization (Write)** | 100,000 items | 7.05 ms (11.00 MB) | **2.91 ms** (**5.74 MB**) | ⚡ **2.4x faster** | 📉 **48% less memory** |
+| **Streaming Batched Write** | 100,000 items | 7.05 ms (11.00 MB) | **3.50 ms** (**5.03 MB**) | ⚡ **2.0x faster** | 📉 **54% less memory** |
+| **File Deserialization (Read)** | 100,000 items | 9.81 ms (12.30 MB) | **5.57 ms** (**8.99 MB**) | ⚡ **1.8x faster** | 📉 **27% less memory** |
+| **Parallel Deserialization (Read)** | 100,000 items | 9.81 ms (12.30 MB) | **5.68 ms** (**9.86 MB**) | ⚡ **1.7x faster** | 📉 **20% less memory** |
+| **Streaming Read (IAsyncEnumerable)** | 100,000 items | 9.81 ms (12.30 MB) | **4.13 ms** (**8.22 MB**) | ⚡ **2.4x faster** | 📉 **33% less memory** |
+| **Guid Serialization** | 100,000 items | 8.97 ms (17.70 MB) | **6.82 ms** (**10.70 MB**) | ⚡ **1.3x faster** | 📉 **40% less memory** |
 
 ---
 
@@ -39,11 +41,15 @@ BenchmarkDotNet measurements comparing reflection deserialization (`ParquetSeria
 
 | Operation | Dataset | Rows | Reflection Baseline | Source Generator | Speedup | Memory Reduction |
 |:--- |:--- |:---:|:---:|:---:|:---:|:---:|
-| **TPC-H LineItem Read** | TPC-H SF 0.01 | 60,175 | 18.2 ms (14.2 MB) | **14.8 ms** (**11.4 MB**) | ⚡ **1.2x faster** | 📉 **20% less memory** |
-| **TPC-H Parallel Read (4 Cores)** | TPC-H SF 0.01 | 60,175 | 18.2 ms (14.2 MB) | **7.1 ms** (**12.8 MB**) | ⚡ **2.6x faster** | 📉 **10% less memory** |
-| **TPC-H Streaming Read** | TPC-H SF 0.01 | 60,175 | 18.2 ms (14.2 MB) | **14.5 ms** (**10.9 MB**) | ⚡ **1.3x faster** | 📉 **23% less memory** |
-| **Adult Census Read (Dictionaries)** | Adult Census | 32,561 | 9.4 ms (6.8 MB) | **6.9 ms** (**5.2 MB**) | ⚡ **1.4x faster** | 📉 **24% less memory** |
-| **Adult Census Parallel Read** | Adult Census | 32,561 | 9.4 ms (6.8 MB) | **3.8 ms** (**5.9 MB**) | ⚡ **2.5x faster** | 📉 **13% less memory** |
+| **TPC-H LineItem Read** | TPC-H SF 0.01 | 60,175 | 85.46 ms (55.11 MB) | **55.29 ms** (**38.59 MB**) | ⚡ **1.5x faster** | 📉 **30% less memory** |
+| **TPC-H Parallel Read (4 Cores)** | TPC-H SF 0.01 | 60,175 | 85.46 ms (55.11 MB) | **58.27 ms** (**39.07 MB**) | ⚡ **1.4x faster** | 📉 **29% less memory** |
+| **TPC-H Streaming Read** | TPC-H SF 0.01 | 60,175 | 85.46 ms (55.11 MB) | **44.44 ms** (**38.13 MB**) | ⚡ **1.9x faster** | 📉 **31% less memory** |
+| **Adult Census Read (Dictionaries)** | Adult Census | 32,561 | 37.94 ms (29.25 MB) | **28.74 ms** (**20.24 MB**) | ⚡ **1.3x faster** | 📉 **31% less memory** |
+| **Adult Census Parallel Read** | Adult Census | 32,561 | 37.94 ms (29.25 MB) | **30.07 ms** (**22.90 MB**) | ⚡ **1.3x faster** | 📉 **22% less memory** |
+| **Adult Census Streaming Read** | Adult Census | 32,561 | 37.94 ms (29.25 MB) | **11.49 ms** (**19.99 MB**) | ⚡ **3.3x faster** | 📉 **32% less memory** |
+| **Diamonds Read** | Diamonds | 53,940 | 22.09 ms (19.78 MB) | **11.92 ms** (**12.52 MB**) | ⚡ **1.9x faster** | 📉 **37% less memory** |
+| **Diamonds Parallel Read** | Diamonds | 53,940 | 22.09 ms (19.78 MB) | **13.63 ms** (**15.65 MB**) | ⚡ **1.6x faster** | 📉 **21% less memory** |
+| **Diamonds Streaming Read** | Diamonds | 53,940 | 22.09 ms (19.78 MB) | **7.52 ms** (**12.11 MB**) | ⚡ **2.9x faster** | 📉 **39% less memory** |
 
 ### 🗜️ TPC-H LineItem Multi-Codec Serialization Throughput (60,175 rows)
 
@@ -51,10 +57,10 @@ Comparing write throughput across standard columnar compression formats using th
 
 | Codec | Compression Level | Write Time | Allocated Memory | Output Characteristics |
 |:--- |:---:|:---:|:---:|:--- |
-| **Snappy** | Default | **12.4 ms** | **18.6 MB** | High compression speed, standard Parquet default |
-| **Zstandard** | Fastest | **11.9 ms** | **17.9 MB** | Fast analytical compression |
-| **Zstandard** | Optimal | **18.7 ms** | **18.2 MB** | High compression ratio for archival / storage |
-| **Uncompressed** | None | **8.2 ms** | **16.4 MB** | Zero CPU overhead, ideal for IPC / temporary caches |
+| **Snappy** | Default | **37.85 ms** | **14.89 MB** | High compression speed, standard Parquet default |
+| **Zstandard** | Fastest | **48.32 ms** | **22.40 MB** | Fast analytical compression |
+| **Zstandard** | Optimal | **49.94 ms** | **23.06 MB** | High compression ratio for archival / storage |
+| **Uncompressed** | None | **30.77 ms** | **38.18 MB** | Zero CPU overhead, ideal for IPC / temporary caches |
 
 ---
 
