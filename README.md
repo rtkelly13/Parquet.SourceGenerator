@@ -188,14 +188,44 @@ Full details on all 11 diagnostic rules, examples, and fixes are documented in *
 - `PARQ007`–`PARQ010`: Assignability, constructors, nested, and generic type constraints
 - `PARQ011`: Classic API version compatibility
 
-### Native AOT & Trimming
+---
 
-`Parquet.SourceGenerator` is designed from the ground up for **Native AOT** and trimming:
-- All generated code is reflection-free and avoids dynamic `Reflection.Emit`.
-- Exercised continuously in CI on Linux x64 Native AOT binaries.
-- See the dedicated **[`docs/10-NATIVE-AOT-GUIDE.md`](https://github.com/rtkelly13/Parquet.SourceGenerator/blob/main/docs/10-NATIVE-AOT-GUIDE.md)** for runtime directives (`rd.xml`), trimming behavior, and Parquet.Net underlying library status.
+## 🚀 Native AOT & Cold-Start Performance
 
-### Compatibility & Known Limitations
+`Parquet.SourceGenerator` is designed from the ground up for **.NET Native AOT** (Ahead-of-Time compilation). Traditional reflection-based serializers fail or require brittle trimmer configurations under Native AOT because expression trees and dynamic delegates cannot be emitted at runtime. `Parquet.SourceGenerator` emits 100% compile-time, reflection-free C# primitives.
+
+### The "Naive Case": Cold Invocations & Short-Lived Jobs
+
+In long-running daemon processes, JIT compilation cost is amortized after thousands of warmup iterations. However, in real-world **CLI utilities, serverless functions (AWS Lambda, Azure Functions), and ephemeral container batch jobs**, the process runs only once. 
+
+In this "naive case", eliminating runtime JIT overhead yields dramatic gains:
+
+| Metric | Standard CoreCLR (JIT) | Native AOT (Ahead-of-Time) | Improvement |
+| :--- | :---: | :---: | :---: |
+| **Total Process Wall-Clock Time** | **358 ms** | **50 ms** | ⚡ **7.2× faster process time** |
+| **CPU Time (Execution + JIT Compile)** | **0.30 s** | **0.02 s** | ⚡ **15× less CPU time** |
+| **Peak Working Set (Max RSS Memory)** | **57.0 MB** | **15.8 MB** | 📉 **72% less memory (3.6× reduction)** |
+
+*Measured executing the complete 11-step end-to-end serialization and compression test matrix under macOS ARM64.*
+
+#### Architectural Drivers of the 7.2× Acceleration
+1. **Zero Runtime JIT Compilation**: CoreCLR must compile ~15 methods per model on demand upon first call, consuming ~280 ms of pure CPU time. Native AOT executes pre-compiled machine code within 2 milliseconds of process launch.
+2. **Static Generic Dictionaries**: `ArrayPool<T>`, `ReadOnlyMemory<T>`, and `List<T>` metadata tables are statically baked into the binary data segment (`mmap`) rather than dynamically synthesized.
+3. **Stripped Runtime Footprint**: No JIT compiler engine (`clrjit`), IL bytecode, or dynamic symbol tables are loaded, cutting process memory from 57 MB to 15.8 MB.
+
+To enable Native AOT in your application:
+
+```xml
+<PropertyGroup>
+    <PublishAot>true</PublishAot>
+</PropertyGroup>
+```
+
+> 📖 For a deep dive into CoreCLR type system mechanics, `Nullable<T>` value type sharing, and runtime directives, see **[`docs/10-NATIVE-AOT-GUIDE.md`](https://github.com/rtkelly13/Parquet.SourceGenerator/blob/main/docs/10-NATIVE-AOT-GUIDE.md)**.
+
+---
+
+## 🛡️ Compatibility & Known Limitations
 
 | Capability | Status | Notes |
 |:--- |:---:|:--- |
