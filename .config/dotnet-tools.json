@@ -29,13 +29,6 @@
         "dotnet-inspect"
       ],
       "rollForward": false
-    },
-    "dotnet-coverage": {
-      "version": "18.11.0",
-      "commands": [
-        "dotnet-coverage"
-      ],
-      "rollForward": false
     }
   }
 }
