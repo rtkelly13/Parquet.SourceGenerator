@@ -18,8 +18,8 @@ using System.Xml.Linq;
 
 string? inputPath = null;
 string? outputMarkdownPath = null;
-double minLineRate = 10.0;
-double minBranchRate = 10.0;
+double minLineRate = 85.0;
+double minBranchRate = 70.0;
 
 for (int i = 0; i < args.Length; i++)
 {
@@ -70,10 +70,10 @@ for (int i = 0; i < args.Length; i++)
                 "  --output-markdown, -o <path>   Output markdown file path (for sticky PR comment)"
             );
             Console.WriteLine(
-                "  --min-line <percent>           Minimum required line coverage percentage (default: 10.0)"
+                "  --min-line <percent>           Minimum required line coverage percentage (default: 85.0)"
             );
             Console.WriteLine(
-                "  --min-branch <percent>         Minimum required branch coverage percentage (default: 10.0)"
+                "  --min-branch <percent>         Minimum required branch coverage percentage (default: 70.0)"
             );
             return 0;
     }
@@ -227,7 +227,7 @@ md.AppendLine("| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |"
 foreach (var pkg in sortedPackages)
 {
     bool passed = pkg.LineRate >= minLineRate && pkg.BranchRate >= minBranchRate;
-    string status = passed ? "✅ Pass" : "❌ Fail";
+    string status = passed ? "✅ Pass" : "⚠️ Sub-target";
     md.AppendLine(
         CultureInfo.InvariantCulture,
         $"| `{pkg.Name}` | {pkg.LinesCovered:N0} | {pkg.LinesValid:N0} | {pkg.LineRate:F2}% | {pkg.BranchesCovered:N0} | {pkg.BranchesValid:N0} | {pkg.BranchRate:F2}% | {status} |"
