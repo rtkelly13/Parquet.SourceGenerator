@@ -292,52 +292,72 @@ public static partial class ScalarMetricParquetExtensions
                     _field_0,
                     new global::System.ReadOnlyMemory<long>(buffer_0, 0, count),
                     cancellationToken: cancellationToken);
+                global::System.Buffers.ArrayPool<long>.Shared.Return(buffer_0, clearArray: false);
+                buffer_0 = null!;
                 await groupWriter.WriteAsync<bool>(
                     _field_1,
                     new global::System.ReadOnlyMemory<bool>(buffer_1, 0, count),
                     cancellationToken: cancellationToken);
+                global::System.Buffers.ArrayPool<bool>.Shared.Return(buffer_1, clearArray: false);
+                buffer_1 = null!;
                 await groupWriter.WriteAllPartsAsync<bool>(
                     _field_2,
                     new global::System.ReadOnlyMemory<bool>(buffer_2, 0, nonNullCount_2),
                     new global::System.ReadOnlyMemory<int>(defLevels_2, 0, count),
                     null,
                     cancellationToken: cancellationToken);
+                global::System.Buffers.ArrayPool<bool>.Shared.Return(buffer_2, clearArray: false);
+                buffer_2 = null!;
+                global::System.Buffers.ArrayPool<int>.Shared.Return(defLevels_2, clearArray: false);
+                defLevels_2 = null!;
                 await groupWriter.WriteAsync<int>(
                     _field_3,
                     new global::System.ReadOnlyMemory<int>(buffer_3, 0, count),
                     cancellationToken: cancellationToken);
+                global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_3, clearArray: false);
+                buffer_3 = null!;
                 await groupWriter.WriteAllPartsAsync<int>(
                     _field_4,
                     new global::System.ReadOnlyMemory<int>(buffer_4, 0, nonNullCount_4),
                     new global::System.ReadOnlyMemory<int>(defLevels_4, 0, count),
                     null,
                     cancellationToken: cancellationToken);
+                global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_4, clearArray: false);
+                buffer_4 = null!;
+                global::System.Buffers.ArrayPool<int>.Shared.Return(defLevels_4, clearArray: false);
+                defLevels_4 = null!;
                 await groupWriter.WriteAsync<byte>(
                     _field_5,
                     new global::System.ReadOnlyMemory<byte>(buffer_5, 0, count),
                     cancellationToken: cancellationToken);
+                global::System.Buffers.ArrayPool<byte>.Shared.Return(buffer_5, clearArray: false);
+                buffer_5 = null!;
                 await groupWriter.WriteAsync<short>(
                     _field_6,
                     new global::System.ReadOnlyMemory<short>(buffer_6, 0, count),
                     cancellationToken: cancellationToken);
+                global::System.Buffers.ArrayPool<short>.Shared.Return(buffer_6, clearArray: false);
+                buffer_6 = null!;
                 await groupWriter.WriteAsync<float>(
                     _field_7,
                     new global::System.ReadOnlyMemory<float>(buffer_7, 0, count),
                     cancellationToken: cancellationToken);
+                global::System.Buffers.ArrayPool<float>.Shared.Return(buffer_7, clearArray: false);
+                buffer_7 = null!;
             }
         }
         finally
         {
-            global::System.Buffers.ArrayPool<long>.Shared.Return(buffer_0, clearArray: false);
-            global::System.Buffers.ArrayPool<bool>.Shared.Return(buffer_1, clearArray: false);
-            global::System.Buffers.ArrayPool<bool>.Shared.Return(buffer_2, clearArray: false);
-            global::System.Buffers.ArrayPool<int>.Shared.Return(defLevels_2, clearArray: false);
-            global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_3, clearArray: false);
-            global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_4, clearArray: false);
-            global::System.Buffers.ArrayPool<int>.Shared.Return(defLevels_4, clearArray: false);
-            global::System.Buffers.ArrayPool<byte>.Shared.Return(buffer_5, clearArray: false);
-            global::System.Buffers.ArrayPool<short>.Shared.Return(buffer_6, clearArray: false);
-            global::System.Buffers.ArrayPool<float>.Shared.Return(buffer_7, clearArray: false);
+            if (buffer_0 != null) global::System.Buffers.ArrayPool<long>.Shared.Return(buffer_0, clearArray: false);
+            if (buffer_1 != null) global::System.Buffers.ArrayPool<bool>.Shared.Return(buffer_1, clearArray: false);
+            if (buffer_2 != null) global::System.Buffers.ArrayPool<bool>.Shared.Return(buffer_2, clearArray: false);
+            if (defLevels_2 != null) global::System.Buffers.ArrayPool<int>.Shared.Return(defLevels_2, clearArray: false);
+            if (buffer_3 != null) global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_3, clearArray: false);
+            if (buffer_4 != null) global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_4, clearArray: false);
+            if (defLevels_4 != null) global::System.Buffers.ArrayPool<int>.Shared.Return(defLevels_4, clearArray: false);
+            if (buffer_5 != null) global::System.Buffers.ArrayPool<byte>.Shared.Return(buffer_5, clearArray: false);
+            if (buffer_6 != null) global::System.Buffers.ArrayPool<short>.Shared.Return(buffer_6, clearArray: false);
+            if (buffer_7 != null) global::System.Buffers.ArrayPool<float>.Shared.Return(buffer_7, clearArray: false);
         }
     }
 

@@ -121,7 +121,43 @@ internal static class BufferPoolComponent
     }
 
     /// <summary>
-    /// Emits ArrayPool returns for write property column buffers.
+    /// Emits eager ArrayPool return and nulling for a single write property column buffer immediately after writing.
+    /// </summary>
+    public static void EmitSingleWriteReturn(
+        StringBuilder builder,
+        PropertyModel prop,
+        int propIndex,
+        string varPrefix = "buffer_",
+        string indent = "                "
+    )
+    {
+        if (UsesWriteAllParts(prop))
+        {
+            string nonNullType = GetNonNullableBufferType(prop);
+            builder.AppendLine(
+                $"{indent}global::System.Buffers.ArrayPool<{nonNullType}>.Shared.Return({varPrefix}{propIndex}, clearArray: false);"
+            );
+            builder.AppendLine($"{indent}{varPrefix}{propIndex} = null!;");
+            builder.AppendLine(
+                $"{indent}global::System.Buffers.ArrayPool<int>.Shared.Return(defLevels_{propIndex}, clearArray: false);"
+            );
+            builder.AppendLine($"{indent}defLevels_{propIndex} = null!;");
+        }
+        else
+        {
+            string bufType = GetWriteBufferElementType(prop);
+            bool isRef = IsReferenceTypeBuffer(prop, isWrite: true);
+            string clearArg = isRef ? "clearArray: true" : "clearArray: false";
+            builder.AppendLine(
+                $"{indent}global::System.Buffers.ArrayPool<{bufType}>.Shared.Return({varPrefix}{propIndex}, {clearArg});"
+            );
+            builder.AppendLine($"{indent}{varPrefix}{propIndex} = null!;");
+        }
+    }
+
+    /// <summary>
+    /// Emits ArrayPool returns for write property column buffers in the finally block with null checks
+    /// for exception safety (handling any buffers that were not yet eagerly returned).
     /// </summary>
     public static void EmitWriteReturns(
         StringBuilder builder,
@@ -137,10 +173,10 @@ internal static class BufferPoolComponent
             {
                 string nonNullType = GetNonNullableBufferType(prop);
                 builder.AppendLine(
-                    $"{indent}global::System.Buffers.ArrayPool<{nonNullType}>.Shared.Return({varPrefix}{i}, clearArray: false);"
+                    $"{indent}if ({varPrefix}{i} != null) global::System.Buffers.ArrayPool<{nonNullType}>.Shared.Return({varPrefix}{i}, clearArray: false);"
                 );
                 builder.AppendLine(
-                    $"{indent}global::System.Buffers.ArrayPool<int>.Shared.Return(defLevels_{i}, clearArray: false);"
+                    $"{indent}if (defLevels_{i} != null) global::System.Buffers.ArrayPool<int>.Shared.Return(defLevels_{i}, clearArray: false);"
                 );
             }
             else
@@ -149,7 +185,7 @@ internal static class BufferPoolComponent
                 bool isRef = IsReferenceTypeBuffer(prop, isWrite: true);
                 string clearArg = isRef ? "clearArray: true" : "clearArray: false";
                 builder.AppendLine(
-                    $"{indent}global::System.Buffers.ArrayPool<{bufType}>.Shared.Return({varPrefix}{i}, {clearArg});"
+                    $"{indent}if ({varPrefix}{i} != null) global::System.Buffers.ArrayPool<{bufType}>.Shared.Return({varPrefix}{i}, {clearArg});"
                 );
             }
         }

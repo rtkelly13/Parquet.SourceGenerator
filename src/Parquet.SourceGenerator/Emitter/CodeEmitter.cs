@@ -491,6 +491,13 @@ public static class CodeEmitter
             PropertyModel prop = model.Properties[i];
             string fieldAccess = $"_field_{i}";
             builder.AppendLine(GetWritePrimitiveCall(prop, fieldAccess, $"buffer_{i}", i));
+            BufferPoolComponent.EmitSingleWriteReturn(
+                builder,
+                prop,
+                i,
+                "buffer_",
+                indent: "                "
+            );
         }
 
         builder.AppendLine("            }");
