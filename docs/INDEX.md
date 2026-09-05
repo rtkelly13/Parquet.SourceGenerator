@@ -60,6 +60,10 @@ Welcome to the **Parquet.SourceGenerator** documentation repository. This folder
    - Managed memory dump capture and automated SOS triage analysis.
    - Diagnosing heap allocations, buffer leaks, Large Object Heap (LOH), and Pinned Object Heap (POH).
 
+11. **[10 - Native AOT & Type System Guide](./10-NATIVE-AOT-GUIDE.md)**
+    - Comprehensive supported types matrix and Native AOT runtime behavior.
+    - Deep-dive into `Nullable<T>` value type mechanics, CoreCLR `TypeUnifier.WithVerifiedTypeHandle`, and code-sharing limits.
+    - Analysis of the Parquet.Net 6.1.0 `ReadOnlyMemory<T>` shift and resolution via Runtime Directives (`rd.xml`).
 
 ---
 

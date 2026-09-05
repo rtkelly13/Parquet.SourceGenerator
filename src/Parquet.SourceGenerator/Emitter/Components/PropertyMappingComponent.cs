@@ -150,13 +150,29 @@ internal static class PropertyMappingComponent
     /// </summary>
     public static string GetWriteExpression(PropertyModel prop, string valueExpression)
     {
-        if (prop.Kind != PropertyKind.Enum)
-            return valueExpression;
+        if (prop.Kind == PropertyKind.Enum)
+        {
+            string underlying = prop.EnumUnderlyingTypeName ?? "int";
+            return prop.IsNullable
+                ? $"{valueExpression} is null ? ({underlying}?)null : ({underlying}){valueExpression}.Value"
+                : $"({underlying}){valueExpression}";
+        }
 
-        string underlying = prop.EnumUnderlyingTypeName ?? "int";
-        return prop.IsNullable
-            ? $"{valueExpression} is null ? ({underlying}?)null : ({underlying}){valueExpression}.Value"
-            : $"({underlying}){valueExpression}";
+        if (prop.Kind == PropertyKind.TimeSpan)
+        {
+            return prop.IsNullable
+                ? $"{valueExpression} is null ? (int?)null : (int){valueExpression}.Value.TotalMilliseconds"
+                : $"(int){valueExpression}.TotalMilliseconds";
+        }
+
+        if (prop.Kind == PropertyKind.TimeOnly)
+        {
+            return prop.IsNullable
+                ? $"{valueExpression} is null ? (long?)null : {valueExpression}.Value.Ticks / 10L"
+                : $"{valueExpression}.Ticks / 10L";
+        }
+
+        return valueExpression;
     }
 
     /// <summary>
@@ -169,6 +185,20 @@ internal static class PropertyMappingComponent
             return prop.IsNullable
                 ? $"{valueExpression} is null ? ({prop.TypeName})null : ({prop.TypeName.TrimEnd('?')}){valueExpression}!"
                 : $"({prop.TypeName.TrimEnd('?')}){valueExpression}";
+        }
+
+        if (prop.Kind == PropertyKind.TimeSpan)
+        {
+            return prop.IsNullable
+                ? $"{valueExpression} is null ? (global::System.TimeSpan?)null : global::System.TimeSpan.FromMilliseconds({valueExpression}.Value)"
+                : $"global::System.TimeSpan.FromMilliseconds({valueExpression})";
+        }
+
+        if (prop.Kind == PropertyKind.TimeOnly)
+        {
+            return prop.IsNullable
+                ? $"{valueExpression} is null ? (global::System.TimeOnly?)null : new global::System.TimeOnly({valueExpression}.Value * 10L)"
+                : $"new global::System.TimeOnly({valueExpression} * 10L)";
         }
 
         if (prop.Kind == PropertyKind.Primitive && prop.TypeName.Contains("string"))

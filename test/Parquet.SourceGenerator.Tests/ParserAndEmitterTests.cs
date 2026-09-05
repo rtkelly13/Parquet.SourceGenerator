@@ -136,7 +136,7 @@ public sealed class ParserAndEmitterTests
         Assert.Contains("public static partial class TestEntityParquetExtensions", source);
         Assert.Contains("DecimalDataField", source);
         Assert.Contains("DateTimeDataField", source);
-        Assert.Contains("TimeSpanDataField", source);
+        Assert.Contains("TimeDataField", source);
         Assert.Contains("WriteParquetRowGroupAsync", source);
         Assert.Contains("ReadParquetParallelAsync", source);
     }

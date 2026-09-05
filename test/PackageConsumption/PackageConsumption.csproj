@@ -27,6 +27,6 @@
       resolve and this project fails to compile, which is exactly the regression to catch.
     -->
         <PackageReference Include="Parquet.SourceGenerator" Version="$(GeneratorPackageVersion)" />
-        <PackageReference Include="Parquet.Net" Version="6.0.3" />
+        <PackageReference Include="Parquet.Net" Version="6.1.0" />
     </ItemGroup>
 </Project>

@@ -1,4 +1,5 @@
 #nullable enable
+Parquet.SourceGenerator.Models.PropertyKind.TimeOnly = 7 -> Parquet.SourceGenerator.Models.PropertyKind
 Parquet.SourceGenerator.Models.PropertyModel.Deduplicate.get -> bool
 Parquet.SourceGenerator.Models.PropertyModel.Deduplicate.init -> void
 Parquet.SourceGenerator.Models.PropertyModel.PropertyModel(string! Name, string! ParquetColumnName, string! TypeName, string? TimestampUnit, string? EnumUnderlyingTypeName, int Order, int? DecimalPrecision, int? DecimalScale, Parquet.SourceGenerator.Models.PropertyKind Kind, bool IsNullable, bool Deduplicate = false) -> void
