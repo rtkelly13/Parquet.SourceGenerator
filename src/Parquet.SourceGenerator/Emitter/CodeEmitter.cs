@@ -494,11 +494,7 @@ public static class CodeEmitter
             builder.AppendLine(
                 "                    var span = global::System.Runtime.InteropServices.CollectionsMarshal.AsSpan(listItems);"
             );
-            builder.AppendLine("                    for (int i = 0; i < count; i++)");
-            builder.AppendLine("                    {");
-            builder.AppendLine("                        var item = span[i];");
-            EmitPropertyAssignments(builder, model, "buffer_", prefix: "                        ");
-            builder.AppendLine("                    }");
+            EmitUnboundExtractionLoop(builder, model, "span");
             builder.AppendLine("                }");
             builder.AppendLine("                ExtractSpan();");
             builder.AppendLine("#else");
@@ -513,11 +509,19 @@ public static class CodeEmitter
             // Array fast path
             builder.AppendLine($"            else if (chunk is {model.ClassName}[] arrayItems)");
             builder.AppendLine("            {");
+            builder.AppendLine("#if NET6_0_OR_GREATER");
+            builder.AppendLine("                void ExtractArray()");
+            builder.AppendLine("                {");
+            EmitUnboundExtractionLoop(builder, model, "arrayItems", sourceIsArray: true);
+            builder.AppendLine("                }");
+            builder.AppendLine("                ExtractArray();");
+            builder.AppendLine("#else");
             builder.AppendLine("                for (int i = 0; i < count; i++)");
             builder.AppendLine("                {");
             builder.AppendLine($"                    var item = arrayItems[i];");
             EmitPropertyAssignments(builder, model, "buffer_", prefix: "                    ");
             builder.AppendLine("                }");
+            builder.AppendLine("#endif");
             builder.AppendLine("            }");
 
             // Enumerable fallback
@@ -1819,6 +1823,93 @@ public static class CodeEmitter
     // ──────────────────────────────────────────────────────────
     //  TYPE MAPPING & HELPERS
     // ──────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Emits a bounds-check-free extraction loop over a contiguous source (List span or array):
+    /// all source and destination element accesses go through Unsafe.Add on raw refs obtained
+    /// before the loop, so the JIT executes zero per-iteration bounds checks (issue #144).
+    /// </summary>
+    private static void EmitUnboundExtractionLoop(
+        StringBuilder builder,
+        TargetClassModel model,
+        string sourceExpr,
+        bool sourceIsArray = false
+    )
+    {
+        string indent = "                    ";
+        string srcRefDecl = sourceIsArray
+            ? $"ref var srcRef_ = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference({sourceExpr});"
+            : $"ref var srcRef_ = ref global::System.Runtime.InteropServices.MemoryMarshal.GetReference({sourceExpr});";
+        builder.AppendLine($"{indent}{srcRefDecl}");
+
+        for (int i = 0; i < model.Properties.Length; i++)
+        {
+            PropertyModel prop = model.Properties[i];
+            builder.AppendLine(
+                $"{indent}ref var dstRef_{i} = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_{i});"
+            );
+            if (BufferPoolComponent.UsesWriteAllParts(prop))
+            {
+                builder.AppendLine(
+                    $"{indent}ref var defRef_{i} = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(defLevels_{i});"
+                );
+            }
+        }
+
+        builder.AppendLine($"{indent}for (int i = 0; i < count; i++)");
+        builder.AppendLine($"{indent}{{");
+        builder.AppendLine(
+            $"{indent}    ref readonly var item = ref global::System.Runtime.CompilerServices.Unsafe.Add(ref srcRef_, i);"
+        );
+        EmitUnboundPropertyAssignments(builder, model, indent + "    ");
+        builder.AppendLine($"{indent}}}");
+    }
+
+    private static void EmitUnboundPropertyAssignments(
+        StringBuilder builder,
+        TargetClassModel model,
+        string prefix
+    )
+    {
+        for (int i = 0; i < model.Properties.Length; i++)
+        {
+            PropertyModel prop = model.Properties[i];
+            if (BufferPoolComponent.UsesWriteAllParts(prop))
+            {
+                string valVar = $"val_{i}";
+                builder.AppendLine($"{prefix}var {valVar} = item.{prop.Name};");
+                builder.AppendLine($"{prefix}if ({valVar}.HasValue)");
+                builder.AppendLine($"{prefix}{{");
+                string nonNullExpr = prop.Kind switch
+                {
+                    PropertyKind.Enum => $"({prop.EnumUnderlyingTypeName ?? "int"}){valVar}.Value",
+                    PropertyKind.TimeSpan => $"checked((int){valVar}.Value.TotalMilliseconds)",
+                    PropertyKind.TimeOnly => $"{valVar}.Value.Ticks / 10L",
+                    _ => $"{valVar}.Value",
+                };
+                builder.AppendLine(
+                    $"{prefix}    global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_{i}, nonNullCount_{i}++) = {nonNullExpr};"
+                );
+                builder.AppendLine(
+                    $"{prefix}    global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_{i}, i) = 1;"
+                );
+                builder.AppendLine($"{prefix}}}");
+                builder.AppendLine($"{prefix}else");
+                builder.AppendLine($"{prefix}{{");
+                builder.AppendLine(
+                    $"{prefix}    global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_{i}, i) = 0;"
+                );
+                builder.AppendLine($"{prefix}}}");
+            }
+            else
+            {
+                string writeExpr = GetWriteExpression(prop, $"item.{prop.Name}");
+                builder.AppendLine(
+                    $"{prefix}global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_{i}, i) = {writeExpr};"
+                );
+            }
+        }
+    }
 
     private static void EmitPropertyAssignments(
         StringBuilder builder,

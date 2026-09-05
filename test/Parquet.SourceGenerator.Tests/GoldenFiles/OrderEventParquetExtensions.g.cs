@@ -226,27 +226,38 @@ public static partial class OrderEventParquetExtensions
                 void ExtractSpan()
                 {
                     var span = global::System.Runtime.InteropServices.CollectionsMarshal.AsSpan(listItems);
+                    ref var srcRef_ = ref global::System.Runtime.InteropServices.MemoryMarshal.GetReference(span);
+                    ref var dstRef_0 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_0);
+                    ref var dstRef_1 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_1);
+                    ref var dstRef_2 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_2);
+                    ref var dstRef_3 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_3);
+                    ref var dstRef_4 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_4);
+                    ref var dstRef_5 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_5);
+                    ref var dstRef_6 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_6);
+                    ref var dstRef_7 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_7);
+                    ref var defRef_7 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(defLevels_7);
+                    ref var dstRef_8 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_8);
                     for (int i = 0; i < count; i++)
                     {
-                        var item = span[i];
-                        buffer_0[i] = item.Id;
-                        buffer_1[i] = item.Name is null ? (global::System.ReadOnlyMemory<char>?)null : global::System.MemoryExtensions.AsMemory(item.Name);
-                        buffer_2[i] = item.Score;
-                        buffer_3[i] = item.Price;
-                        buffer_4[i] = item.CreatedAt;
-                        buffer_5[i] = checked((int)item.Duration.TotalMilliseconds);
-                        buffer_6[i] = item.CorrelationId;
+                        ref readonly var item = ref global::System.Runtime.CompilerServices.Unsafe.Add(ref srcRef_, i);
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_0, i) = item.Id;
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_1, i) = item.Name is null ? (global::System.ReadOnlyMemory<char>?)null : global::System.MemoryExtensions.AsMemory(item.Name);
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_2, i) = item.Score;
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_3, i) = item.Price;
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_4, i) = item.CreatedAt;
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_5, i) = checked((int)item.Duration.TotalMilliseconds);
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_6, i) = item.CorrelationId;
                         var val_7 = item.OptionalGuid;
                         if (val_7.HasValue)
                         {
-                            buffer_7[nonNullCount_7++] = val_7.Value;
-                            defLevels_7[i] = 1;
+                            global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_7, nonNullCount_7++) = val_7.Value;
+                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_7, i) = 1;
                         }
                         else
                         {
-                            defLevels_7[i] = 0;
+                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_7, i) = 0;
                         }
-                        buffer_8[i] = item.Payload is null ? (global::System.ReadOnlyMemory<byte>?)null : global::System.MemoryExtensions.AsMemory(item.Payload);
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_8, i) = item.Payload is null ? (global::System.ReadOnlyMemory<byte>?)null : global::System.MemoryExtensions.AsMemory(item.Payload);
                     }
                 }
                 ExtractSpan();
@@ -277,6 +288,45 @@ public static partial class OrderEventParquetExtensions
             }
             else if (chunk is OrderEvent[] arrayItems)
             {
+#if NET6_0_OR_GREATER
+                void ExtractArray()
+                {
+                    ref var srcRef_ = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(arrayItems);
+                    ref var dstRef_0 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_0);
+                    ref var dstRef_1 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_1);
+                    ref var dstRef_2 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_2);
+                    ref var dstRef_3 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_3);
+                    ref var dstRef_4 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_4);
+                    ref var dstRef_5 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_5);
+                    ref var dstRef_6 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_6);
+                    ref var dstRef_7 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_7);
+                    ref var defRef_7 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(defLevels_7);
+                    ref var dstRef_8 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_8);
+                    for (int i = 0; i < count; i++)
+                    {
+                        ref readonly var item = ref global::System.Runtime.CompilerServices.Unsafe.Add(ref srcRef_, i);
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_0, i) = item.Id;
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_1, i) = item.Name is null ? (global::System.ReadOnlyMemory<char>?)null : global::System.MemoryExtensions.AsMemory(item.Name);
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_2, i) = item.Score;
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_3, i) = item.Price;
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_4, i) = item.CreatedAt;
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_5, i) = checked((int)item.Duration.TotalMilliseconds);
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_6, i) = item.CorrelationId;
+                        var val_7 = item.OptionalGuid;
+                        if (val_7.HasValue)
+                        {
+                            global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_7, nonNullCount_7++) = val_7.Value;
+                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_7, i) = 1;
+                        }
+                        else
+                        {
+                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_7, i) = 0;
+                        }
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_8, i) = item.Payload is null ? (global::System.ReadOnlyMemory<byte>?)null : global::System.MemoryExtensions.AsMemory(item.Payload);
+                    }
+                }
+                ExtractArray();
+#else
                 for (int i = 0; i < count; i++)
                 {
                     var item = arrayItems[i];
@@ -299,6 +349,7 @@ public static partial class OrderEventParquetExtensions
                     }
                     buffer_8[i] = item.Payload is null ? (global::System.ReadOnlyMemory<byte>?)null : global::System.MemoryExtensions.AsMemory(item.Payload);
                 }
+#endif
             }
             else
             {

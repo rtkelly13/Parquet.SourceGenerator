@@ -177,35 +177,46 @@ public static partial class ScalarMetricParquetExtensions
                 void ExtractSpan()
                 {
                     var span = global::System.Runtime.InteropServices.CollectionsMarshal.AsSpan(listItems);
+                    ref var srcRef_ = ref global::System.Runtime.InteropServices.MemoryMarshal.GetReference(span);
+                    ref var dstRef_0 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_0);
+                    ref var dstRef_1 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_1);
+                    ref var dstRef_2 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_2);
+                    ref var defRef_2 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(defLevels_2);
+                    ref var dstRef_3 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_3);
+                    ref var dstRef_4 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_4);
+                    ref var defRef_4 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(defLevels_4);
+                    ref var dstRef_5 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_5);
+                    ref var dstRef_6 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_6);
+                    ref var dstRef_7 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_7);
                     for (int i = 0; i < count; i++)
                     {
-                        var item = span[i];
-                        buffer_0[i] = item.RowId;
-                        buffer_1[i] = item.Flag;
+                        ref readonly var item = ref global::System.Runtime.CompilerServices.Unsafe.Add(ref srcRef_, i);
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_0, i) = item.RowId;
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_1, i) = item.Flag;
                         var val_2 = item.NullableFlag;
                         if (val_2.HasValue)
                         {
-                            buffer_2[nonNullCount_2++] = val_2.Value;
-                            defLevels_2[i] = 1;
+                            global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_2, nonNullCount_2++) = val_2.Value;
+                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_2, i) = 1;
                         }
                         else
                         {
-                            defLevels_2[i] = 0;
+                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_2, i) = 0;
                         }
-                        buffer_3[i] = (int)item.StatusCode;
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_3, i) = (int)item.StatusCode;
                         var val_4 = item.OptionalStatus;
                         if (val_4.HasValue)
                         {
-                            buffer_4[nonNullCount_4++] = (int)val_4.Value;
-                            defLevels_4[i] = 1;
+                            global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_4, nonNullCount_4++) = (int)val_4.Value;
+                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_4, i) = 1;
                         }
                         else
                         {
-                            defLevels_4[i] = 0;
+                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_4, i) = 0;
                         }
-                        buffer_5[i] = item.TinyNum;
-                        buffer_6[i] = item.ShortNum;
-                        buffer_7[i] = item.FloatVal;
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_5, i) = item.TinyNum;
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_6, i) = item.ShortNum;
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_7, i) = item.FloatVal;
                     }
                 }
                 ExtractSpan();
@@ -244,6 +255,53 @@ public static partial class ScalarMetricParquetExtensions
             }
             else if (chunk is ScalarMetric[] arrayItems)
             {
+#if NET6_0_OR_GREATER
+                void ExtractArray()
+                {
+                    ref var srcRef_ = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(arrayItems);
+                    ref var dstRef_0 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_0);
+                    ref var dstRef_1 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_1);
+                    ref var dstRef_2 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_2);
+                    ref var defRef_2 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(defLevels_2);
+                    ref var dstRef_3 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_3);
+                    ref var dstRef_4 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_4);
+                    ref var defRef_4 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(defLevels_4);
+                    ref var dstRef_5 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_5);
+                    ref var dstRef_6 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_6);
+                    ref var dstRef_7 = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_7);
+                    for (int i = 0; i < count; i++)
+                    {
+                        ref readonly var item = ref global::System.Runtime.CompilerServices.Unsafe.Add(ref srcRef_, i);
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_0, i) = item.RowId;
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_1, i) = item.Flag;
+                        var val_2 = item.NullableFlag;
+                        if (val_2.HasValue)
+                        {
+                            global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_2, nonNullCount_2++) = val_2.Value;
+                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_2, i) = 1;
+                        }
+                        else
+                        {
+                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_2, i) = 0;
+                        }
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_3, i) = (int)item.StatusCode;
+                        var val_4 = item.OptionalStatus;
+                        if (val_4.HasValue)
+                        {
+                            global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_4, nonNullCount_4++) = (int)val_4.Value;
+                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_4, i) = 1;
+                        }
+                        else
+                        {
+                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_4, i) = 0;
+                        }
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_5, i) = item.TinyNum;
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_6, i) = item.ShortNum;
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_7, i) = item.FloatVal;
+                    }
+                }
+                ExtractArray();
+#else
                 for (int i = 0; i < count; i++)
                 {
                     var item = arrayItems[i];
@@ -274,6 +332,7 @@ public static partial class ScalarMetricParquetExtensions
                     buffer_6[i] = item.ShortNum;
                     buffer_7[i] = item.FloatVal;
                 }
+#endif
             }
             else
             {
