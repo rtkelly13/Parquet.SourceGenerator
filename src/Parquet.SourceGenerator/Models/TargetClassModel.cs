@@ -16,9 +16,25 @@ public sealed record TargetClassModel(
     string ClassName,
     EquatableArray<PropertyModel> Properties,
     bool IsValueType = false,
-    bool IsUnmanaged = false
+    bool IsUnmanaged = false,
+    bool HasSingleInstanceField = false
 ) : IEquatable<TargetClassModel>
 {
+    /// <summary>
+    /// Backwards-compatible constructor overload without single instance field metadata.
+    /// </summary>
+    public TargetClassModel(
+        string Namespace,
+        string ClassName,
+        EquatableArray<PropertyModel> Properties,
+        bool IsValueType,
+        bool IsUnmanaged
+    )
+        : this(Namespace, ClassName, Properties, IsValueType, IsUnmanaged, false)
+    {
+        // Backwards-compatible overload
+    }
+
     /// <summary>
     /// Backwards-compatible constructor overload without value type / unmanaged metadata.
     /// </summary>
@@ -27,7 +43,7 @@ public sealed record TargetClassModel(
         string ClassName,
         EquatableArray<PropertyModel> Properties
     )
-        : this(Namespace, ClassName, Properties, false, false)
+        : this(Namespace, ClassName, Properties, false, false, false)
     {
         // Backwards-compatible overload
     }
