@@ -304,6 +304,8 @@ public class TpchLineItemBenchmark
 public class AdultCensusBenchmark
 {
     private byte[] _rawBytes = null!;
+    private List<BenchmarkAdultCensus> _records = null!;
+    private ParquetSerializerOptions _snappyOptions = null!;
 
     [GlobalSetup]
     public void Setup()
@@ -335,6 +337,16 @@ public class AdultCensusBenchmark
         }
 
         _rawBytes = System.IO.File.ReadAllBytes(dataPath);
+
+        using var initStream = new MemoryStream(_rawBytes);
+        _records = BenchmarkAdultCensusParquetExtensions
+            .ReadParquetAsync(initStream)
+            .GetAwaiter()
+            .GetResult();
+        _snappyOptions = new ParquetSerializerOptions
+        {
+            CompressionMethod = ParquetCompressionMethod.Snappy,
+        };
     }
 
     [Benchmark(Baseline = true)]
@@ -373,6 +385,13 @@ public class AdultCensusBenchmark
             count++;
         }
         return count;
+    }
+
+    [Benchmark]
+    public async Task WriteSnappyAsync()
+    {
+        using var stream = new MemoryStream();
+        await _records.WriteParquetAsync(stream, options: _snappyOptions);
     }
 }
 

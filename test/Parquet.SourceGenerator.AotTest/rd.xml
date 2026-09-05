@@ -2,6 +2,14 @@
     <Application>
         <Assembly Name="System.Private.CoreLib">
             <Type
+                Name="System.ReadOnlyMemory`1[[System.Char, System.Private.CoreLib]]"
+                Dynamic="Required All"
+            />
+            <Type
+                Name="System.ReadOnlyMemory`1[[System.Byte, System.Private.CoreLib]]"
+                Dynamic="Required All"
+            />
+            <Type
                 Name="System.Nullable`1[[System.ReadOnlyMemory`1[[System.Char, System.Private.CoreLib]], System.Private.CoreLib]]"
                 Dynamic="Required All"
             />
