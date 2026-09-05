@@ -92,7 +92,7 @@ jobs:
       # EnforceCodeStyleInBuild plus -warnaserror, which uses the real compilation where generators
       # do run.
       - name: Restore local tools
-        run: dotnet tool restore
+        run: dotnet tool restore --disable-parallel
 
       - name: Verify C# Code Formatting (CSharpier)
         run: dotnet csharpier check .
