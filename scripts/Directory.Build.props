@@ -1,0 +1,3 @@
+<Project>
+    <!-- Intentionally empty to isolate standalone script execution from repository build props -->
+</Project>
