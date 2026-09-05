@@ -309,54 +309,74 @@ public static partial class OrderEventParquetExtensions
                     _field_0,
                     new global::System.ReadOnlyMemory<int>(buffer_0, 0, count),
                     cancellationToken: cancellationToken);
+                global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_0, clearArray: false);
+                buffer_0 = null!;
                 await groupWriter.WriteAsync<global::System.ReadOnlyMemory<char>>(
                     _field_1,
                     new global::System.ReadOnlyMemory<global::System.ReadOnlyMemory<char>?>(buffer_1, 0, count),
                     cancellationToken: cancellationToken);
+                global::System.Buffers.ArrayPool<global::System.ReadOnlyMemory<char>?>.Shared.Return(buffer_1, clearArray: true);
+                buffer_1 = null!;
                 await groupWriter.WriteAsync<double>(
                     _field_2,
                     new global::System.ReadOnlyMemory<double>(buffer_2, 0, count),
                     cancellationToken: cancellationToken);
+                global::System.Buffers.ArrayPool<double>.Shared.Return(buffer_2, clearArray: false);
+                buffer_2 = null!;
                 await groupWriter.WriteAsync<decimal>(
                     _field_3,
                     new global::System.ReadOnlyMemory<decimal>(buffer_3, 0, count),
                     cancellationToken: cancellationToken);
+                global::System.Buffers.ArrayPool<decimal>.Shared.Return(buffer_3, clearArray: false);
+                buffer_3 = null!;
                 await groupWriter.WriteAsync<System.DateTime>(
                     _field_4,
                     new global::System.ReadOnlyMemory<System.DateTime>(buffer_4, 0, count),
                     cancellationToken: cancellationToken);
+                global::System.Buffers.ArrayPool<System.DateTime>.Shared.Return(buffer_4, clearArray: false);
+                buffer_4 = null!;
                 await groupWriter.WriteAsync<int>(
                     _field_5,
                     new global::System.ReadOnlyMemory<int>(buffer_5, 0, count),
                     cancellationToken: cancellationToken);
+                global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_5, clearArray: false);
+                buffer_5 = null!;
                 await groupWriter.WriteAsync<global::System.Guid>(
                     _field_6,
                     new global::System.ReadOnlyMemory<global::System.Guid>(buffer_6, 0, count),
                     cancellationToken: cancellationToken);
+                global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(buffer_6, clearArray: false);
+                buffer_6 = null!;
                 await groupWriter.WriteAllPartsAsync<global::System.Guid>(
                     _field_7,
                     new global::System.ReadOnlyMemory<global::System.Guid>(buffer_7, 0, nonNullCount_7),
                     new global::System.ReadOnlyMemory<int>(defLevels_7, 0, count),
                     null,
                     cancellationToken: cancellationToken);
+                global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(buffer_7, clearArray: false);
+                buffer_7 = null!;
+                global::System.Buffers.ArrayPool<int>.Shared.Return(defLevels_7, clearArray: false);
+                defLevels_7 = null!;
                 await groupWriter.WriteAsync<global::System.ReadOnlyMemory<byte>>(
                     _field_8,
                     new global::System.ReadOnlyMemory<global::System.ReadOnlyMemory<byte>?>(buffer_8, 0, count),
                     cancellationToken: cancellationToken);
+                global::System.Buffers.ArrayPool<global::System.ReadOnlyMemory<byte>?>.Shared.Return(buffer_8, clearArray: true);
+                buffer_8 = null!;
             }
         }
         finally
         {
-            global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_0, clearArray: false);
-            global::System.Buffers.ArrayPool<global::System.ReadOnlyMemory<char>?>.Shared.Return(buffer_1, clearArray: true);
-            global::System.Buffers.ArrayPool<double>.Shared.Return(buffer_2, clearArray: false);
-            global::System.Buffers.ArrayPool<decimal>.Shared.Return(buffer_3, clearArray: false);
-            global::System.Buffers.ArrayPool<System.DateTime>.Shared.Return(buffer_4, clearArray: false);
-            global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_5, clearArray: false);
-            global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(buffer_6, clearArray: false);
-            global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(buffer_7, clearArray: false);
-            global::System.Buffers.ArrayPool<int>.Shared.Return(defLevels_7, clearArray: false);
-            global::System.Buffers.ArrayPool<global::System.ReadOnlyMemory<byte>?>.Shared.Return(buffer_8, clearArray: true);
+            if (buffer_0 != null) global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_0, clearArray: false);
+            if (buffer_1 != null) global::System.Buffers.ArrayPool<global::System.ReadOnlyMemory<char>?>.Shared.Return(buffer_1, clearArray: true);
+            if (buffer_2 != null) global::System.Buffers.ArrayPool<double>.Shared.Return(buffer_2, clearArray: false);
+            if (buffer_3 != null) global::System.Buffers.ArrayPool<decimal>.Shared.Return(buffer_3, clearArray: false);
+            if (buffer_4 != null) global::System.Buffers.ArrayPool<System.DateTime>.Shared.Return(buffer_4, clearArray: false);
+            if (buffer_5 != null) global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_5, clearArray: false);
+            if (buffer_6 != null) global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(buffer_6, clearArray: false);
+            if (buffer_7 != null) global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(buffer_7, clearArray: false);
+            if (defLevels_7 != null) global::System.Buffers.ArrayPool<int>.Shared.Return(defLevels_7, clearArray: false);
+            if (buffer_8 != null) global::System.Buffers.ArrayPool<global::System.ReadOnlyMemory<byte>?>.Shared.Return(buffer_8, clearArray: true);
         }
     }
 
