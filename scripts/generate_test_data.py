@@ -1,7 +1,7 @@
 # /// script
 # dependencies = [
-#     "pyarrow",
-#     "numpy",
+#     "pyarrow>=17.0.0,<=25.0.1",
+#     "numpy>=1.26.0,<=2.5.2",
 # ]
 # ///
 
