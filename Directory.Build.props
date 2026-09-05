@@ -32,6 +32,8 @@
         <PackageReadmeFile>PACKAGE_README.md</PackageReadmeFile>
         <PublishRepositoryUrl>true</PublishRepositoryUrl>
         <EmbedUntrackedSources>true</EmbedUntrackedSources>
+        <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'"
+            >true</ContinuousIntegrationBuild>
         <DebugType>embedded</DebugType>
         <DebugSymbols>true</DebugSymbols>
     </PropertyGroup>

@@ -45,10 +45,12 @@ jobs:
 
       - name: Verify No Python Files in PR Diff
         if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
           echo "Checking PR diff for forbidden Python (.py) files..."
-          git fetch origin ${{ github.base_ref }} --depth=1
-          new_py=$(git diff --name-only --diff-filter=ACMR origin/${{ github.base_ref }}...HEAD | grep -E '\.py$' | grep -v '^scripts/generate_test_data\.py$' || true)
+          git fetch origin "$BASE_REF" --depth=1
+          new_py=$(git diff --name-only --diff-filter=ACMR "origin/$BASE_REF...HEAD" | grep -E '\.py$' | grep -v '^scripts/generate_test_data\.py$' || true)
           if [ -n "$new_py" ]; then
             echo "::error::Pull request introduces forbidden Python (.py) files:"
             echo "$new_py"
@@ -79,7 +81,13 @@ jobs:
         run: dotnet restore Parquet.SourceGenertor.sln
 
       - name: Audit Package Security & Vulnerabilities
-        run: dotnet list package --vulnerable --include-transitive
+        run: |
+          audit_output=$(dotnet list package --vulnerable --include-transitive)
+          echo "$audit_output"
+          if echo "$audit_output" | grep -qi 'has the following vulnerable packages'; then
+            echo "::error::Vulnerable packages detected in solution dependencies!"
+            exit 1
+          fi
 
       # `whitespace` only, deliberately. Plain `dotnet format` also runs its style and analyzer
       # phases, which build a Roslyn workspace via MSBuildWorkspace — and MSBuildWorkspace does not
