@@ -65,6 +65,11 @@ Welcome to the **Parquet.SourceGenerator** documentation repository. This folder
     - Deep-dive into `Nullable<T>` value type mechanics, CoreCLR `TypeUnifier.WithVerifiedTypeHandle`, and code-sharing limits.
     - Analysis of the Parquet.Net 6.1.0 `ReadOnlyMemory<T>` shift and resolution via Runtime Directives (`rd.xml`).
 
+12. **[11 - Performance Optimization Findings & Baseline Analysis](./11-PERFORMANCE-OPTIMIZATION-FINDINGS.md)**
+    - Empirical performance and IL boxing baseline across generated serializers.
+    - Evaluation of zero-boxing string serialization mechanisms and L1 string deduplicator cache efficiency.
+
+
 ---
 
 ## ⚡ Quick Summary of Intent
