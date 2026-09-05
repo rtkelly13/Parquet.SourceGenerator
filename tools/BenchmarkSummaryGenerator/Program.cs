@@ -40,8 +40,15 @@ public static class Program
 
         if (updateReadme && !string.IsNullOrEmpty(headlineTable))
         {
-            UpdateReadmeFile("README.md", headlineTable);
-            UpdateReadmeFile("PACKAGE_README.md", headlineTable);
+            string combinedReadmeTable = headlineTable;
+            string realWorldTable = BuildRealWorldDatasetTable(resultsDir);
+            if (!string.IsNullOrEmpty(realWorldTable))
+            {
+                combinedReadmeTable = $"{headlineTable}\n\n{realWorldTable}";
+            }
+
+            UpdateReadmeFile("README.md", combinedReadmeTable);
+            UpdateReadmeFile("PACKAGE_README.md", combinedReadmeTable);
         }
 
         if (!string.IsNullOrEmpty(outputPath))
@@ -420,6 +427,24 @@ public static class Program
                 "ReflectionParquetSerializerCensusRead",
                 "SourceGeneratorCensusReadStreamAsync"
             ),
+            new RealWorldScenario(
+                "Diamonds Deserialization",
+                "53,940 rows",
+                "ReflectionParquetSerializerDiamondsRead",
+                "SourceGeneratorDiamondsReadAsync"
+            ),
+            new RealWorldScenario(
+                "Diamonds Parallel Deserialization",
+                "53,940 rows",
+                "ReflectionParquetSerializerDiamondsRead",
+                "SourceGeneratorDiamondsReadParallelBufferAsync"
+            ),
+            new RealWorldScenario(
+                "Diamonds Streaming Deserialization",
+                "53,940 rows",
+                "ReflectionParquetSerializerDiamondsRead",
+                "SourceGeneratorDiamondsReadStreamAsync"
+            ),
         };
 
         var sb = new StringBuilder();
@@ -444,6 +469,9 @@ public static class Program
                     );
                     sb.AppendLine(
                         "- **Adult Census Income**: 32,561 rows, 15 columns (9 categorical dictionary columns)"
+                    );
+                    sb.AppendLine(
+                        "- **Diamonds**: 53,940 rows, 10 columns (continuous float metrics & ordinal cuts)"
                     );
                     sb.AppendLine();
                     sb.AppendLine(
