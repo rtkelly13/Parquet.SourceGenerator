@@ -1,4 +1,4 @@
-﻿# Parquet.SourceGenerator
+# Parquet.SourceGenerator
 
 A zero-reflection C# Roslyn source generator that emits Parquet serializers and deserializers at compile time, targeting [Parquet.Net](https://github.com/aloneguid/parquet-dotnet) low-level primitives.
 
@@ -138,6 +138,23 @@ Fixed public datasets tracked under Git LFS with full cryptographic SHA-256 data
 | **`PARQ003`** | **Warning** | Target type has no valid public serializable properties or fields. |
 | **`PARQ004`** | **Warning** | Non-public property decorated with `[ParquetColumn]` will be ignored. |
 | **`PARQ005`** | **Error** | Invalid `[ParquetDecimal]` precision or scale parameters. |
+
+## 🚀 Native AOT & Cold-Start Performance
+
+Under Native AOT, cold invocations (CLI tools, serverless Lambda functions, batch workers) run **7.2× faster** with **72% less memory**:
+
+| Metric | CoreCLR (JIT) | Native AOT | Improvement |
+| :--- | :---: | :---: | :---: |
+| **Total Process Time** | **358 ms** | **50 ms** | ⚡ **7.2× faster** |
+| **CPU User Time** | **0.30 s** | **0.02 s** | ⚡ **15× less CPU** |
+| **Peak Working Set** | **57.0 MB** | **15.8 MB** | 📉 **72% less RAM** |
+
+To enable Native AOT:
+```xml
+<PropertyGroup>
+    <PublishAot>true</PublishAot>
+</PropertyGroup>
+```
 
 ## 🔗 Links & Resources
 
