@@ -223,6 +223,7 @@ public static class TargetParser
             string columnName = member.Name;
             int order = -1;
             bool deduplicate = false;
+            ColumnEncoding encoding = ColumnEncoding.Default;
 
             if (columnAttr is not null)
             {
@@ -246,6 +247,8 @@ public static class TargetParser
                         columnName = namedColName;
                     else if (namedArg.Key == "Deduplicate" && namedArg.Value.Value is bool dedupe)
                         deduplicate = dedupe;
+                    else if (namedArg.Key == "Encoding" && namedArg.Value.Value is int encodingInt)
+                        encoding = (ColumnEncoding)encodingInt;
                 }
             }
 
@@ -443,7 +446,8 @@ public static class TargetParser
                     DecimalScale: scale,
                     Kind: kind,
                     IsNullable: isNullable,
-                    Deduplicate: deduplicate
+                    Deduplicate: deduplicate,
+                    Encoding: encoding
                 )
             );
         }

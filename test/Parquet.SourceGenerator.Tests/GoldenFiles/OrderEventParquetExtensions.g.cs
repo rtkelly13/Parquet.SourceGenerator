@@ -117,6 +117,30 @@ public static partial class OrderEventParquetExtensions
             };
         }
 
+        if (options.DictionaryEncodingThreshold.HasValue)
+        {
+            formatOptions.DictionaryEncodingThreshold = options.DictionaryEncodingThreshold.Value;
+        }
+
+        if (options.DictionaryEncodingSampleSize.HasValue)
+        {
+            formatOptions.DictionaryEncodingSampleSize = options.DictionaryEncodingSampleSize.Value;
+        }
+
+        foreach (var kvp in options.ColumnEncodingHints)
+        {
+            formatOptions.ColumnEncodingHints[kvp.Key] = kvp.Value switch
+            {
+                global::Parquet.SourceGenerator.ParquetColumnEncoding.Dictionary =>
+                    global::Parquet.EncodingHint.Dictionary,
+                global::Parquet.SourceGenerator.ParquetColumnEncoding.DeltaBinaryPacked =>
+                    global::Parquet.EncodingHint.DeltaBinaryPacked,
+                global::Parquet.SourceGenerator.ParquetColumnEncoding.ByteSplitStream =>
+                    global::Parquet.EncodingHint.ByteSplitStream,
+                _ => global::Parquet.EncodingHint.Default,
+            };
+        }
+
         return formatOptions;
     }
 

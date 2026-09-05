@@ -1,8 +1,20 @@
 #nullable enable
 Parquet.SourceGenerator.ParquetColumnAttribute.Deduplicate.get -> bool
 Parquet.SourceGenerator.ParquetColumnAttribute.Deduplicate.set -> void
+Parquet.SourceGenerator.ParquetColumnAttribute.Encoding.get -> Parquet.SourceGenerator.ParquetColumnEncoding
+Parquet.SourceGenerator.ParquetColumnAttribute.Encoding.set -> void
+Parquet.SourceGenerator.ParquetColumnEncoding
+Parquet.SourceGenerator.ParquetColumnEncoding.ByteSplitStream = 3 -> Parquet.SourceGenerator.ParquetColumnEncoding
+Parquet.SourceGenerator.ParquetColumnEncoding.Default = 0 -> Parquet.SourceGenerator.ParquetColumnEncoding
+Parquet.SourceGenerator.ParquetColumnEncoding.DeltaBinaryPacked = 2 -> Parquet.SourceGenerator.ParquetColumnEncoding
+Parquet.SourceGenerator.ParquetColumnEncoding.Dictionary = 1 -> Parquet.SourceGenerator.ParquetColumnEncoding
+Parquet.SourceGenerator.ParquetSerializerOptions.ColumnEncodingHints.get -> System.Collections.Generic.IDictionary<string!, Parquet.SourceGenerator.ParquetColumnEncoding>!
 Parquet.SourceGenerator.ParquetSerializerOptions.DeduplicateStrings.get -> bool
 Parquet.SourceGenerator.ParquetSerializerOptions.DeduplicateStrings.set -> void
+Parquet.SourceGenerator.ParquetSerializerOptions.DictionaryEncodingSampleSize.get -> int?
+Parquet.SourceGenerator.ParquetSerializerOptions.DictionaryEncodingSampleSize.set -> void
+Parquet.SourceGenerator.ParquetSerializerOptions.DictionaryEncodingThreshold.get -> double?
+Parquet.SourceGenerator.ParquetSerializerOptions.DictionaryEncodingThreshold.set -> void
 Parquet.SourceGenerator.VectorizedColumnTransforms
 static Parquet.SourceGenerator.VectorizedColumnTransforms.ConvertDateTimeToEpochMilliseconds(System.ReadOnlySpan<System.DateTime> source, System.Span<long> destination) -> void
 static Parquet.SourceGenerator.VectorizedColumnTransforms.ConvertDateTimeToEpochMicroseconds(System.ReadOnlySpan<System.DateTime> source, System.Span<long> destination) -> void

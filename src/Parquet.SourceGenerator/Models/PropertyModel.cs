@@ -40,6 +40,24 @@ public enum PropertyKind
 }
 
 /// <summary>
+/// Specifies the physical column encoding hint for code generation.
+/// </summary>
+public enum ColumnEncoding
+{
+    /// <summary>Default encoding, chosen automatically based on data type.</summary>
+    Default = 0,
+
+    /// <summary>Dictionary encoding (PLAIN_DICTIONARY / RLE_DICTIONARY).</summary>
+    Dictionary = 1,
+
+    /// <summary>Delta binary packed encoding (DELTA_BINARY_PACKED).</summary>
+    DeltaBinaryPacked = 2,
+
+    /// <summary>Byte stream split encoding (BYTE_STREAM_SPLIT).</summary>
+    ByteSplitStream = 3,
+}
+
+/// <summary>
 /// Value-equatable model representing a single property or field binding.
 /// Optimized memory layout: 8-byte reference pointers first, followed by 4-byte primitives, booleans at tail.
 /// </summary>
@@ -54,11 +72,12 @@ public sealed record PropertyModel(
     int? DecimalScale,
     PropertyKind Kind,
     bool IsNullable,
-    bool Deduplicate = false
+    bool Deduplicate = false,
+    ColumnEncoding Encoding = ColumnEncoding.Default
 ) : IEquatable<PropertyModel>
 {
     /// <summary>
-    /// Backwards-compatible constructor overload without deduplication flag.
+    /// Backwards-compatible constructor overload without deduplication or encoding flag.
     /// </summary>
     public PropertyModel(
         string Name,
@@ -83,7 +102,42 @@ public sealed record PropertyModel(
             DecimalScale,
             Kind,
             IsNullable,
-            false
+            false,
+            ColumnEncoding.Default
+        )
+    {
+        // Backwards-compatible overload
+    }
+
+    /// <summary>
+    /// Backwards-compatible constructor overload without encoding flag.
+    /// </summary>
+    public PropertyModel(
+        string Name,
+        string ParquetColumnName,
+        string TypeName,
+        string? TimestampUnit,
+        string? EnumUnderlyingTypeName,
+        int Order,
+        int? DecimalPrecision,
+        int? DecimalScale,
+        PropertyKind Kind,
+        bool IsNullable,
+        bool Deduplicate
+    )
+        : this(
+            Name,
+            ParquetColumnName,
+            TypeName,
+            TimestampUnit,
+            EnumUnderlyingTypeName,
+            Order,
+            DecimalPrecision,
+            DecimalScale,
+            Kind,
+            IsNullable,
+            Deduplicate,
+            ColumnEncoding.Default
         )
     {
         // Backwards-compatible overload
