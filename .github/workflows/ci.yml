@@ -63,7 +63,6 @@ jobs:
           dotnet-version: |
             8.0.x
             10.0.x
-          dotnet-quality: 'preview'
 
       - name: Verify Benchmark Data LFS Hydration & Provenance Integrity
         run: dotnet run scripts/VerifyProvenance.cs
