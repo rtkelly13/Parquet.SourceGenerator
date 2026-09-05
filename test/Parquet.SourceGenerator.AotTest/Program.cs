@@ -209,7 +209,7 @@ internal static class Program
             // The exception *type* is the diagnostic signal: MissingMetadataException or
             // NotSupportedException points at AOT/trimming, anything else is an ordinary bug.
             Console.WriteLine($"  FAIL  {name}");
-            Console.WriteLine($"          {ex.GetType().FullName}: {ex.Message}");
+            Console.WriteLine($"          {ex}");
         }
     }
 
