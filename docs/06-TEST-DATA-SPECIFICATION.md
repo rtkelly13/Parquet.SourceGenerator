@@ -137,3 +137,19 @@ uv run scripts/generate_test_data.py
 dotnet run --project test/Parquet.SourceGenerator.CLI/Parquet.SourceGenerator.CLI.csproj
 ```
 
+---
+
+## 🔒 Cryptographic Hash-Based Regression Suite
+
+To guarantee that Parquet files produced by `Parquet.SourceGenerator` are strictly deterministic and immune to silent binary or structural emitter regressions, the test suite includes **[`ParquetHashRegressionTests.cs`](../test/Parquet.SourceGenerator.Tests/ParquetHashRegressionTests.cs)**:
+
+1. **Bit-for-Bit In-Memory Determinism**:
+   - Asserts that repeated serializations via `WriteParquetAsync` and `WriteParquetBatchedAsync` produce byte-identical streams (`bytes1.SequenceEqual(bytes2)`) and identical SHA-256 digests across all supported compression codecs (`None`, `Snappy`, `Gzip`, `Zstd`) and batch configurations (25, 50, 100).
+2. **Pinned Golden SHA-256 Hashes**:
+   - Validates generated binary output against immutable golden SHA-256 hashes for canonical scalar models (`TestUserRecord` Snappy and Uncompressed, `TestNullableRecord`, `BenchmarkGuidModel`) and real-world analytical datasets (TPC-H LineItem, Adult Census, Diamonds).
+   - Any unintentional alteration to column ordering, definition level flags, Thrift metadata encoding, or block layouts fails the test with a distinct cryptographic diff.
+3. **Checked-in Dataset Integrity**:
+   - Continuously validates the cryptographic integrity and hydration of all 14 tracked Parquet files across `test/data/v1/`, `test/data/v2/`, and `test/data_csharp/v3/`, as well as the 3 Git LFS public benchmark datasets in `benchmarks/data/`.
+   - These tests are trait-gated (`Category=DatasetIntegrity`) and run in CI **before** the dataset regeneration steps, against the pristine LFS-hydrated checkout: regeneration overwrites the test datasets with writer-version-specific bytes, so the pinned hashes match only the checked-in files. The main post-regeneration suite run filters this category out and instead exercises round-trip compatibility against the freshly generated files (see `TestDataIntegrationTests`).
+
+
