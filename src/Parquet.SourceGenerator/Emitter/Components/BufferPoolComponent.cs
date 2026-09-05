@@ -24,8 +24,38 @@ internal static class BufferPoolComponent
         };
     }
 
-    public static bool IsReferenceTypeBuffer(PropertyModel prop)
+    public static string GetWriteBufferElementType(PropertyModel prop)
     {
+        if (prop.Kind == PropertyKind.Primitive && prop.TypeName.Contains("string"))
+        {
+            return prop.IsNullable
+                ? "global::System.ReadOnlyMemory<char>?"
+                : "global::System.ReadOnlyMemory<char>";
+        }
+
+        if (prop.Kind == PropertyKind.ByteArray)
+        {
+            return prop.IsNullable
+                ? "global::System.ReadOnlyMemory<byte>?"
+                : "global::System.ReadOnlyMemory<byte>";
+        }
+
+        return GetBufferElementType(prop);
+    }
+
+    public static bool IsReferenceTypeBuffer(PropertyModel prop, bool isWrite = false)
+    {
+        if (isWrite)
+        {
+            if (
+                prop.Kind == PropertyKind.ByteArray
+                || (prop.Kind == PropertyKind.Primitive && prop.TypeName.Contains("string"))
+            )
+            {
+                return true;
+            }
+        }
+
         return prop.Kind switch
         {
             PropertyKind.Guid => false,
@@ -43,13 +73,14 @@ internal static class BufferPoolComponent
         TargetClassModel model,
         string sizeExpr,
         string varPrefix = "buffer_",
-        string indent = "        "
+        string indent = "        ",
+        bool isWrite = false
     )
     {
         for (int i = 0; i < model.Properties.Length; i++)
         {
             PropertyModel prop = model.Properties[i];
-            string bufType = GetBufferElementType(prop);
+            string bufType = isWrite ? GetWriteBufferElementType(prop) : GetBufferElementType(prop);
             builder.AppendLine(
                 $"{indent}var {varPrefix}{i} = global::System.Buffers.ArrayPool<{bufType}>.Shared.Rent({sizeExpr});"
             );
@@ -63,14 +94,15 @@ internal static class BufferPoolComponent
         StringBuilder builder,
         TargetClassModel model,
         string varPrefix = "buffer_",
-        string indent = "            "
+        string indent = "            ",
+        bool isWrite = false
     )
     {
         for (int i = 0; i < model.Properties.Length; i++)
         {
             PropertyModel prop = model.Properties[i];
-            string bufType = GetBufferElementType(prop);
-            bool isRef = IsReferenceTypeBuffer(prop);
+            string bufType = isWrite ? GetWriteBufferElementType(prop) : GetBufferElementType(prop);
+            bool isRef = IsReferenceTypeBuffer(prop, isWrite);
             string clearArg = isRef ? "clearArray: true" : "clearArray: false";
             builder.AppendLine(
                 $"{indent}global::System.Buffers.ArrayPool<{bufType}>.Shared.Return({varPrefix}{i}, {clearArg});"

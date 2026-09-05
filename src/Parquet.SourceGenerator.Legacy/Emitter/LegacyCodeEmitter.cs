@@ -366,7 +366,8 @@ public static class LegacyCodeEmitter
                 itemVar: "item",
                 indexVar: "k",
                 bufferPrefix: "colArray_",
-                indent: "            "
+                indent: "            ",
+                useMemoryForTextAndBinary: false
             );
 
             builder.AppendLine("        }");
@@ -714,7 +715,11 @@ public static class LegacyCodeEmitter
     }
 
     private static string GetWriteExpression(PropertyModel prop, string valueExpression) =>
-        PropertyMappingComponent.GetWriteExpression(prop, valueExpression);
+        PropertyMappingComponent.GetWriteExpression(
+            prop,
+            valueExpression,
+            useMemoryForTextAndBinary: false
+        );
 
     private static string GetReadExpression(PropertyModel prop, string valueExpression) =>
         PropertyMappingComponent.GetReadExpression(prop, valueExpression);

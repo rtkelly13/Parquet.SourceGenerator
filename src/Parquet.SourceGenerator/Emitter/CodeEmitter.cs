@@ -209,11 +209,17 @@ public static class CodeEmitter
 
         if (isString)
         {
-            return $"{indent}await groupWriter.WriteAsync(\n{indent}    {fieldAccess},\n{indent}    new global::System.ArraySegment<string?>({bufName}, 0, count));";
+            string memType = prop.IsNullable
+                ? "global::System.ReadOnlyMemory<char>?"
+                : "global::System.ReadOnlyMemory<char>";
+            return $"{indent}await groupWriter.WriteAsync<global::System.ReadOnlyMemory<char>>(\n{indent}    {fieldAccess},\n{indent}    new global::System.ReadOnlyMemory<{memType}>({bufName}, 0, count),\n{indent}    cancellationToken: cancellationToken);";
         }
         else if (isByteArray)
         {
-            return $"{indent}await groupWriter.WriteAsync(\n{indent}    {fieldAccess},\n{indent}    new global::System.ArraySegment<byte[]?>({bufName}, 0, count));";
+            string memType = prop.IsNullable
+                ? "global::System.ReadOnlyMemory<byte>?"
+                : "global::System.ReadOnlyMemory<byte>";
+            return $"{indent}await groupWriter.WriteAsync<global::System.ReadOnlyMemory<byte>>(\n{indent}    {fieldAccess},\n{indent}    new global::System.ReadOnlyMemory<{memType}>({bufName}, 0, count),\n{indent}    cancellationToken: cancellationToken);";
         }
         else if (prop.Kind == PropertyKind.Guid)
         {
@@ -324,7 +330,7 @@ public static class CodeEmitter
         builder.AppendLine("        if (count == 0) return;");
         builder.AppendLine();
 
-        BufferPoolComponent.EmitRentals(builder, model, "count");
+        BufferPoolComponent.EmitRentals(builder, model, "count", isWrite: true);
 
         builder.AppendLine();
         builder.AppendLine("        try");
@@ -480,7 +486,7 @@ public static class CodeEmitter
         builder.AppendLine("        finally");
         builder.AppendLine("        {");
 
-        BufferPoolComponent.EmitReturns(builder, model);
+        BufferPoolComponent.EmitReturns(builder, model, isWrite: true);
 
         builder.AppendLine("        }");
         builder.AppendLine("    }");

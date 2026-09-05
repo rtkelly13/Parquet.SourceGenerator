@@ -148,8 +148,29 @@ internal static class PropertyMappingComponent
     /// <summary>
     /// The expression that converts a model member into its column/buffer representation (handling enum conversions).
     /// </summary>
-    public static string GetWriteExpression(PropertyModel prop, string valueExpression)
+    public static string GetWriteExpression(
+        PropertyModel prop,
+        string valueExpression,
+        bool useMemoryForTextAndBinary = true
+    )
     {
+        if (useMemoryForTextAndBinary)
+        {
+            if (prop.Kind == PropertyKind.Primitive && prop.TypeName.Contains("string"))
+            {
+                return prop.IsNullable
+                    ? $"{valueExpression} is null ? (global::System.ReadOnlyMemory<char>?)null : global::System.MemoryExtensions.AsMemory({valueExpression})"
+                    : $"{valueExpression} is null ? default(global::System.ReadOnlyMemory<char>) : global::System.MemoryExtensions.AsMemory({valueExpression})";
+            }
+
+            if (prop.Kind == PropertyKind.ByteArray)
+            {
+                return prop.IsNullable
+                    ? $"{valueExpression} is null ? (global::System.ReadOnlyMemory<byte>?)null : global::System.MemoryExtensions.AsMemory({valueExpression})"
+                    : $"{valueExpression} is null ? default(global::System.ReadOnlyMemory<byte>) : global::System.MemoryExtensions.AsMemory({valueExpression})";
+            }
+        }
+
         if (prop.Kind == PropertyKind.Enum)
         {
             string underlying = prop.EnumUnderlyingTypeName ?? "int";
@@ -254,13 +275,18 @@ internal static class PropertyMappingComponent
         string itemVar = "item",
         string indexVar = "i",
         string bufferPrefix = "buffer_",
-        string indent = "                    "
+        string indent = "                    ",
+        bool useMemoryForTextAndBinary = true
     )
     {
         for (int p = 0; p < model.Properties.Length; p++)
         {
             PropertyModel prop = model.Properties[p];
-            string writeExpr = GetWriteExpression(prop, $"{itemVar}.{prop.Name}");
+            string writeExpr = GetWriteExpression(
+                prop,
+                $"{itemVar}.{prop.Name}",
+                useMemoryForTextAndBinary
+            );
             builder.AppendLine($"{indent}{bufferPrefix}{p}[{indexVar}] = {writeExpr};");
         }
     }
