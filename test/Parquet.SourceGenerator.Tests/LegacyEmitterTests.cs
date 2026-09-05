@@ -269,6 +269,452 @@ public class LegacyEmitterTests
         );
     }
 
+    [Fact]
+    public void LegacyCodeEmitterEmitsAllSupportedTypesCorrectly()
+    {
+        string code = Emit(
+            Prop(
+                "IntCol",
+                "int_col",
+                "int",
+                LegacyModels::PropertyKind.Primitive,
+                isNullable: false
+            ),
+            Prop(
+                "NullableIntCol",
+                "nullable_int_col",
+                "int?",
+                LegacyModels::PropertyKind.Primitive,
+                isNullable: true
+            ),
+            Prop(
+                "LongCol",
+                "long_col",
+                "long",
+                LegacyModels::PropertyKind.Primitive,
+                isNullable: false
+            ),
+            Prop(
+                "NullableLongCol",
+                "nullable_long_col",
+                "long?",
+                LegacyModels::PropertyKind.Primitive,
+                isNullable: true
+            ),
+            Prop(
+                "FloatCol",
+                "float_col",
+                "float",
+                LegacyModels::PropertyKind.Primitive,
+                isNullable: false
+            ),
+            Prop(
+                "NullableFloatCol",
+                "nullable_float_col",
+                "float?",
+                LegacyModels::PropertyKind.Primitive,
+                isNullable: true
+            ),
+            Prop(
+                "DoubleCol",
+                "double_col",
+                "double",
+                LegacyModels::PropertyKind.Primitive,
+                isNullable: false
+            ),
+            Prop(
+                "NullableDoubleCol",
+                "nullable_double_col",
+                "double?",
+                LegacyModels::PropertyKind.Primitive,
+                isNullable: true
+            ),
+            Prop(
+                "BoolCol",
+                "bool_col",
+                "bool",
+                LegacyModels::PropertyKind.Primitive,
+                isNullable: false
+            ),
+            Prop(
+                "NullableBoolCol",
+                "nullable_bool_col",
+                "bool?",
+                LegacyModels::PropertyKind.Primitive,
+                isNullable: true
+            ),
+            Prop(
+                "GuidCol",
+                "guid_col",
+                "global::System.Guid",
+                LegacyModels::PropertyKind.Guid,
+                isNullable: false
+            ),
+            Prop(
+                "NullableGuidCol",
+                "nullable_guid_col",
+                "global::System.Guid?",
+                LegacyModels::PropertyKind.Guid,
+                isNullable: true
+            ),
+            Prop(
+                "DateTimeCol",
+                "datetime_col",
+                "global::System.DateTime",
+                LegacyModels::PropertyKind.DateTime,
+                isNullable: false
+            ),
+            Prop(
+                "NullableDateTimeCol",
+                "nullable_datetime_col",
+                "global::System.DateTime?",
+                LegacyModels::PropertyKind.DateTime,
+                isNullable: true
+            ),
+            Prop(
+                "DateTimeOffsetCol",
+                "dto_col",
+                "global::System.DateTimeOffset",
+                LegacyModels::PropertyKind.DateTime,
+                isNullable: false
+            ),
+            Prop(
+                "NullableDateTimeOffsetCol",
+                "nullable_dto_col",
+                "global::System.DateTimeOffset?",
+                LegacyModels::PropertyKind.DateTime,
+                isNullable: true
+            ),
+            Prop(
+                "TimeSpanCol",
+                "timespan_col",
+                "global::System.TimeSpan",
+                LegacyModels::PropertyKind.TimeSpan,
+                isNullable: false
+            ),
+            Prop(
+                "NullableTimeSpanCol",
+                "nullable_timespan_col",
+                "global::System.TimeSpan?",
+                LegacyModels::PropertyKind.TimeSpan,
+                isNullable: true
+            ),
+            Prop(
+                "DateOnlyCol",
+                "date_col",
+                "global::System.DateOnly",
+                LegacyModels::PropertyKind.Primitive,
+                isNullable: false
+            ),
+            Prop(
+                "NullableDateOnlyCol",
+                "nullable_date_col",
+                "global::System.DateOnly?",
+                LegacyModels::PropertyKind.Primitive,
+                isNullable: true
+            ),
+            Prop(
+                "TimeOnlyCol",
+                "time_col",
+                "global::System.TimeOnly",
+                LegacyModels::PropertyKind.TimeOnly,
+                isNullable: false
+            ),
+            Prop(
+                "NullableTimeOnlyCol",
+                "nullable_time_col",
+                "global::System.TimeOnly?",
+                LegacyModels::PropertyKind.TimeOnly,
+                isNullable: true
+            ),
+            Prop(
+                "DecimalCol",
+                "decimal_col",
+                "decimal",
+                LegacyModels::PropertyKind.Decimal,
+                isNullable: false
+            ),
+            Prop(
+                "NullableDecimalCol",
+                "nullable_decimal_col",
+                "decimal?",
+                LegacyModels::PropertyKind.Decimal,
+                isNullable: true
+            ),
+            Prop(
+                "StringCol",
+                "string_col",
+                "string",
+                LegacyModels::PropertyKind.Primitive,
+                isNullable: false
+            ),
+            Prop(
+                "NullableStringCol",
+                "nullable_string_col",
+                "string?",
+                LegacyModels::PropertyKind.Primitive,
+                isNullable: true
+            ),
+            Prop(
+                "ByteArrayCol",
+                "bytes_col",
+                "byte[]",
+                LegacyModels::PropertyKind.ByteArray,
+                isNullable: false
+            ),
+            Prop(
+                "NullableByteArrayCol",
+                "nullable_bytes_col",
+                "byte[]?",
+                LegacyModels::PropertyKind.ByteArray,
+                isNullable: true
+            ),
+            Prop(
+                "EnumCol",
+                "enum_col",
+                "global::MyApp.Status",
+                LegacyModels::PropertyKind.Enum,
+                isNullable: false,
+                enumUnderlyingTypeName: "int"
+            ),
+            Prop(
+                "NullableEnumCol",
+                "nullable_enum_col",
+                "global::MyApp.Status?",
+                LegacyModels::PropertyKind.Enum,
+                isNullable: true,
+                enumUnderlyingTypeName: "int"
+            )
+        );
+
+        Assert.Contains("var colArray_10 = new global::System.Guid[count];", code);
+        Assert.Contains("var colArray_11 = new global::System.Guid?[count];", code);
+        Assert.Contains("struct StringDeduplicator", code);
+        Assert.Contains("ReadColumnAsync", code);
+        Assert.Contains("WriteColumnAsync", code);
+    }
+
+    [Fact]
+    public void LegacyCodeEmitterEmptyModelEmitsCompletedTaskAndEmptyArray()
+    {
+        string code = Emit();
+
+        Assert.Contains(
+            "await global::System.Threading.Tasks.Task.CompletedTask.ConfigureAwait(false);",
+            code
+        );
+        Assert.Contains("return global::System.Array.Empty<TestModel>();", code);
+    }
+
+    [Fact]
+    public void LegacyCodeEmitterModelWithoutNamespaceEmitsTopLevelClass()
+    {
+        var model = new LegacyModels::TargetClassModel(
+            "",
+            "GlobalModel",
+            new LegacyModels::EquatableArray<LegacyModels::PropertyModel>(
+                new[]
+                {
+                    Prop(
+                        "Id",
+                        "id",
+                        "int",
+                        LegacyModels::PropertyKind.Primitive,
+                        isNullable: false
+                    ),
+                }
+            )
+        );
+
+        string code =
+            LegacyGenerator::Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitSource(
+                model
+            );
+
+        Assert.DoesNotContain("namespace ;", code);
+        Assert.Contains("public static partial class GlobalModelParquetLegacyExtensions", code);
+    }
+
+    [Fact]
+    public void LegacyCodeEmitterSingleFieldBlittableStructEmitsFastPath()
+    {
+        var model = new LegacyModels::TargetClassModel(
+            "TestNamespace",
+            "BlittableInt",
+            new LegacyModels::EquatableArray<LegacyModels::PropertyModel>(
+                new[]
+                {
+                    Prop(
+                        "Value",
+                        "val",
+                        "int",
+                        LegacyModels::PropertyKind.Primitive,
+                        isNullable: false
+                    ),
+                }
+            ),
+            IsValueType: true,
+            IsUnmanaged: true,
+            HasSingleInstanceField: true
+        );
+
+        string code =
+            LegacyGenerator::Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitSource(
+                model
+            );
+
+        Assert.Contains(
+            "global::System.Runtime.InteropServices.MemoryMarshal.Cast<BlittableInt, int>",
+            code
+        );
+        Assert.Contains(
+            "items is global::System.Collections.Generic.List<BlittableInt> listItems",
+            code
+        );
+        Assert.Contains("items is BlittableInt[] arrayItems", code);
+    }
+
+    [Fact]
+    public void IncrementalGeneratorRunsOnComprehensiveModel()
+    {
+        string source = """
+            using System;
+            using Parquet.SourceGenerator;
+
+            namespace TestApp;
+
+            [ParquetSerializable]
+            public partial class FullModel
+            {
+                [ParquetColumn("id")]
+                public int Id { get; set; }
+
+                [ParquetColumn("nullable_id")]
+                public int? NullableId { get; set; }
+
+                [ParquetColumn("name")]
+                public string Name { get; set; } = string.Empty;
+
+                [ParquetColumn("desc")]
+                public string? Description { get; set; }
+
+                [ParquetColumn("score")]
+                public double Score { get; set; }
+
+                [ParquetColumn("active")]
+                public bool IsActive { get; set; }
+
+                [ParquetColumn("uid")]
+                public Guid Uid { get; set; }
+
+                [ParquetColumn("created_at")]
+                public DateTime CreatedAt { get; set; }
+
+                [ParquetColumn("span")]
+                public TimeSpan Span { get; set; }
+
+                [ParquetColumn("date")]
+                public DateOnly Date { get; set; }
+
+                [ParquetColumn("time")]
+                public TimeOnly Time { get; set; }
+
+                [ParquetColumn("price")]
+                [ParquetDecimal(18, 4)]
+                public decimal Price { get; set; }
+
+                [ParquetColumn("bytes")]
+                public byte[] Bytes { get; set; } = Array.Empty<byte>();
+
+                [ParquetColumn("status")]
+                public ItemStatus Status { get; set; }
+
+                [ParquetIgnore]
+                public string Ignored { get; set; } = string.Empty;
+            }
+
+            public enum ItemStatus { None, Active, Deleted }
+            """;
+
+        var (diagnostics, trees) = RunLegacyGeneratorWithOutput(source);
+
+        Assert.Empty(diagnostics);
+        Assert.Single(trees);
+        string generatedSource = trees[0].ToString();
+        Assert.Contains("FullModelParquetLegacyExtensions", generatedSource);
+        Assert.Contains("WriteRowGroupAsync", generatedSource);
+        Assert.Contains("ReadParquetArrayAsync", generatedSource);
+    }
+
+    [Fact]
+    public void IncrementalGeneratorRunsOnRecordAndStructDeclarations()
+    {
+        string source = """
+            using Parquet.SourceGenerator;
+
+            namespace TestApp;
+
+            [ParquetSerializable]
+            public partial struct StructModel
+            {
+                [ParquetColumn("val")]
+                public int Val { get; set; }
+            }
+
+            [ParquetSerializable]
+            public partial record RecordModel
+            {
+                [ParquetColumn("id")]
+                public int Id { get; init; }
+            }
+            """;
+
+        var (diagnostics, trees) = RunLegacyGeneratorWithOutput(source);
+
+        Assert.Empty(diagnostics);
+        Assert.Equal(2, trees.Length);
+    }
+
+    [Fact]
+    public void IncrementalGeneratorReportsDiagnosticErrors()
+    {
+        string notPartial = """
+            using Parquet.SourceGenerator;
+            [ParquetSerializable]
+            public class NotPartial { public int Id { get; set; } }
+            """;
+        Assert.Contains(
+            RunLegacyGenerator(notPartial),
+            d => d.Id == DiagnosticDescriptors.MustBePartial.Id
+        );
+
+        string duplicateProp = """
+            using Parquet.SourceGenerator;
+            [ParquetSerializable]
+            public partial class DuplicateProp
+            {
+                [ParquetColumn("id")]
+                public int A { get; set; }
+                [ParquetColumn("id")]
+                public int B { get; set; }
+            }
+            """;
+        Assert.Contains(
+            RunLegacyGenerator(duplicateProp),
+            d => d.Id == DiagnosticDescriptors.DuplicateColumnName.Id
+        );
+
+        string generic = """
+            using Parquet.SourceGenerator;
+            [ParquetSerializable]
+            public partial class GenericClass<T> { public T? Value { get; set; } }
+            """;
+        Assert.Contains(
+            RunLegacyGenerator(generic),
+            d => d.Id == DiagnosticDescriptors.GenericTypeNotSupported.Id
+        );
+    }
+
     // ──────────────────────────────────────────────────────────
     //  HELPERS
     // ──────────────────────────────────────────────────────────
@@ -322,7 +768,13 @@ public class LegacyEmitterTests
         return count;
     }
 
-    private static ImmutableArray<Diagnostic> RunLegacyGenerator(string source)
+    private static ImmutableArray<Diagnostic> RunLegacyGenerator(string source) =>
+        RunLegacyGeneratorWithOutput(source).Diagnostics;
+
+    private static (
+        ImmutableArray<Diagnostic> Diagnostics,
+        ImmutableArray<SyntaxTree> GeneratedTrees
+    ) RunLegacyGeneratorWithOutput(string source)
     {
         SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(source);
         var references = new[]
@@ -350,8 +802,9 @@ public class LegacyEmitterTests
         var generator =
             new LegacyGenerator::Parquet.SourceGenerator.Legacy.ParquetLegacyIncrementalGenerator();
         GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
-        driver.RunGeneratorsAndUpdateCompilation(compilation, out _, out var diagnostics);
+        driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out _, out var diagnostics);
+        GeneratorDriverRunResult runResult = driver.GetRunResult();
 
-        return diagnostics;
+        return (diagnostics, runResult.GeneratedTrees);
     }
 }

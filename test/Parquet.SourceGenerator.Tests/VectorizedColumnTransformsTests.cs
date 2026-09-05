@@ -390,5 +390,41 @@ public sealed class VectorizedColumnTransformsTests
         Assert.Throws<ArgumentException>(() =>
             VectorizedColumnTransforms.Narrow(new int[10], new short[9])
         );
+        Assert.Throws<ArgumentException>(() =>
+            VectorizedColumnTransforms.ConvertEpochMicrosecondsToTicks(new long[10], new long[9])
+        );
+        Assert.Throws<ArgumentException>(() =>
+            VectorizedColumnTransforms.ConvertEpochMicrosecondsToDateTime(
+                new long[10],
+                new DateTime[9]
+            )
+        );
+        Assert.Throws<ArgumentException>(() =>
+            VectorizedColumnTransforms.ConvertTicksToEpochMicroseconds(new long[10], new long[9])
+        );
+        Assert.Throws<ArgumentException>(() =>
+            VectorizedColumnTransforms.ConvertDateTimeToEpochMicroseconds(
+                new DateTime[10],
+                new long[9]
+            )
+        );
+        Assert.Throws<ArgumentException>(() =>
+            VectorizedColumnTransforms.ConvertEpochMillisecondsToTicks(new long[10], new long[9])
+        );
+        Assert.Throws<ArgumentException>(() =>
+            VectorizedColumnTransforms.ConvertEpochMillisecondsToDateTime(
+                new long[10],
+                new DateTime[9]
+            )
+        );
+        Assert.Throws<ArgumentException>(() =>
+            VectorizedColumnTransforms.ConvertTicksToEpochMilliseconds(new long[10], new long[9])
+        );
+        Assert.Throws<ArgumentException>(() =>
+            VectorizedColumnTransforms.ConvertDateTimeToEpochMilliseconds(
+                new DateTime[10],
+                new long[9]
+            )
+        );
     }
 }
