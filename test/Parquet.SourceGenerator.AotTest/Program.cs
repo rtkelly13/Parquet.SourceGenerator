@@ -152,6 +152,16 @@ internal static class Program
     private static int _failures;
     private static int _passes;
 
+    // Parquet.Net 6.1.0 maps string and byte[] columns to physical struct types ReadOnlyMemory<char>
+    // and ReadOnlyMemory<byte>, and calls Type.MakeGenericType(typeof(Nullable<>), ...) when building
+    // nullable DataFields. In Native AOT, MakeGenericType over value types requires static presence
+    // of the instantiated type handle.
+    private static readonly Type[] _aotPreservedTypes =
+    [
+        typeof(ReadOnlyMemory<char>?),
+        typeof(ReadOnlyMemory<byte>?),
+    ];
+
     private static async Task<int> Main()
     {
         Console.WriteLine("=================================================");

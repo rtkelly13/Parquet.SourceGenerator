@@ -134,9 +134,13 @@ public static partial class ScalarMetricParquetExtensions
 
         var buffer_0 = global::System.Buffers.ArrayPool<long>.Shared.Rent(count);
         var buffer_1 = global::System.Buffers.ArrayPool<bool>.Shared.Rent(count);
-        var buffer_2 = global::System.Buffers.ArrayPool<bool?>.Shared.Rent(count);
+        var buffer_2 = global::System.Buffers.ArrayPool<bool>.Shared.Rent(count);
+        var defLevels_2 = global::System.Buffers.ArrayPool<int>.Shared.Rent(count);
+        int nonNullCount_2 = 0;
         var buffer_3 = global::System.Buffers.ArrayPool<int>.Shared.Rent(count);
-        var buffer_4 = global::System.Buffers.ArrayPool<int?>.Shared.Rent(count);
+        var buffer_4 = global::System.Buffers.ArrayPool<int>.Shared.Rent(count);
+        var defLevels_4 = global::System.Buffers.ArrayPool<int>.Shared.Rent(count);
+        int nonNullCount_4 = 0;
         var buffer_5 = global::System.Buffers.ArrayPool<byte>.Shared.Rent(count);
         var buffer_6 = global::System.Buffers.ArrayPool<short>.Shared.Rent(count);
         var buffer_7 = global::System.Buffers.ArrayPool<float>.Shared.Rent(count);
@@ -154,9 +158,27 @@ public static partial class ScalarMetricParquetExtensions
                         var item = span[i];
                         buffer_0[i] = item.RowId;
                         buffer_1[i] = item.Flag;
-                        buffer_2[i] = item.NullableFlag;
+                        var val_2 = item.NullableFlag;
+                        if (val_2.HasValue)
+                        {
+                            buffer_2[nonNullCount_2++] = val_2.Value;
+                            defLevels_2[i] = 1;
+                        }
+                        else
+                        {
+                            defLevels_2[i] = 0;
+                        }
                         buffer_3[i] = (int)item.StatusCode;
-                        buffer_4[i] = item.OptionalStatus is null ? (int?)null : (int)item.OptionalStatus.Value;
+                        var val_4 = item.OptionalStatus;
+                        if (val_4.HasValue)
+                        {
+                            buffer_4[nonNullCount_4++] = (int)val_4.Value;
+                            defLevels_4[i] = 1;
+                        }
+                        else
+                        {
+                            defLevels_4[i] = 0;
+                        }
                         buffer_5[i] = item.TinyNum;
                         buffer_6[i] = item.ShortNum;
                         buffer_7[i] = item.FloatVal;
@@ -169,9 +191,27 @@ public static partial class ScalarMetricParquetExtensions
                     var item = listItems[i];
                     buffer_0[i] = item.RowId;
                     buffer_1[i] = item.Flag;
-                    buffer_2[i] = item.NullableFlag;
+                    var val_2 = item.NullableFlag;
+                    if (val_2.HasValue)
+                    {
+                        buffer_2[nonNullCount_2++] = val_2.Value;
+                        defLevels_2[i] = 1;
+                    }
+                    else
+                    {
+                        defLevels_2[i] = 0;
+                    }
                     buffer_3[i] = (int)item.StatusCode;
-                    buffer_4[i] = item.OptionalStatus is null ? (int?)null : (int)item.OptionalStatus.Value;
+                    var val_4 = item.OptionalStatus;
+                    if (val_4.HasValue)
+                    {
+                        buffer_4[nonNullCount_4++] = (int)val_4.Value;
+                        defLevels_4[i] = 1;
+                    }
+                    else
+                    {
+                        defLevels_4[i] = 0;
+                    }
                     buffer_5[i] = item.TinyNum;
                     buffer_6[i] = item.ShortNum;
                     buffer_7[i] = item.FloatVal;
@@ -185,9 +225,27 @@ public static partial class ScalarMetricParquetExtensions
                     var item = arrayItems[i];
                     buffer_0[i] = item.RowId;
                     buffer_1[i] = item.Flag;
-                    buffer_2[i] = item.NullableFlag;
+                    var val_2 = item.NullableFlag;
+                    if (val_2.HasValue)
+                    {
+                        buffer_2[nonNullCount_2++] = val_2.Value;
+                        defLevels_2[i] = 1;
+                    }
+                    else
+                    {
+                        defLevels_2[i] = 0;
+                    }
                     buffer_3[i] = (int)item.StatusCode;
-                    buffer_4[i] = item.OptionalStatus is null ? (int?)null : (int)item.OptionalStatus.Value;
+                    var val_4 = item.OptionalStatus;
+                    if (val_4.HasValue)
+                    {
+                        buffer_4[nonNullCount_4++] = (int)val_4.Value;
+                        defLevels_4[i] = 1;
+                    }
+                    else
+                    {
+                        defLevels_4[i] = 0;
+                    }
                     buffer_5[i] = item.TinyNum;
                     buffer_6[i] = item.ShortNum;
                     buffer_7[i] = item.FloatVal;
@@ -200,9 +258,27 @@ public static partial class ScalarMetricParquetExtensions
                 {
                     buffer_0[idx] = item.RowId;
                     buffer_1[idx] = item.Flag;
-                    buffer_2[idx] = item.NullableFlag;
+                    var val_2 = item.NullableFlag;
+                    if (val_2.HasValue)
+                    {
+                        buffer_2[nonNullCount_2++] = val_2.Value;
+                        defLevels_2[idx] = 1;
+                    }
+                    else
+                    {
+                        defLevels_2[idx] = 0;
+                    }
                     buffer_3[idx] = (int)item.StatusCode;
-                    buffer_4[idx] = item.OptionalStatus is null ? (int?)null : (int)item.OptionalStatus.Value;
+                    var val_4 = item.OptionalStatus;
+                    if (val_4.HasValue)
+                    {
+                        buffer_4[nonNullCount_4++] = (int)val_4.Value;
+                        defLevels_4[idx] = 1;
+                    }
+                    else
+                    {
+                        defLevels_4[idx] = 0;
+                    }
                     buffer_5[idx] = item.TinyNum;
                     buffer_6[idx] = item.ShortNum;
                     buffer_7[idx] = item.FloatVal;
@@ -220,17 +296,21 @@ public static partial class ScalarMetricParquetExtensions
                     _field_1,
                     new global::System.ReadOnlyMemory<bool>(buffer_1, 0, count),
                     cancellationToken: cancellationToken);
-                await groupWriter.WriteAsync<bool>(
+                await groupWriter.WriteAllPartsAsync<bool>(
                     _field_2,
-                    new global::System.ReadOnlyMemory<bool?>(buffer_2, 0, count),
+                    new global::System.ReadOnlyMemory<bool>(buffer_2, 0, nonNullCount_2),
+                    new global::System.ReadOnlyMemory<int>(defLevels_2, 0, count),
+                    null,
                     cancellationToken: cancellationToken);
                 await groupWriter.WriteAsync<int>(
                     _field_3,
                     new global::System.ReadOnlyMemory<int>(buffer_3, 0, count),
                     cancellationToken: cancellationToken);
-                await groupWriter.WriteAsync<int>(
+                await groupWriter.WriteAllPartsAsync<int>(
                     _field_4,
-                    new global::System.ReadOnlyMemory<int?>(buffer_4, 0, count),
+                    new global::System.ReadOnlyMemory<int>(buffer_4, 0, nonNullCount_4),
+                    new global::System.ReadOnlyMemory<int>(defLevels_4, 0, count),
+                    null,
                     cancellationToken: cancellationToken);
                 await groupWriter.WriteAsync<byte>(
                     _field_5,
@@ -250,9 +330,11 @@ public static partial class ScalarMetricParquetExtensions
         {
             global::System.Buffers.ArrayPool<long>.Shared.Return(buffer_0, clearArray: false);
             global::System.Buffers.ArrayPool<bool>.Shared.Return(buffer_1, clearArray: false);
-            global::System.Buffers.ArrayPool<bool?>.Shared.Return(buffer_2, clearArray: false);
+            global::System.Buffers.ArrayPool<bool>.Shared.Return(buffer_2, clearArray: false);
+            global::System.Buffers.ArrayPool<int>.Shared.Return(defLevels_2, clearArray: false);
             global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_3, clearArray: false);
-            global::System.Buffers.ArrayPool<int?>.Shared.Return(buffer_4, clearArray: false);
+            global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_4, clearArray: false);
+            global::System.Buffers.ArrayPool<int>.Shared.Return(defLevels_4, clearArray: false);
             global::System.Buffers.ArrayPool<byte>.Shared.Return(buffer_5, clearArray: false);
             global::System.Buffers.ArrayPool<short>.Shared.Return(buffer_6, clearArray: false);
             global::System.Buffers.ArrayPool<float>.Shared.Return(buffer_7, clearArray: false);
