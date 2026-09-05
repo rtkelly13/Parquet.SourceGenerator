@@ -1,0 +1,9 @@
+<Project>
+    <!--
+    Standalone C# script files under scripts/ declare their own inline package references (e.g. #:package Parquet.Net@6.0.3).
+    Disable Central Package Management for scripts/ so file-based dotnet run invocations resolve packages without NU1008.
+  -->
+    <PropertyGroup>
+        <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    </PropertyGroup>
+</Project>
