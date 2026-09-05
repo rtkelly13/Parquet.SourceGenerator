@@ -94,14 +94,23 @@ foreach (var c in matchingClasses)
 }
 Console.WriteLine();
 
-// Interrogate each matching class
+// Disassemble IL for target assembly once
+Console.WriteLine("⚡ Disassembling assembly IL...");
+string assemblyIl = DisassembleAssembly(assemblyPath);
+
 var reports = new List<TypeIlReport>();
 int totalBoxes = 0;
 
 foreach (var typeName in matchingClasses)
 {
     Console.WriteLine($"🔎 Interrogating IL for: {typeName}...");
-    var report = InterrogateType(typeName, assemblyPath, outputDir);
+    var report = InterrogateType(
+        typeName,
+        assemblyPath,
+        assemblyIl,
+        outputDir,
+        decompileCs: !failOnBoxing
+    );
     reports.Add(report);
     totalBoxes += report.BoxCount;
 }
@@ -157,7 +166,9 @@ static void EnsureDotnetTools()
 
 static string BuildProject(string projectFile)
 {
-    var (exitCode, stdout, stderr) = RunDotnet($"build {projectFile} --configuration Release");
+    var (exitCode, stdout, stderr) = RunDotnet(
+        $"build {projectFile} --configuration Release -nodeReuse:false -p:UseSharedCompilation=false"
+    );
     if (exitCode != 0)
     {
         Console.Error.WriteLine($"Failed to build {projectFile}:\n{stdout}\n{stderr}");
@@ -231,7 +242,24 @@ static List<string> FilterTypes(List<string> types, string filterPattern)
         .ToList();
 }
 
-static TypeIlReport InterrogateType(string typeName, string assemblyFile, string outDir)
+static string DisassembleAssembly(string assemblyFile)
+{
+    var (exitCode, stdout, stderr) = RunDotnet($"tool run ilspycmd -il \"{assemblyFile}\"");
+    if (exitCode != 0)
+    {
+        Console.Error.WriteLine($"Warning: Failed to disassemble assembly via ilspycmd:\n{stderr}");
+        return string.Empty;
+    }
+    return stdout;
+}
+
+static TypeIlReport InterrogateType(
+    string typeName,
+    string assemblyFile,
+    string assemblyIl,
+    string outDir,
+    bool decompileCs = true
+)
 {
     // Sanitize filename
     string safeName = Regex.Replace(
@@ -242,20 +270,23 @@ static TypeIlReport InterrogateType(string typeName, string assemblyFile, string
         TimeSpan.FromSeconds(2)
     );
 
-    // 1. Decompile C#
-    string csPath = Path.Combine(outDir, $"{safeName}.decompiled.cs");
-    var (_, csOut, _) = RunDotnet($"tool run ilspycmd -t \"{typeName}\" \"{assemblyFile}\"");
-    File.WriteAllText(csPath, csOut);
+    // 1. Decompile C# (optional for fast checks)
+    string csPath = string.Empty;
+    if (decompileCs)
+    {
+        csPath = Path.Combine(outDir, $"{safeName}.decompiled.cs");
+        var (_, csOut, _) = RunDotnet($"tool run ilspycmd -t \"{typeName}\" \"{assemblyFile}\"");
+        File.WriteAllText(csPath, csOut);
+    }
 
     // 2. Disassemble IL
     string ilPath = Path.Combine(outDir, $"{safeName}.il");
-    var (_, ilOut, _) = RunDotnet($"tool run ilspycmd -il \"{assemblyFile}\"");
 
     // Filter IL content for this specific class block
-    string classIl = ExtractClassIl(ilOut, typeName);
+    string classIl = ExtractClassIl(assemblyIl, typeName);
     if (string.IsNullOrWhiteSpace(classIl))
     {
-        classIl = ilOut;
+        classIl = assemblyIl;
     }
     File.WriteAllText(ilPath, classIl);
 
@@ -400,9 +431,12 @@ static void GenerateMarkdownReport(
     foreach (var r in reports)
     {
         sb.AppendLine($"### `{r.TypeName}`\n");
-        sb.AppendLine(
-            $"- **Decompiled C#**: [{Path.GetFileName(r.DecompiledCsPath)}]({r.DecompiledCsPath})"
-        );
+        if (!string.IsNullOrEmpty(r.DecompiledCsPath))
+        {
+            sb.AppendLine(
+                $"- **Decompiled C#**: [{Path.GetFileName(r.DecompiledCsPath)}]({r.DecompiledCsPath})"
+            );
+        }
         sb.AppendLine($"- **Disassembled IL**: [{Path.GetFileName(r.IlPath)}]({r.IlPath})");
 
         if (r.BoxCount > 0)
@@ -451,6 +485,10 @@ static (int exitCode, string stdout, string stderr) RunDotnet(string arguments)
         CreateNoWindow = true,
     };
 
+    psi.Environment["MSBUILDDISABLENODEREUSE"] = "1";
+    psi.Environment["DOTNET_CLI_DO_NOT_USE_MSBUILD_SERVER"] = "1";
+    psi.Environment["DOTNET_BUILD_SERVER_DISABLE"] = "1";
+
     if (Directory.Exists(homeDotnetDir))
     {
         psi.Environment["DOTNET_ROOT"] = homeDotnetDir;
@@ -463,9 +501,11 @@ static (int exitCode, string stdout, string stderr) RunDotnet(string arguments)
     }
 
     using var process = Process.Start(psi)!;
-    string stdout = process.StandardOutput.ReadToEnd();
-    string stderr = process.StandardError.ReadToEnd();
+    Task<string> stdoutTask = process.StandardOutput.ReadToEndAsync();
+    Task<string> stderrTask = process.StandardError.ReadToEndAsync();
     process.WaitForExit();
+    string stdout = stdoutTask.GetAwaiter().GetResult();
+    string stderr = stderrTask.GetAwaiter().GetResult();
 
     return (process.ExitCode, stdout, stderr);
 }
