@@ -123,21 +123,23 @@ jobs:
           cat coverage-summary.md >> $GITHUB_STEP_SUMMARY
 
       - name: Post or Update Code Coverage PR Sticky Comment
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
         run: |
           marker="<!-- parquet-code-coverage-report -->"
-          comment_id=$(gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
+          comment_id=$(gh api "repos/$REPO/issues/${PR_NUMBER}/comments" \
             --jq ".[] | select(.body | contains(\"$marker\")) | .id" | head -n 1)
 
           if [ -n "$comment_id" ]; then
             echo "Updating existing PR coverage comment ($comment_id)..."
-            gh api -X PATCH "repos/${{ github.repository }}/issues/comments/$comment_id" -F body=@coverage-summary.md
+            gh api -X PATCH "repos/$REPO/issues/comments/$comment_id" -F body=@coverage-summary.md
           else
             echo "Posting new PR coverage comment..."
-            gh pr comment "$PR_NUMBER" --body-file coverage-summary.md
+            gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file coverage-summary.md
           fi
 
       - name: Execute Sample (CoreCLR)
