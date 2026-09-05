@@ -27,13 +27,16 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
+          lfs: true
 
       - name: Parse and validate SemVer input
         id: version
+        env:
+          VERSION_INPUT: ${{ inputs.version }}
         run: |
           python3 -c "
-          import sys, re
-          raw = sys.argv[1]
+          import os, sys, re
+          raw = os.environ.get('VERSION_INPUT', '')
           ver = raw[1:] if raw.startswith('v') else raw
           pattern = r'^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$'
           m = re.match(pattern, ver)
@@ -41,12 +44,12 @@ jobs:
               print(f'FAIL: \"{raw}\" is not a valid SemVer 2.0.0 version string', file=sys.stderr)
               sys.exit(1)
           is_prerelease = 'true' if m.group(4) is not None else 'false'
-          with open(sys.argv[2], 'a') as f:
+          with open(sys.argv[1], 'a') as f:
               f.write(f'version={ver}\n')
               f.write(f'tag=v{ver}\n')
               f.write(f'is_prerelease={is_prerelease}\n')
           print(f'SemVer OK: version={ver}, is_prerelease={is_prerelease}')
-          " "${{ inputs.version }}" "$GITHUB_OUTPUT"
+          " "$GITHUB_OUTPUT"
 
       - name: Setup Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
@@ -59,7 +62,12 @@ jobs:
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Verify Benchmark Data LFS Hydration & Provenance Integrity
+        run: dotnet run scripts/VerifyProvenance.cs
 
       - name: Restore dependencies
         run: dotnet restore Parquet.SourceGenertor.sln
