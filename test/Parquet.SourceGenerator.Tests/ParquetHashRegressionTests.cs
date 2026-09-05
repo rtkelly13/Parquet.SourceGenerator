@@ -384,6 +384,12 @@ public sealed class ParquetHashRegressionTests
 
     // =========================================================================
     // 3. Checked-In Test Datasets Cryptographic Hash Integrity Tests
+    //
+    // Trait-gated as Category=DatasetIntegrity. CI runs these BEFORE the
+    // regenerate-datasets steps (against the pristine LFS-hydrated checkout):
+    // the regeneration steps overwrite test/data and test/data_csharp with
+    // writer-version-specific bytes, so the pinned hashes only match a clean
+    // checkout. The main post-regeneration run filters them out.
     // =========================================================================
 
     private static readonly Dictionary<string, string> ExpectedDatasetHashes = new(
@@ -434,6 +440,7 @@ public sealed class ParquetHashRegressionTests
     };
 
     [Theory]
+    [Trait("Category", "DatasetIntegrity")]
     [InlineData("test/data/v1/01_small_flat_primitives.parquet")]
     [InlineData("test/data/v1/02_medium_nullable_types.parquet")]
     [InlineData("test/data/v1/03_complex_decimals_guids.parquet")]

@@ -110,20 +110,27 @@ jobs:
       - name: Verify C# Code Formatting (Whitespace)
         run: dotnet format whitespace --verify-no-changes --verbosity diagnostic
 
+      - name: Build solution (Release)
+        run: dotnet build Parquet.SourceGenertor.sln --configuration Release --no-restore -warnaserror
+
+      # Dataset hash integrity is a gate on the COMMITTED bytes, so it must run
+      # before the regeneration steps below overwrite test/data and
+      # test/data_csharp with writer-version-specific output. The pinned hashes
+      # in ParquetHashRegressionTests match the checked-in files only.
+      - name: Verify Checked-In Dataset Hash Integrity (pre-regeneration)
+        run: dotnet test Parquet.SourceGenertor.sln --configuration Release --no-build --filter "Category=DatasetIntegrity" --verbosity normal
+
       - name: Generate Python Test Datasets (PyArrow v1 & v2)
         run: uv run scripts/generate_test_data.py
 
       - name: Generate C# Test Datasets (Parquet.Net v3)
         run: dotnet run --project test/Parquet.SourceGenerator.CLI/Parquet.SourceGenerator.CLI.csproj
 
-      - name: Build solution (Release)
-        run: dotnet build Parquet.SourceGenertor.sln --configuration Release --no-restore -warnaserror
-
       - name: Interrogate IL & Verify Zero Boxing Regression Gate
         run: dotnet run scripts/InterrogateIL.cs --assembly test/Parquet.SourceGenerator.CLI/bin/Release/net8.0/Parquet.SourceGenerator.CLI.dll --check
 
       - name: Run Full Test Suite with Code Coverage Collection
-        run: dotnet test Parquet.SourceGenertor.sln --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --settings coverlet.runsettings
+        run: dotnet test Parquet.SourceGenertor.sln --configuration Release --no-build --filter "Category!=DatasetIntegrity" --verbosity normal --collect:"XPlat Code Coverage" --settings coverlet.runsettings
 
       - name: Generate Code Coverage Summary & Evaluate Gate
         run: |
