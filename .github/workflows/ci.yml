@@ -116,7 +116,7 @@ jobs:
 
       - name: Generate Code Coverage Summary & Evaluate Gate
         run: |
-          dotnet run scripts/CoverageSummary.cs -- --output-markdown coverage-summary.md --min-line 10.0 --min-branch 10.0
+          dotnet run scripts/CoverageSummary.cs -- --output-markdown coverage-summary.md --min-line 85.0 --min-branch 70.0
           cat coverage-summary.md >> $GITHUB_STEP_SUMMARY
 
       - name: Post or Update Code Coverage PR Sticky Comment
