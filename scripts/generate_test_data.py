@@ -14,6 +14,7 @@ version is pinned above and the resulting file metadata and hashes are recorded 
 import os
 import sys
 import uuid
+from datetime import datetime
 from decimal import Decimal
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -185,9 +186,38 @@ def generate_05_large_scale_flat(v_key, v_spec):
     print(f"  [Format {v_spec}] Generated {filepath} ({count} rows)")
 
 
+def generate_pyarrow_interop_fixture():
+    schema = pa.schema([
+        pa.field("id", pa.int32(), nullable=False),
+        pa.field("required_name", pa.string(), nullable=False),
+        pa.field("optional_name", pa.string()),
+        pa.field("payload", pa.binary()),
+        pa.field("amount", pa.decimal128(18, 4), nullable=False),
+        pa.field("timestamp", pa.timestamp("us"), nullable=False),
+        pa.field("status", pa.int32()),
+    ])
+    table = pa.Table.from_arrays([
+        pa.array([1, 2, 3], type=pa.int32()),
+        pa.array(["one", "two", "three"], type=pa.string()),
+        pa.array(["", None, "three"], type=pa.string()),
+        pa.array([b"", None, b"\x00\x01\xff"], type=pa.binary()),
+        pa.array([Decimal("123.4567"), Decimal("-0.0001"), Decimal("0.0000")], type=pa.decimal128(18, 4)),
+        pa.array([
+            datetime(2024, 6, 15, 12, 30, 0, 123000),
+            datetime(2024, 6, 16, 12, 30, 0, 456000),
+            datetime(2024, 6, 17, 12, 30, 0, 789000),
+        ], type=pa.timestamp("us")),
+        pa.array([1, None, 2], type=pa.int32()),
+    ], schema=schema)
+    filepath = os.path.join(BASE_OUTPUT_DIR, "pyarrow_interop_input.parquet")
+    pq.write_table(table, filepath, version="2.6", compression="snappy")
+    print(f"  [PyArrow] Generated {filepath} (3 rows)")
+
+
 def main():
     print("🚀 Starting multi-version Parquet test data generation...")
     ensure_output_dirs()
+    generate_pyarrow_interop_fixture()
     
     for v_key, v_spec in VERSIONS.items():
         print(f"\n📦 Generating Datasets for Parquet Specification Version: {v_spec} ({v_key})")
