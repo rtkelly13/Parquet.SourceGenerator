@@ -633,10 +633,19 @@ public static partial class OrderEventParquetExtensions
                     field_0,
                     new global::System.Memory<int>(buffer_0, 0, rowCount),
                     cancellationToken: cancellationToken);
-                await groupReader.ReadAsync(
-                    field_1,
-                    new global::System.Memory<string?>(buffer_1, 0, rowCount),
-                    cancellationToken: cancellationToken);
+                var chunkStats_1 = groupReader.GetStatistics(field_1);
+                if (chunkStats_1?.NullCount == rowCount)
+                {
+                    // All-null chunk: skip page reading, decompression and decoding entirely.
+                    global::System.Array.Clear(buffer_1, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync(
+                        field_1,
+                        new global::System.Memory<string?>(buffer_1, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
                 await groupReader.ReadAsync<double>(
                     field_2,
                     new global::System.Memory<double>(buffer_2, 0, rowCount),
@@ -657,14 +666,32 @@ public static partial class OrderEventParquetExtensions
                     field_6,
                     new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount),
                     cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<global::System.Guid>(
-                    field_7,
-                    new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount),
-                    cancellationToken: cancellationToken);
-                await groupReader.ReadAsync(
-                    field_8,
-                    new global::System.Memory<byte[]?>(buffer_8, 0, rowCount),
-                    cancellationToken: cancellationToken);
+                var chunkStats_7 = groupReader.GetStatistics(field_7);
+                if (chunkStats_7?.NullCount == rowCount)
+                {
+                    // All-null chunk: skip page reading, decompression and decoding entirely.
+                    global::System.Array.Clear(buffer_7, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync<global::System.Guid>(
+                        field_7,
+                        new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
+                var chunkStats_8 = groupReader.GetStatistics(field_8);
+                if (chunkStats_8?.NullCount == rowCount)
+                {
+                    // All-null chunk: skip page reading, decompression and decoding entirely.
+                    global::System.Array.Clear(buffer_8, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync(
+                        field_8,
+                        new global::System.Memory<byte[]?>(buffer_8, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
 
 #if NET8_0_OR_GREATER
                 void PopulateSpan()
@@ -782,10 +809,19 @@ public static partial class OrderEventParquetExtensions
                     field_0,
                     new global::System.Memory<int>(buffer_0, 0, rowCount),
                     cancellationToken: cancellationToken);
-                await groupReader.ReadAsync(
-                    field_1,
-                    new global::System.Memory<string?>(buffer_1, 0, rowCount),
-                    cancellationToken: cancellationToken);
+                var chunkStats_1 = groupReader.GetStatistics(field_1);
+                if (chunkStats_1?.NullCount == rowCount)
+                {
+                    // All-null chunk: skip page reading, decompression and decoding entirely.
+                    global::System.Array.Clear(buffer_1, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync(
+                        field_1,
+                        new global::System.Memory<string?>(buffer_1, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
                 await groupReader.ReadAsync<double>(
                     field_2,
                     new global::System.Memory<double>(buffer_2, 0, rowCount),
@@ -806,14 +842,32 @@ public static partial class OrderEventParquetExtensions
                     field_6,
                     new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount),
                     cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<global::System.Guid>(
-                    field_7,
-                    new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount),
-                    cancellationToken: cancellationToken);
-                await groupReader.ReadAsync(
-                    field_8,
-                    new global::System.Memory<byte[]?>(buffer_8, 0, rowCount),
-                    cancellationToken: cancellationToken);
+                var chunkStats_7 = groupReader.GetStatistics(field_7);
+                if (chunkStats_7?.NullCount == rowCount)
+                {
+                    // All-null chunk: skip page reading, decompression and decoding entirely.
+                    global::System.Array.Clear(buffer_7, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync<global::System.Guid>(
+                        field_7,
+                        new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
+                var chunkStats_8 = groupReader.GetStatistics(field_8);
+                if (chunkStats_8?.NullCount == rowCount)
+                {
+                    // All-null chunk: skip page reading, decompression and decoding entirely.
+                    global::System.Array.Clear(buffer_8, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync(
+                        field_8,
+                        new global::System.Memory<byte[]?>(buffer_8, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
 
                 for (int i = 0; i < rowCount; i++)
                 {
@@ -930,10 +984,19 @@ public static partial class OrderEventParquetExtensions
                     field_0,
                     new global::System.Memory<int>(buffer_0, 0, rowCount),
                     cancellationToken: cancellationToken);
-                await groupReader.ReadAsync(
-                    field_1,
-                    new global::System.Memory<string?>(buffer_1, 0, rowCount),
-                    cancellationToken: cancellationToken);
+                var chunkStats_1 = groupReader.GetStatistics(field_1);
+                if (chunkStats_1?.NullCount == rowCount)
+                {
+                    // All-null chunk: skip page reading, decompression and decoding entirely.
+                    global::System.Array.Clear(buffer_1, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync(
+                        field_1,
+                        new global::System.Memory<string?>(buffer_1, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
                 await groupReader.ReadAsync<double>(
                     field_2,
                     new global::System.Memory<double>(buffer_2, 0, rowCount),
@@ -954,14 +1017,32 @@ public static partial class OrderEventParquetExtensions
                     field_6,
                     new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount),
                     cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<global::System.Guid>(
-                    field_7,
-                    new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount),
-                    cancellationToken: cancellationToken);
-                await groupReader.ReadAsync(
-                    field_8,
-                    new global::System.Memory<byte[]?>(buffer_8, 0, rowCount),
-                    cancellationToken: cancellationToken);
+                var chunkStats_7 = groupReader.GetStatistics(field_7);
+                if (chunkStats_7?.NullCount == rowCount)
+                {
+                    // All-null chunk: skip page reading, decompression and decoding entirely.
+                    global::System.Array.Clear(buffer_7, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync<global::System.Guid>(
+                        field_7,
+                        new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
+                var chunkStats_8 = groupReader.GetStatistics(field_8);
+                if (chunkStats_8?.NullCount == rowCount)
+                {
+                    // All-null chunk: skip page reading, decompression and decoding entirely.
+                    global::System.Array.Clear(buffer_8, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync(
+                        field_8,
+                        new global::System.Memory<byte[]?>(buffer_8, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
 
                 for (int i = 0; i < rowCount; i++)
                 {
@@ -1064,10 +1145,19 @@ public static partial class OrderEventParquetExtensions
                     field_0,
                     new global::System.Memory<int>(buffer_0, 0, rowCount),
                     cancellationToken: cancellationToken);
-                await groupReader.ReadAsync(
-                    field_1,
-                    new global::System.Memory<string?>(buffer_1, 0, rowCount),
-                    cancellationToken: cancellationToken);
+                var chunkStats_1 = groupReader.GetStatistics(field_1);
+                if (chunkStats_1?.NullCount == rowCount)
+                {
+                    // All-null chunk: skip page reading, decompression and decoding entirely.
+                    global::System.Array.Clear(buffer_1, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync(
+                        field_1,
+                        new global::System.Memory<string?>(buffer_1, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
                 await groupReader.ReadAsync<double>(
                     field_2,
                     new global::System.Memory<double>(buffer_2, 0, rowCount),
@@ -1088,14 +1178,32 @@ public static partial class OrderEventParquetExtensions
                     field_6,
                     new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount),
                     cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<global::System.Guid>(
-                    field_7,
-                    new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount),
-                    cancellationToken: cancellationToken);
-                await groupReader.ReadAsync(
-                    field_8,
-                    new global::System.Memory<byte[]?>(buffer_8, 0, rowCount),
-                    cancellationToken: cancellationToken);
+                var chunkStats_7 = groupReader.GetStatistics(field_7);
+                if (chunkStats_7?.NullCount == rowCount)
+                {
+                    // All-null chunk: skip page reading, decompression and decoding entirely.
+                    global::System.Array.Clear(buffer_7, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync<global::System.Guid>(
+                        field_7,
+                        new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
+                var chunkStats_8 = groupReader.GetStatistics(field_8);
+                if (chunkStats_8?.NullCount == rowCount)
+                {
+                    // All-null chunk: skip page reading, decompression and decoding entirely.
+                    global::System.Array.Clear(buffer_8, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync(
+                        field_8,
+                        new global::System.Memory<byte[]?>(buffer_8, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
 
                 for (int i = 0; i < rowCount; i++)
                 {
@@ -1339,10 +1447,19 @@ public static partial class OrderEventParquetExtensions
                         field_0,
                         new global::System.Memory<int>(buffer_0, 0, rowCount),
                         cancellationToken: cancellationToken);
-                    await groupReader.ReadAsync(
-                        field_1,
-                        new global::System.Memory<string?>(buffer_1, 0, rowCount),
-                        cancellationToken: cancellationToken);
+                    var chunkStats_1 = groupReader.GetStatistics(field_1);
+                    if (chunkStats_1?.NullCount == rowCount)
+                    {
+                        // All-null chunk: skip page reading, decompression and decoding entirely.
+                        global::System.Array.Clear(buffer_1, 0, rowCount);
+                    }
+                    else
+                    {
+                        await groupReader.ReadAsync(
+                            field_1,
+                            new global::System.Memory<string?>(buffer_1, 0, rowCount),
+                            cancellationToken: cancellationToken);
+                    }
                     await groupReader.ReadAsync<double>(
                         field_2,
                         new global::System.Memory<double>(buffer_2, 0, rowCount),
@@ -1363,14 +1480,32 @@ public static partial class OrderEventParquetExtensions
                         field_6,
                         new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount),
                         cancellationToken: cancellationToken);
-                    await groupReader.ReadAsync<global::System.Guid>(
-                        field_7,
-                        new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount),
-                        cancellationToken: cancellationToken);
-                    await groupReader.ReadAsync(
-                        field_8,
-                        new global::System.Memory<byte[]?>(buffer_8, 0, rowCount),
-                        cancellationToken: cancellationToken);
+                    var chunkStats_7 = groupReader.GetStatistics(field_7);
+                    if (chunkStats_7?.NullCount == rowCount)
+                    {
+                        // All-null chunk: skip page reading, decompression and decoding entirely.
+                        global::System.Array.Clear(buffer_7, 0, rowCount);
+                    }
+                    else
+                    {
+                        await groupReader.ReadAsync<global::System.Guid>(
+                            field_7,
+                            new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount),
+                            cancellationToken: cancellationToken);
+                    }
+                    var chunkStats_8 = groupReader.GetStatistics(field_8);
+                    if (chunkStats_8?.NullCount == rowCount)
+                    {
+                        // All-null chunk: skip page reading, decompression and decoding entirely.
+                        global::System.Array.Clear(buffer_8, 0, rowCount);
+                    }
+                    else
+                    {
+                        await groupReader.ReadAsync(
+                            field_8,
+                            new global::System.Memory<byte[]?>(buffer_8, 0, rowCount),
+                            cancellationToken: cancellationToken);
+                    }
 
                     for (int i = 0; i < rowCount; i++)
                     {
@@ -1476,10 +1611,19 @@ public static partial class OrderEventParquetExtensions
                     field_0,
                     new global::System.Memory<int>(buffer_0, 0, rowCount),
                     cancellationToken: cancellationToken);
-                await groupReader.ReadAsync(
-                    field_1,
-                    new global::System.Memory<string?>(buffer_1, 0, rowCount),
-                    cancellationToken: cancellationToken);
+                var chunkStats_1 = groupReader.GetStatistics(field_1);
+                if (chunkStats_1?.NullCount == rowCount)
+                {
+                    // All-null chunk: skip page reading, decompression and decoding entirely.
+                    global::System.Array.Clear(buffer_1, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync(
+                        field_1,
+                        new global::System.Memory<string?>(buffer_1, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
                 await groupReader.ReadAsync<double>(
                     field_2,
                     new global::System.Memory<double>(buffer_2, 0, rowCount),
@@ -1500,14 +1644,32 @@ public static partial class OrderEventParquetExtensions
                     field_6,
                     new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount),
                     cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<global::System.Guid>(
-                    field_7,
-                    new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount),
-                    cancellationToken: cancellationToken);
-                await groupReader.ReadAsync(
-                    field_8,
-                    new global::System.Memory<byte[]?>(buffer_8, 0, rowCount),
-                    cancellationToken: cancellationToken);
+                var chunkStats_7 = groupReader.GetStatistics(field_7);
+                if (chunkStats_7?.NullCount == rowCount)
+                {
+                    // All-null chunk: skip page reading, decompression and decoding entirely.
+                    global::System.Array.Clear(buffer_7, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync<global::System.Guid>(
+                        field_7,
+                        new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
+                var chunkStats_8 = groupReader.GetStatistics(field_8);
+                if (chunkStats_8?.NullCount == rowCount)
+                {
+                    // All-null chunk: skip page reading, decompression and decoding entirely.
+                    global::System.Array.Clear(buffer_8, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync(
+                        field_8,
+                        new global::System.Memory<byte[]?>(buffer_8, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
 
                 for (int i = 0; i < rowCount; i++)
                 {
