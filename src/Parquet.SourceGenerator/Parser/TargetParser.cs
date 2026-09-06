@@ -634,10 +634,8 @@ public static class TargetParser
         "double",
         "string",
         "System.DateOnly",
-        "System.Numerics.BigInteger",
         "System.ReadOnlyMemory<byte>",
         "System.ReadOnlyMemory<char>",
-        "Parquet.File.Values.Primitives.BigDecimal",
         "Parquet.File.Values.Primitives.Interval",
     };
 
@@ -654,7 +652,6 @@ public static class TargetParser
     {
         "System.ReadOnlyMemory<byte>",
         "System.ReadOnlyMemory<char>",
-        "Parquet.File.Values.Primitives.BigDecimal",
     };
 
     /// <summary>
@@ -698,6 +695,9 @@ public static class TargetParser
 
         switch (fqn)
         {
+            case "System.DateOnly":
+                kind = PropertyKind.DateOnly;
+                return true;
             case "decimal":
                 kind = PropertyKind.Decimal;
                 return true;

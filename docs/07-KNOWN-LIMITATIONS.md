@@ -253,10 +253,13 @@ fail a build that would otherwise have worked — an over-narrow list would have
 list at all. Unresolved (error) types are skipped rather than reported, so the rule stays quiet
 while code is being typed.
 
-Correcting the original finding: `byte`, `sbyte`, `short`, `ushort`, `uint`, `ulong`, `DateOnly`,
-`TimeOnly` and `BigInteger` were listed here as failing, but Parquet.Net supports all of them and
-they work through the passthrough today. What genuinely has no representation is `char`,
-`DateTimeOffset`, arrays other than `byte[]`, collections, and nested user types.
+Correcting the original finding: `byte`, `sbyte`, `short`, `ushort`, `uint`, `ulong` and `TimeOnly`
+were listed here as failing, but Parquet.Net supports all of them and they work through the
+passthrough today. `DateOnly` remains unsupported because Parquet.Net represents the field as
+`DateOnly` now has an explicit DateTimeDataField mapping with midnight conversion. `BigInteger` and
+`BigDecimal` remain unsupported because the generated emitter does not have a safe encoding and
+materialization path for their managed representations. What genuinely has no representation is
+`char`, `DateTimeOffset`, arrays other than `byte[]`, collections, and nested user types.
 
 ### 2.9 Every reference-type column is forced nullable ✅
 

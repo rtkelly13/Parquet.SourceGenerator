@@ -42,17 +42,15 @@ required generated read/write matrix.
 | `float`, `double` | Supported | Floating-point physical types |
 | `string` | Supported | UTF-8 string column |
 | `byte[]` | Supported | Binary column |
-| `System.DateOnly` | Supported | Parquet.Net-supported passthrough type |
+| `System.DateOnly` | Supported | DateTimeDataField at midnight with generated conversion |
 | `System.DateTime` | Supported | Millisecond or microsecond configuration |
 | `System.TimeSpan` | Supported | Generator-specific conversion to an integer duration representation |
 | `System.TimeOnly` | Supported | Generator-specific conversion to an integer time representation |
 | `System.Guid` | Supported | Binary Guid representation |
 | `decimal` | Supported | Precision and scale are controlled by `[ParquetDecimal]` |
 | Enums | Supported | Encoded through the enum underlying integral type |
-| `System.Numerics.BigInteger` | Supported | Parquet.Net passthrough mapping |
 | `System.ReadOnlyMemory<byte>` | Supported | Modern backend type |
 | `System.ReadOnlyMemory<char>` | Supported | Modern backend type |
-| `Parquet.File.Values.Primitives.BigDecimal` | Supported | Modern backend type; classic backend rejects it |
 | `Parquet.File.Values.Primitives.Interval` | Supported | Parquet.Net passthrough mapping |
 | Nullable value types and annotated nullable references | Supported | Encoded as optional columns with definition levels |
 
@@ -66,6 +64,8 @@ enabled. In an oblivious context, reference types remain conservatively optional
 |:---|:---|:---|
 | `char` | Unsupported | Rejected by `PARQ006` |
 | `DateTimeOffset` | Unsupported | Rejected by `PARQ006`; callers should model the instant and offset explicitly |
+| `System.Numerics.BigInteger` | Unsupported | Parquet.Net accepts the schema type but its plain encoder cannot safely encode the managed struct; rejected by `PARQ006` |
+| `BigDecimal` | Unsupported | The current Parquet.Net public type is not in the generator's supported model envelope |
 | Arrays other than `byte[]` | Unsupported | Rejected by `PARQ006` |
 | `List<T>`, `Dictionary<TKey,TValue>`, and other collections | Unsupported | Rejected by `PARQ006` |
 | Nested user-defined objects | Unsupported | Rejected by `PARQ006` |

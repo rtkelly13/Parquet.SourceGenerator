@@ -37,6 +37,9 @@ public enum PropertyKind
 
     /// <summary>TimeOnly → TimeDataField (Micros).</summary>
     TimeOnly,
+
+    /// <summary>DateOnly → DateTimeDataField with midnight conversion.</summary>
+    DateOnly,
 }
 
 /// <summary>

@@ -126,6 +126,29 @@ public static class ParquetCompatibilityOracle
             return;
         }
 
+        if (expected is TimeOnly expectedTime && actual is TimeOnly actualTime)
+        {
+            if (options.TimestampPrecision is TimeSpan timePrecision)
+            {
+                Assert.True(timePrecision > TimeSpan.Zero, "TimestampPrecision must be positive.");
+                long expectedBucket = expectedTime.Ticks / timePrecision.Ticks;
+                long actualBucket = actualTime.Ticks / timePrecision.Ticks;
+                Assert.True(
+                    expectedBucket == actualBucket,
+                    $"{path}: expected {expectedTime}, actual {actualTime}, precision {timePrecision}"
+                );
+            }
+            else
+            {
+                Assert.True(
+                    expectedTime.Ticks == actualTime.Ticks,
+                    $"{path}: expected {expectedTime}, actual {actualTime}"
+                );
+            }
+
+            return;
+        }
+
         if (expected is double expectedDouble && actual is double actualDouble)
         {
             AssertFloatingPoint(expectedDouble, actualDouble, path, options.FloatingPointTolerance);

@@ -40,6 +40,9 @@ internal static class SchemaComponent
             PropertyKind.DateTime =>
                 $"new global::Parquet.Schema.DateTimeDataField({name}, global::Parquet.Schema.DateTimeFormat.Impala, isNullable: {BoolLiteral(prop.IsNullable)})",
 
+            PropertyKind.DateOnly =>
+                $"new global::Parquet.Schema.DateTimeDataField({name}, global::Parquet.Schema.DateTimeFormat.Impala, isNullable: {BoolLiteral(prop.IsNullable)})",
+
             PropertyKind.TimeSpan =>
                 $"new global::Parquet.Schema.TimeDataField({name}, global::Parquet.Schema.TimeUnitPrecision.Millis, isNullable: {BoolLiteral(prop.IsNullable)})",
 

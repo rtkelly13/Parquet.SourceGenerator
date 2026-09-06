@@ -5,6 +5,7 @@ Parquet.SourceGenerator.Models.ColumnEncoding.Default = 0 -> Parquet.SourceGener
 Parquet.SourceGenerator.Models.ColumnEncoding.DeltaBinaryPacked = 2 -> Parquet.SourceGenerator.Models.ColumnEncoding
 Parquet.SourceGenerator.Models.ColumnEncoding.Dictionary = 1 -> Parquet.SourceGenerator.Models.ColumnEncoding
 Parquet.SourceGenerator.Models.PropertyKind.TimeOnly = 7 -> Parquet.SourceGenerator.Models.PropertyKind
+Parquet.SourceGenerator.Models.PropertyKind.DateOnly = 8 -> Parquet.SourceGenerator.Models.PropertyKind
 Parquet.SourceGenerator.Models.PropertyModel.Deduplicate.get -> bool
 Parquet.SourceGenerator.Models.PropertyModel.Deduplicate.init -> void
 Parquet.SourceGenerator.Models.PropertyModel.Encoding.get -> Parquet.SourceGenerator.Models.ColumnEncoding
