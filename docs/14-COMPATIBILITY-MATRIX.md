@@ -140,8 +140,10 @@ that the underlying writer accepts.
 | Public LFS benchmark datasets | Provenance and runtime coverage | Treat hashes as provenance, not semantic compatibility |
 
 The `test/data_csharp/v3` directory is a fixture-directory name, not evidence that the files were
-written by Parquet.Net v3. The current C# fixture generator references Parquet.Net 6.1.0. There is
-currently no generated `test/data_csharp/v4` directory.
+written by Parquet.Net v3. The committed files record Parquet.Net 6.0.3 in their footer metadata;
+the current C# fixture generator references Parquet.Net 6.1.0 for CI regeneration. Exact committed
+fixture provenance is recorded in [`test/data/fixture-manifest.json`](../test/data/fixture-manifest.json).
+There is currently no generated `test/data_csharp/v4` directory.
 
 ## Compatibility Definitions
 

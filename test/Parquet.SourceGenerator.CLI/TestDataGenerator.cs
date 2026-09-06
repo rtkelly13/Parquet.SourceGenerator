@@ -8,9 +8,11 @@ namespace Parquet.SourceGenerator.CLI;
 
 public static class TestDataGenerator
 {
-    private static readonly string BaseOutputDir = Path.GetFullPath(
-        Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "data_csharp")
-    );
+    private static readonly string BaseOutputDir =
+        Environment.GetEnvironmentVariable("PARQUET_TEST_DATA_CSHARP_OUTPUT_DIR")
+        ?? Path.GetFullPath(
+            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "data_csharp")
+        );
     private static readonly string V3OutputDir = Path.Combine(BaseOutputDir, "v3");
 
     public static async Task GenerateAllAsync()

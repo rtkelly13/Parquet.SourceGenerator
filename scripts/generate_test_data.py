@@ -1,15 +1,14 @@
 # /// script
 # dependencies = [
-#     "pyarrow>=17.0.0,<=25.0.1",
-#     "numpy>=1.26.0,<=2.5.2",
+#     "pyarrow==25.0.0",
 # ]
 # ///
 
 """
 Deterministic Multi-Version Parquet Test Data Generator
 Generates test datasets at varying scales and complexity levels using PyArrow.
-Outputs test data for multiple major Parquet specification versions (Format v1.0 and v2.6)
-to guarantee backwards compatibility across legacy and modern C# Parquet.Net major versions.
+Outputs test data for the two configured PyArrow format settings (1.0 and 2.6). The exact producer
+version is pinned above and the resulting file metadata and hashes are recorded in the fixture manifest.
 """
 
 import os
@@ -19,7 +18,12 @@ from decimal import Decimal
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-BASE_OUTPUT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "test", "data"))
+BASE_OUTPUT_DIR = os.path.abspath(
+    os.environ.get(
+        "PARQUET_TEST_DATA_OUTPUT_DIR",
+        os.path.join(os.path.dirname(__file__), "..", "test", "data"),
+    )
+)
 VERSIONS = {
     "v1": "1.0",
     "v2": "2.6"

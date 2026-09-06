@@ -64,12 +64,14 @@ public partial record TestLargeFlatRecord
 
 public sealed class TestDataIntegrationTests
 {
-    private static readonly string TestDataRoot = Path.GetFullPath(
-        Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "data")
-    );
-    private static readonly string TestDataCSharpRoot = Path.GetFullPath(
-        Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "data_csharp")
-    );
+    private static readonly string TestDataRoot =
+        Environment.GetEnvironmentVariable("PARQUET_TEST_DATA_ROOT")
+        ?? Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "data"));
+    private static readonly string TestDataCSharpRoot =
+        Environment.GetEnvironmentVariable("PARQUET_TEST_DATA_CSHARP_ROOT")
+        ?? Path.GetFullPath(
+            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "data_csharp")
+        );
 
     [Fact]
     public async Task ReadParquetAsyncDeserializesPyArrowV1Dataset()

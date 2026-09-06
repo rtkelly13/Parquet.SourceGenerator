@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -35,6 +36,14 @@ public sealed class ParquetHashRegressionTests
         "benchmarks",
         "data"
     );
+    private static readonly string FixtureManifestPath = Path.Combine(
+        TestDataRoot,
+        "fixture-manifest.json"
+    );
+    private static readonly JsonSerializerOptions FixtureManifestJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+    };
 
     private static string ComputeSha256(byte[] bytes)
     {
@@ -385,81 +394,65 @@ public sealed class ParquetHashRegressionTests
     // =========================================================================
     // 3. Checked-In Test Datasets Cryptographic Hash Integrity Tests
     //
-    // Trait-gated as Category=DatasetIntegrity. CI runs these BEFORE the
-    // regenerate-datasets steps (against the pristine LFS-hydrated checkout):
-    // the regeneration steps overwrite test/data and test/data_csharp with
-    // writer-version-specific bytes, so the pinned hashes only match a clean
-    // checkout. The main post-regeneration run filters them out.
+    // Trait-gated as Category=DatasetIntegrity. CI runs these against the
+    // pristine LFS-hydrated checkout before compatibility datasets are generated
+    // into a temporary directory. The main post-generation run filters them out
+    // because the manifest describes the committed corpus, not generated output.
     // =========================================================================
 
-    private static readonly Dictionary<string, string> ExpectedDatasetHashes = new(
-        StringComparer.OrdinalIgnoreCase
-    )
+    public static IEnumerable<object[]> CheckedInDatasetPaths =>
+        LoadFixtureManifest().Fixtures.Select(fixture => new object[] { fixture.Path });
+
+    [Fact]
+    [Trait("Category", "DatasetIntegrity")]
+    public void FixtureManifestCoversEveryCheckedInDataset()
     {
-        // Format Specification v1.0 (PyArrow)
-        ["test/data/v1/01_small_flat_primitives.parquet"] =
-            "ba818b447502ce8b3c7f0d74d35066b53891f047c0398c5409010af2ffb56a51",
-        ["test/data/v1/02_medium_nullable_types.parquet"] =
-            "25ad07074cee27c0887e02ab9c4a9eb79fe49fcf831fca5a587ef59edb75c654",
-        ["test/data/v1/03_complex_decimals_guids.parquet"] =
-            "99a8d3ebd8dc80ebbe9583312fc1668a204c6157769171bcdde4d61afc50d386",
-        ["test/data/v1/04_nested_lists_maps.parquet"] =
-            "de7a27892cbb899d0ee22ced61bab65d03cb6a858e55fd9f3c0f6c1223ea43d7",
-        ["test/data/v1/05_large_scale_flat.parquet"] =
-            "c8e6f9f6e7674dcb43f21cd4051ec07b6f9a50eeda1c60538d81cbed58d64656",
+        FixtureManifest manifest = LoadFixtureManifest();
+        string[] manifestPaths = manifest
+            .Fixtures.Select(fixture => fixture.Path)
+            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        string[] actualPaths = EnumerateDatasetPaths()
+            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
 
-        // Format Specification v2.6 (PyArrow)
-        ["test/data/v2/01_small_flat_primitives.parquet"] =
-            "e10903436c633f67b254273497dd1c33316a6cd1597acc2270a73555b649f817",
-        ["test/data/v2/02_medium_nullable_types.parquet"] =
-            "894522f43a79a8185ff8490ba85ad76ded06b91ba0032da57939142d3f8aff75",
-        ["test/data/v2/03_complex_decimals_guids.parquet"] =
-            "c4c19beb749f81245c58de1139ab682b6715e18369dbab7cba9acfa1ee244b13",
-        ["test/data/v2/04_nested_lists_maps.parquet"] =
-            "68d512da7e8c4aa3453915a3166662ed9c0d81870dff481a7f14cf7c35bf965b",
-        ["test/data/v2/05_large_scale_flat.parquet"] =
-            "cce252bdaae8189dd2f3109c7b93d84c6ab4f86a6c1b7c9119a2915fa21e8b5c",
-
-        // C# Parquet.Net Datasets (v3)
-        ["test/data_csharp/v3/01_small_flat_primitives.parquet"] =
-            "dd431ffeb66018b4d85524cb6757508a26cd19f45c6d32fbd7502f944402aa4a",
-        ["test/data_csharp/v3/02_medium_nullable_types.parquet"] =
-            "9ee8f03169c95a51859626d97b457460e58f28b156582201950e5174704f7a14",
-        ["test/data_csharp/v3/03_complex_decimals_guids.parquet"] =
-            "ad41f9c9d6ac62da543591d037c56e799cfd1befbd0b61e752c18dd1650843c9",
-        ["test/data_csharp/v3/05_large_scale_flat.parquet"] =
-            "2f3639c2db21ea55ccf3c174fa70a9b4a0b44901416e186e9017490db27d3aee",
-
-        // Git LFS Public Benchmark Datasets
-        ["benchmarks/data/tpch_lineitem_sf001.parquet"] =
-            "c2a3d37cff204e6569e35fa63f0efe0c89d43a36ac2dd25b8e65f90a1e9b0ccc",
-        ["benchmarks/data/adult_census_income.parquet"] =
-            "5a285f7b73234dda6fb69ea8bbd2655e850a3d9efd8c81512785afb1f7773517",
-        ["benchmarks/data/diamonds.parquet"] =
-            "828f91f368b79d520b200c393989e820adb7cbda7545fdf66b8552972467789e",
-    };
+        Assert.Equal(manifestPaths, actualPaths);
+        Assert.All(
+            manifest.Fixtures,
+            fixture =>
+            {
+                Assert.False(string.IsNullOrWhiteSpace(fixture.Category));
+                Assert.False(string.IsNullOrWhiteSpace(fixture.Producer));
+                Assert.False(string.IsNullOrWhiteSpace(fixture.ProducerVersion));
+                Assert.False(string.IsNullOrWhiteSpace(fixture.CreatedBy));
+                Assert.True(
+                    !string.IsNullOrWhiteSpace(fixture.GenerationScript)
+                        || !string.IsNullOrWhiteSpace(fixture.SourceCommit),
+                    $"Fixture '{fixture.Path}' has no provenance source."
+                );
+                Assert.False(string.IsNullOrWhiteSpace(fixture.FormatVersion));
+                Assert.False(string.IsNullOrWhiteSpace(fixture.Compression));
+                Assert.True(fixture.RowCount > 0);
+                Assert.True(fixture.RowGroupCount > 0);
+                Assert.True(fixture.ColumnCount > 0);
+                Assert.False(string.IsNullOrWhiteSpace(fixture.Support));
+                Assert.False(string.IsNullOrWhiteSpace(fixture.Sha256));
+                Assert.Equal(64, fixture.Sha256.Length);
+            }
+        );
+    }
 
     [Theory]
     [Trait("Category", "DatasetIntegrity")]
-    [InlineData("test/data/v1/01_small_flat_primitives.parquet")]
-    [InlineData("test/data/v1/02_medium_nullable_types.parquet")]
-    [InlineData("test/data/v1/03_complex_decimals_guids.parquet")]
-    [InlineData("test/data/v1/04_nested_lists_maps.parquet")]
-    [InlineData("test/data/v1/05_large_scale_flat.parquet")]
-    [InlineData("test/data/v2/01_small_flat_primitives.parquet")]
-    [InlineData("test/data/v2/02_medium_nullable_types.parquet")]
-    [InlineData("test/data/v2/03_complex_decimals_guids.parquet")]
-    [InlineData("test/data/v2/04_nested_lists_maps.parquet")]
-    [InlineData("test/data/v2/05_large_scale_flat.parquet")]
-    [InlineData("test/data_csharp/v3/01_small_flat_primitives.parquet")]
-    [InlineData("test/data_csharp/v3/02_medium_nullable_types.parquet")]
-    [InlineData("test/data_csharp/v3/03_complex_decimals_guids.parquet")]
-    [InlineData("test/data_csharp/v3/05_large_scale_flat.parquet")]
-    [InlineData("benchmarks/data/tpch_lineitem_sf001.parquet")]
-    [InlineData("benchmarks/data/adult_census_income.parquet")]
-    [InlineData("benchmarks/data/diamonds.parquet")]
-    public void CheckedInDatasetMatchesExpectedSha256(string relativePath)
+    [MemberData(nameof(CheckedInDatasetPaths))]
+    public async Task CheckedInDatasetMatchesManifest(string relativePath)
     {
+        FixtureManifest manifest = LoadFixtureManifest();
+        FixtureEntry fixture = Assert.Single(
+            manifest.Fixtures,
+            candidate =>
+                string.Equals(candidate.Path, relativePath, StringComparison.OrdinalIgnoreCase)
+        );
         string fullPath = Path.Combine(SolutionRoot, relativePath);
         Assert.True(System.IO.File.Exists(fullPath), $"Dataset file does not exist: {fullPath}");
 
@@ -471,8 +464,67 @@ public sealed class ParquetHashRegressionTests
 
         using var fs = System.IO.File.OpenRead(fullPath);
         string actualHash = ComputeSha256(fs);
-        string expectedHash = ExpectedDatasetHashes[relativePath];
+        Assert.Equal(fixture.Sha256, actualHash);
 
-        Assert.Equal(expectedHash, actualHash);
+        await using var metadataStream = System.IO.File.OpenRead(fullPath);
+        await using var reader = await Parquet.ParquetReader.CreateAsync(metadataStream);
+        Assert.Equal(fixture.CreatedBy, reader.Metadata?.CreatedBy);
+        Assert.Equal(fixture.RowGroupCount, reader.RowGroups.Count);
+        Assert.Equal(fixture.ColumnCount, reader.Schema.DataFields.Length);
+        Assert.Equal(fixture.RowCount, reader.RowGroups.Sum(rowGroup => rowGroup.RowCount));
+    }
+
+    private static FixtureManifest LoadFixtureManifest()
+    {
+        string json = System.IO.File.ReadAllText(FixtureManifestPath);
+        FixtureManifest? manifest = JsonSerializer.Deserialize<FixtureManifest>(
+            json,
+            FixtureManifestJsonOptions
+        );
+        Assert.NotNull(manifest);
+        Assert.Equal(1, manifest!.SchemaVersion);
+        return manifest;
+    }
+
+    private static IEnumerable<string> EnumerateDatasetPaths()
+    {
+        foreach (string root in new[] { TestDataRoot, TestDataCSharpRoot, BenchmarkDataRoot })
+        {
+            foreach (
+                string path in Directory.EnumerateFiles(
+                    root,
+                    "*.parquet",
+                    SearchOption.AllDirectories
+                )
+            )
+            {
+                yield return Path.GetRelativePath(SolutionRoot, path).Replace('\\', '/');
+            }
+        }
+    }
+
+    private sealed class FixtureManifest
+    {
+        public int SchemaVersion { get; set; }
+
+        public List<FixtureEntry> Fixtures { get; set; } = new();
+    }
+
+    private sealed class FixtureEntry
+    {
+        public string Path { get; set; } = string.Empty;
+        public string Category { get; set; } = string.Empty;
+        public string Producer { get; set; } = string.Empty;
+        public string ProducerVersion { get; set; } = string.Empty;
+        public string CreatedBy { get; set; } = string.Empty;
+        public string GenerationScript { get; set; } = string.Empty;
+        public string SourceCommit { get; set; } = string.Empty;
+        public string FormatVersion { get; set; } = string.Empty;
+        public string Compression { get; set; } = string.Empty;
+        public int RowCount { get; set; }
+        public int RowGroupCount { get; set; }
+        public int ColumnCount { get; set; }
+        public string Support { get; set; } = string.Empty;
+        public string Sha256 { get; set; } = string.Empty;
     }
 }
