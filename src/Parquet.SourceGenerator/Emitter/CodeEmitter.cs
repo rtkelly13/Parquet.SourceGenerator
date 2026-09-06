@@ -292,6 +292,13 @@ public static class CodeEmitter
         {
             return $"{indent}await groupWriter.WriteAsync<global::System.Guid>(\n{indent}    {fieldAccess},\n{indent}    new global::System.ReadOnlyMemory<global::System.Guid>({bufName}, 0, count),\n{indent}    cancellationToken: cancellationToken);";
         }
+        else if (prop.Kind == PropertyKind.DateOnly)
+        {
+            string memType = prop.IsNullable
+                ? "global::System.DateTime?"
+                : "global::System.DateTime";
+            return $"{indent}await groupWriter.WriteAsync<global::System.DateTime>(\n{indent}    {fieldAccess},\n{indent}    new global::System.ReadOnlyMemory<{memType}>({bufName}, 0, count),\n{indent}    cancellationToken: cancellationToken);";
+        }
         else if (prop.Kind == PropertyKind.Enum)
         {
             string underlying = prop.EnumUnderlyingTypeName ?? "int";
@@ -377,6 +384,13 @@ public static class CodeEmitter
         {
             string memType = prop.IsNullable ? "global::System.Guid?" : "global::System.Guid";
             return $"{indent}await groupReader.ReadAsync<global::System.Guid>(\n{indent}    {fieldAccess},\n{indent}    new global::System.Memory<{memType}>({bufName}, 0, rowCount),\n{indent}    cancellationToken: cancellationToken);";
+        }
+        else if (prop.Kind == PropertyKind.DateOnly)
+        {
+            string memType = prop.IsNullable
+                ? "global::System.DateTime?"
+                : "global::System.DateTime";
+            return $"{indent}await groupReader.ReadAsync<global::System.DateTime>(\n{indent}    {fieldAccess},\n{indent}    new global::System.Memory<{memType}>({bufName}, 0, rowCount),\n{indent}    cancellationToken: cancellationToken);";
         }
         else if (prop.Kind == PropertyKind.Enum)
         {
@@ -1922,6 +1936,8 @@ public static class CodeEmitter
                     PropertyKind.Enum => $"({prop.EnumUnderlyingTypeName ?? "int"}){valVar}.Value",
                     PropertyKind.TimeSpan => $"checked((int){valVar}.Value.TotalMilliseconds)",
                     PropertyKind.TimeOnly => $"{valVar}.Value.Ticks / 10L",
+                    PropertyKind.DateOnly =>
+                        $"{valVar}.Value.ToDateTime(global::System.TimeOnly.MinValue)",
                     _ => $"{valVar}.Value",
                 };
                 builder.AppendLine(
@@ -1969,6 +1985,8 @@ public static class CodeEmitter
                     PropertyKind.Enum => $"({prop.EnumUnderlyingTypeName ?? "int"}){valVar}.Value",
                     PropertyKind.TimeSpan => $"checked((int){valVar}.Value.TotalMilliseconds)",
                     PropertyKind.TimeOnly => $"{valVar}.Value.Ticks / 10L",
+                    PropertyKind.DateOnly =>
+                        $"{valVar}.Value.ToDateTime(global::System.TimeOnly.MinValue)",
                     _ => $"{valVar}.Value",
                 };
                 builder.AppendLine(
@@ -2010,6 +2028,8 @@ public static class CodeEmitter
                     PropertyKind.Enum => $"({prop.EnumUnderlyingTypeName ?? "int"}){valVar}.Value",
                     PropertyKind.TimeSpan => $"checked((int){valVar}.Value.TotalMilliseconds)",
                     PropertyKind.TimeOnly => $"{valVar}.Value.Ticks / 10L",
+                    PropertyKind.DateOnly =>
+                        $"{valVar}.Value.ToDateTime(global::System.TimeOnly.MinValue)",
                     _ => $"{valVar}.Value",
                 };
                 builder.AppendLine(

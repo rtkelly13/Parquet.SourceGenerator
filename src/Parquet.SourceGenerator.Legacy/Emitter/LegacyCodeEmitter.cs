@@ -689,6 +689,9 @@ public static class LegacyCodeEmitter
             PropertyKind.ByteArray => "byte[]",
             PropertyKind.Enum => prop.IsNullable ? enumUnderlying + "?" : enumUnderlying,
             PropertyKind.Guid => prop.IsNullable ? "global::System.Guid?" : "global::System.Guid",
+            PropertyKind.DateOnly => prop.IsNullable
+                ? "global::System.DateTime?"
+                : "global::System.DateTime",
             _ => IsReferenceTypeColumn(prop) ? prop.TypeName.TrimEnd('?') : prop.TypeName,
         };
     }

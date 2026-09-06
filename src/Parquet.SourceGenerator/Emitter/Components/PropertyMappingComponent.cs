@@ -193,6 +193,13 @@ internal static class PropertyMappingComponent
                 : $"{valueExpression}.Ticks / 10L";
         }
 
+        if (prop.Kind == PropertyKind.DateOnly)
+        {
+            return prop.IsNullable
+                ? $"{valueExpression} is null ? (global::System.DateTime?)null : {valueExpression}.Value.ToDateTime(global::System.TimeOnly.MinValue)"
+                : $"{valueExpression}.ToDateTime(global::System.TimeOnly.MinValue)";
+        }
+
         return valueExpression;
     }
 
@@ -220,6 +227,13 @@ internal static class PropertyMappingComponent
             return prop.IsNullable
                 ? $"{valueExpression} is null ? (global::System.TimeOnly?)null : new global::System.TimeOnly({valueExpression}.Value * 10L)"
                 : $"new global::System.TimeOnly({valueExpression} * 10L)";
+        }
+
+        if (prop.Kind == PropertyKind.DateOnly)
+        {
+            return prop.IsNullable
+                ? $"{valueExpression} is null ? (global::System.DateOnly?)null : global::System.DateOnly.FromDateTime({valueExpression}.Value)"
+                : $"global::System.DateOnly.FromDateTime({valueExpression})";
         }
 
         if (prop.Kind == PropertyKind.Primitive && prop.TypeName.Contains("string"))

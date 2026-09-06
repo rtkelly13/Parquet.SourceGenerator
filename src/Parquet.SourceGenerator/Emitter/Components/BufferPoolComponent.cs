@@ -20,6 +20,7 @@ internal static class BufferPoolComponent
         return prop.Kind switch
         {
             PropertyKind.Guid => "global::System.Guid",
+            PropertyKind.DateOnly => "global::System.DateTime",
             PropertyKind.Enum => prop.EnumUnderlyingTypeName ?? "int",
             PropertyKind.TimeSpan => "int",
             PropertyKind.TimeOnly => "long",
@@ -34,6 +35,8 @@ internal static class BufferPoolComponent
             PropertyKind.TimeSpan when prop.IsNullable => "int?",
             PropertyKind.TimeSpan => "int",
             PropertyKind.Guid when prop.IsNullable => "global::System.Guid?",
+            PropertyKind.DateOnly when prop.IsNullable => "global::System.DateTime?",
+            PropertyKind.DateOnly => "global::System.DateTime",
             PropertyKind.Guid => "global::System.Guid",
             PropertyKind.Enum when prop.IsNullable => $"{prop.EnumUnderlyingTypeName ?? "int"}?",
             PropertyKind.Enum => prop.EnumUnderlyingTypeName ?? "int",

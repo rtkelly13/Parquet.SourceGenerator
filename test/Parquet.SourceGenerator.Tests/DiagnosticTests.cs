@@ -122,6 +122,7 @@ public sealed class DiagnosticTests
     [InlineData("System.DateTimeOffset", "OccurredAt")]
     [InlineData("System.Collections.Generic.List<int>", "Tags")]
     [InlineData("int[]", "Values")]
+    [InlineData("System.Numerics.BigInteger", "BigValue")]
     public void UnsupportedMemberTypeTriggersPARQ006(string typeName, string memberName)
     {
         // Parquet.Net's SchemaEncoder.SupportedTypes has no entry for any of these, so they used to
@@ -156,9 +157,11 @@ public sealed class DiagnosticTests
     [InlineData("uint")]
     [InlineData("ulong")]
     [InlineData("float")]
-    [InlineData("System.DateOnly")]
     [InlineData("System.TimeOnly")]
-    [InlineData("System.Numerics.BigInteger")]
+    [InlineData("System.DateOnly")]
+    [InlineData("System.ReadOnlyMemory<byte>")]
+    [InlineData("System.ReadOnlyMemory<char>")]
+    [InlineData("Parquet.File.Values.Primitives.Interval")]
     [InlineData("System.Guid")]
     [InlineData("System.TimeSpan")]
     [InlineData("decimal")]
