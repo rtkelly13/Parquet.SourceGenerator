@@ -18,3 +18,4 @@
    The `--disable-parallel` flag is strictly required to prevent package extraction race conditions between CLI tools sharing package name prefixes.
 10. **Diagnostics Invocation**: Always execute installed tools via `dotnet tool run <command>` (e.g. `dotnet tool run ilspycmd`, `dotnet tool run dotnet-inspect`, `dotnet tool run dotnet-dump`) or via dedicated repository runners (`scripts/InterrogateIL.cs`, `scripts/TriageMemoryDump.cs`).
 
+11. **Upstream Dependency Limitations**: Track package limitations and candidate upstream improvements in `UPSTREAM_DEPENDENCY_LIMITATIONS.md`, not in this file.
