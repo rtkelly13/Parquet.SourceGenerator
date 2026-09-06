@@ -77,8 +77,13 @@ Welcome to the **Parquet.SourceGenerator** documentation repository. This folder
     - Eager progressive buffer return mechanics and single `try / finally` exception safety.
 
 14. **[13 - Compiler Diagnostics Reference](./13-COMPILER-DIAGNOSTICS.md)**
-    - Complete catalog of compiler diagnostic codes (`PARQ001`–`PARQ011`).
-    - Severity, rationale, and remediation examples for every rule.
+     - Complete catalog of compiler diagnostic codes (`PARQ001`–`PARQ011`).
+     - Severity, rationale, and remediation examples for every rule.
+
+15. **[14 - Parquet Compatibility Matrix](./14-COMPATIBILITY-MATRIX.md)**
+     - Supported generated model types and schema shapes.
+     - Modern and classic Parquet.Net product boundaries.
+     - Backward, forward, schema-evolution, and semantic compatibility definitions.
 
 
 ---

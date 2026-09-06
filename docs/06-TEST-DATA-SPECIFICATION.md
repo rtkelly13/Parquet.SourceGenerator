@@ -4,15 +4,19 @@
 
 To prove the correctness, precision, and performance of `Parquet.SourceGenerator` across multiple scales and complexities, we maintain **symmetrically deterministic test datasets**. 
 
-These datasets are independently generated across multiple major Parquet specification and library versions:
-1. **Python Engine (`PyArrow` via `uv`)**:
-   - `test/data/v1/`: Parquet Format Specification v1.0 (legacy format compatibility).
-   - `test/data/v2/`: Parquet Format Specification v2.6 (modern format compatibility).
-2. **C# Engine (`Parquet.Net` via `dotnet run`)**:
-   - `test/data_csharp/v3/`: Generated using `Parquet.Net` v3.x API.
-   - `test/data_csharp/v4/`: Generated using `Parquet.Net` v4.x API.
+These datasets currently provide deterministic coverage across two PyArrow format settings and the
+modern Parquet.Net writer. The compatibility contract and required independent-engine coverage are
+defined in [14 - Parquet Compatibility Matrix](./14-COMPATIBILITY-MATRIX.md).
 
-Because row generation uses strict deterministic mathematical formulas based on the zero-indexed row index $i$, any deserializer or serializer in `Parquet.SourceGenerator` can be proven symmetrically valid across all major format and library versions.
+The current dataset producers are:
+1. **Python Engine (`PyArrow` via `uv`)**:
+   - `test/data/v1/`: PyArrow `version="1.0"` output.
+   - `test/data/v2/`: PyArrow `version="2.6"` output.
+2. **C# Engine (`Parquet.Net` via `dotnet run`)**:
+   - `test/data_csharp/v3/`: Current Parquet.Net 6.1.0 output; `v3` is a historical fixture-directory name, not the library version.
+   - There is currently no generated `test/data_csharp/v4/` directory.
+
+Because row generation uses strict deterministic mathematical formulas based on the zero-indexed row index $i$, the fixtures provide reproducible value checks for the producers listed above. They do not by themselves prove compatibility with every Parquet implementation.
 
 ---
 
@@ -151,5 +155,4 @@ To guarantee that Parquet files produced by `Parquet.SourceGenerator` are strict
 3. **Checked-in Dataset Integrity**:
    - Continuously validates the cryptographic integrity and hydration of all 14 tracked Parquet files across `test/data/v1/`, `test/data/v2/`, and `test/data_csharp/v3/`, as well as the 3 Git LFS public benchmark datasets in `benchmarks/data/`.
    - These tests are trait-gated (`Category=DatasetIntegrity`) and run in CI **before** the dataset regeneration steps, against the pristine LFS-hydrated checkout: regeneration overwrites the test datasets with writer-version-specific bytes, so the pinned hashes match only the checked-in files. The main post-regeneration suite run filters this category out and instead exercises round-trip compatibility against the freshly generated files (see `TestDataIntegrationTests`).
-
 
