@@ -251,6 +251,7 @@ To enable Native AOT in your application:
 | 🔬 **[11 - Performance & Zero-Boxing Findings](https://github.com/rtkelly13/Parquet.SourceGenerator/blob/main/docs/11-PERFORMANCE-OPTIMIZATION-FINDINGS.md)** | IL interrogation, zero-boxing string serialization, and L1 cache deduplication. |
 | 🧠 **[12 - Buffer Reuse & Extraction Strategies](https://github.com/rtkelly13/Parquet.SourceGenerator/blob/main/docs/12-BUFFER-REUSE-AND-EXTRACTION-STRATEGIES.md)** | CPU cache spatial locality vs multi-pass traversal empirical analysis. |
 | 🛡️ **[13 - Compiler Diagnostics Reference](https://github.com/rtkelly13/Parquet.SourceGenerator/blob/main/docs/13-COMPILER-DIAGNOSTICS.md)** | Full catalog of `PARQ001`–`PARQ011` diagnostic rules, causes, and fixes. |
+| 🧪 **[14 - Parquet Compatibility Matrix](https://github.com/rtkelly13/Parquet.SourceGenerator/blob/main/docs/14-COMPATIBILITY-MATRIX.md)** | Supported format envelope, producer/consumer boundaries, and compatibility definitions. |
 | 📊 **[Full Benchmarks Report](https://github.com/rtkelly13/Parquet.SourceGenerator/blob/main/docs/BENCHMARKS.md)** | Multi-scale sweeps (1k, 10k, 100k, 1M rows) and real-world datasets. |
 
 ---
