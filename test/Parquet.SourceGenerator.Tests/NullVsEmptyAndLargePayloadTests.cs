@@ -69,32 +69,7 @@ public class NullVsEmptyAndLargePayloadTests
         List<PayloadSemanticsModel> read =
             await PayloadSemanticsModelParquetExtensions.ReadParquetAsync(stream);
 
-        Assert.Equal(3, read.Count);
-
-        // Row 1: empty string and empty byte[] are NOT null
-        Assert.Equal(1, read[0].Id);
-        Assert.Equal(string.Empty, read[0].RequiredString);
-        Assert.NotNull(read[0].OptionalString);
-        Assert.Equal(string.Empty, read[0].OptionalString);
-        Assert.NotNull(read[0].RequiredBytes);
-        Assert.Empty(read[0].RequiredBytes);
-        Assert.NotNull(read[0].OptionalBytes);
-        Assert.Empty(read[0].OptionalBytes!);
-
-        // Row 2: null is NOT empty string or empty byte[]
-        Assert.Equal(2, read[1].Id);
-        Assert.Equal(string.Empty, read[1].RequiredString);
-        Assert.Null(read[1].OptionalString);
-        Assert.NotNull(read[1].RequiredBytes);
-        Assert.Empty(read[1].RequiredBytes);
-        Assert.Null(read[1].OptionalBytes);
-
-        // Row 3: normal values
-        Assert.Equal(3, read[2].Id);
-        Assert.Equal("standard text", read[2].RequiredString);
-        Assert.Equal("optional text", read[2].OptionalString);
-        Assert.Equal(new byte[] { 0x01, 0x02, 0x03 }, read[2].RequiredBytes);
-        Assert.Equal(new byte[] { 0x04, 0x05, 0x06 }, read[2].OptionalBytes);
+        ParquetCompatibilityOracle.AssertEquivalent(original, read);
     }
 
     [Fact]
