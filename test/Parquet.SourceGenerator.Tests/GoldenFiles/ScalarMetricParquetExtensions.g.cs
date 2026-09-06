@@ -621,18 +621,36 @@ public static partial class ScalarMetricParquetExtensions
                     field_1,
                     new global::System.Memory<bool>(buffer_1, 0, rowCount),
                     cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<bool>(
-                    field_2,
-                    new global::System.Memory<bool?>(buffer_2, 0, rowCount),
-                    cancellationToken: cancellationToken);
+                var chunkStats_2 = groupReader.GetStatistics(field_2);
+                if (chunkStats_2?.NullCount == rowCount)
+                {
+                    // All-null chunk: skip page reading, decompression and decoding entirely.
+                    global::System.Array.Clear(buffer_2, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync<bool>(
+                        field_2,
+                        new global::System.Memory<bool?>(buffer_2, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
                 await groupReader.ReadAsync<int>(
                     field_3,
                     new global::System.Memory<int>(buffer_3, 0, rowCount),
                     cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<int>(
-                    field_4,
-                    new global::System.Memory<int?>(buffer_4, 0, rowCount),
-                    cancellationToken: cancellationToken);
+                var chunkStats_4 = groupReader.GetStatistics(field_4);
+                if (chunkStats_4?.NullCount == rowCount)
+                {
+                    // All-null chunk: skip page reading, decompression and decoding entirely.
+                    global::System.Array.Clear(buffer_4, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync<int>(
+                        field_4,
+                        new global::System.Memory<int?>(buffer_4, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
                 await groupReader.ReadAsync<byte>(
                     field_5,
                     new global::System.Memory<byte>(buffer_5, 0, rowCount),
@@ -758,18 +776,36 @@ public static partial class ScalarMetricParquetExtensions
                     field_1,
                     new global::System.Memory<bool>(buffer_1, 0, rowCount),
                     cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<bool>(
-                    field_2,
-                    new global::System.Memory<bool?>(buffer_2, 0, rowCount),
-                    cancellationToken: cancellationToken);
+                var chunkStats_2 = groupReader.GetStatistics(field_2);
+                if (chunkStats_2?.NullCount == rowCount)
+                {
+                    // All-null chunk: skip page reading, decompression and decoding entirely.
+                    global::System.Array.Clear(buffer_2, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync<bool>(
+                        field_2,
+                        new global::System.Memory<bool?>(buffer_2, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
                 await groupReader.ReadAsync<int>(
                     field_3,
                     new global::System.Memory<int>(buffer_3, 0, rowCount),
                     cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<int>(
-                    field_4,
-                    new global::System.Memory<int?>(buffer_4, 0, rowCount),
-                    cancellationToken: cancellationToken);
+                var chunkStats_4 = groupReader.GetStatistics(field_4);
+                if (chunkStats_4?.NullCount == rowCount)
+                {
+                    // All-null chunk: skip page reading, decompression and decoding entirely.
+                    global::System.Array.Clear(buffer_4, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync<int>(
+                        field_4,
+                        new global::System.Memory<int?>(buffer_4, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
                 await groupReader.ReadAsync<byte>(
                     field_5,
                     new global::System.Memory<byte>(buffer_5, 0, rowCount),
@@ -895,18 +931,36 @@ public static partial class ScalarMetricParquetExtensions
                     field_1,
                     new global::System.Memory<bool>(buffer_1, 0, rowCount),
                     cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<bool>(
-                    field_2,
-                    new global::System.Memory<bool?>(buffer_2, 0, rowCount),
-                    cancellationToken: cancellationToken);
+                var chunkStats_2 = groupReader.GetStatistics(field_2);
+                if (chunkStats_2?.NullCount == rowCount)
+                {
+                    // All-null chunk: skip page reading, decompression and decoding entirely.
+                    global::System.Array.Clear(buffer_2, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync<bool>(
+                        field_2,
+                        new global::System.Memory<bool?>(buffer_2, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
                 await groupReader.ReadAsync<int>(
                     field_3,
                     new global::System.Memory<int>(buffer_3, 0, rowCount),
                     cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<int>(
-                    field_4,
-                    new global::System.Memory<int?>(buffer_4, 0, rowCount),
-                    cancellationToken: cancellationToken);
+                var chunkStats_4 = groupReader.GetStatistics(field_4);
+                if (chunkStats_4?.NullCount == rowCount)
+                {
+                    // All-null chunk: skip page reading, decompression and decoding entirely.
+                    global::System.Array.Clear(buffer_4, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync<int>(
+                        field_4,
+                        new global::System.Memory<int?>(buffer_4, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
                 await groupReader.ReadAsync<byte>(
                     field_5,
                     new global::System.Memory<byte>(buffer_5, 0, rowCount),
@@ -1018,18 +1072,36 @@ public static partial class ScalarMetricParquetExtensions
                     field_1,
                     new global::System.Memory<bool>(buffer_1, 0, rowCount),
                     cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<bool>(
-                    field_2,
-                    new global::System.Memory<bool?>(buffer_2, 0, rowCount),
-                    cancellationToken: cancellationToken);
+                var chunkStats_2 = groupReader.GetStatistics(field_2);
+                if (chunkStats_2?.NullCount == rowCount)
+                {
+                    // All-null chunk: skip page reading, decompression and decoding entirely.
+                    global::System.Array.Clear(buffer_2, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync<bool>(
+                        field_2,
+                        new global::System.Memory<bool?>(buffer_2, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
                 await groupReader.ReadAsync<int>(
                     field_3,
                     new global::System.Memory<int>(buffer_3, 0, rowCount),
                     cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<int>(
-                    field_4,
-                    new global::System.Memory<int?>(buffer_4, 0, rowCount),
-                    cancellationToken: cancellationToken);
+                var chunkStats_4 = groupReader.GetStatistics(field_4);
+                if (chunkStats_4?.NullCount == rowCount)
+                {
+                    // All-null chunk: skip page reading, decompression and decoding entirely.
+                    global::System.Array.Clear(buffer_4, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync<int>(
+                        field_4,
+                        new global::System.Memory<int?>(buffer_4, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
                 await groupReader.ReadAsync<byte>(
                     field_5,
                     new global::System.Memory<byte>(buffer_5, 0, rowCount),
@@ -1280,18 +1352,36 @@ public static partial class ScalarMetricParquetExtensions
                         field_1,
                         new global::System.Memory<bool>(buffer_1, 0, rowCount),
                         cancellationToken: cancellationToken);
-                    await groupReader.ReadAsync<bool>(
-                        field_2,
-                        new global::System.Memory<bool?>(buffer_2, 0, rowCount),
-                        cancellationToken: cancellationToken);
+                    var chunkStats_2 = groupReader.GetStatistics(field_2);
+                    if (chunkStats_2?.NullCount == rowCount)
+                    {
+                        // All-null chunk: skip page reading, decompression and decoding entirely.
+                        global::System.Array.Clear(buffer_2, 0, rowCount);
+                    }
+                    else
+                    {
+                        await groupReader.ReadAsync<bool>(
+                            field_2,
+                            new global::System.Memory<bool?>(buffer_2, 0, rowCount),
+                            cancellationToken: cancellationToken);
+                    }
                     await groupReader.ReadAsync<int>(
                         field_3,
                         new global::System.Memory<int>(buffer_3, 0, rowCount),
                         cancellationToken: cancellationToken);
-                    await groupReader.ReadAsync<int>(
-                        field_4,
-                        new global::System.Memory<int?>(buffer_4, 0, rowCount),
-                        cancellationToken: cancellationToken);
+                    var chunkStats_4 = groupReader.GetStatistics(field_4);
+                    if (chunkStats_4?.NullCount == rowCount)
+                    {
+                        // All-null chunk: skip page reading, decompression and decoding entirely.
+                        global::System.Array.Clear(buffer_4, 0, rowCount);
+                    }
+                    else
+                    {
+                        await groupReader.ReadAsync<int>(
+                            field_4,
+                            new global::System.Memory<int?>(buffer_4, 0, rowCount),
+                            cancellationToken: cancellationToken);
+                    }
                     await groupReader.ReadAsync<byte>(
                         field_5,
                         new global::System.Memory<byte>(buffer_5, 0, rowCount),
@@ -1406,18 +1496,36 @@ public static partial class ScalarMetricParquetExtensions
                     field_1,
                     new global::System.Memory<bool>(buffer_1, 0, rowCount),
                     cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<bool>(
-                    field_2,
-                    new global::System.Memory<bool?>(buffer_2, 0, rowCount),
-                    cancellationToken: cancellationToken);
+                var chunkStats_2 = groupReader.GetStatistics(field_2);
+                if (chunkStats_2?.NullCount == rowCount)
+                {
+                    // All-null chunk: skip page reading, decompression and decoding entirely.
+                    global::System.Array.Clear(buffer_2, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync<bool>(
+                        field_2,
+                        new global::System.Memory<bool?>(buffer_2, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
                 await groupReader.ReadAsync<int>(
                     field_3,
                     new global::System.Memory<int>(buffer_3, 0, rowCount),
                     cancellationToken: cancellationToken);
-                await groupReader.ReadAsync<int>(
-                    field_4,
-                    new global::System.Memory<int?>(buffer_4, 0, rowCount),
-                    cancellationToken: cancellationToken);
+                var chunkStats_4 = groupReader.GetStatistics(field_4);
+                if (chunkStats_4?.NullCount == rowCount)
+                {
+                    // All-null chunk: skip page reading, decompression and decoding entirely.
+                    global::System.Array.Clear(buffer_4, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync<int>(
+                        field_4,
+                        new global::System.Memory<int?>(buffer_4, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
                 await groupReader.ReadAsync<byte>(
                     field_5,
                     new global::System.Memory<byte>(buffer_5, 0, rowCount),

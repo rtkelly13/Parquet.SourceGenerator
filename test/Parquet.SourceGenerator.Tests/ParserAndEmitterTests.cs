@@ -140,6 +140,12 @@ public sealed class ParserAndEmitterTests
         Assert.Contains("WriteParquetRowGroupAsync", source);
         Assert.Contains("WriteAllPartsAsync", source);
         Assert.Contains("ReadParquetParallelAsync", source);
+        Assert.Contains("if (chunkStats_1?.NullCount == rowCount)", source);
+        Assert.Contains("global::System.Array.Clear(buffer_1, 0, rowCount);", source);
+        Assert.Contains(
+            "else\n                {\n                    await groupReader.ReadAsync(",
+            source
+        );
     }
 
     [Fact]

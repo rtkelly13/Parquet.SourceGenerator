@@ -318,6 +318,43 @@ public static class CodeEmitter
         }
     }
 
+    /// <summary>
+    /// Emits a column read, gated on the column-chunk NullCount statistic (issue #150).
+    /// For nullable columns whose entire chunk is null, the data pages are never opened:
+    /// the rented buffer is zeroed instead, skipping I/O, decompression and decoding.
+    /// Columns without statistics (or partial nulls) fall through to the standard read.
+    /// </summary>
+    private static void EmitReadWithNullBypass(
+        StringBuilder builder,
+        PropertyModel prop,
+        string fieldAccess,
+        string bufName,
+        int propIndex,
+        string indent = "                "
+    )
+    {
+        if (!prop.IsNullable)
+        {
+            builder.AppendLine(GetReadPrimitiveCall(prop, fieldAccess, bufName, indent));
+            return;
+        }
+
+        builder.AppendLine(
+            $"{indent}var chunkStats_{propIndex} = groupReader.GetStatistics({fieldAccess});"
+        );
+        builder.AppendLine($"{indent}if (chunkStats_{propIndex}?.NullCount == rowCount)");
+        builder.AppendLine($"{indent}{{");
+        builder.AppendLine(
+            $"{indent}    // All-null chunk: skip page reading, decompression and decoding entirely."
+        );
+        builder.AppendLine($"{indent}    global::System.Array.Clear({bufName}, 0, rowCount);");
+        builder.AppendLine($"{indent}}}");
+        builder.AppendLine($"{indent}else");
+        builder.AppendLine($"{indent}{{");
+        builder.AppendLine(GetReadPrimitiveCall(prop, fieldAccess, bufName, indent + "    "));
+        builder.AppendLine($"{indent}}}");
+    }
+
     private static string GetReadPrimitiveCall(
         PropertyModel prop,
         string fieldAccess,
@@ -849,7 +886,7 @@ public static class CodeEmitter
         {
             PropertyModel prop = model.Properties[i];
             string fieldAccess = $"field_{i}";
-            builder.AppendLine(GetReadPrimitiveCall(prop, fieldAccess, $"buffer_{i}"));
+            EmitReadWithNullBypass(builder, prop, fieldAccess, $"buffer_{i}", i);
         }
 
         builder.AppendLine();
@@ -1026,7 +1063,7 @@ public static class CodeEmitter
         {
             PropertyModel prop = model.Properties[i];
             string fieldAccess = $"field_{i}";
-            builder.AppendLine(GetReadPrimitiveCall(prop, fieldAccess, $"buffer_{i}"));
+            EmitReadWithNullBypass(builder, prop, fieldAccess, $"buffer_{i}", i);
         }
 
         builder.AppendLine();
@@ -1121,7 +1158,7 @@ public static class CodeEmitter
         {
             PropertyModel prop = model.Properties[i];
             string fieldAccess = $"field_{i}";
-            builder.AppendLine(GetReadPrimitiveCall(prop, fieldAccess, $"buffer_{i}"));
+            EmitReadWithNullBypass(builder, prop, fieldAccess, $"buffer_{i}", i);
         }
 
         builder.AppendLine();
@@ -1339,7 +1376,7 @@ public static class CodeEmitter
         for (int i = 0; i < model.Properties.Length; i++)
         {
             PropertyModel prop = model.Properties[i];
-            builder.AppendLine(GetReadPrimitiveCall(prop, $"field_{i}", $"buffer_{i}"));
+            EmitReadWithNullBypass(builder, prop, $"field_{i}", $"buffer_{i}", i);
         }
 
         builder.AppendLine();
@@ -1473,7 +1510,7 @@ public static class CodeEmitter
         {
             PropertyModel prop = model.Properties[i];
             string fieldAccess = $"field_{i}";
-            builder.AppendLine(GetReadPrimitiveCall(prop, fieldAccess, $"buffer_{i}"));
+            EmitReadWithNullBypass(builder, prop, fieldAccess, $"buffer_{i}", i);
         }
         builder.AppendLine();
         PropertyMappingComponent.EmitArrayMaterialization(
@@ -1788,13 +1825,13 @@ public static class CodeEmitter
         for (int i = 0; i < model.Properties.Length; i++)
         {
             PropertyModel prop = model.Properties[i];
-            builder.AppendLine(
-                GetReadPrimitiveCall(
-                    prop,
-                    $"field_{i}",
-                    $"buffer_{i}",
-                    indent: "                    "
-                )
+            EmitReadWithNullBypass(
+                builder,
+                prop,
+                $"field_{i}",
+                $"buffer_{i}",
+                i,
+                indent: "                    "
             );
         }
         builder.AppendLine();
