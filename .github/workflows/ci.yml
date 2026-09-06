@@ -129,6 +129,16 @@ jobs:
           PARQUET_TEST_DATA_CSHARP_OUTPUT_DIR: ${{ runner.temp }}/parquet-source-generator/data_csharp
         run: dotnet run --project test/Parquet.SourceGenerator.CLI/Parquet.SourceGenerator.CLI.csproj
 
+      - name: Generate C# PyArrow Interop Output
+        env:
+          PARQUET_PYARROW_INTEROP_OUTPUT: ${{ runner.temp }}/parquet-source-generator/generated-csharp.parquet
+        run: dotnet run --project test/Parquet.SourceGenerator.CLI/Parquet.SourceGenerator.CLI.csproj -- --pyarrow-output "$PARQUET_PYARROW_INTEROP_OUTPUT"
+
+      - name: Verify Generated Output With PyArrow
+        env:
+          PARQUET_PYARROW_INTEROP_OUTPUT: ${{ runner.temp }}/parquet-source-generator/generated-csharp.parquet
+        run: uv run scripts/verify_pyarrow_interop.py
+
       - name: Interrogate IL & Verify Zero Boxing Regression Gate
         run: dotnet run scripts/InterrogateIL.cs --assembly test/Parquet.SourceGenerator.CLI/bin/Release/net8.0/Parquet.SourceGenerator.CLI.dll --check
 
@@ -136,7 +146,12 @@ jobs:
         env:
           PARQUET_TEST_DATA_ROOT: ${{ runner.temp }}/parquet-source-generator/data
           PARQUET_TEST_DATA_CSHARP_ROOT: ${{ runner.temp }}/parquet-source-generator/data_csharp
-        run: dotnet test Parquet.SourceGenertor.sln --configuration Release --no-build --filter "Category!=DatasetIntegrity" --verbosity normal --collect:"XPlat Code Coverage" --settings coverlet.runsettings
+        run: dotnet test Parquet.SourceGenertor.sln --configuration Release --no-build --filter "Category!=DatasetIntegrity&Category!=ExternalInterop" --verbosity normal --collect:"XPlat Code Coverage" --settings coverlet.runsettings
+
+      - name: Verify Generated Reader With PyArrow Fixture
+        env:
+          PARQUET_PYARROW_INTEROP_INPUT: ${{ runner.temp }}/parquet-source-generator/data/pyarrow_interop_input.parquet
+        run: dotnet test Parquet.SourceGenertor.sln --configuration Release --no-build --filter "Category=ExternalInterop" --verbosity normal
 
       - name: Generate Code Coverage Summary & Evaluate Gate
         run: |
