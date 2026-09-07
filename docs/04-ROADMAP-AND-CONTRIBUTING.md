@@ -31,6 +31,7 @@
 - [x] Collect inherited members from base types declared in source.
 - [ ] Support nested collections (`List<T>`, arrays) and nested POCO structs (`StructField`).
       Currently rejected at compile time by `PARQ006` rather than failing at runtime.
+      Tracked as [issue #176](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/176).
 
 ### Phase 4: Native AOT, Performance Optimization & Benchmarking ✅
 - [x] Create `Parquet.SourceGenerator.Benchmarks` using `BenchmarkDotNet`.
@@ -42,7 +43,9 @@
 - [x] Setup GitHub Actions workflow for building, testing, and formatting.
 - [x] Configure NuGet package metadata, licensing (MIT), icons, and README embedded docs.
 - [x] Publish to NuGet.org (`0.0.1`).
-- [ ] Cut a `1.0.0` release. Blocked on the API-shaping items in the limitations audit.
+- [ ] Release cadence: ship the `0.0.x` series continuously while features are still landing;
+      cut `0.1.0` at the next API freeze, once things slow down. The former "cut 1.0.0" gate —
+      the API-shaping items from the limitations audit — no longer blocks releases.
 
 ### Phase 6: Broader Runtime Support ✅
 - [x] `Parquet.SourceGenerator.V5` — a `DataColumn`-based emitter covering Parquet.Net 4.x and 5.x,
@@ -85,6 +88,17 @@ it is about to create. The comparison logic is unit-tested in `BenchmarkRegressi
 normalisation, threshold arithmetic and baseline round-tripping are ordinary logic, and testing them
 in the normal CI run means a broken gate surfaces there rather than the next time someone dispatches
 the benchmark workflow.
+
+### Phase 8: Compound Types & the Apache Arrow bridge
+- [ ] [Issue #176](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/176) — serialise
+      nested POCOs, collections, and maps as true Parquet nested groups (`StructField`, `ListField`,
+      `MapField`) on both backends. Closes the Phase 3 gap and is the last functional item before
+      the `0.1.0` API freeze.
+- [ ] [Issue #177](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/177) — Apache Arrow
+      `RecordBatch` ingestion, via a conditionally emitted bridge gated on the consumer's
+      `Apache.Arrow` reference (no companion package). Resolves Option C of #137.
+- [ ] [Issue #178](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/178) — `RecordBatch`
+      export, same conditional-emission gate.
 
 ---
 
