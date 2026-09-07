@@ -137,7 +137,7 @@ jobs:
       - name: Verify Generated Output With PyArrow
         env:
           PARQUET_PYARROW_INTEROP_OUTPUT: ${{ runner.temp }}/parquet-source-generator/generated-csharp.parquet
-        run: uv run scripts/verify_pyarrow_interop.py
+        run: uv run scripts/generate_test_data.py --verify-generated "$PARQUET_PYARROW_INTEROP_OUTPUT"
 
       - name: Interrogate IL & Verify Zero Boxing Regression Gate
         run: dotnet run scripts/InterrogateIL.cs --assembly test/Parquet.SourceGenerator.CLI/bin/Release/net8.0/Parquet.SourceGenerator.CLI.dll --check
