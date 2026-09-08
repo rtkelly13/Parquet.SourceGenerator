@@ -37,10 +37,18 @@ For `Dictionary<string, string?>` (`MapField`): key leaf `maxDef = 2` (0 = map n
 
 ### 1.2 The rep array
 
-- `rep = 0` starts a new row; `rep = 1` means "another element of the same innermost list".
-- Level arrays have **one entry per value slot *including* nulls and empty markers** — i.e. the
-  array is longer than `rowCount` exactly when some row contributes more than one entry
-  (multi-element lists, empty-list marker, null-struct marker).
+- `rep = 0` always starts a new row. For a value that continues a repeated group, `rep` equals
+  **the depth of the repeated ancestor being continued** (0-based from the innermost). A single
+  list depth therefore shows only 0s and 1s — but with nested repeated fields the levels go
+  higher: `List<List<int>>` with row `[[1, 2], [3]]` has reps `[0, 2, 1]` (`2` continues the
+  inner list, `1` closes it and starts the next inner list in the same row). The spike data
+  covered only single-list-depth shapes; a `List<List<T>>` case must be added to the M3 matrix
+  before the codec relies on the general rule.
+- Level arrays have **one entry per value slot *including* nulls and empty markers**. A row whose
+  list is null, empty, or a struct that is null contributes exactly **one** entry (its marker);
+  the array grows beyond `rowCount` only when rows contribute *multiple* slots, i.e. lists with
+  two or more elements (or map pairs). Empty-list and null-struct markers are each their row's
+  single entry, not extra phantom slots.
 - The packed value array contains only the `def == maxDef` entries, in order.
 
 ### 1.3 Worked example (row set: `[a,null,b] / [] / null`, plus struct `{NYC,10001} / null / {null,55}`)
@@ -52,17 +60,21 @@ Ship/Zip:            defs = [2,0,2]                                   values = [
 Meta key/value:      defs = [2,2,1,0] / [3,2,1,0]   reps = [0,1,0,0]  values = ["k1","k2"] / ["v1"]
 ```
 
-Verified byte-for-byte by feeding hand-built arrays of exactly these shapes to the write APIs and
-reading the files back with **three** independent readers: Parquet.Net 6 raw reader, Parquet.Net's
-own reflection serializer, and PyArrow 25.0.0. All three agreed, including the
-`['a', None, 'b'], [], None` null-vs-empty list distinction.
+Verified by feeding hand-built arrays of exactly these shapes to the write APIs and reading the
+files back with **two authoritative readers**: the Parquet.Net 6 raw reader (`ReadRawAsync`,
+levels and packed values identical) and PyArrow 25.0.0 (logical values identical, including the
+`['a', None, 'b'], [], None` null-vs-empty distinction). Parquet.Net's own reflection serializer
+*produced* the convention reference (Spike A) but its *reader* is excluded from validation — see
+§2.6 for why it fails the nested cases.
 
 ### 1.4 Depth composition is additive
 
 A list inside a struct (`Deep/Members/list/element` in the spike) showed
 `maxDef = 4` = struct(+1) + list(+1) + element(+1) + null-vs-value(+1), with rep contributed only
-by the repeated `list` group. Arbitrary nesting just extends the ladder; reassembly thresholds are
-all derived from `maxDef` per leaf, so the generated reassembler is uniform across depths.
+by the repeated `list` group. Arbitrary nesting extends the def ladder additively; reassembly
+thresholds derive from `maxDef` per leaf. Repetition is the part that is *not* uniform across
+depth — §1.2's ancestor-depth rule governs, and nested repeated fields (`List<List<T>>`) need
+their own test row in M3.
 
 ---
 
@@ -78,8 +90,12 @@ all derived from `maxDef` per leaf, so the generated reassembler is uniform acro
 3. **`ReadRawAsync<T>` is also `where T : struct`, and the values buffer must be sized to
    `NumValues` (entry count), NOT to the packed value count** — passing a buffer sized to the
    non-null count throws `ArgumentException: Values buffer is too small …`. Entry count comes
-   from `rgReader.GetMetadata(field).MetaData.NumValues`; packed count from
-   `rgReader.GetStatistics(field).NullCount`. This is the read-side trap #1 for M2/M3.
+   from `rgReader.GetMetadata(field).MetaData.NumValues`. The **packed** (physical value) count
+   is `NumValues - NullCount`, where `NullCount` from `rgReader.GetStatistics(field)` is the
+   number of *null/absent entries* (`def < maxDef`), not the packed count. When statistics are
+   absent (`GetStatistics` returns null) the packed count must be derived by scanning the def
+   array for `def == maxDef` rather than assumed to equal `NumValues`. This is the read-side trap
+   #1 for M2/M3.
 4. **Struct groups are always `optional` in 6.1.0.** `StructField` exposes no `isNullable` ctor
    parameter, and the serializer emitted `optional group` even for a C# property that was never
    null (`Bill` in the spike). Consequence for #176: do **not** promise required groups; a
@@ -152,7 +168,8 @@ all derived from `maxDef` per leaf, so the generated reassembler is uniform acro
 
 The spike programs (retired with this commit, reconstructed as unit tests during M1–M4) were:
 A) reflection-serializer convention dump via `ReadRawColumnDataAsync`/`ReadRawAsync` on a
-6-leaf nested model; B) hand-built level write via `WriteAllPartsAsync` + three-reader cross-check;
+6-leaf nested model; B) hand-built level write via `WriteAllPartsAsync` + two-reader cross-check
+(raw `ReadRawAsync` and PyArrow; the reflection serializer is a write-side reference only);
 C) PyArrow fixture read + reassembly of `tags`; E) 4.25.0 `DataColumn` round-trip. PyArrow 25.0.0
 (via `uv run --with pyarrow==25.0.0`) read all produced files with exact logical equality,
 including `['a', None, 'b'], [], None`.
