@@ -89,7 +89,7 @@ generated model unless its required fields fit the supported flat envelope.
 | Column order changed in the file | Supported | Generated readers resolve fields by name after the fast positional check |
 | Additional file columns | Supported for reading | Generated readers resolve the fields they know; additional columns are not materialized |
 | Missing required generated column | Supported failure | The reader throws a descriptive `InvalidDataException` |
-| Missing optional generated column | Unverified | Must be covered by the schema-evolution issue before being promised |
+| Missing optional generated column | Supported | The column materialises as all-null; see [document 16](16-VERSION-AND-SCHEMA-EVOLUTION.md) |
 | Nested and repeated fields | Unsupported for generated models | No generated collection or repetition-level model exists |
 | Lists and maps | Unsupported for generated models | External files are fixture/conformance inputs, not generated-model inputs |
 | Encrypted Parquet files | Unknown/future | No compatibility promise |
@@ -135,8 +135,8 @@ that the underlying writer accepts.
 | PyArrow reading generated output | Verified in ExternalInterop CI | Pinned PyArrow canonical fixture and generated C# output |
 | DuckDB reading and writing supported flat schemas | Verified in ExternalInterop CI | Pinned DuckDB CLI and generated canonical fixture |
 | Apache Parquet tooling | Unverified | Required conformance issue |
-| Older Parquet.Net output read by current generated code | Partially verified | Required version matrix |
-| Current generated output read by legacy consumers | Partially verified | Required version matrix |
+| Older Parquet.Net output read by current generated code | Verified | Parquet.Net 6.0.3 fixtures in the version matrix (document 16) |
+| Current generated output read by legacy consumers | Verified in CI | Cross-version package interop step (document 16) |
 | Public LFS benchmark datasets | Provenance and runtime coverage | Treat hashes as provenance, not semantic compatibility |
 
 The `test/data_csharp/v3` directory is a fixture-directory name, not evidence that the files were
@@ -162,8 +162,9 @@ forward-compatible.
 ### Schema evolution
 
 Column reordering and additional file columns are supported. Missing required generated columns fail
-descriptively. Missing optional generated columns are not part of the compatibility promise until they
-have an explicit test and behavior decision.
+descriptively. Missing optional generated columns materialise as nulls. The full behaviour table,
+the producer/consumer/version matrix behind it, and the known gaps are in
+[document 16](16-VERSION-AND-SCHEMA-EVOLUTION.md).
 
 ### Semantic compatibility
 
@@ -195,6 +196,6 @@ substitute for semantic interoperability tests.
 - [Issue #165](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/165) adds PyArrow interoperability.
 - [Issue #166](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/166) adds DuckDB interoperability.
 - [Issue #167](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/167) adds Apache conformance validation.
-- [Issue #168](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/168) adds version and schema-evolution testing.
+- [Issue #168](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/168) adds version and schema-evolution testing; results in [document 16](16-VERSION-AND-SCHEMA-EVOLUTION.md).
 - [Issue #169](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/169) adds property-based and negative testing.
 - [Issue #170](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/170) provides the `/regression` execution modes.

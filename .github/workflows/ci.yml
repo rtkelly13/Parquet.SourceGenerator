@@ -167,6 +167,9 @@ jobs:
         env:
           PARQUET_TEST_DATA_ROOT: ${{ runner.temp }}/parquet-source-generator/data
           PARQUET_TEST_DATA_CSHARP_ROOT: ${{ runner.temp }}/parquet-source-generator/data_csharp
+          # The version/schema-evolution matrix writes its per-cell record here so the run leaves
+          # behind a compatibility report, not just a pass/fail.
+          PARQUET_COMPAT_MATRIX_OUTPUT: ${{ runner.temp }}/parquet-source-generator/compatibility-matrix
         run: dotnet test Parquet.SourceGenertor.sln --configuration Release --no-build --filter "Category!=DatasetIntegrity&Category!=ExternalInterop" --verbosity normal --collect:"XPlat Code Coverage" --settings coverlet.runsettings
 
       - name: Verify Generated Reader With PyArrow Fixture
@@ -311,6 +314,40 @@ jobs:
             -p:GeneratorPackageVersion="$version" \
             -p:RestorePackagesPath="$RUNNER_TEMP/consumption-packages-legacy-net9"
 
+      # Neither in-solution tests nor the two steps above can cover the version axis of the
+      # compatibility matrix: a test assembly references exactly one Parquet.Net, so nothing inside
+      # it can prove that a file written against 6.x is readable by a consumer pinned to 4.25. These
+      # two projects each reference a different Parquet.Net and compile the same shared model
+      # (test/CrossVersionInterop/InteropModels.cs), so handing a file from one to the other is the
+      # only place that leg gets exercised. The reader model is deliberately one version ahead of
+      # the writer's — reordered columns plus two optional columns the file cannot contain — so the
+      # handshake tests schema evolution across the version boundary rather than a bare round-trip.
+      - name: Verify Cross-Version Interoperability (modern ⇄ legacy packages)
+        run: |
+          set -euo pipefail
+          version=$(ls artifacts/Parquet.SourceGenerator.[0-9]*.nupkg \
+            | sed -E 's/.*Parquet\.SourceGenerator\.([0-9][^/]*)\.nupkg/\1/')
+          interop="$RUNNER_TEMP/parquet-source-generator/cross-version"
+          matrix="$RUNNER_TEMP/parquet-source-generator/compatibility-matrix/cross-version.jsonl"
+          mkdir -p "$interop" "$(dirname "$matrix")"
+
+          modern=(dotnet run --project test/PackageConsumption/PackageConsumption.csproj
+            --framework net8.0 --configuration Release
+            -p:GeneratorPackageVersion="$version"
+            -p:RestorePackagesPath="$RUNNER_TEMP/consumption-packages-net8")
+          legacy=(dotnet run --project test/PackageConsumptionLegacy/PackageConsumptionLegacy.csproj
+            --framework net8.0 --configuration Release
+            -p:GeneratorPackageVersion="$version"
+            -p:RestorePackagesPath="$RUNNER_TEMP/consumption-packages-legacy-net8")
+
+          "${modern[@]}" -- --write-interop "$interop/modern.parquet"
+          "${legacy[@]}" -- --read-interop "$interop/modern.parquet" modern/Parquet.Net-6.x "$matrix"
+
+          "${legacy[@]}" -- --write-interop "$interop/legacy.parquet"
+          "${modern[@]}" -- --read-interop "$interop/legacy.parquet" classic/Parquet.Net-4.25 "$matrix"
+
+          echo "::group::cross-version matrix rows"; cat "$matrix"; echo "::endgroup::"
+
       # .NET Framework support is the entire reason the Legacy package exists, and until now nothing in
       # CI compiled it — the project declared net472 but every step above pins --framework to a
       # modern TFM, so the target was never built. Compiling is as far as a Linux runner can go
@@ -327,6 +364,14 @@ jobs:
             --configuration Release \
             -p:GeneratorPackageVersion="$version" \
             -p:RestorePackagesPath="$RUNNER_TEMP/consumption-packages-legacy-net472"
+
+      - name: Upload Compatibility Matrix Report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: compatibility-matrix
+          path: ${{ runner.temp }}/parquet-source-generator/compatibility-matrix
+          if-no-files-found: warn
 
       - name: Upload Test Coverage Artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7

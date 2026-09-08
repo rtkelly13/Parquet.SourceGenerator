@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using CrossVersionInterop;
 using Parquet.SourceGenerator;
 
 namespace PackageConsumption;
@@ -51,8 +52,23 @@ public sealed partial record Reading
 
 internal static class Program
 {
-    private static async Task<int> Main()
+    private static async Task<int> Main(string[] args)
     {
+        // Cross-version interoperability modes. The default path below is the original
+        // self-contained round-trip check; these two modes exist so CI can hand a file written by
+        // this package to the legacy package and back again.
+        if (args.Length >= 2 && args[0] == "--write-interop")
+        {
+            return await CrossVersionInteropDriver.WriteAsync(args[1]);
+        }
+
+        if (args.Length >= 2 && args[0] == "--read-interop")
+        {
+            string producer = args.Length >= 3 ? args[2] : "unknown";
+            string? matrixPath = args.Length >= 4 ? args[3] : null;
+            return await CrossVersionInteropDriver.ReadAsync(args[1], producer, matrixPath);
+        }
+
         var expected = new List<Reading>
         {
             new()
@@ -149,6 +165,12 @@ internal static class Program
             return 1;
         }
 
+        // Schema evolution through the shipped package, not just through the in-solution build.
+        if (!await TestSchemaEvolutionAsync())
+        {
+            return 1;
+        }
+
         Console.WriteLine(
             $"Package consumption OK: round-tripped {actual.Count} records across all entry points, schema has "
                 + $"{ReadingParquetExtensions.Schema.Fields.Count} fields."
@@ -219,6 +241,31 @@ internal static class Program
                 );
                 return false;
             }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// A file written with the producer schema, read back with a schema one version ahead of it.
+    /// The generated resolver has to match the reordered columns by name and materialise nulls for
+    /// the two optional columns the file does not carry.
+    /// </summary>
+    private static async Task<bool> TestSchemaEvolutionAsync()
+    {
+        using var stream = new MemoryStream();
+        await CrossVersionInteropDriver.CanonicalRows.WriteParquetAsync(stream);
+        stream.Position = 0;
+
+        List<InteropRowEvolved> read = await InteropRowEvolvedParquetExtensions.ReadParquetAsync(
+            stream
+        );
+
+        string? failure = InteropVerification.Verify(read, CrossVersionInteropDriver.CanonicalRows);
+        if (failure is not null)
+        {
+            Console.Error.WriteLine($"FAILED: schema evolution through the package: {failure}");
+            return false;
         }
 
         return true;
