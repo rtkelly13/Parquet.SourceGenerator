@@ -43,6 +43,24 @@ internal sealed class LeafColumn
     public int AncestorCount => SchemaPath.Length;
     public bool IsCompound => SchemaPath.Length > 0;
 
+    /// <summary>Row-level list/array member (M3a): values pack into a lane, levels carry rep.</summary>
+    public bool IsListLeaf { get; set; }
+
+    /// <summary>List members: def ≥ this rung ⇔ the list exists (empty counts as existing).</summary>
+    public int ListPresenceRung { get; set; }
+
+    /// <summary>List members: def ≥ this rung ⇔ an element occupies this entry.</summary>
+    public int ListElementRung { get; set; }
+
+    /// <summary>List members: whether the C# member was annotated nullable (affects the bang).</summary>
+    public bool MemberAnnotatedNullable { get; set; }
+
+    /// <summary>List members: the member name read off the row item (element lanes key off it).</summary>
+    public string ListMemberName { get; set; } = "";
+
+    /// <summary>List members: whether the C# member is an array (lanes materialize via ToArray).</summary>
+    public bool ListMemberIsArray { get; set; }
+
     /// <summary>Packed buffer / WriteAllPartsAsync generic argument for this leaf.</summary>
     public string PackedType => CompoundBuffers.GetPackedType(Leaf);
 
@@ -51,6 +69,8 @@ internal sealed class LeafColumn
     {
         get
         {
+            if (IsListLeaf)
+                return $"((global::Parquet.Schema.DataField)((global::Parquet.Schema.ListField)Schema.Fields[{RootPropertyIndex}]).Item)";
             string cur = $"Schema.Fields[{RootPropertyIndex}]";
             for (int i = 0; i < SchemaPath.Length; i++)
             {
@@ -118,7 +138,7 @@ internal sealed class EmissionPlan
     /// <summary>Leaf-property index → its column slot, or -1 for compound members.</summary>
     public int[] ColumnSlotByProperty { get; set; } = [];
 
-    public bool HasCompound => Nodes.Length > 0;
+    public bool HasCompound => Nodes.Length > 0 || Columns.Any(c => c.IsListLeaf);
 
     public static EmissionPlan For(TargetClassModel model)
     {
@@ -130,6 +150,34 @@ internal sealed class EmissionPlan
         for (int root = 0; root < model.Properties.Length; root++)
         {
             PropertyModel prop = model.Properties[root];
+            if (prop.Kind == PropertyKind.List)
+            {
+                // M3a: row-level list/array of a leaf element. The element model carries the
+                // leaf's own optionality; the group ladder starts one rung above the row base.
+                rootNodeByProperty[root] = -1;
+                columnSlotByProperty[root] = columns.Count;
+                PropertyModel element = prop.Element!;
+                columns.Add(
+                    new LeafColumn
+                    {
+                        Slot = columns.Count,
+                        Leaf = element,
+                        RootPropertyIndex = root,
+                        SchemaPath = [],
+                        MaxDef = 2 + (element.IsNullable ? 1 : 0),
+                        MemberChain = [prop.Name],
+                        AncestorIsValueType = [],
+                        AncestorPresenceThresholds = [],
+                        IsListLeaf = true,
+                        ListPresenceRung = 1,
+                        ListElementRung = 2,
+                        MemberAnnotatedNullable = prop.IsNullable,
+                        ListMemberName = prop.Name,
+                        ListMemberIsArray = prop.TypeName.EndsWith("[]", StringComparison.Ordinal),
+                    }
+                );
+                continue;
+            }
             if (prop.Kind != PropertyKind.Struct)
             {
                 rootNodeByProperty[root] = -1;
