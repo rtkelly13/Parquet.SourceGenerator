@@ -1,0 +1,188 @@
+name: Regression Suite
+
+# The compatibility, conformance and fixture-integrity suite, kept off the ordinary development
+# loop. Pull requests get the quick tier only; the expensive tiers arrive on a schedule or on
+# demand. Every tier runs through tools/RegressionRunner so that what CI runs and what
+# `/regression` runs locally cannot drift apart.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Regression tier to run'
+        type: choice
+        default: full
+        options:
+          - quick
+          - full
+          - deep
+  schedule:
+    # Nightly full compatibility sweep.
+    - cron: '0 3 * * *'
+    # Weekly deep sweep: property seeds, corruption, large datasets, AOT and IL diagnostics.
+    - cron: '0 5 * * 6'
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  resolve-mode:
+    name: resolve-mode
+    runs-on: ubuntu-latest
+    outputs:
+      mode: ${{ steps.pick.outputs.mode }}
+    steps:
+      - name: Resolve regression tier from trigger
+        id: pick
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_MODE: ${{ inputs.mode }}
+          SCHEDULE: ${{ github.event.schedule }}
+        run: |
+          set -euo pipefail
+          case "$EVENT_NAME" in
+            workflow_dispatch)
+              mode="${INPUT_MODE:-full}"
+              ;;
+            schedule)
+              # The weekly cron is the only deep trigger. Anything else on a schedule is full.
+              if [ "$SCHEDULE" = "0 5 * * 6" ]; then
+                mode="deep"
+              else
+                mode="full"
+              fi
+              ;;
+            *)
+              # Pull requests and everything else get the quick tier. This is the line that keeps
+              # the deep suite out of required PR checks.
+              mode="quick"
+              ;;
+          esac
+          echo "Resolved regression mode: $mode"
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+
+  regression:
+    name: regression
+    needs: resolve-mode
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      REGRESSION_MODE: ${{ needs.resolve-mode.outputs.mode }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          lfs: true
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Setup Python
+        if: needs.resolve-mode.outputs.mode != 'quick'
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        if: needs.resolve-mode.outputs.mode != 'quick'
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+
+      - name: Install DuckDB CLI
+        if: needs.resolve-mode.outputs.mode != 'quick'
+        env:
+          DUCKDB_VERSION: 1.5.4
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/duckdb"
+          curl --fail --silent --show-error --location \
+            "https://github.com/duckdb/duckdb/releases/download/v${DUCKDB_VERSION}/duckdb_cli-linux-amd64.zip" \
+            --output "$RUNNER_TEMP/duckdb/duckdb.zip"
+          unzip -oq "$RUNNER_TEMP/duckdb/duckdb.zip" -d "$RUNNER_TEMP/duckdb"
+          chmod +x "$RUNNER_TEMP/duckdb/duckdb"
+          echo "DUCKDB_BIN=$RUNNER_TEMP/duckdb/duckdb" >> "$GITHUB_ENV"
+          "$RUNNER_TEMP/duckdb/duckdb" --version
+
+      - name: Restore solution dependencies
+        run: dotnet restore Parquet.SourceGenertor.sln
+
+      # The runner is deliberately invoked exactly the way a contributor invokes it locally. It
+      # probes prerequisites first, reports every tool version, writes generated data only under
+      # --artifacts, and hashes test/data before and after the run so a mutated fixture fails the
+      # job even when every step passed. No step here is continue-on-error: a skipped prerequisite
+      # is a failure unless --allow-missing-tools is passed, and it never is.
+      - name: Run regression suite
+        run: |
+          set -euo pipefail
+          extra=""
+          if [ "$REGRESSION_MODE" = "quick" ]; then
+            extra="--enforce-budget"
+          fi
+          dotnet run --project tools/RegressionRunner/RegressionRunner.csproj --configuration Release -- \
+            "$REGRESSION_MODE" \
+            --artifacts "$RUNNER_TEMP/regression" \
+            --run-id "${REGRESSION_MODE}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            $extra
+
+      - name: Publish run summary
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/regression/summary.md" ]; then
+            cat "$RUNNER_TEMP/regression/summary.md" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No regression summary was produced." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # Retained on success as well as failure: the manifest is the record of which tool versions
+      # a green run actually used, and a compatibility failure is unreproducible without the
+      # Parquet files that produced it.
+      - name: Upload regression artifacts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: regression-${{ needs.resolve-mode.outputs.mode }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/regression/run-manifest.json
+            ${{ runner.temp }}/regression/summary.md
+            ${{ runner.temp }}/regression/logs/**
+            ${{ runner.temp }}/regression/*.parquet
+          if-no-files-found: warn
+          retention-days: 14
+
+  # The only job worth requiring in branch protection. A `needs` list plus `if: always()` is the
+  # sole arrangement that reports honestly: without it a cancelled or skipped upstream job leaves
+  # the workflow green, which is exactly how this repository has been burned before.
+  regression-gate:
+    name: regression-gate
+    needs: [ resolve-mode, regression ]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Assert every regression job succeeded
+        env:
+          RESOLVE_RESULT: ${{ needs.resolve-mode.result }}
+          REGRESSION_RESULT: ${{ needs.regression.result }}
+        run: |
+          set -euo pipefail
+          echo "resolve-mode: $RESOLVE_RESULT"
+          echo "regression:   $REGRESSION_RESULT"
+          failed=0
+          for result in "$RESOLVE_RESULT" "$REGRESSION_RESULT"; do
+            if [ "$result" != "success" ]; then
+              failed=1
+            fi
+          done
+          if [ "$failed" -ne 0 ]; then
+            echo "::error::Regression suite did not succeed (skipped, cancelled and failed all count as failure)."
+            exit 1
+          fi
+          echo "Regression suite passed."

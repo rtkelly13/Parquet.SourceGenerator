@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net8.0</TargetFramework>
+        <IsPackable>false</IsPackable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <AssemblyName>RegressionRunner</AssemblyName>
+        <RootNamespace>Parquet.SourceGenerator.Tools.Regression</RootNamespace>
+        <!--
+      CA1861 wants constant array arguments hoisted into static readonly fields. The regression
+      plan is a declarative table built exactly once per process, and hoisting every argument list
+      out of it would scatter the plan across dozens of named fields for no measurable gain.
+    -->
+        <NoWarn>$(NoWarn);CA1861</NoWarn>
+    </PropertyGroup>
+</Project>

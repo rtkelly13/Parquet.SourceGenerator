@@ -66,6 +66,26 @@ Parquet.Net, not from generated code, and are not currently treated as errors â€
 is reflection-free but the library beneath it is not. If you add a step that trips new IL warnings
 attributed to *this* repo's assemblies, that is a real regression worth chasing.
 
+### 6. Run the regression suite
+
+Compatibility, conformance and fixture-integrity testing is separate from the inner loop and is
+driven by one entrypoint:
+
+```bash
+/regression            # quick tier, the development-loop default
+/regression full       # + pinned PyArrow, DuckDB, version matrix (needs uv and the DuckDB CLI)
+/regression deep       # + property seeds, corruption, large datasets, IL and AOT diagnostics
+
+# the underlying command, if you are not using the slash command
+dotnet run --project tools/RegressionRunner/RegressionRunner.csproj --configuration Release -- quick
+```
+
+Every run writes `run-manifest.json`, `summary.md` and per-step logs to
+`temp/regression/<run-id>/`, recording the exact tool versions, command lines and artifact paths.
+`test/data` is hashed before and after each run: any change to a checked-in fixture fails the run.
+Pull requests run the quick tier only; full runs nightly and deep weekly. See
+[docs/16-REGRESSION-SUITE.md](docs/16-REGRESSION-SUITE.md).
+
 ---
 
 ## ðŸ“Š Running Benchmarks

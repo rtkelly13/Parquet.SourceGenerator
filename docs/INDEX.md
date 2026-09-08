@@ -89,6 +89,10 @@ Welcome to the **Parquet.SourceGenerator** documentation repository. This folder
      - Empirically verified def/rep level conventions for structs, lists, and maps.
      - Parquet.Net 6.1.0 and 4.25.0 nested API traps that shape the #176 emitter design.
 
+17. **[16 - The Regression Suite (`/regression`)](./16-REGRESSION-SUITE.md)**
+     - Quick, full and deep compatibility tiers, their budgets, prerequisites and exit codes.
+     - The run manifest, fixture-mutation guard, and how the tiers are wired into CI.
+
 
 ---
 

@@ -163,11 +163,15 @@ jobs:
       - name: Interrogate IL & Verify Zero Boxing Regression Gate
         run: dotnet run scripts/InterrogateIL.cs --assembly test/Parquet.SourceGenerator.CLI/bin/Release/net8.0/Parquet.SourceGenerator.CLI.dll --check
 
+      # The Property, Corruption and LargeDataset categories are the deep regression tier and are
+      # deliberately not run here: required PR checks must stay fast. They run in regression.yml on
+      # the weekly deep cron and on manual dispatch. This filter is the same string the runner
+      # builds from RegressionPlan.DefaultTestFilter, and a test asserts the two stay identical.
       - name: Run Full Test Suite with Code Coverage Collection
         env:
           PARQUET_TEST_DATA_ROOT: ${{ runner.temp }}/parquet-source-generator/data
           PARQUET_TEST_DATA_CSHARP_ROOT: ${{ runner.temp }}/parquet-source-generator/data_csharp
-        run: dotnet test Parquet.SourceGenertor.sln --configuration Release --no-build --filter "Category!=DatasetIntegrity&Category!=ExternalInterop" --verbosity normal --collect:"XPlat Code Coverage" --settings coverlet.runsettings
+        run: dotnet test Parquet.SourceGenertor.sln --configuration Release --no-build --filter "Category!=DatasetIntegrity&Category!=ExternalInterop&Category!=Property&Category!=Corruption&Category!=LargeDataset" --verbosity normal --collect:"XPlat Code Coverage" --settings coverlet.runsettings
 
       - name: Verify Generated Reader With PyArrow Fixture
         env:

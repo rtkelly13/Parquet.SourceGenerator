@@ -19,6 +19,7 @@
         </PackageReference>
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
         <PackageReference Include="Parquet.Net" />
+        <PackageReference Include="YamlDotNet" />
     </ItemGroup>
 
     <ItemGroup>
@@ -47,6 +48,12 @@
       being discovered the next time someone dispatches the benchmark workflow.
     -->
         <ProjectReference Include="..\..\tools\BenchmarkSummaryGenerator\BenchmarkSummaryGenerator.csproj" />
+        <!--
+      Same reasoning for the regression runner: mode composition, prerequisite gating, artifact
+      routing and the fixture guard are ordinary logic, and a broken /regression surface should
+      fail the normal test run rather than the next nightly dispatch.
+    -->
+        <ProjectReference Include="..\..\tools\RegressionRunner\RegressionRunner.csproj" />
     </ItemGroup>
 
     <ItemGroup>
