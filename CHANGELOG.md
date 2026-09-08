@@ -12,6 +12,16 @@ Changes since `0.0.1`. That version is published on nuget.org (alongside the `0.
 `0.0.1-dev.2` prereleases); this section becomes the next release entry when one is cut.
 
 ### Added
+- **Apache Arrow `RecordBatch` ingestion (experimental, #177)**: when — and only when — the consumer
+  compilation references Apache.Arrow, the generator emits an extra `{Namespace}.{Type}.Arrow.g.cs`
+  per Arrow-representable `[ParquetSerializable]` type, adding
+  `WriteParquetRowGroupAsync(ParquetWriter, RecordBatch, ParquetSerializerOptions?, CancellationToken)`
+  to the same partial class. Neither shipped package takes an Apache.Arrow dependency; the gate is a
+  single `bool` off `CompilationProvider`, so toggling the reference re-runs only the Arrow-gated
+  output. Columns are matched by name and validated strictly (every offending field reported at
+  once); fixed-width Arrow buffers are handed to the writer with no copy and no `ArrayPool` rental;
+  nullable columns derive definition levels from the Arrow validity bitmap and produce byte-identical
+  files to the POCO write path. Supported Apache.Arrow floor: `23.0.0`.
 - **Roslyn incremental source generator**: compiles zero-reflection Parquet serializers and
   deserializers against Parquet.Net low-level primitives.
 - **Native AOT support**, exercised on every CI run by publishing the AOT test project with

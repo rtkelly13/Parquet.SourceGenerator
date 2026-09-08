@@ -19,6 +19,11 @@
         </PackageReference>
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
         <PackageReference Include="Parquet.Net" />
+        <!--
+      Referencing Apache.Arrow here is what switches the generator's conditional Arrow bridge on for
+      this assembly: the emitted overloads only exist because this reference does.
+    -->
+        <PackageReference Include="Apache.Arrow" />
     </ItemGroup>
 
     <ItemGroup>

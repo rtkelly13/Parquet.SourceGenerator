@@ -156,13 +156,26 @@ public class ZeroBoxingSerializationTests
         return boxes;
     }
 
+    /// <summary>
+    /// Selects the POCO row-group writer. Compilations that reference Apache.Arrow also carry a
+    /// RecordBatch overload of the same name (#177), so a bare GetMethod call is ambiguous there.
+    /// </summary>
+    private static MethodInfo? GetPocoRowGroupWriter(Type type)
+    {
+        return type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
+            .SingleOrDefault(m =>
+                m.Name == "WriteParquetRowGroupAsync"
+                && m.GetParameters().Length > 1
+                && m.GetParameters()[1].ParameterType.IsGenericType
+                && m.GetParameters()[1].ParameterType.GetGenericTypeDefinition()
+                    == typeof(IReadOnlyCollection<>)
+            );
+    }
+
     [Fact]
     public void WriteParquetRowGroupAsyncEmitsZeroBoxingOpcodes()
     {
-        MethodInfo? method = typeof(ZeroBoxingRecordParquetExtensions).GetMethod(
-            "WriteParquetRowGroupAsync",
-            BindingFlags.Public | BindingFlags.Static
-        );
+        MethodInfo? method = GetPocoRowGroupWriter(typeof(ZeroBoxingRecordParquetExtensions));
 
         Assert.NotNull(method);
         int boxCount = CountBoxInstructionsInMethodAndStateMachine(method);
@@ -282,10 +295,7 @@ public class ZeroBoxingSerializationTests
 
         foreach (Type type in extensionTypes)
         {
-            MethodInfo? method = type.GetMethod(
-                "WriteParquetRowGroupAsync",
-                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
-            );
+            MethodInfo? method = GetPocoRowGroupWriter(type);
 
             if (method == null)
             {

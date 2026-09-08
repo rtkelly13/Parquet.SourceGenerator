@@ -225,6 +225,36 @@ To enable Native AOT in your application:
 
 ---
 
+## 🏹 Apache Arrow RecordBatch Ingestion (Experimental)
+
+If your pipeline already holds an `Apache.Arrow.RecordBatch` (DataFusion, Arrow Flight, PyArrow via
+IPC), row-wise extraction through the POCO writer is wasted work — Arrow columns are already the
+contiguous buffers Parquet.Net wants. Add the package and the generator emits the bridge:
+
+```xml
+<PackageReference Include="Apache.Arrow" Version="23.0.0" />
+```
+
+```csharp
+await using var writer = await ParquetWriter.CreateAsync(OrderEventParquetExtensions.Schema, stream);
+OrderEventParquetExtensions.WriteParquetRowGroupAsync(writer, recordBatch);
+```
+
+- **No new dependency.** Neither the generator nor the Attributes package references Apache.Arrow.
+  The extra file (`{Namespace}.{Type}.Arrow.g.cs`, one per Arrow-representable type) is emitted only
+  when *your* compilation references Apache.Arrow — so a project that opts in generates two files
+  per annotated type instead of one.
+- **Strict validation.** Columns are matched by name and checked by physical/logical type before
+  anything is written; every offending field is reported in one `InvalidDataException`. Nothing is
+  silently coerced, and `DictionaryArray` / `LargeUtf8` are rejected outright.
+- **Zero-copy where it is real.** Fixed-width Arrow buffers are reinterpreted in place — no copy, no
+  `ArrayPool` rental. Nullable columns derive their definition levels from the Arrow validity
+  bitmap and produce byte-identical files to the POCO path.
+- **Supported floor:** Apache.Arrow `23.0.0`. Full mapping table and rejection rules in
+  **[`docs/14-COMPATIBILITY-MATRIX.md`](https://github.com/rtkelly13/Parquet.SourceGenerator/blob/main/docs/14-COMPATIBILITY-MATRIX.md#apache-arrow-recordbatch-ingestion-experimental-177)**.
+
+---
+
 ## 🛡️ Compatibility & Known Limitations
 
 | Capability | Status | Notes |
@@ -234,6 +264,7 @@ To enable Native AOT in your application:
 | **`DateTimeOffset`** | ❌ Unsupported | Parquet has no direct representation; use `DateTime` + offset column. |
 | **Positional Records** | ❌ Unsupported | Constructor with parameters reported as `PARQ008`. Use nominal records with `{ get; init; }`. |
 | **.NET Framework (net472)** | ✅ Supported via V5 | Use `Parquet.SourceGenerator.V5` for Parquet.Net 4.x/5.x support. |
+| **Apache Arrow ingestion** | 🧪 Experimental (v6 only) | Emitted only when the consumer references Apache.Arrow. Flat models only; Native AOT unproven. |
 
 > A complete audit of limitations and remediation roadmap is in **[`docs/07-KNOWN-LIMITATIONS.md`](https://github.com/rtkelly13/Parquet.SourceGenerator/blob/main/docs/07-KNOWN-LIMITATIONS.md)**.
 
