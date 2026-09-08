@@ -31,7 +31,9 @@ public static class LegacyCodeEmitter
             builder.AppendLine();
         }
 
-        string extensionsClassName = $"{model.ClassName}ParquetLegacyExtensions";
+        // Nested targets carry a dotted ClassName ("Outer.Inner"); identifiers take the flat form.
+        string extensionsClassName =
+            $"{model.ClassName.Replace(".", string.Empty)}ParquetLegacyExtensions";
 
         builder.AppendLine($"public static partial class {extensionsClassName}");
         builder.AppendLine("{");

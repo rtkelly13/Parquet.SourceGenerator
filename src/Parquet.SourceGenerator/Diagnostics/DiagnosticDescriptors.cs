@@ -121,18 +121,18 @@ public static class DiagnosticDescriptors
     );
 
     /// <summary>
-    /// PARQ009: Nested target types are not supported.
+    /// PARQ009: A nested target type is unreachable from the generated extension class.
     /// </summary>
     /// <remarks>
-    /// The extension class is emitted at namespace scope and refers to the target by its bare name,
-    /// which does not resolve for a nested type; the hint name is namespace + type name too, so two
-    /// same-named nested types in one namespace also collided. Rejected rather than half-supported
-    /// until the emitter carries the full containing-type path.
+    /// Nested <c>[ParquetSerializable]</c> declarations are supported (issue #176 reversed the
+    /// original blanket rejection: the extension class and the hint name now carry the full
+    /// containing-type path). What cannot work is a type the generated namespace-scope class
+    /// cannot name — a <c>private</c> nested declaration — so that narrow case keeps the id.
     /// </remarks>
     public static readonly DiagnosticDescriptor NestedTypeNotSupported = new(
         id: "PARQ009",
-        title: "Nested type cannot be Parquet-serializable",
-        messageFormat: "The type '{0}' is nested inside '{1}'. [ParquetSerializable] supports top-level types only — move it to namespace scope",
+        title: "Nested type is not accessible to generated code",
+        messageFormat: "The type '{0}' is nested inside '{1}' with accessibility '{2}', which generated code cannot reach. Give it internal or public accessibility",
         category: "ParquetSourceGenerator",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true
@@ -167,6 +167,41 @@ public static class DiagnosticDescriptors
         id: "PARQ011",
         title: "Property type is not supported by the Parquet.Net 4.x/5.x API",
         messageFormat: "The member '{0}' on type '{2}' has type '{1}', which Parquet.Net 6 supports but the 4.x/5.x API does not. Use the Parquet.SourceGenerator package instead, or change its type",
+        category: "ParquetSourceGenerator",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true
+    );
+
+    /// <summary>
+    /// PARQ012: A compound member closes a type cycle, which cannot be flattened to columns.
+    /// </summary>
+    /// <remarks>
+    /// Parquet schemas are trees; a type that reaches itself through struct members or list
+    /// elements has no finite column layout. Without this rule the parser would recurse until
+    /// the stack gave out and the build failed with CS8785 and no pointer to the declaration
+    /// responsible.
+    /// </remarks>
+    public static readonly DiagnosticDescriptor NestedTypeCycleDetected = new(
+        id: "PARQ012",
+        title: "Cyclic compound type cannot be Parquet-serializable",
+        messageFormat: "The member '{0}' on type '{1}' creates a reference cycle back to '{2}'. Parquet cannot flatten a self-referencing type — give the cyclic member [ParquetIgnore] or break the cycle",
+        category: "ParquetSourceGenerator",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true
+    );
+
+    /// <summary>
+    /// PARQ013: Compound nesting exceeds the depth the emitter will expand.
+    /// </summary>
+    /// <remarks>
+    /// Record-shredding is unrolled per leaf at generation time, so emitted-code size grows with
+    /// the leaf count and the row-path depth. Six levels is generous for real domain models and
+    /// keeps pathological recursion from emitting megabyte-scale source files.
+    /// </remarks>
+    public static readonly DiagnosticDescriptor NestedTypeTooDeep = new(
+        id: "PARQ013",
+        title: "Compound nesting exceeds the supported depth",
+        messageFormat: "The member '{0}' on type '{1}' nests compound types {2} levels deep, exceeding the maximum of {3}. Flatten the model or mark the deep member [ParquetIgnore]",
         category: "ParquetSourceGenerator",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true
