@@ -120,8 +120,8 @@ public sealed class DiagnosticTests
     [Theory]
     [InlineData("char", "Initial")]
     [InlineData("System.DateTimeOffset", "OccurredAt")]
-    [InlineData("System.Collections.Generic.List<int>", "Tags")]
-    [InlineData("int[]", "Values")]
+    // List<int> and int[] moved to the supported theory with M3a (#176): row-level
+    // lists/arrays of leaf elements now emit. Non-leaf element shapes stay PARQ006.
     [InlineData("System.Numerics.BigInteger", "BigValue")]
     public void UnsupportedMemberTypeTriggersPARQ006(string typeName, string memberName)
     {
@@ -175,6 +175,8 @@ public sealed class DiagnosticTests
     [InlineData("byte[]?")]
     [InlineData("System.Guid?")]
     [InlineData("System.DateTime?")]
+    [InlineData("System.Collections.Generic.List<int>")]
+    [InlineData("int[]")]
     public void SupportedMemberTypeDoesNotTriggerPARQ006(string typeName)
     {
         // The whole point of aligning the allowlist with Parquet.Net's own SupportedTypes: PARQ006

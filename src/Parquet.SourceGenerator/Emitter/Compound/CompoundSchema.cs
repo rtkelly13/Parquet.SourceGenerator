@@ -18,6 +18,19 @@ internal static class CompoundSchema
     /// </summary>
     public static string GetFieldCreationExpression(PropertyModel prop, string indent)
     {
+        if (prop.Kind == PropertyKind.List)
+        {
+            // M3a: row-level lists standard 3-level. ListField synthesizes the optional
+            // group + repeated list wrapper with no nullability knobs (docs/15 §2.4
+            // semantics for groups apply to the list group too).
+            string listName = Microsoft.CodeAnalysis.CSharp.SymbolDisplay.FormatLiteral(
+                prop.ParquetColumnName,
+                quote: true
+            );
+            PropertyModel element = prop.Element!;
+            return $"{indent}new global::Parquet.Schema.ListField({listName}, {SchemaComponent.GetFieldCreationExpression(element)})";
+        }
+
         if (prop.Kind != PropertyKind.Struct)
             return SchemaComponent.GetFieldCreationExpression(prop);
 

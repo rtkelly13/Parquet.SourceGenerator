@@ -39,7 +39,21 @@ internal static class CompoundBuffers
         foreach (LeafColumn col in EmissionPlan.For(model).Columns)
         {
             int i = col.Slot;
-            if (col.IsCompound)
+            if (col.IsListLeaf)
+            {
+                builder.AppendLine(
+                    $"{indent}var {varPrefix}{i} = global::System.Buffers.ArrayPool<{col.PackedType}>.Shared.Rent({sizeExpr});"
+                );
+                builder.AppendLine(
+                    $"{indent}var defLevels_{i} = global::System.Buffers.ArrayPool<int>.Shared.Rent({sizeExpr});"
+                );
+                builder.AppendLine(
+                    $"{indent}var repLevels_{i} = global::System.Buffers.ArrayPool<int>.Shared.Rent({sizeExpr});"
+                );
+                builder.AppendLine($"{indent}int nonNullCount_{i} = 0;");
+                builder.AppendLine($"{indent}int posCount_{i} = 0;");
+            }
+            else if (col.IsCompound)
             {
                 builder.AppendLine(
                     $"{indent}var {varPrefix}{i} = global::System.Buffers.ArrayPool<{col.PackedType}>.Shared.Rent({sizeExpr});"
@@ -78,8 +92,9 @@ internal static class CompoundBuffers
     )
     {
         int propIndex = col.Slot;
-        if (col.IsCompound)
+        if (col.IsCompound || col.IsListLeaf)
         {
+            bool growable = col.IsListLeaf;
             builder.AppendLine(
                 $"{indent}global::System.Buffers.ArrayPool<{col.PackedType}>.Shared.Return({varPrefix}{propIndex}, clearArray: true);"
             );
@@ -88,6 +103,13 @@ internal static class CompoundBuffers
                 $"{indent}global::System.Buffers.ArrayPool<int>.Shared.Return(defLevels_{propIndex}, clearArray: false);"
             );
             builder.AppendLine($"{indent}defLevels_{propIndex} = null!;");
+            if (growable)
+            {
+                builder.AppendLine(
+                    $"{indent}global::System.Buffers.ArrayPool<int>.Shared.Return(repLevels_{propIndex}, clearArray: false);"
+                );
+                builder.AppendLine($"{indent}repLevels_{propIndex} = null!;");
+            }
         }
         else
         {
@@ -111,7 +133,7 @@ internal static class CompoundBuffers
         foreach (LeafColumn col in EmissionPlan.For(model).Columns)
         {
             int i = col.Slot;
-            if (col.IsCompound)
+            if (col.IsCompound || col.IsListLeaf)
             {
                 builder.AppendLine(
                     $"{indent}if ({varPrefix}{i} != null) global::System.Buffers.ArrayPool<{col.PackedType}>.Shared.Return({varPrefix}{i}, clearArray: true);"
@@ -119,6 +141,10 @@ internal static class CompoundBuffers
                 builder.AppendLine(
                     $"{indent}if (defLevels_{i} != null) global::System.Buffers.ArrayPool<int>.Shared.Return(defLevels_{i}, clearArray: false);"
                 );
+                if (col.IsListLeaf)
+                    builder.AppendLine(
+                        $"{indent}if (repLevels_{i} != null) global::System.Buffers.ArrayPool<int>.Shared.Return(repLevels_{i}, clearArray: false);"
+                    );
             }
             else if (BufferPoolComponent.UsesWriteAllParts(col.Leaf))
             {
@@ -154,7 +180,7 @@ internal static class CompoundBuffers
         foreach (LeafColumn col in EmissionPlan.For(model).Columns)
         {
             int i = col.Slot;
-            if (col.IsCompound)
+            if (col.IsCompound || col.IsListLeaf)
             {
                 builder.AppendLine(
                     $"{indent}var {varPrefix}{i} = global::System.Buffers.ArrayPool<{col.PackedType}>.Shared.Rent({sizeExpr});"
@@ -162,6 +188,10 @@ internal static class CompoundBuffers
                 builder.AppendLine(
                     $"{indent}var defLevels_{i} = global::System.Buffers.ArrayPool<int>.Shared.Rent({sizeExpr});"
                 );
+                if (col.IsListLeaf)
+                    builder.AppendLine(
+                        $"{indent}var repLevels_{i} = global::System.Buffers.ArrayPool<int>.Shared.Rent({sizeExpr});"
+                    );
                 continue;
             }
             string bufType = isWrite
@@ -184,7 +214,7 @@ internal static class CompoundBuffers
         foreach (LeafColumn col in EmissionPlan.For(model).Columns)
         {
             int i = col.Slot;
-            if (col.IsCompound)
+            if (col.IsCompound || col.IsListLeaf)
             {
                 builder.AppendLine(
                     $"{indent}global::System.Buffers.ArrayPool<{col.PackedType}>.Shared.Return({varPrefix}{i}, clearArray: true);"
@@ -192,6 +222,10 @@ internal static class CompoundBuffers
                 builder.AppendLine(
                     $"{indent}global::System.Buffers.ArrayPool<int>.Shared.Return(defLevels_{i}, clearArray: false);"
                 );
+                if (col.IsListLeaf)
+                    builder.AppendLine(
+                        $"{indent}global::System.Buffers.ArrayPool<int>.Shared.Return(repLevels_{i}, clearArray: false);"
+                    );
                 continue;
             }
             string bufType = isWrite

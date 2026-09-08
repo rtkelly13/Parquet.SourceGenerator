@@ -130,6 +130,171 @@ internal static class CompoundMapping
         builder.AppendLine($"{prefix}}}");
     }
 
+    private static void GrowLevels(StringBuilder b, int n, string prefix)
+    {
+        string P = prefix;
+        b.AppendLine($"{P}if (posCount_{n} == defLevels_{n}.Length)");
+        b.AppendLine($"{P}{{");
+        b.AppendLine(
+            $"{P}    var gd_{n} = global::System.Buffers.ArrayPool<int>.Shared.Rent(defLevels_{n}.Length * 2);"
+        );
+        b.AppendLine(
+            $"{P}    global::System.Array.Copy(defLevels_{n}, gd_{n}, defLevels_{n}.Length);"
+        );
+        b.AppendLine(
+            $"{P}    global::System.Buffers.ArrayPool<int>.Shared.Return(defLevels_{n}, clearArray: false);"
+        );
+        b.AppendLine($"{P}    defLevels_{n} = gd_{n};");
+        b.AppendLine(
+            $"{P}    var gr_{n} = global::System.Buffers.ArrayPool<int>.Shared.Rent(repLevels_{n}.Length * 2);"
+        );
+        b.AppendLine(
+            $"{P}    global::System.Array.Copy(repLevels_{n}, gr_{n}, repLevels_{n}.Length);"
+        );
+        b.AppendLine(
+            $"{P}    global::System.Buffers.ArrayPool<int>.Shared.Return(repLevels_{n}, clearArray: false);"
+        );
+        b.AppendLine($"{P}    repLevels_{n} = gr_{n};");
+        b.AppendLine($"{P}}}");
+    }
+
+    private static void GrowValues(StringBuilder b, LeafColumn col, string prefix)
+    {
+        int n = col.Slot;
+        b.AppendLine($"{prefix}if (nonNullCount_{n} == buffer_{n}.Length)");
+        b.AppendLine($"{prefix}{{");
+        b.AppendLine(
+            $"{prefix}    var gv_{n} = global::System.Buffers.ArrayPool<{col.PackedType}>.Shared.Rent(buffer_{n}.Length * 2);"
+        );
+        b.AppendLine(
+            $"{prefix}    global::System.Array.Copy(buffer_{n}, gv_{n}, nonNullCount_{n});"
+        );
+        b.AppendLine(
+            $"{prefix}    global::System.Buffers.ArrayPool<{col.PackedType}>.Shared.Return(buffer_{n}, clearArray: true);"
+        );
+        b.AppendLine($"{prefix}    buffer_{n} = gv_{n};");
+        b.AppendLine($"{prefix}}}");
+    }
+
+    /// <summary>
+    /// Row-level list/array extraction (M3a): foreach keeps every collection shape uniform —
+    /// the empty-list marker is emitted when the loop body never ran (docs/15 §1.2: one entry
+    /// per row at minimum, markers are not phantom slots).
+    /// </summary>
+    public static void EmitListExtraction(
+        StringBuilder builder,
+        LeafColumn col,
+        string itemExpr,
+        string prefix
+    )
+    {
+        int n = col.Slot;
+        PropertyModel el = col.Leaf;
+        string conv = GetCompoundLeafWriteExpression(el, $"el_{n}");
+        builder.AppendLine($"{prefix}var lm_{n} = {itemExpr}.{col.ListMemberName};");
+        builder.AppendLine($"{prefix}if (lm_{n} is null)");
+        builder.AppendLine($"{prefix}{{");
+        GrowLevels(builder, n, prefix + "    ");
+        builder.AppendLine($"{prefix}    defLevels_{n}[posCount_{n}] = 0;");
+        builder.AppendLine($"{prefix}    repLevels_{n}[posCount_{n}] = 0;");
+        builder.AppendLine($"{prefix}    posCount_{n}++;");
+        builder.AppendLine($"{prefix}}}");
+        builder.AppendLine($"{prefix}else {{");
+        builder.AppendLine($"{prefix}    bool any_{n} = false;");
+        builder.AppendLine($"{prefix}    int ei_{n} = 0;");
+        builder.AppendLine($"{prefix}    foreach (var el_{n} in lm_{n})");
+        builder.AppendLine($"{prefix}    {{");
+        builder.AppendLine($"{prefix}        any_{n} = true;");
+        GrowLevels(builder, n, prefix + "        ");
+        if (el.IsNullable)
+        {
+            builder.AppendLine($"{prefix}        if (el_{n} is not null) {{");
+            GrowValues(builder, col, prefix + "            ");
+            builder.AppendLine($"{prefix}            buffer_{n}[nonNullCount_{n}++] = {conv};");
+            builder.AppendLine($"{prefix}            defLevels_{n}[posCount_{n}] = {col.MaxDef};");
+            builder.AppendLine($"{prefix}        }}");
+            builder.AppendLine($"{prefix}        else {{");
+            builder.AppendLine(
+                $"{prefix}            defLevels_{n}[posCount_{n}] = {col.ListElementRung};"
+            );
+            builder.AppendLine($"{prefix}        }}");
+        }
+        else
+        {
+            GrowValues(builder, col, prefix + "        ");
+            builder.AppendLine($"{prefix}        buffer_{n}[nonNullCount_{n}++] = {conv};");
+            builder.AppendLine($"{prefix}        defLevels_{n}[posCount_{n}] = {col.MaxDef};");
+        }
+        builder.AppendLine($"{prefix}        repLevels_{n}[posCount_{n}] = ei_{n} == 0 ? 0 : 1;");
+        builder.AppendLine($"{prefix}        posCount_{n}++;");
+        builder.AppendLine($"{prefix}        ei_{n}++;");
+        builder.AppendLine($"{prefix}    }}");
+        builder.AppendLine($"{prefix}    if (!any_{n}) {{");
+        GrowLevels(builder, n, prefix + "        ");
+        builder.AppendLine(
+            $"{prefix}        defLevels_{n}[posCount_{n}] = {col.ListPresenceRung};"
+        );
+        builder.AppendLine($"{prefix}        repLevels_{n}[posCount_{n}] = 0;");
+        builder.AppendLine($"{prefix}        posCount_{n}++;");
+        builder.AppendLine($"{prefix}    }}");
+        builder.AppendLine($"{prefix}}}");
+    }
+
+    /// <summary>
+    /// Rebuild row-level list lanes from the def/rep entry stream: rep==0 opens a row,
+    /// the presence rung yields an empty list, element rungs append (nulls included) in
+    /// order, consuming the packed value lane at the value rung.
+    /// </summary>
+    private static void EmitListLanes(
+        StringBuilder builder,
+        EmissionPlan plan,
+        string rowCountVar,
+        string indent
+    )
+    {
+        foreach (LeafColumn col in plan.Columns)
+        {
+            if (!col.IsListLeaf)
+                continue;
+            int n = col.Slot;
+            // The parser renders element types without nullability suffixes; the lane must
+            // carry the element's annotation or assigning a List<string> into a
+            // List<string?> property fails the compiler's nullability check.
+            string elemType = col.Leaf.TypeName;
+            if (
+                col.Leaf.IsNullable
+                && !elemType.EndsWith("?", StringComparison.Ordinal)
+                && !elemType.EndsWith("[]", StringComparison.Ordinal)
+            )
+                elemType += "?";
+            string listType = $"global::System.Collections.Generic.List<{elemType}>";
+            builder.AppendLine($"{indent}var lane_{n} = new {listType}?[{rowCountVar}];");
+            builder.AppendLine(
+                $"{indent}{listType}? bk_{n} = null; int rc_{n} = 0; int vc_{n} = 0; bool st_{n} = false;"
+            );
+            builder.AppendLine($"{indent}for (int p_{n} = 0; p_{n} < entries_{n}; p_{n}++)");
+            builder.AppendLine($"{indent}{{");
+            builder.AppendLine(
+                $"{indent}    if (repLevels_{n}[p_{n}] == 0) {{ if (st_{n}) lane_{n}[rc_{n}++] = bk_{n}; st_{n} = true; bk_{n} = null; }}"
+            );
+            builder.AppendLine($"{indent}    int dv_{n} = defLevels_{n}[p_{n}];");
+            builder.AppendLine(
+                $"{indent}    if (dv_{n} == {col.ListPresenceRung}) bk_{n} = new {listType}();"
+            );
+            builder.AppendLine($"{indent}    else if (dv_{n} >= {col.ListElementRung}) {{");
+            builder.AppendLine($"{indent}        bk_{n} ??= new {listType}();");
+            builder.AppendLine(
+                $"{indent}        if (dv_{n} == {col.MaxDef}) bk_{n}.Add({GetCompoundLeafReadExpression(col.Leaf, $"buffer_{n}[vc_{n}++]")});"
+            );
+            if (col.Leaf.IsNullable)
+                builder.AppendLine($"{indent}        else bk_{n}.Add(null!);");
+            builder.AppendLine($"{indent}    }}");
+            builder.AppendLine($"{indent}}}");
+            builder.AppendLine($"{indent}if (st_{n}) lane_{n}[rc_{n}++] = bk_{n};");
+            builder.AppendLine($"{indent}_ = rc_{n};");
+        }
+    }
+
     /// <summary>
     /// Emits the read-path reconstruction of every struct node in the model, children before
     /// parents: one object array per node, filled by walking the leaves' definition ladders
@@ -145,6 +310,8 @@ internal static class CompoundMapping
         EmissionPlan plan = EmissionPlan.For(model);
         if (!plan.HasCompound)
             return;
+
+        EmitListLanes(builder, plan, rowCountVar, indent);
 
         foreach (LeafColumn col in plan.Columns)
         {
@@ -216,6 +383,18 @@ internal static class CompoundMapping
         for (int p = 0; p < model.Properties.Length; p++)
         {
             PropertyModel prop = model.Properties[p];
+            LeafColumn? listCol = plan.Columns.FirstOrDefault(c =>
+                c.IsListLeaf && c.RootPropertyIndex == p
+            );
+            if (listCol is not null)
+            {
+                string lb = listCol.MemberAnnotatedNullable ? "" : "!";
+                string tail = listCol.ListMemberIsArray
+                    ? $" is {{ }} ln_{listCol.Slot} ? ln_{listCol.Slot}.ToArray() : null{lb}"
+                    : lb;
+                builder.AppendLine($"{prefix}{prop.Name} = lane_{listCol.Slot}[{indexVar}]{tail},");
+                continue;
+            }
             int nodeId = plan.RootNodeByProperty[p];
             if (nodeId >= 0)
             {
