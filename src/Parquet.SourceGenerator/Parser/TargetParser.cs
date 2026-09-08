@@ -48,7 +48,29 @@ public static class TargetParser
     public static TargetParserResult GetTargetModel(
         GeneratorSyntaxContext context,
         ParquetApiLevel apiLevel
-    ) => GetTargetModel(context, apiLevel, allowCompoundTypes: false);
+    ) => GetTargetModel(context, apiLevel, compoundKinds: CompoundKinds.None);
+
+    /// <summary>
+    /// Parses a Roslyn syntax context with a specific set of emittable compound kinds. This is
+    /// the overload the generators call; the dial says how far the consuming emitter has got
+    /// (see <see cref="CompoundKinds"/>).
+    /// </summary>
+    public static TargetParserResult GetTargetModel(
+        GeneratorSyntaxContext context,
+        ParquetApiLevel apiLevel,
+        CompoundKinds compoundKinds
+    )
+    {
+        SyntaxNode node = context.Node;
+        if (node is not TypeDeclarationSyntax typeDeclaration)
+            return new TargetParserResult(Model: null, EquatableArray<DiagnosticInfo>.Empty);
+
+        ISymbol? symbol = context.SemanticModel.GetDeclaredSymbol(typeDeclaration);
+        if (symbol is not INamedTypeSymbol typeSymbol)
+            return new TargetParserResult(Model: null, EquatableArray<DiagnosticInfo>.Empty);
+
+        return GetTargetModelCore(typeSymbol, typeDeclaration, apiLevel, compoundKinds);
+    }
 
     /// <summary>
     /// Parses a Roslyn syntax context, optionally permitting compound members.
@@ -64,18 +86,14 @@ public static class TargetParser
         GeneratorSyntaxContext context,
         ParquetApiLevel apiLevel,
         bool allowCompoundTypes
-    )
-    {
-        SyntaxNode node = context.Node;
-        if (node is not TypeDeclarationSyntax typeDeclaration)
-            return new TargetParserResult(Model: null, EquatableArray<DiagnosticInfo>.Empty);
-
-        ISymbol? symbol = context.SemanticModel.GetDeclaredSymbol(typeDeclaration);
-        if (symbol is not INamedTypeSymbol typeSymbol)
-            return new TargetParserResult(Model: null, EquatableArray<DiagnosticInfo>.Empty);
-
-        return GetTargetModelCore(typeSymbol, typeDeclaration, apiLevel, allowCompoundTypes);
-    }
+    ) =>
+        GetTargetModel(
+            context,
+            apiLevel,
+            allowCompoundTypes
+                ? CompoundKinds.Struct | CompoundKinds.List | CompoundKinds.Map
+                : CompoundKinds.None
+        );
 
     /// <summary>
     /// Parses a symbol directly, resolving its declaring syntax when one is available.
@@ -89,6 +107,22 @@ public static class TargetParser
         INamedTypeSymbol typeSymbol,
         ParquetApiLevel apiLevel,
         bool allowCompoundTypes
+    ) =>
+        GetTargetModel(
+            typeSymbol,
+            apiLevel,
+            allowCompoundTypes
+                ? CompoundKinds.Struct | CompoundKinds.List | CompoundKinds.Map
+                : CompoundKinds.None
+        );
+
+    /// <summary>
+    /// Parses a symbol directly with an explicit set of emittable compound kinds.
+    /// </summary>
+    public static TargetParserResult GetTargetModel(
+        INamedTypeSymbol typeSymbol,
+        ParquetApiLevel apiLevel,
+        CompoundKinds compoundKinds
     )
     {
         TypeDeclarationSyntax? syntax = null;
@@ -101,14 +135,14 @@ public static class TargetParser
             }
         }
 
-        return GetTargetModelCore(typeSymbol, syntax, apiLevel, allowCompoundTypes);
+        return GetTargetModelCore(typeSymbol, syntax, apiLevel, compoundKinds);
     }
 
     private static TargetParserResult GetTargetModelCore(
         INamedTypeSymbol typeSymbol,
         TypeDeclarationSyntax? typeDeclaration,
         ParquetApiLevel apiLevel,
-        bool allowCompoundTypes
+        CompoundKinds compoundKinds
     )
     {
         AttributeData? serializableAttr = typeSymbol
@@ -199,7 +233,7 @@ public static class TargetParser
             className,
             fallbackLocation,
             apiLevel,
-            allowCompoundTypes,
+            compoundKinds,
             diagnostics,
             seenColumnNames,
             propertyModels,
@@ -309,7 +343,7 @@ public static class TargetParser
 
     /// <summary>
     /// Parses every serializable member of <paramref name="declaringType"/> into property models,
-    /// recursing through compound members when <paramref name="allowCompoundTypes"/> is set.
+    /// recursing through compound members whose kind is in <paramref name="compoundKinds"/>.
     /// </summary>
     /// <remarks>
     /// One method serves both the top-level type and any nested <c>[ParquetSerializable]</c>
@@ -323,7 +357,7 @@ public static class TargetParser
         string className,
         Location fallbackLocation,
         ParquetApiLevel apiLevel,
-        bool allowCompoundTypes,
+        CompoundKinds compoundKinds,
         List<DiagnosticInfo> diagnostics,
         HashSet<string> seenColumnNames,
         List<PropertyModel> propertyModels,
@@ -581,16 +615,24 @@ public static class TargetParser
                 continue;
 
             // Rule PARQ006: the type must have a Parquet column representation — leaf or, when
-            // compound support is enabled (#176), a struct/list/map the parser can expand.
-            // Rejected members are left out of the model — the diagnostic is an error, so the
-            // build stops either way, and emitting a column for a type with no representation
-            // only buries the real message under cascading errors inside generated code.
+            // the kind is compound and the consuming emitter supports it (#176), a struct/list/map
+            // the parser can expand. Rejected members are left out of the model — the diagnostic
+            // is an error, so the build stops either way, and emitting a column for a type with no
+            // representation only buries the real message under cascading errors in generated code.
             if (!TryClassifyKind(underlyingType, memberType, out PropertyKind kind))
             {
-                if (
-                    allowCompoundTypes
-                    && TryClassifyCompound(underlyingType, out PropertyKind compoundKind)
-                )
+                bool classifiedCompound = TryClassifyCompound(
+                    underlyingType,
+                    out PropertyKind compoundKind
+                );
+
+                // A compound shape the backend cannot emit yet is rejected exactly like an
+                // unsupported type: the milestone dial (CompoundKinds) says how far the emitter
+                // has got, and until then the member must fail the build where it is declared.
+                if (classifiedCompound && !IsCompoundKindEmittable(compoundKind, compoundKinds))
+                    classifiedCompound = false;
+
+                if (classifiedCompound)
                 {
                     PropertyModel? compoundModel = BuildCompoundModel(
                         compoundKind,
@@ -606,6 +648,7 @@ public static class TargetParser
                         diagnostics,
                         containmentPath,
                         compoundDepth,
+                        compoundKinds,
                         out bool compoundRejected
                     );
                     if (compoundRejected)
@@ -736,6 +779,19 @@ public static class TargetParser
     ];
 
     /// <summary>
+    /// Whether the consuming emitter can currently express this compound kind
+    /// (the <see cref="CompoundKinds"/> milestone dial, #176).
+    /// </summary>
+    private static bool IsCompoundKindEmittable(PropertyKind kind, CompoundKinds allowed) =>
+        kind switch
+        {
+            PropertyKind.Struct => allowed.HasFlag(CompoundKinds.Struct),
+            PropertyKind.List => allowed.HasFlag(CompoundKinds.List),
+            PropertyKind.Map => allowed.HasFlag(CompoundKinds.Map),
+            _ => true,
+        };
+
+    /// <summary>
     /// Classifies a type that failed <see cref="TryClassifyKind"/> as a compound member kind.
     /// Returns false for anything with no compound representation (a POCO without the attribute,
     /// <c>Dictionary&lt;int, string&gt;</c> — whose key type is only checked when building the
@@ -811,6 +867,7 @@ public static class TargetParser
         List<DiagnosticInfo> diagnostics,
         HashSet<INamedTypeSymbol> containmentPath,
         int compoundDepth,
+        CompoundKinds compoundKinds,
         out bool rejected
     )
     {
@@ -920,7 +977,7 @@ public static class TargetParser
                     childName,
                     childFallback,
                     apiLevel,
-                    allowCompoundTypes: true,
+                    compoundKinds,
                     diagnostics,
                     childSeenColumnNames,
                     children,
@@ -969,6 +1026,7 @@ public static class TargetParser
                 )
                 {
                     Children = new EquatableArray<PropertyModel>(children.ToArray()),
+                    CompoundIsValueType = childSymbol.IsValueType,
                 };
 
             case PropertyKind.List:
@@ -986,6 +1044,7 @@ public static class TargetParser
                     diagnostics,
                     containmentPath,
                     compoundDepth + 1,
+                    compoundKinds,
                     out bool elementRejected
                 );
                 if (elementRejected || element is null)
@@ -1035,6 +1094,7 @@ public static class TargetParser
                     diagnostics,
                     containmentPath,
                     compoundDepth + 1,
+                    compoundKinds,
                     out bool valueRejected
                 );
                 if (valueRejected || value is null)
@@ -1094,6 +1154,7 @@ public static class TargetParser
     /// <param name="diagnostics"></param>
     /// <param name="containmentPath"></param>
     /// <param name="compoundDepth"></param>
+    /// <param name="compoundKinds">The milestone dial, threaded through to nested builders.</param>
     /// <param name="rejected"></param>
     private static PropertyModel? BuildNestedElementModel(
         ITypeSymbol declaredType,
@@ -1105,6 +1166,7 @@ public static class TargetParser
         List<DiagnosticInfo> diagnostics,
         HashSet<INamedTypeSymbol> containmentPath,
         int compoundDepth,
+        CompoundKinds compoundKinds,
         out bool rejected
     )
     {
@@ -1182,6 +1244,7 @@ public static class TargetParser
                 diagnostics,
                 containmentPath,
                 compoundDepth,
+                compoundKinds,
                 out rejected
             );
             return nested;

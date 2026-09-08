@@ -116,6 +116,14 @@ public sealed record PropertyModel(
     public PropertyModel? MapValue { get; init; }
 
     /// <summary>
+    /// Struct members: whether the nested C# type is a value type. Every Parquet group is
+    /// optional (docs/15 §2.4) so the definition-level ladder counts the rung either way, but
+    /// the write extraction emits the ancestor null test only for reference types — a struct
+    /// member can never be null at runtime.
+    /// </summary>
+    public bool CompoundIsValueType { get; init; }
+
+    /// <summary>
     /// Backwards-compatible constructor overload without deduplication or encoding flag.
     /// </summary>
     public PropertyModel(
