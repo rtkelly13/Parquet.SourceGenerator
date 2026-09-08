@@ -34,7 +34,10 @@ public static class CodeEmitter
             builder.AppendLine();
         }
 
-        string extensionsClassName = $"{model.ClassName}ParquetExtensions";
+        // For a nested target ("Outer.Inner") the dotted ClassName resolves in type positions but
+        // cannot seed an identifier; the flattened form keeps sibling-nested types apart.
+        string extensionsClassName =
+            $"{model.ClassName.Replace(".", string.Empty)}ParquetExtensions";
 
         builder.AppendLine($"public static partial class {extensionsClassName}");
         builder.AppendLine("{");

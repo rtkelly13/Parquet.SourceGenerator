@@ -40,6 +40,15 @@ public enum PropertyKind
 
     /// <summary>DateOnly → DateTimeDataField with midnight conversion.</summary>
     DateOnly,
+
+    /// <summary>Nested <c>[ParquetSerializable]</c> member → StructField group holding <see cref="PropertyModel.Children"/>.</summary>
+    Struct,
+
+    /// <summary><c>List&lt;T&gt;</c> / array member → ListField (3-level) holding <see cref="PropertyModel.Element"/>.</summary>
+    List,
+
+    /// <summary><c>Dictionary&lt;string, T&gt;</c> member → MapField; key is a required string leaf, value is <see cref="PropertyModel.MapValue"/>.</summary>
+    Map,
 }
 
 /// <summary>
@@ -63,6 +72,14 @@ public enum ColumnEncoding
 /// <summary>
 /// Value-equatable model representing a single property or field binding.
 /// Optimized memory layout: 8-byte reference pointers first, followed by 4-byte primitives, booleans at tail.
+/// <para>
+/// Compound kinds (<see cref="PropertyKind.Struct"/>, <see cref="PropertyKind.List"/>,
+/// <see cref="PropertyKind.Map"/>) carry their subtree in <see cref="Children"/>,
+/// <see cref="Element"/> and <see cref="MapValue"/>. Those members are themselves
+/// <see cref="EquatableArray{T}"/>-wrapped or value-equal records, so a whole model tree
+/// compares by value — which is what the incremental pipeline caches on. Never introduce
+/// <c>List&lt;T&gt;</c> or a raw array for a nested member here.
+/// </para>
 /// </summary>
 public sealed record PropertyModel(
     string Name,
@@ -79,6 +96,25 @@ public sealed record PropertyModel(
     ColumnEncoding Encoding = ColumnEncoding.Default
 ) : IEquatable<PropertyModel>
 {
+    /// <summary>
+    /// Struct members: the child property models, in schema order. Value-equal via
+    /// <see cref="EquatableArray{T}"/> — a <c>List</c> here would break model equality and
+    /// with it the incremental pipeline's caching.
+    /// </summary>
+    public EquatableArray<PropertyModel> Children { get; init; }
+
+    /// <summary>
+    /// List members: the element subtree. May itself be a compound model (a list of lists,
+    /// a list of structs); null for every other kind.
+    /// </summary>
+    public PropertyModel? Element { get; init; }
+
+    /// <summary>
+    /// Map members (<c>Dictionary&lt;string, T&gt;</c>): the value subtree; <see cref="Children"/>
+    /// carries the single required string key. Null for every other kind.
+    /// </summary>
+    public PropertyModel? MapValue { get; init; }
+
     /// <summary>
     /// Backwards-compatible constructor overload without deduplication or encoding flag.
     /// </summary>
@@ -105,7 +141,7 @@ public sealed record PropertyModel(
             DecimalScale,
             Kind,
             IsNullable,
-            false,
+            Deduplicate: false,
             ColumnEncoding.Default
         )
     {
