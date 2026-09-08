@@ -418,9 +418,11 @@ actually closed it.
 
 Every item in this audit is now closed. What remains is not remediation but work the audit
 identified along the way, tracked in
-[`04-ROADMAP-AND-CONTRIBUTING.md`](04-ROADMAP-AND-CONTRIBUTING.md): benchmarks have never been
-re-run since the `Capacity` fix (2.2) or the parallel reader (2.1), so both performance claims are
-reasoned rather than measured.
+[`04-ROADMAP-AND-CONTRIBUTING.md`](04-ROADMAP-AND-CONTRIBUTING.md). The re-run this section asked
+for — benchmarks had never been measured since the `Capacity` fix (2.2) or the parallel reader
+(2.1) — landed on 2026-09-08; see [BENCHMARKS.md § Re-baseline](BENCHMARKS.md#-re-baseline-2026-09-08-dev-host)
+and the #147 discussion. Headline conclusion: reads are decode-bound, not materialization-bound,
+which re-sequenced the read-perf roadmap behind it.
 
 
 ---
