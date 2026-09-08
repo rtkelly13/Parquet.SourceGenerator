@@ -145,6 +145,70 @@ the current C# fixture generator references Parquet.Net 6.1.0 for CI regeneratio
 fixture provenance is recorded in [`test/data/fixture-manifest.json`](../test/data/fixture-manifest.json).
 There is currently no generated `test/data_csharp/v4` directory.
 
+## Apache Arrow Export Surface (experimental, #178)
+
+When — and only when — the consumer compilation references `Apache.Arrow`, the modern generator
+emits a second partial, `{Namespace}.{Type}.Arrow.g.cs`, adding one extension method:
+
+```csharp
+public static IAsyncEnumerable<RecordBatch> ReadParquetRecordBatchesAsync(
+    this Stream stream,
+    ParquetSerializerOptions? options = null,
+    int? maxRowsPerBatch = null,
+    CancellationToken cancellationToken = default)
+```
+
+Without the reference the file does not exist and no generated code names an Arrow type, so a
+consumer that does not want Arrow inherits no Arrow dependency. The gate lives in
+`ArrowMappingComponent`, which is also where the leaf-kind mapping table lives; the ingestion half
+(#177) is expected to consume both unchanged.
+
+| Property | Contract |
+|:---|:---|
+| Batch boundary | One `RecordBatch` per row group, split further when `maxRowsPerBatch` is set |
+| Buffer ownership | Arrow buffers are copies; the generator's `ArrayPool` rentals are returned when the row group is done |
+| Row objects | None are constructed on this path |
+| Backend | v6 only |
+| Model eligibility | Flat models whose every leaf is in the mapping table below. A model with a nested member, or with a leaf outside the table, gets no Arrow partial at all |
+
+### Leaf mapping table
+
+| Model type | Arrow type | Notes |
+|:---|:---|:---|
+| `bool` | `bool` | Bit-packed values buffer |
+| `sbyte`, `byte`, `short`, `ushort`, `int`, `uint`, `long`, `ulong` | matching integer type | Whole-span copy for required columns |
+| `float`, `double` | `float32`, `float64` | Whole-span copy for required columns |
+| `string` | `utf8` | int32 offsets plus a utf8 data buffer |
+| `byte[]` | `binary` | int32 offsets plus a byte data buffer |
+| `decimal` | `decimal128(p, s)` | Precision and scale read off the resolved `DecimalDataField` |
+| `DateTime` | `timestamp` | Unit read off the resolved `DateTimeDataField`; `DateAndTime` → ms, everything else → µs |
+| `DateOnly` | `date32` | Whole days since the Unix epoch |
+| `TimeOnly` | `time64[µs]` | Matches the generator's `TIME(MICROS)` annotation |
+| `TimeSpan` | `duration[ms]` | Matches the generator's `TIME(MILLIS)` encoding of `TimeSpan` |
+| `Guid` | `fixed_size_binary(16)` | RFC 4122 byte order. Arrow's C# library has no UUID logical type |
+| Enums | underlying integer type | |
+| `Parquet.File.Values.Primitives.Interval` | `interval[month_day_nano]` | Millis widened to nanoseconds |
+| `ReadOnlyMemory<char>`, `ReadOnlyMemory<byte>` | Unsupported | A model containing one gets no Arrow partial |
+| Nested structs, lists, maps | Unsupported | Follows #176; see the shared-pipeline note below |
+
+Nullability maps to Arrow validity bitmaps. A null and a present-but-empty value stay distinct:
+an empty string is a valid entry with a zero-length slice, a null string sets the validity bit to
+zero.
+
+### Shared-pipeline decision
+
+#177 (ingestion) and #147 (SoA columnar reading) had not landed when this experiment was written.
+The recorded decision is therefore:
+
+- The mapping table and the emission gate live in `ArrowMappingComponent`, separate from the export
+  emitter, precisely so #177 can adopt them without restating either.
+- Export decodes through `CodeEmitter.EmitReadPrimitiveColumn`, the same per-column read the POCO
+  paths emit, rather than a private copy of the buffer logic. When #147 lands its columnar reader,
+  the export path should be re-pointed at it; the only export-specific code is the
+  buffer → Arrow-array conversion, which is what #147 does not provide.
+- Nested export waits on #176 rather than being approximated: a model the bridge cannot express
+  gets no bridge instead of a partial one.
+
 ## Compatibility Definitions
 
 ### Backward compatibility
@@ -198,3 +262,4 @@ substitute for semantic interoperability tests.
 - [Issue #168](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/168) adds version and schema-evolution testing.
 - [Issue #169](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/169) adds property-based and negative testing.
 - [Issue #170](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/170) provides the `/regression` execution modes.
+- [Issue #178](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/178) adds the Arrow RecordBatch export surface.

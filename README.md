@@ -139,6 +139,31 @@ await foreach (var e in UserEventParquetExtensions.ReadParquetStreamAsync(buffer
 }
 ```
 
+### 4b. Apache Arrow `RecordBatch` Export (experimental)
+
+Reference `Apache.Arrow` and the generator emits an extra partial per model with a columnar read
+that never materializes a POCO:
+
+```csharp
+using var stream = File.OpenRead("events.parquet");
+
+await foreach (RecordBatch batch in UserEventParquetExtensions.ReadParquetRecordBatchesAsync(
+    stream,
+    maxRowsPerBatch: 4096))
+{
+    using (batch)
+    {
+        // Hand straight to an Arrow-native engine, Apache.Arrow.Ipc, or Flight.
+    }
+}
+```
+
+One batch per row group (split further by `maxRowsPerBatch`), with definition levels expressed as
+Arrow validity bitmaps. Without the `Apache.Arrow` reference the file is not generated at all, so
+non-Arrow consumers inherit no Arrow dependency. Flat models only for now — see
+[docs/14](docs/14-COMPATIBILITY-MATRIX.md#apache-arrow-export-surface-experimental-178) for the leaf
+mapping table and the current limits.
+
 ### 5. Custom Configuration (`ParquetSerializerOptions`)
 
 ```csharp

@@ -9,6 +9,12 @@
 
     <ItemGroup>
         <PackageReference Include="Parquet.Net" />
+        <!--
+      Turns on the generator's conditional Arrow bridge (#178) for this compilation, so the
+      RecordBatch export path is compiled and executed by the Native AOT binary rather than only by
+      the JIT test suite.
+    -->
+        <PackageReference Include="Apache.Arrow" />
     </ItemGroup>
 
     <ItemGroup>

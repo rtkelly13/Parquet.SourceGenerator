@@ -185,6 +185,7 @@ internal static class Program
             ReorderedColumnsAsync
         );
         await CheckAsync("every compression codec round-trips", CompressionCodecsAsync);
+        await CheckAsync("Arrow RecordBatch export (#178)", ArrowRecordBatchExportAsync);
 
         Console.WriteLine("=================================================");
         if (_failures == 0)
@@ -288,6 +289,77 @@ internal static class Program
                 $"row {index}: byte[{b}] mismatch"
             );
         }
+    }
+
+    /// <summary>
+    /// The Arrow bridge under AOT. Arrow array construction goes through generic
+    /// <c>ArrowBuffer.Builder&lt;T&gt;</c> instantiations and <c>ArrayData</c>, both of which are
+    /// candidates for the MakeGenericType problem that bites Parquet.Net's own nullable fields — so
+    /// the export has to be executed natively, not merely compiled.
+    /// </summary>
+    private static async Task ArrowRecordBatchExportAsync()
+    {
+        var written = new List<AotWideRecord>();
+        for (int i = 0; i < 8; i++)
+        {
+            written.Add(SampleWide(i));
+        }
+
+        using var stream = new MemoryStream();
+        await written.WriteParquetBatchedAsync(stream, rowGroupSize: 4);
+        stream.Position = 0;
+
+        int rows = 0;
+        int batches = 0;
+        await foreach (
+            var batch in AotWideRecordParquetExtensions.ReadParquetRecordBatchesAsync(
+                stream,
+                maxRowsPerBatch: 3
+            )
+        )
+        {
+            using (batch)
+            {
+                Expect(
+                    batch.ColumnCount == 13,
+                    $"expected 13 Arrow columns, got {batch.ColumnCount}"
+                );
+
+                var ints = (Apache.Arrow.Int32Array)batch.Column("f_int", StringComparer.Ordinal);
+                var strings = (Apache.Arrow.StringArray)
+                    batch.Column("f_string", StringComparer.Ordinal);
+                var decimals = (Apache.Arrow.Decimal128Array)
+                    batch.Column("f_decimal", StringComparer.Ordinal);
+                for (int i = 0; i < batch.Length; i++)
+                {
+                    AotWideRecord expected = written[rows + i];
+                    Expect(
+                        ints.GetValue(i) == expected.Int32Value,
+                        $"arrow row {rows + i}: int mismatch"
+                    );
+                    Expect(
+                        strings.GetString(i) == expected.StringValue,
+                        $"arrow row {rows + i}: string mismatch"
+                    );
+                    Expect(
+                        decimals.GetValue(i) == expected.DecimalValue,
+                        $"arrow row {rows + i}: decimal mismatch"
+                    );
+                }
+
+                rows += batch.Length;
+                batches++;
+            }
+        }
+
+        Expect(rows == written.Count, $"expected {written.Count} exported rows, got {rows}");
+        // Two row groups of four, split at three rows: 3+1, 3+1.
+        Expect(batches == 4, $"expected 4 record batches, got {batches}");
+
+        Expect(
+            AotWideRecordParquetExtensions.ArrowSchema.FieldsList.Count == 13,
+            "Arrow schema field count does not match the Parquet schema"
+        );
     }
 
     private static Task SchemaConstructionAsync()

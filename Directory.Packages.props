@@ -15,6 +15,9 @@
 
         <!-- Runtime Dependencies -->
         <PackageVersion Include="Parquet.Net" Version="6.1.0" />
+        <!-- Optional Arrow bridge (#178): referenced only by the test project, which exercises the
+             conditionally emitted RecordBatch export. Consumers opt in by referencing it themselves. -->
+        <PackageVersion Include="Apache.Arrow" Version="23.0.0" />
         <PackageVersion Include="System.Memory" Version="4.6.3" />
 
         <!-- Test Framework & Coverage Dependencies -->

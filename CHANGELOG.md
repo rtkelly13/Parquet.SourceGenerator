@@ -12,6 +12,12 @@ Changes since `0.0.1`. That version is published on nuget.org (alongside the `0.
 `0.0.1-dev.2` prereleases); this section becomes the next release entry when one is cut.
 
 ### Added
+- **Apache Arrow `RecordBatch` export (experimental, #178)**: when the consuming compilation
+  references `Apache.Arrow`, the generator emits an extra `{Type}.Arrow.g.cs` partial adding
+  `ReadParquetRecordBatchesAsync` — one batch per row group, optionally split by `maxRowsPerBatch`,
+  built straight from the pooled column buffers with no POCO materialised. Without the reference no
+  Arrow-typed code is generated and no Arrow dependency is implied. Flat v6 models only; nested
+  members and `ReadOnlyMemory<char>`/`ReadOnlyMemory<byte>` leaves get no bridge.
 - **Roslyn incremental source generator**: compiles zero-reflection Parquet serializers and
   deserializers against Parquet.Net low-level primitives.
 - **Native AOT support**, exercised on every CI run by publishing the AOT test project with

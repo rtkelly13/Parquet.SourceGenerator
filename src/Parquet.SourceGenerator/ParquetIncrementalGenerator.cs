@@ -1,6 +1,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Parquet.SourceGenerator.Emitter;
+using Parquet.SourceGenerator.Emitter.Arrow;
 using Parquet.SourceGenerator.Models;
 using Parquet.SourceGenerator.Parser;
 
@@ -60,6 +61,42 @@ public sealed class ParquetIncrementalGenerator : IIncrementalGenerator
                     string sourceCode = CodeEmitter.EmitSource(result.Model);
                     spc.AddSource(hintName, sourceCode);
                 }
+            }
+        );
+
+        // 3. Apache Arrow bridge (#178), emitted only when the consumer references Apache.Arrow.
+        //    The gate is projected down to a bool before it is combined with the targets, so a
+        //    compilation change that does not flip the reference leaves the cached Arrow output
+        //    alone — and the POCO output above never observes the compilation at all, so flipping
+        //    the reference re-runs the gated file and nothing else.
+        IncrementalValueProvider<bool> arrowReferenced = context.CompilationProvider.Select(
+            static (compilation, _) =>
+                compilation.GetTypeByMetadataName(ArrowMappingComponent.GateTypeMetadataName)
+                    is not null
+        );
+
+        context.RegisterSourceOutput(
+            targets.Combine(arrowReferenced),
+            static (spc, pair) =>
+            {
+                (TargetParserResult result, bool arrowAvailable) = pair;
+                if (!arrowAvailable || result.Model is null)
+                {
+                    return;
+                }
+
+                string? arrowSource = ArrowBridgeEmitter.EmitSource(result.Model);
+                if (arrowSource is null)
+                {
+                    // Nested members and unmapped leaves simply get no bridge — #176 owns
+                    // StructArray/ListArray/MapArray export.
+                    return;
+                }
+
+                string prefix = string.IsNullOrEmpty(result.Model.Namespace)
+                    ? result.Model.ClassName
+                    : $"{result.Model.Namespace}.{result.Model.ClassName}";
+                spc.AddSource($"{prefix}.Arrow.g.cs", arrowSource);
             }
         );
     }

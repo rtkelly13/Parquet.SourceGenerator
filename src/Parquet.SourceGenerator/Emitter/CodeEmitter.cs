@@ -371,6 +371,36 @@ public static class CodeEmitter
     /// the rented buffer is zeroed instead, skipping I/O, decompression and decoding.
     /// Columns without statistics (or partial nulls) fall through to the standard read.
     /// </summary>
+    /// <summary>
+    /// Emits the column read for one flat leaf property — the same call the POCO read paths make,
+    /// exposed so the Arrow bridge (#178) decodes through the identical machinery rather than a
+    /// second, drifting copy of it.
+    /// </summary>
+    internal static void EmitReadPrimitiveColumn(
+        StringBuilder builder,
+        PropertyModel prop,
+        int slot,
+        string fieldAccess,
+        string bufName,
+        string indent = "                "
+    )
+    {
+        EmitReadWithNullBypass(
+            builder,
+            new LeafColumn
+            {
+                Slot = slot,
+                Leaf = prop,
+                RootPropertyIndex = slot,
+                MaxDef = prop.IsNullable ? 1 : 0,
+                MemberChain = [prop.Name],
+            },
+            fieldAccess,
+            bufName,
+            indent
+        );
+    }
+
     private static void EmitReadWithNullBypass(
         StringBuilder builder,
         LeafColumn col,

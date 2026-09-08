@@ -19,6 +19,8 @@
         </PackageReference>
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
         <PackageReference Include="Parquet.Net" />
+        <!-- Turns on the generator's conditional Arrow bridge for this compilation. -->
+        <PackageReference Include="Apache.Arrow" />
     </ItemGroup>
 
     <ItemGroup>

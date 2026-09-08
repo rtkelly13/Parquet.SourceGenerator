@@ -10,6 +10,8 @@
     <ItemGroup>
         <PackageReference Include="BenchmarkDotNet" />
         <PackageReference Include="Parquet.Net" />
+        <!-- Enables the generator's conditional Arrow bridge (#178) for the export benchmark row. -->
+        <PackageReference Include="Apache.Arrow" />
     </ItemGroup>
 
     <ItemGroup>
