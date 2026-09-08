@@ -90,10 +90,13 @@ in the normal CI run means a broken gate surfaces there rather than the next tim
 the benchmark workflow.
 
 ### Phase 8: Compound Types & the Apache Arrow bridge
+All three items below add public API surface (compound schema/level behavior, and the generated
+Arrow bridge methods), so together — not #176 alone — they are the functional gate for the `0.1.0`
+API freeze.
+
 - [ ] [Issue #176](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/176) — serialise
       nested POCOs, collections, and maps as true Parquet nested groups (`StructField`, `ListField`,
-      `MapField`) on both backends. Closes the Phase 3 gap and is the last functional item before
-      the `0.1.0` API freeze.
+      `MapField`) on both backends. Closes the Phase 3 gap; prerequisite for the Arrow bridge below.
 - [ ] [Issue #177](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/177) — Apache Arrow
       `RecordBatch` ingestion, via a conditionally emitted bridge gated on the consumer's
       `Apache.Arrow` reference (no companion package). Resolves Option C of #137.
