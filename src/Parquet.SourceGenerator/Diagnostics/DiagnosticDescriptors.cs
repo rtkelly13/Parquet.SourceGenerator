@@ -206,4 +206,23 @@ public static class DiagnosticDescriptors
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true
     );
+
+    /// <summary>
+    /// PARQ014: [ParquetColumn(BloomFilter = true)] on a member whose column cannot be probed.
+    /// </summary>
+    /// <remarks>
+    /// A Bloom filter is only sound when the write side and the read side hash the same bytes, so
+    /// the generator emits one for the column kinds whose PLAIN encoding it can reproduce exactly:
+    /// string, int, long, byte[] and Guid leaves declared directly on the serialized type. Silently
+    /// ignoring the flag on anything else would leave callers believing lookups were being
+    /// accelerated when they were not.
+    /// </remarks>
+    public static readonly DiagnosticDescriptor BloomFilterUnsupportedMember = new(
+        id: "PARQ014",
+        title: "Bloom filters are not supported for this member",
+        messageFormat: "The member '{0}' on type '{1}' requests a Bloom filter, but only string, int, long, byte[] and Guid columns declared directly on the type can be probed. Remove BloomFilter = true",
+        category: "ParquetSourceGenerator",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true
+    );
 }

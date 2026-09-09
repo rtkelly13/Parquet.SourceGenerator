@@ -33,3 +33,56 @@ static Parquet.SourceGenerator.VectorizedColumnTransforms.UtcEpochConstant.get -
 static Parquet.SourceGenerator.VectorizedColumnTransforms.Widen(System.ReadOnlySpan<byte> source, System.Span<int> destination) -> void
 static Parquet.SourceGenerator.VectorizedColumnTransforms.Widen(System.ReadOnlySpan<int> source, System.Span<long> destination) -> void
 static Parquet.SourceGenerator.VectorizedColumnTransforms.Widen(System.ReadOnlySpan<short> source, System.Span<int> destination) -> void
+Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterEntry
+Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterEntry.ColumnPath.get -> string!
+Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterEntry.Filter.get -> Parquet.SourceGenerator.BloomFilters.ParquetSplitBlockBloomFilter!
+Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterEntry.ParquetBloomFilterEntry(int rowGroupIndex, string! columnPath, Parquet.SourceGenerator.BloomFilters.ParquetSplitBlockBloomFilter! filter) -> void
+Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterEntry.RowGroupIndex.get -> int
+Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterFooter
+Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterHash
+Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterIndex
+Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterIndex.HasAnyFilter.get -> bool
+Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterIndex.HasFilter(int rowGroupIndex, string! columnPath) -> bool
+Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterIndex.MightContain(int rowGroupIndex, string! columnPath, ulong hash) -> bool
+Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterIndex.RowGroupCount.get -> int
+Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterLocation
+Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterLocation.ColumnPath.get -> string!
+Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterLocation.HasFilter.get -> bool
+Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterLocation.Length.get -> int?
+Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterLocation.Offset.get -> long?
+Parquet.SourceGenerator.BloomFilters.ParquetLookupStatistics
+Parquet.SourceGenerator.BloomFilters.ParquetLookupStatistics.FalsePositiveScans.get -> int
+Parquet.SourceGenerator.BloomFilters.ParquetLookupStatistics.ParquetLookupStatistics() -> void
+Parquet.SourceGenerator.BloomFilters.ParquetLookupStatistics.RecordFalsePositive() -> void
+Parquet.SourceGenerator.BloomFilters.ParquetLookupStatistics.RecordScanned() -> void
+Parquet.SourceGenerator.BloomFilters.ParquetLookupStatistics.RecordSkipped() -> void
+Parquet.SourceGenerator.BloomFilters.ParquetLookupStatistics.Reset(int rowGroupsTotal) -> void
+Parquet.SourceGenerator.BloomFilters.ParquetLookupStatistics.RowGroupsScanned.get -> int
+Parquet.SourceGenerator.BloomFilters.ParquetLookupStatistics.RowGroupsSkipped.get -> int
+Parquet.SourceGenerator.BloomFilters.ParquetLookupStatistics.RowGroupsTotal.get -> int
+Parquet.SourceGenerator.BloomFilters.ParquetSplitBlockBloomFilter
+Parquet.SourceGenerator.BloomFilters.ParquetSplitBlockBloomFilter.BlockCount.get -> int
+Parquet.SourceGenerator.BloomFilters.ParquetSplitBlockBloomFilter.ByteCount.get -> int
+Parquet.SourceGenerator.BloomFilters.ParquetSplitBlockBloomFilter.Insert(ulong hash) -> void
+Parquet.SourceGenerator.BloomFilters.ParquetSplitBlockBloomFilter.MightContain(ulong hash) -> bool
+Parquet.SourceGenerator.BloomFilters.ParquetSplitBlockBloomFilter.ToBytes() -> byte[]!
+Parquet.SourceGenerator.BloomFilters.ParquetSplitBlockBloomFilter.WriteTo(System.Span<byte> destination) -> void
+Parquet.SourceGenerator.BloomFilters.ParquetXxHash64
+Parquet.SourceGenerator.ParquetColumnAttribute.BloomFilter.get -> bool
+Parquet.SourceGenerator.ParquetColumnAttribute.BloomFilter.set -> void
+const Parquet.SourceGenerator.BloomFilters.ParquetSplitBlockBloomFilter.BytesPerBlock = 32 -> int
+const Parquet.SourceGenerator.BloomFilters.ParquetSplitBlockBloomFilter.WordsPerBlock = 8 -> int
+static Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterFooter.Attach(System.ReadOnlySpan<byte> parquetBytes, System.Collections.Generic.IReadOnlyList<Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterEntry!>! entries) -> byte[]!
+static Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterFooter.ReadFilter(System.ReadOnlySpan<byte> parquetBytes, Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterLocation! location) -> Parquet.SourceGenerator.BloomFilters.ParquetSplitBlockBloomFilter!
+static Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterFooter.ReadLocations(System.ReadOnlySpan<byte> parquetBytes) -> System.Collections.Generic.IReadOnlyList<System.Collections.Generic.IReadOnlyList<Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterLocation!>!>!
+static Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterHash.Of(byte[]! value) -> ulong
+static Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterHash.Of(int value) -> ulong
+static Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterHash.Of(long value) -> ulong
+static Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterHash.Of(string! value) -> ulong
+static Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterHash.Of(System.Guid value) -> ulong
+static Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterIndex.Load(System.ReadOnlyMemory<byte> parquetBytes) -> Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterIndex!
+static Parquet.SourceGenerator.BloomFilters.ParquetSplitBlockBloomFilter.ForExpectedItems(long expectedDistinctValues, double falsePositiveProbability = 0.01) -> Parquet.SourceGenerator.BloomFilters.ParquetSplitBlockBloomFilter!
+static Parquet.SourceGenerator.BloomFilters.ParquetSplitBlockBloomFilter.FromBytes(System.ReadOnlySpan<byte> bitset) -> Parquet.SourceGenerator.BloomFilters.ParquetSplitBlockBloomFilter!
+static Parquet.SourceGenerator.BloomFilters.ParquetSplitBlockBloomFilter.WithByteSize(int byteSize) -> Parquet.SourceGenerator.BloomFilters.ParquetSplitBlockBloomFilter!
+static Parquet.SourceGenerator.BloomFilters.ParquetXxHash64.Hash(System.ReadOnlySpan<byte> data) -> ulong
+static Parquet.SourceGenerator.BloomFilters.ParquetXxHash64.HashUtf8(string! value) -> ulong

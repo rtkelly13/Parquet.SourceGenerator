@@ -21,6 +21,7 @@ This document details all diagnostic codes, their severity, rationale, and remed
 | **[`PARQ009`](#parq009-nested-type-not-supported)** | **Error** | Nested types not supported | Target type is nested within another type. |
 | **[`PARQ010`](#parq010-generic-type-not-supported)** | **Error** | Generic types not supported | Target type is generic. |
 | **[`PARQ011`](#parq011-type-unsupported-on-classic-v5-api)** | **Error** | Unsupported on classic API | Member type is supported by Parquet.Net 6 but not by the 4.x/5.x API. |
+| **[`PARQ014`](#parq014-bloom-filter-unsupported-for-member)** | **Warning** | Bloom filter unsupported for member | `[ParquetColumn(BloomFilter = true)]` on a column the generator cannot hash. |
 
 ---
 
@@ -162,3 +163,11 @@ This document details all diagnostic codes, their severity, rationale, and remed
 - **Cause**: The member uses a type supported by Parquet.Net 6 (e.g., `ReadOnlyMemory<byte>`, `ReadOnlyMemory<char>`, `BigDecimal`), but the project references the legacy `Parquet.SourceGenerator.V5` package.
 - **Why**: Parquet.Net 4.x/5.x lacks the primitive APIs required for these types.
 - **Remediation**: Upgrade to the main `Parquet.SourceGenerator` package, or change the property to a type compatible with Parquet.Net 4.x/5.x (such as `byte[]` or `string`).
+
+---
+
+### PARQ014: Bloom Filter Unsupported For Member
+- **Severity**: Warning
+- **Cause**: A member carries `[ParquetColumn(BloomFilter = true)]` but is not a `string`, `int`, `long`, `byte[]` or `Guid` leaf declared directly on the serialized type.
+- **Why**: A Parquet Bloom filter hashes the column's PLAIN encoding with xxHash64. The generator emits a filter only for the kinds whose PLAIN bytes it can reproduce exactly on both the write and the read side; a mismatch there would eliminate row groups that really do hold the value, silently losing rows. Compound members (struct, list and map leaves) are excluded for the same reason: their column path and repetition levels are not addressed by the point-lookup API.
+- **Remediation**: Remove `BloomFilter = true`, or move the identifier onto a supported column type. The column is still written normally — only the filter is dropped.

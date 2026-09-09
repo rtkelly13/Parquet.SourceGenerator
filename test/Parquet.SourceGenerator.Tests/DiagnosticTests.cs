@@ -53,6 +53,84 @@ public sealed class DiagnosticTests
     }
 
     [Fact]
+    public void BloomFilterOnAnUnsupportedColumnTriggersPARQ014()
+    {
+        string source = """
+            using System;
+            using Parquet.SourceGenerator;
+
+            [ParquetSerializable]
+            public partial class BloomOnDouble
+            {
+                [ParquetColumn("ratio", BloomFilter = true)]
+                public double Ratio { get; init; }
+            }
+            """;
+
+        var (diagnostics, _) = RunGenerator(source);
+
+        Assert.Contains(
+            diagnostics,
+            d => d.Id == DiagnosticDescriptors.BloomFilterUnsupportedMember.Id
+        );
+    }
+
+    [Fact]
+    public void BloomFilterOnASupportedColumnIsSilent()
+    {
+        string source = """
+            using System;
+            using Parquet.SourceGenerator;
+
+            [ParquetSerializable]
+            public partial class BloomOnGuid
+            {
+                [ParquetColumn("id", BloomFilter = true)]
+                public Guid Id { get; init; }
+            }
+            """;
+
+        var (diagnostics, generated) = RunGenerator(source);
+
+        Assert.DoesNotContain(
+            diagnostics,
+            d => d.Id == DiagnosticDescriptors.BloomFilterUnsupportedMember.Id
+        );
+        Assert.Contains(
+            generated,
+            g => g.ToString().Contains("FindByIdAsync", StringComparison.Ordinal)
+        );
+        Assert.Contains(
+            generated,
+            g =>
+                g.ToString().Contains("WriteParquetWithBloomFiltersAsync", StringComparison.Ordinal)
+        );
+    }
+
+    [Fact]
+    public void ModelsWithoutBloomColumnsEmitNoBloomCode()
+    {
+        string source = """
+            using Parquet.SourceGenerator;
+
+            [ParquetSerializable]
+            public partial class PlainRow
+            {
+                [ParquetColumn("id")]
+                public int Id { get; init; }
+            }
+            """;
+
+        var (_, generated) = RunGenerator(source);
+
+        Assert.DoesNotContain(
+            generated,
+            g =>
+                g.ToString().Contains("WriteParquetWithBloomFiltersAsync", StringComparison.Ordinal)
+        );
+    }
+
+    [Fact]
     public void NoPropertiesTriggersPARQ003()
     {
         string source = """

@@ -97,6 +97,12 @@ public sealed record PropertyModel(
 ) : IEquatable<PropertyModel>
 {
     /// <summary>
+    /// Whether a per-row-group split-block Bloom filter is emitted for this leaf column
+    /// (<c>[ParquetColumn(BloomFilter = true)]</c>), and point-lookup helpers generated for it.
+    /// </summary>
+    public bool BloomFilter { get; init; }
+
+    /// <summary>
     /// Struct members: the child property models, in schema order. Value-equal via
     /// <see cref="EquatableArray{T}"/> — a <c>List</c> here would break model equality and
     /// with it the incremental pipeline's caching.

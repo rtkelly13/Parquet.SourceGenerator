@@ -51,6 +51,20 @@ public sealed class ParquetColumnAttribute : Attribute
     /// Gets or sets the physical column encoding hint to use when serializing this column.
     /// </summary>
     public ParquetColumnEncoding Encoding { get; set; } = ParquetColumnEncoding.Default;
+
+    /// <summary>
+    /// Gets or sets whether a per-row-group split-block Bloom filter is emitted for this column,
+    /// enabling point lookups to eliminate row groups without reading or decompressing them.
+    /// </summary>
+    /// <remarks>
+    /// Worth setting only on high-cardinality identifier columns — <c>Guid</c>, hashes, customer or
+    /// transaction ids — where Min/Max statistics cannot skip anything because every row group's
+    /// interval spans the domain. On low-cardinality or sorted columns the filter costs write time
+    /// and file size for no read-side gain. Supported on <c>string</c>, <c>int</c>, <c>long</c>,
+    /// <c>byte[]</c> and <c>Guid</c> members declared directly on the serialized type; the
+    /// generator reports PARQ014 for anything else.
+    /// </remarks>
+    public bool BloomFilter { get; set; }
 }
 
 /// <summary>

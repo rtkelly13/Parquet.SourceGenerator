@@ -39,6 +39,14 @@ Changes since `0.0.1`. That version is published on nuget.org (alongside the `0.
   member types, unassignable members, types with no parameterless constructor, nested or generic
   target types, and member types the 4.x/5.x backend cannot represent.
 - **CI workflow** building, testing and packing the solution. Benchmarks run on demand.
+- **Bloom filters for high-cardinality point lookups** (experiment, issue #152).
+  `[ParquetColumn(BloomFilter = true)]` on a `string`, `int`, `long`, `byte[]` or `Guid` column emits
+  a per-row-group split-block Bloom filter (xxHash64, uncompressed) and generates
+  `WriteParquetWithBloomFiltersAsync` plus `FindBy<Member>Async` / `FindAllBy<Member>Async`, which
+  eliminate row groups the filter proves cannot hold the value. Parquet.Net writes no filters and
+  probes none, so the footer splice and the Thrift compact codec behind it live in this repository.
+  Measured 24x-306x faster than a full scan on a 200,000-row Guid lookup (see `docs/BENCHMARKS.md`).
+  Reports `PARQ014` when the flag is set on a column the generator cannot hash.
 
 ### Fixed before release
 - `CompressionMethod` was accepted and discarded — no compression setting ever reached the writer.

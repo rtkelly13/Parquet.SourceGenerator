@@ -45,6 +45,12 @@ public sealed class ParquetColumnAttribute : Attribute
     public int Order { get; set; } = -1;
 
     /// <summary>
+    /// Emits a per-row-group split-block Bloom filter for this column, so point lookups can
+    /// eliminate row groups without reading them. See "Bloom filters" below.
+    /// </summary>
+    public bool BloomFilter { get; set; }
+
+    /// <summary>
     /// Explicitly flags whether the column can contain null values.
     /// </summary>
     public bool Nullable { get; set; }
@@ -196,3 +202,61 @@ public static partial class TransactionLogParquetExtensions
     }
 }
 ```
+
+---
+
+## 🌸 Bloom Filters (high-cardinality point lookups)
+
+Min/Max statistics skip nothing on uniformly distributed identifiers — a `Guid`, a session hash, a
+transaction id — because every row group's `[Min, Max]` interval spans the whole domain. For those
+columns the Parquet format defines a per-column-chunk **split-block Bloom filter**, and marking the
+member opts into it:
+
+```csharp
+[ParquetSerializable]
+public partial record Event
+{
+    [ParquetColumn("event_id", BloomFilter = true)]
+    public Guid EventId { get; init; }
+
+    [ParquetColumn("payload")]
+    public string Payload { get; init; } = string.Empty;
+}
+```
+
+### Writing
+
+`WriteParquetWithBloomFiltersAsync` batches into row groups exactly as `WriteParquetBatchedAsync`
+does, builds one filter per annotated column per row group, appends the filters after the last row
+group, and re-serializes the footer with each `bloom_filter_offset` / `bloom_filter_length` spliced
+in. It returns the finished file rather than writing to a caller stream, because the footer cannot
+be rewritten until the whole image exists:
+
+```csharp
+byte[] file = await events.WriteParquetWithBloomFiltersAsync(rowGroupSize: 10_000);
+```
+
+### Reading
+
+Every annotated column gets a matching pair of point-lookup entry points:
+
+```csharp
+var stats = new ParquetLookupStatistics();
+Event? hit = await EventParquetExtensions.FindByEventIdAsync(file, id, statistics: stats);
+List<Event> all = await EventParquetExtensions.FindAllByEventIdAsync(file, id);
+
+Console.WriteLine($"{stats.RowGroupsSkipped}/{stats.RowGroupsTotal} row groups eliminated");
+```
+
+A Bloom probe has no false negatives, so a row group the filter rejects cannot hold the value and is
+never opened or decompressed. Row groups the filter accepts are still verified against the data,
+which is what keeps the false-positive rate a cost rather than a correctness problem. Files written
+without filters still work — every row group is simply scanned.
+
+### Supported columns and cost
+
+`string`, `int`, `long`, `byte[]` and `Guid` leaves declared directly on the serialized type.
+Anything else reports [`PARQ014`](13-COMPILER-DIAGNOSTICS.md#parq014-bloom-filter-unsupported-for-member)
+and keeps the column without a filter. The filters are a real write-side cost — bytes in the file
+and hashing per row — so they earn their keep only on high-cardinality columns that are actually
+looked up by value.

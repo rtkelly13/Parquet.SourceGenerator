@@ -99,6 +99,13 @@ public static class CodeEmitter
         // Zero-copy ReadOnlyMemory overloads
         EmitReadMemoryOverloads(builder, model);
 
+        // Bloom-filtered write + point lookup, emitted only for models that ask for one
+        if (BloomColumns(model).Count > 0)
+        {
+            builder.AppendLine();
+            EmitBloomFilterSupport(builder, model);
+        }
+
         builder.AppendLine("}");
 
         return builder.ToString();
@@ -1987,6 +1994,471 @@ public static class CodeEmitter
         builder.AppendLine("            linkedCts.Cancel();");
         builder.AppendLine("            throw;");
         builder.AppendLine("        }");
+        builder.AppendLine("    }");
+    }
+
+    // ──────────────────────────────────────────────────────────
+    //  BLOOM FILTERS (issue #152)
+    // ──────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// The leaf columns that asked for a split-block Bloom filter, paired with their column slot.
+    /// </summary>
+    /// <remarks>
+    /// The parser has already rejected (PARQ014) any member whose PLAIN encoding the generator
+    /// cannot reproduce, so everything reaching here is a flat string / int / long / byte[] / Guid
+    /// leaf whose slot is its own column.
+    /// </remarks>
+    private static List<LeafColumn> BloomColumns(TargetClassModel model)
+    {
+        var result = new List<LeafColumn>();
+        foreach (LeafColumn col in EmissionPlan.For(model).Columns)
+        {
+            if (col.Leaf.BloomFilter && !col.IsCompound && !col.IsListLeaf)
+            {
+                result.Add(col);
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>Whether the leaf's CLR type is a reference type, which can be null at runtime.</summary>
+    private static bool BloomLeafIsReferenceType(PropertyModel prop) =>
+        prop.Kind == PropertyKind.ByteArray
+        || string.Equals(prop.TypeName.TrimEnd('?'), "string", StringComparison.Ordinal);
+
+    /// <summary>The non-nullable form of the leaf's CLR type, used for the lookup parameter.</summary>
+    private static string BloomLookupType(PropertyModel prop) => prop.TypeName.TrimEnd('?');
+
+    private static void EmitBloomFilterSupport(StringBuilder builder, TargetClassModel model)
+    {
+        List<LeafColumn> blooms = BloomColumns(model);
+
+        EmitBloomFilterBuilder(builder, model, blooms);
+        builder.AppendLine();
+        EmitWriteWithBloomFiltersAsync(builder, model, blooms);
+        builder.AppendLine();
+        EmitBloomCandidateRowGroupReader(builder, model);
+
+        foreach (LeafColumn col in blooms)
+        {
+            builder.AppendLine();
+            EmitBloomPointLookup(builder, model, col);
+        }
+    }
+
+    /// <summary>
+    /// Emits the per-row-group filter construction shared by the batched writer.
+    /// </summary>
+    private static void EmitBloomFilterBuilder(
+        StringBuilder builder,
+        TargetClassModel model,
+        List<LeafColumn> blooms
+    )
+    {
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine(
+            "    /// Builds one split-block Bloom filter per annotated column over the rows of a single row group."
+        );
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    private static void AddBloomFiltersForRowGroup(");
+        builder.AppendLine(
+            "        global::System.Collections.Generic.List<global::Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterEntry> entries,"
+        );
+        builder.AppendLine("        int rowGroupIndex,");
+        builder.AppendLine(
+            $"        global::System.Collections.Generic.List<{model.ClassName}> rows,"
+        );
+        builder.AppendLine("        double falsePositiveProbability)");
+        builder.AppendLine("    {");
+        foreach (LeafColumn col in blooms)
+        {
+            builder.AppendLine(
+                $"        var bloom_{col.Slot} = global::Parquet.SourceGenerator.BloomFilters.ParquetSplitBlockBloomFilter.ForExpectedItems(rows.Count, falsePositiveProbability);"
+            );
+        }
+
+        builder.AppendLine("        for (int i = 0; i < rows.Count; i++)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            var row = rows[i];");
+        builder.AppendLine("            if (row is null) continue;");
+        foreach (LeafColumn col in blooms)
+        {
+            string member = $"row.{col.Leaf.Name}";
+            if (BloomLeafIsReferenceType(col.Leaf))
+            {
+                builder.AppendLine($"            if ({member} is not null)");
+                builder.AppendLine(
+                    $"                bloom_{col.Slot}.Insert(global::Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterHash.Of({member}));"
+                );
+            }
+            else if (col.Leaf.IsNullable)
+            {
+                builder.AppendLine($"            if ({member}.HasValue)");
+                builder.AppendLine(
+                    $"                bloom_{col.Slot}.Insert(global::Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterHash.Of({member}.Value));"
+                );
+            }
+            else
+            {
+                builder.AppendLine(
+                    $"            bloom_{col.Slot}.Insert(global::Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterHash.Of({member}));"
+                );
+            }
+        }
+
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        foreach (LeafColumn col in blooms)
+        {
+            builder.AppendLine(
+                $"        entries.Add(new global::Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterEntry(rowGroupIndex, \"{col.Leaf.ParquetColumnName}\", bloom_{col.Slot}));"
+            );
+        }
+
+        builder.AppendLine("    }");
+    }
+
+    private static void EmitWriteWithBloomFiltersAsync(
+        StringBuilder builder,
+        TargetClassModel model,
+        List<LeafColumn> blooms
+    )
+    {
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine(
+            $"    /// Serializes <c>{model.ClassName}</c> items in fixed-size row groups and attaches a split-block Bloom filter to every column annotated with <c>[ParquetColumn(BloomFilter = true)]</c>."
+        );
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    /// <remarks>");
+        builder.AppendLine(
+            "    /// Returns the finished file rather than writing to a caller stream: the filters are appended"
+        );
+        builder.AppendLine(
+            "    /// after the last row group and the footer is then re-serialized with their offsets, which needs"
+        );
+        builder.AppendLine("    /// the whole image in hand.");
+        builder.AppendLine("    /// </remarks>");
+        builder.AppendLine(
+            "    public static async global::System.Threading.Tasks.Task<byte[]> WriteParquetWithBloomFiltersAsync("
+        );
+        builder.AppendLine(
+            $"        this global::System.Collections.Generic.IEnumerable<{model.ClassName}> items,"
+        );
+        builder.AppendLine("        int? rowGroupSize = null,");
+        builder.AppendLine(
+            "        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,"
+        );
+        builder.AppendLine("        double falsePositiveProbability = 0.01,");
+        builder.AppendLine(
+            "        global::System.Threading.CancellationToken cancellationToken = default)"
+        );
+        builder.AppendLine("    {");
+        builder.AppendLine(
+            "        if (items == null) throw new global::System.ArgumentNullException(nameof(items));"
+        );
+        EmitRowGroupSizeResolution(builder);
+        builder.AppendLine();
+        builder.AppendLine(
+            "        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;"
+        );
+        builder.AppendLine(
+            "        var entries = new global::System.Collections.Generic.List<global::Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterEntry>();"
+        );
+        builder.AppendLine("        using var buffer = new global::System.IO.MemoryStream();");
+        builder.AppendLine(
+            "        await using (var writer = await global::Parquet.ParquetWriter.CreateAsync("
+        );
+        builder.AppendLine("            Schema,");
+        builder.AppendLine("            buffer,");
+        builder.AppendLine("            BuildFormatOptions(options),");
+        builder.AppendLine("            cancellationToken: cancellationToken))");
+        builder.AppendLine("        {");
+        builder.AppendLine(
+            $"            var chunk = new global::System.Collections.Generic.List<{model.ClassName}>(targetChunkSize);"
+        );
+        builder.AppendLine("            int rowGroupIndex = 0;");
+        builder.AppendLine("            foreach (var item in items)");
+        builder.AppendLine("            {");
+        builder.AppendLine("                cancellationToken.ThrowIfCancellationRequested();");
+        builder.AppendLine("                chunk.Add(item);");
+        builder.AppendLine("                if (chunk.Count == targetChunkSize)");
+        builder.AppendLine("                {");
+        builder.AppendLine(
+            "                    await writer.WriteParquetRowGroupAsync(chunk, cancellationToken);"
+        );
+        builder.AppendLine(
+            "                    AddBloomFiltersForRowGroup(entries, rowGroupIndex, chunk, falsePositiveProbability);"
+        );
+        builder.AppendLine("                    rowGroupIndex++;");
+        builder.AppendLine("                    chunk.Clear();");
+        builder.AppendLine("                }");
+        builder.AppendLine("            }");
+        builder.AppendLine();
+        builder.AppendLine("            if (chunk.Count > 0)");
+        builder.AppendLine("            {");
+        builder.AppendLine(
+            "                await writer.WriteParquetRowGroupAsync(chunk, cancellationToken);"
+        );
+        builder.AppendLine(
+            "                AddBloomFiltersForRowGroup(entries, rowGroupIndex, chunk, falsePositiveProbability);"
+        );
+        builder.AppendLine("            }");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        byte[] written = buffer.ToArray();");
+        builder.AppendLine(
+            "        return global::Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterFooter.Attach(written, entries);"
+        );
+        builder.AppendLine("    }");
+    }
+
+    /// <summary>
+    /// Emits the single-row-group materializer the point lookups fall back to once a Bloom probe
+    /// fails to eliminate a row group.
+    /// </summary>
+    private static void EmitBloomCandidateRowGroupReader(
+        StringBuilder builder,
+        TargetClassModel model
+    )
+    {
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine(
+            $"    /// Materializes exactly one row group — the rows a Bloom filter could not rule out."
+        );
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine(
+            $"    private static async global::System.Threading.Tasks.Task<{model.ClassName}[]> ReadBloomCandidateRowGroupAsync("
+        );
+        builder.AppendLine("        global::Parquet.ParquetReader reader,");
+        builder.AppendLine("        int rowGroupIndex,");
+        builder.AppendLine(
+            "        global::Parquet.SourceGenerator.ParquetSerializerOptions options,"
+        );
+        builder.AppendLine("        global::System.Threading.CancellationToken cancellationToken)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        cancellationToken.ThrowIfCancellationRequested();");
+        builder.AppendLine(
+            "        using var groupReader = reader.OpenRowGroupReader(rowGroupIndex);"
+        );
+        builder.AppendLine("        int rowCount = (int)groupReader.RowCount;");
+        builder.AppendLine(
+            $"        if (rowCount == 0) return global::System.Array.Empty<{model.ClassName}>();"
+        );
+        builder.AppendLine();
+        builder.AppendLine("        var fileFields = reader.Schema.DataFields;");
+        builder.AppendLine(
+            "        global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;"
+        );
+        foreach (LeafColumn col in EmissionPlan.For(model).Columns)
+        {
+            builder.AppendLine(
+                $"        var field_{col.Slot} = ResolveSchemaField(fileFields, {col.Slot}, _field_{col.Slot}, ref fieldsByName);"
+            );
+        }
+
+        builder.AppendLine();
+        builder.AppendLine($"        var results = new {model.ClassName}[rowCount];");
+        builder.AppendLine("        int startOffset = 0;");
+        builder.AppendLine();
+        EmitRentalsFor(builder, model, "rowCount");
+        builder.AppendLine();
+        StringDeduplicatorComponent.EmitDeduplicatorDeclaration(builder, model);
+        builder.AppendLine("        try");
+        builder.AppendLine("        {");
+        foreach (LeafColumn col in EmissionPlan.For(model).Columns)
+        {
+            EmitReadWithNullBypass(
+                builder,
+                col,
+                $"field_{col.Slot}",
+                $"buffer_{col.Slot}",
+                indent: "            "
+            );
+        }
+
+        builder.AppendLine();
+        EmitArrayMaterializationFor(
+            builder,
+            model,
+            "results",
+            "startOffset",
+            indent: "            "
+        );
+        builder.AppendLine("        }");
+        builder.AppendLine("        finally");
+        builder.AppendLine("        {");
+        EmitReturnsFor(builder, model, indent: "            ");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        return results;");
+        builder.AppendLine("    }");
+    }
+
+    private static void EmitBloomPointLookup(
+        StringBuilder builder,
+        TargetClassModel model,
+        LeafColumn col
+    )
+    {
+        string name = col.Leaf.Name;
+        string lookupType = BloomLookupType(col.Leaf);
+        string memberType = col.Leaf.TypeName;
+        string path = col.Leaf.ParquetColumnName;
+
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine(
+            $"    /// Finds every <c>{model.ClassName}</c> whose <c>{name}</c> equals <paramref name=\"value\"/>, eliminating row groups whose Bloom filter proves the value absent."
+        );
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    /// <remarks>");
+        builder.AppendLine(
+            "    /// A Bloom probe has no false negatives, so a row group it rejects cannot hold the value and is"
+        );
+        builder.AppendLine(
+            "    /// never opened. Row groups it accepts are still verified against the data, which is what keeps"
+        );
+        builder.AppendLine(
+            "    /// the false-positive rate a cost rather than a correctness problem."
+        );
+        builder.AppendLine("    /// </remarks>");
+        builder.AppendLine(
+            $"    public static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<{model.ClassName}>> FindAllBy{name}Async("
+        );
+        builder.AppendLine("        global::System.ReadOnlyMemory<byte> parquetBytes,");
+        builder.AppendLine($"        {lookupType} value,");
+        builder.AppendLine(
+            "        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,"
+        );
+        builder.AppendLine(
+            "        global::Parquet.SourceGenerator.BloomFilters.ParquetLookupStatistics? statistics = null,"
+        );
+        builder.AppendLine(
+            "        global::System.Threading.CancellationToken cancellationToken = default)"
+        );
+        builder.AppendLine("    {");
+        builder.AppendLine(
+            "        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;"
+        );
+        builder.AppendLine(
+            $"        var matches = new global::System.Collections.Generic.List<{model.ClassName}>();"
+        );
+        builder.AppendLine(
+            "        var index = global::Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterIndex.Load(parquetBytes);"
+        );
+        builder.AppendLine(
+            "        ulong hash = global::Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterHash.Of(value);"
+        );
+        builder.AppendLine("        using var stream = CreateBufferStream(parquetBytes);");
+        builder.AppendLine(
+            "        await using var reader = await global::Parquet.ParquetReader.CreateAsync("
+        );
+        builder.AppendLine("            stream,");
+        builder.AppendLine("            BuildFormatOptions(options),");
+        builder.AppendLine("            cancellationToken: cancellationToken);");
+        builder.AppendLine("        int rowGroupCount = reader.RowGroupCount;");
+        builder.AppendLine("        statistics?.Reset(rowGroupCount);");
+        builder.AppendLine();
+        builder.AppendLine("        for (int r = 0; r < rowGroupCount; r++)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            cancellationToken.ThrowIfCancellationRequested();");
+        builder.AppendLine($"            if (!index.MightContain(r, \"{path}\", hash))");
+        builder.AppendLine("            {");
+        builder.AppendLine("                statistics?.RecordSkipped();");
+        builder.AppendLine("                continue;");
+        builder.AppendLine("            }");
+        builder.AppendLine();
+        builder.AppendLine("            statistics?.RecordScanned();");
+        builder.AppendLine(
+            "            var rows = await ReadBloomCandidateRowGroupAsync(reader, r, options, cancellationToken);"
+        );
+        builder.AppendLine("            int before = matches.Count;");
+        builder.AppendLine("            for (int i = 0; i < rows.Length; i++)");
+        builder.AppendLine("            {");
+        builder.AppendLine(
+            $"                if (rows[i] is not null && global::System.Collections.Generic.EqualityComparer<{memberType}>.Default.Equals(rows[i].{name}, value))"
+        );
+        builder.AppendLine("                {");
+        builder.AppendLine("                    matches.Add(rows[i]);");
+        builder.AppendLine("                }");
+        builder.AppendLine("            }");
+        builder.AppendLine();
+        builder.AppendLine(
+            "            if (matches.Count == before) statistics?.RecordFalsePositive();"
+        );
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        return matches;");
+        builder.AppendLine("    }");
+        builder.AppendLine();
+
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine(
+            $"    /// Finds the first <c>{model.ClassName}</c> whose <c>{name}</c> equals <paramref name=\"value\"/>, or <c>null</c>. Stops at the first hit."
+        );
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine(
+            $"    public static async global::System.Threading.Tasks.Task<{model.ClassName}?> FindBy{name}Async("
+        );
+        builder.AppendLine("        global::System.ReadOnlyMemory<byte> parquetBytes,");
+        builder.AppendLine($"        {lookupType} value,");
+        builder.AppendLine(
+            "        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,"
+        );
+        builder.AppendLine(
+            "        global::Parquet.SourceGenerator.BloomFilters.ParquetLookupStatistics? statistics = null,"
+        );
+        builder.AppendLine(
+            "        global::System.Threading.CancellationToken cancellationToken = default)"
+        );
+        builder.AppendLine("    {");
+        builder.AppendLine(
+            "        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;"
+        );
+        builder.AppendLine(
+            "        var index = global::Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterIndex.Load(parquetBytes);"
+        );
+        builder.AppendLine(
+            "        ulong hash = global::Parquet.SourceGenerator.BloomFilters.ParquetBloomFilterHash.Of(value);"
+        );
+        builder.AppendLine("        using var stream = CreateBufferStream(parquetBytes);");
+        builder.AppendLine(
+            "        await using var reader = await global::Parquet.ParquetReader.CreateAsync("
+        );
+        builder.AppendLine("            stream,");
+        builder.AppendLine("            BuildFormatOptions(options),");
+        builder.AppendLine("            cancellationToken: cancellationToken);");
+        builder.AppendLine("        int rowGroupCount = reader.RowGroupCount;");
+        builder.AppendLine("        statistics?.Reset(rowGroupCount);");
+        builder.AppendLine();
+        builder.AppendLine("        for (int r = 0; r < rowGroupCount; r++)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            cancellationToken.ThrowIfCancellationRequested();");
+        builder.AppendLine($"            if (!index.MightContain(r, \"{path}\", hash))");
+        builder.AppendLine("            {");
+        builder.AppendLine("                statistics?.RecordSkipped();");
+        builder.AppendLine("                continue;");
+        builder.AppendLine("            }");
+        builder.AppendLine();
+        builder.AppendLine("            statistics?.RecordScanned();");
+        builder.AppendLine(
+            "            var rows = await ReadBloomCandidateRowGroupAsync(reader, r, options, cancellationToken);"
+        );
+        builder.AppendLine("            for (int i = 0; i < rows.Length; i++)");
+        builder.AppendLine("            {");
+        builder.AppendLine(
+            $"                if (rows[i] is not null && global::System.Collections.Generic.EqualityComparer<{memberType}>.Default.Equals(rows[i].{name}, value))"
+        );
+        builder.AppendLine("                {");
+        builder.AppendLine("                    return rows[i];");
+        builder.AppendLine("                }");
+        builder.AppendLine("            }");
+        builder.AppendLine();
+        builder.AppendLine("            statistics?.RecordFalsePositive();");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        return default;");
         builder.AppendLine("    }");
     }
 

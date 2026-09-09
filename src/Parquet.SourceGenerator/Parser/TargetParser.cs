@@ -471,6 +471,7 @@ public static class TargetParser
             string columnName = member.Name;
             int order = -1;
             bool deduplicate = false;
+            bool bloomFilter = false;
             ColumnEncoding encoding = ColumnEncoding.Default;
 
             if (columnAttr is not null)
@@ -497,6 +498,8 @@ public static class TargetParser
                         deduplicate = dedupe;
                     else if (namedArg.Key == "Encoding" && namedArg.Value.Value is int encodingInt)
                         encoding = (ColumnEncoding)encodingInt;
+                    else if (namedArg.Key == "BloomFilter" && namedArg.Value.Value is bool bloom)
+                        bloomFilter = bloom;
                 }
             }
 
@@ -739,6 +742,22 @@ public static class TargetParser
 
             string typeName = memberType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
+            // Rule PARQ014: a Bloom filter is only sound when both sides hash identical bytes, so
+            // the flag is honoured for the leaf kinds whose PLAIN encoding the generator can
+            // reproduce. Anything else keeps the column but drops the flag, with a warning — the
+            // alternative, silent acceptance, would advertise a lookup speed-up that never happens.
+            if (bloomFilter && !SupportsBloomFilter(kind, underlyingType))
+            {
+                diagnostics.Add(
+                    new DiagnosticInfo(
+                        DiagnosticDescriptors.BloomFilterUnsupportedMember,
+                        member.Locations.FirstOrDefault() ?? fallbackLocation,
+                        new[] { member.Name, className }
+                    )
+                );
+                bloomFilter = false;
+            }
+
             propertyModels.Add(
                 new PropertyModel(
                     Name: member.Name,
@@ -754,8 +773,29 @@ public static class TargetParser
                     Deduplicate: deduplicate,
                     Encoding: encoding
                 )
+                {
+                    BloomFilter = bloomFilter,
+                }
             );
         }
+    }
+
+    /// <summary>
+    /// Whether a leaf kind can carry a Bloom filter: the generator must be able to reproduce the
+    /// column's PLAIN encoding byte-for-byte to hash it the same way on both sides.
+    /// </summary>
+    private static bool SupportsBloomFilter(PropertyKind kind, ITypeSymbol underlyingType)
+    {
+        if (kind == PropertyKind.Guid || kind == PropertyKind.ByteArray)
+            return true;
+
+        if (kind != PropertyKind.Primitive)
+            return false;
+
+        return underlyingType.SpecialType
+            is SpecialType.System_String
+                or SpecialType.System_Int32
+                or SpecialType.System_Int64;
     }
 
     /// <summary>

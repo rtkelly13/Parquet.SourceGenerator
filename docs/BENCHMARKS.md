@@ -121,3 +121,44 @@ The GitHub Actions performance workflow (`.github/workflows/benchmarks.yml`) aut
 
 * [Testing Strategy & Benchmarks (05)](https://github.com/rtkelly13/Parquet.SourceGenerator/blob/main/docs/05-TESTING-STRATEGY-AND-BENCHMARKS.md)
 * [Vision & Architecture (01)](https://github.com/rtkelly13/Parquet.SourceGenerator/blob/main/docs/01-VISION-AND-ARCHITECTURE.md)
+
+---
+
+## 🌸 Bloom Filter Point Lookups (issue #152)
+
+`BloomFilterLookupBenchmark` measures a point lookup on a high-cardinality `Guid` column — the case
+Min/Max statistics cannot skip, because every row group's interval spans the whole domain. The
+baseline is the only thing the library could do before: read the whole file and scan it.
+
+**Dataset**: 200,000 rows, `Guid` + `string` + `double` + `long`, uniformly random Guid keys, Snappy.
+**Machine**: Apple Silicon (arm64), macOS 24.6.0, .NET 9.0.17, BenchmarkDotNet 0.14.0, `InProcess`.
+**Caveat**: an unrelated benchmark was running concurrently on the same machine, which is why the
+standard deviations are wide (the two `FullScan` rows do identical work and still differ by ~25% at
+`RowGroupSize=2000`). The effect sizes below are one to two orders of magnitude, so the ranking is
+not in doubt, but treat the individual means as indicative rather than publishable.
+
+| Row group size | Scenario | Full scan | Bloom probe | Speed-up | Allocated (scan → probe) |
+|:---:|:--- |---:|---:|:---:|:--- |
+| 2,000 (100 groups) | key in the last row group | 78.7 ms | **1.16 ms** | **~68x** | 46.5 MB → **1.4 MB** |
+| 2,000 (100 groups) | key absent | 52.8 ms | **1.03 ms** | **~51x** | 46.5 MB → **1.4 MB** |
+| 10,000 (20 groups) | key in the last row group | 63.8 ms | **2.65 ms** | **~24x** | 50.2 MB → **2.8 MB** |
+| 10,000 (20 groups) | key absent | 62.5 ms | **0.20 ms** | **~306x** | 50.2 MB → **0.44 MB** |
+
+The shape of the result is what the mechanism predicts: an absent key touches no row group at all and
+costs only the footer walk plus one probe per group, while a present key still pays for exactly one
+row group's pages. Smaller row groups make the hit cheaper (less data behind the match) and the miss
+slightly dearer (more filters to walk).
+
+### Write-side cost
+
+Filters are not free. Measured on the four-column `BloomEvent` model with **three** of its four
+columns annotated, at 1% target FPP:
+
+| Row group size | Rows | Without filters | With filters | Growth |
+|:---:|---:|---:|---:|:---:|
+| 250 | 5,000 | 152,345 B | 184,445 B | +21.1% |
+| 10,000 | 40,000 | 1,097,725 B | 1,294,645 B | +17.9% |
+
+Most of that is power-of-two rounding of the block count — 10,000 keys at 1% FPP needs ~12.1 KB and
+rounds to 16 KB. Annotating one identifier column rather than three, which is the realistic case,
+divides the overhead accordingly.
