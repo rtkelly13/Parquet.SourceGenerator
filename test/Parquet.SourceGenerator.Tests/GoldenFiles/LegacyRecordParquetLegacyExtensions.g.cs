@@ -85,11 +85,21 @@ public static partial class LegacyRecordParquetLegacyExtensions
     }
 
     /// <summary>
-    /// Lightweight, zero-allocation L1 string cache for deduplicating repeated string instances
-    /// across columnar reads, slashing managed heap allocations on categorical string columns.
+    /// Lightweight L1 string cache keyed directly on <see cref="global::System.ReadOnlySpan{T}"/>
+    /// of <see cref="char"/>, backed by a pooled open-addressed table.
+    /// A cache hit returns the previously materialized <see cref="string"/> instance without
+    /// allocating, so repeated (categorical) column values cost one string per distinct value
+    /// rather than one string per row.
     /// </summary>
+    /// <remarks>
+    /// Hash equality is never trusted on its own: every candidate is confirmed with a full
+    /// ordinal span comparison before it is returned, so collisions can only cost a probe,
+    /// never correctness.
+    /// </remarks>
     private struct StringDeduplicator : global::System.IDisposable
     {
+        private const int ProbeLimit = 4;
+
         private string?[]? _entries;
         private readonly int _mask;
 
@@ -110,15 +120,97 @@ public static partial class LegacyRecordParquetLegacyExtensions
             var entries = _entries;
             if (entries is null) return value;
 
-            int index = value.GetHashCode() & _mask;
-            string? candidate = entries[index];
-            if (candidate is not null && string.Equals(candidate, value, global::System.StringComparison.Ordinal))
+            int mask = _mask;
+            int index = (int)(HashString(value) & (uint)mask);
+            for (int probe = 0; probe < ProbeLimit; probe++)
             {
-                return candidate;
+                int slot = (index + probe) & mask;
+                string? candidate = entries[slot];
+                if (candidate is null)
+                {
+                    entries[slot] = value;
+                    return value;
+                }
+
+                // A matching hash is never trusted on its own: compare in full.
+                if (string.Equals(candidate, value, global::System.StringComparison.Ordinal))
+                {
+                    return candidate;
+                }
             }
 
+            // Probe window exhausted: evict the primary slot so hot values stay resident.
             entries[index] = value;
             return value;
+        }
+
+        /// <summary>
+        /// Returns the cached string equal to <paramref name="value"/>. A cache hit allocates
+        /// nothing at all — no string instance is created for a value already seen.
+        /// </summary>
+        public string GetOrAdd(global::System.ReadOnlySpan<char> value)
+        {
+            if (value.Length == 0) return string.Empty;
+
+            var entries = _entries;
+            if (entries is null) return new string(value);
+
+            int mask = _mask;
+            int index = (int)(HashSpan(value) & (uint)mask);
+            for (int probe = 0; probe < ProbeLimit; probe++)
+            {
+                int slot = (index + probe) & mask;
+                string? candidate = entries[slot];
+                if (candidate is null)
+                {
+                    string inserted = new string(value);
+                    entries[slot] = inserted;
+                    return inserted;
+                }
+
+                // A matching hash is never trusted on its own: compare byte-for-byte.
+                if (SpanEqualsOrdinal(value, candidate))
+                {
+                    return candidate;
+                }
+            }
+
+            string replacement = new string(value);
+            entries[index] = replacement;
+            return replacement;
+        }
+
+        private static bool SpanEqualsOrdinal(global::System.ReadOnlySpan<char> value, string candidate)
+        {
+            if (value.Length != candidate.Length) return false;
+            for (int i = 0; i < value.Length; i++)
+            {
+                if (value[i] != candidate[i]) return false;
+            }
+            return true;
+        }
+
+        /// <summary>FNV-1a over UTF-16 code units; allocation free and span/string identical.</summary>
+        private static uint HashSpan(global::System.ReadOnlySpan<char> value)
+        {
+            uint hash = 2166136261u;
+            for (int i = 0; i < value.Length; i++)
+            {
+                hash ^= value[i];
+                hash *= 16777619u;
+            }
+            return hash;
+        }
+
+        private static uint HashString(string value)
+        {
+            uint hash = 2166136261u;
+            for (int i = 0; i < value.Length; i++)
+            {
+                hash ^= value[i];
+                hash *= 16777619u;
+            }
+            return hash;
         }
 
         public void Dispose()

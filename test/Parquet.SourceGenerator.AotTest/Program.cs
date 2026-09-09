@@ -185,6 +185,10 @@ internal static class Program
             ReorderedColumnsAsync
         );
         await CheckAsync("every compression codec round-trips", CompressionCodecsAsync);
+        await CheckAsync(
+            "span-keyed string deduplication round-trips and interns",
+            StringDeduplicationAsync
+        );
 
         Console.WriteLine("=================================================");
         if (_failures == 0)
@@ -395,6 +399,72 @@ internal static class Program
         Expect(read[2].Int32Value == -7, "row 2: negative int? lost");
         Expect(read[2].StringValue is null, "row 2: explicit null string should stay null");
         Expect(read[2].EnumValue == AotStatus.Closed, "row 2: enum? value lost");
+    }
+
+    private static async Task StringDeduplicationAsync()
+    {
+        // Exercises the raw ReadOnlyMemory<char> read path plus the span-keyed intern table
+        // under Native AOT: both the non-nullable lane and the packed nullable lane.
+        var written = new List<AotNullableRecord>();
+        for (int i = 0; i < 300; i++)
+        {
+            written.Add(
+                new AotNullableRecord
+                {
+                    Id = i,
+                    Int32Value = i,
+                    StringValue = (i % 3) switch
+                    {
+                        0 => "Alpha",
+                        1 => "Beta",
+                        _ => null,
+                    },
+                }
+            );
+        }
+
+        using var stream = new MemoryStream();
+        await written.WriteParquetAsync(stream);
+        stream.Position = 0;
+
+        var options = new ParquetSerializerOptions { DeduplicateStrings = true };
+        List<AotNullableRecord> read = await AotNullableRecordParquetExtensions.ReadParquetAsync(
+            stream,
+            options
+        );
+
+        Expect(read.Count == written.Count, $"expected {written.Count} rows, read {read.Count}");
+
+        string? alpha = null;
+        string? beta = null;
+        for (int i = 0; i < read.Count; i++)
+        {
+            Expect(read[i].StringValue == written[i].StringValue, $"row {i}: string value lost");
+
+            if (read[i].StringValue is null)
+            {
+                continue;
+            }
+
+            if (read[i].StringValue == "Alpha")
+            {
+                alpha ??= read[i].StringValue;
+                Expect(
+                    ReferenceEquals(alpha, read[i].StringValue),
+                    $"row {i}: \"Alpha\" was not interned to a single instance"
+                );
+            }
+            else
+            {
+                beta ??= read[i].StringValue;
+                Expect(
+                    ReferenceEquals(beta, read[i].StringValue),
+                    $"row {i}: \"Beta\" was not interned to a single instance"
+                );
+            }
+        }
+
+        Expect(alpha is not null && beta is not null, "expected both categorical values to appear");
     }
 
     private static async Task IgnoredMemberAsync()

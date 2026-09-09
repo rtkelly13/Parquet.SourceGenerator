@@ -39,6 +39,14 @@ Changes since `0.0.1`. That version is published on nuget.org (alongside the `0.
   member types, unassignable members, types with no parameterless constructor, nested or generic
   target types, and member types the 4.x/5.x backend cannot represent.
 - **CI workflow** building, testing and packing the solution. Benchmarks run on demand.
+- **Span-keyed string deduplication** (`DeduplicateStrings = true`): string columns are read
+  through Parquet.Net's raw `ReadOnlyMemory<char>` surface and interned against a pooled
+  open-addressed table keyed on `ReadOnlySpan<char>`, so a repeated value costs no `string`
+  allocation at all. Hash matches are always confirmed with a full ordinal comparison. On the
+  Adult Census dataset (32,561 rows, 9 categorical columns) this cuts managed read allocation
+  from 20.38 MB to 8.75 MB. The `ReadOnlySpan<byte>` variant the design originally called for is
+  not reachable — Parquet.Net 6.1.0 exposes no UTF-8 byte surface for string columns; see
+  `UPSTREAM_DEPENDENCY_LIMITATIONS.md`.
 
 ### Fixed before release
 - `CompressionMethod` was accepted and discarded — no compression setting ever reached the writer.
