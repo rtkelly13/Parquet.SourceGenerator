@@ -12,6 +12,15 @@ Changes since `0.0.1`. That version is published on nuget.org (alongside the `0.
 `0.0.1-dev.2` prereleases); this section becomes the next release entry when one is cut.
 
 ### Added
+- **Direct columnar handoff (write)**: flat `[ParquetSerializable]` models now also emit a
+  `{Type}ColumnarBatch` struct plus `WriteParquetRowGroupAsync(batch)`,
+  `WriteParquetRowGroupColumnarAsync(rowCount, ...)` and a stream-level `batch.WriteParquetAsync`.
+  A caller whose data is already in contiguous column buffers skips the row-to-column transpose and
+  its `ArrayPool` rentals entirely — buffers reach Parquet.Net verbatim. Nullable value columns take
+  packed values plus explicit definition levels. Measured at ~7% of end-to-end write time on a
+  16-column schema, identical in Workstation and Server GC, with allocation unchanged; see
+  `docs/12-BUFFER-REUSE-AND-EXTRACTION-STRATEGIES.md` §6. Models with struct, list or map members
+  are unaffected and keep the row-oriented API only.
 - **Roslyn incremental source generator**: compiles zero-reflection Parquet serializers and
   deserializers against Parquet.Net low-level primitives.
 - **Native AOT support**, exercised on every CI run by publishing the AOT test project with

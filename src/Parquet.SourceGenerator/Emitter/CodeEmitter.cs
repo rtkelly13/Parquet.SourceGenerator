@@ -1,5 +1,6 @@
 using System;
 using System.Text;
+using Parquet.SourceGenerator.Emitter.Columnar;
 using Parquet.SourceGenerator.Emitter.Components;
 using Parquet.SourceGenerator.Emitter.Compound;
 using Parquet.SourceGenerator.Models;
@@ -68,6 +69,15 @@ public static class CodeEmitter
         EmitWriteRowGroupAsync(builder, model);
         builder.AppendLine();
 
+        // Direct columnar hand-off (#137) — caller already owns contiguous column buffers, so the
+        // row transpose and its pooled rentals are skipped entirely. All-leaf models only.
+        bool emitColumnar = ColumnarBatchComponent.IsSupported(model);
+        if (emitColumnar)
+        {
+            ColumnarBatchComponent.EmitWriters(builder, model);
+            builder.AppendLine();
+        }
+
         // Primary write API — async (v6 requires async for writer creation)
         EmitWriteAsync(builder, model);
         builder.AppendLine();
@@ -100,6 +110,12 @@ public static class CodeEmitter
         EmitReadMemoryOverloads(builder, model);
 
         builder.AppendLine("}");
+
+        if (emitColumnar)
+        {
+            builder.AppendLine();
+            ColumnarBatchComponent.EmitBatchStruct(builder, model);
+        }
 
         return builder.ToString();
     }

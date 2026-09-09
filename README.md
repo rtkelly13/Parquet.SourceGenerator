@@ -120,6 +120,34 @@ IAsyncEnumerable<UserEvent> eventStream = GetAsyncEventStream();
 await eventStream.WriteParquetAsync(stream, rowGroupSize: 10_000);
 ```
 
+#### Writing from data that is already columnar
+
+If the caller already holds contiguous column buffers — Arrow arrays, a query engine's column
+vectors, pre-split `ReadOnlyMemory<T>` — there is no reason to materialise POCOs first. Flat models
+also get a generated batch struct whose buffers go straight to Parquet.Net with no pooled rental and
+no copy:
+
+```csharp
+var batch = new UserEventColumnarBatch
+{
+    RowCount = rowCount,
+    Id = idBuffer,                                  // ReadOnlyMemory<int>
+    Name = nameBuffer,                              // ReadOnlyMemory<ReadOnlyMemory<char>?>
+    Score = packedScores,                           // packed non-nulls only
+    ScoreDefinitionLevels = scoreDefinitionLevels,  // 1 = present, 0 = null, one per row
+};
+
+await batch.WriteParquetAsync(stream);
+```
+
+Nullable value columns take packed values plus explicit definition levels, because that is the only
+shape Parquet.Net's `WriteAllPartsAsync` accepts without an intermediate buffer. On a 16-column
+schema this removes around 7% of end-to-end write time (the transpose it deletes); allocation is
+unchanged, since the row-oriented path's rentals come from a warm `ArrayPool`. Measured numbers, both
+GC modes, and the reasons the API is shaped this way are in
+[docs/12](docs/12-BUFFER-REUSE-AND-EXTRACTION-STRATEGIES.md#-6-direct-columnar-handoff--measured-issue-137).
+Models with struct, list or map members keep the row-oriented API only.
+
 ### 4. Reading Parquet Files (Sequential & Multi-Core Parallel)
 
 ```csharp

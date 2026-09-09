@@ -456,6 +456,145 @@ public static partial class OrderEventParquetExtensions
     }
 
     /// <summary>
+    /// Converts a string into a text column entry, preserving null.
+    /// A bare <c>cond ? null : value.AsMemory()</c> does not: the conditional's natural type is the
+    /// non-nullable memory, so the null branch stores an empty value instead.
+    /// </summary>
+    public static global::System.ReadOnlyMemory<char>? AsColumnarText(string? value)
+        => value is null ? (global::System.ReadOnlyMemory<char>?)null : global::System.MemoryExtensions.AsMemory(value);
+
+    /// <summary>
+    /// Converts a byte array into a binary column entry, preserving null.
+    /// </summary>
+    public static global::System.ReadOnlyMemory<byte>? AsColumnarBinary(byte[]? value)
+        => value is null ? (global::System.ReadOnlyMemory<byte>?)null : global::System.MemoryExtensions.AsMemory(value);
+
+    /// <summary>
+    /// Writes one row group directly from caller-owned column buffers, with no row traversal and no pooled rentals.
+    /// </summary>
+    public static async global::System.Threading.Tasks.Task WriteParquetRowGroupAsync(
+        this global::Parquet.ParquetWriter writer,
+        OrderEventColumnarBatch batch,
+        global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        if (writer == null) throw new global::System.ArgumentNullException(nameof(writer));
+
+        int count = batch.RowCount;
+        if (count < 0) throw new global::System.ArgumentOutOfRangeException(nameof(batch), "RowCount cannot be negative.");
+        if (count == 0) return;
+
+        if (batch.Id.Length < count) throw new global::System.ArgumentException("Column 'Id' supplied " + batch.Id.Length + " values for " + count + " rows.", nameof(batch));
+        if (batch.Name.Length < count) throw new global::System.ArgumentException("Column 'Name' supplied " + batch.Name.Length + " values for " + count + " rows.", nameof(batch));
+        if (batch.Score.Length < count) throw new global::System.ArgumentException("Column 'Score' supplied " + batch.Score.Length + " values for " + count + " rows.", nameof(batch));
+        if (batch.Price.Length < count) throw new global::System.ArgumentException("Column 'Price' supplied " + batch.Price.Length + " values for " + count + " rows.", nameof(batch));
+        if (batch.CreatedAt.Length < count) throw new global::System.ArgumentException("Column 'CreatedAt' supplied " + batch.CreatedAt.Length + " values for " + count + " rows.", nameof(batch));
+        if (batch.Duration.Length < count) throw new global::System.ArgumentException("Column 'Duration' supplied " + batch.Duration.Length + " values for " + count + " rows.", nameof(batch));
+        if (batch.CorrelationId.Length < count) throw new global::System.ArgumentException("Column 'CorrelationId' supplied " + batch.CorrelationId.Length + " values for " + count + " rows.", nameof(batch));
+        if (batch.OptionalGuidDefinitionLevels.Length < count) throw new global::System.ArgumentException("Column 'OptionalGuid' supplied " + batch.OptionalGuidDefinitionLevels.Length + " definition levels for " + count + " rows.", nameof(batch));
+        if (batch.Payload.Length < count) throw new global::System.ArgumentException("Column 'Payload' supplied " + batch.Payload.Length + " values for " + count + " rows.", nameof(batch));
+
+        using (var groupWriter = writer.CreateRowGroup())
+        {
+            await groupWriter.WriteAsync<int>(
+                _field_0,
+                batch.Id.Slice(0, count),
+                cancellationToken: cancellationToken);
+            await groupWriter.WriteAsync<global::System.ReadOnlyMemory<char>>(
+                _field_1,
+                batch.Name.Slice(0, count),
+                cancellationToken: cancellationToken);
+            await groupWriter.WriteAsync<double>(
+                _field_2,
+                batch.Score.Slice(0, count),
+                cancellationToken: cancellationToken);
+            await groupWriter.WriteAsync<decimal>(
+                _field_3,
+                batch.Price.Slice(0, count),
+                cancellationToken: cancellationToken);
+            await groupWriter.WriteAsync<System.DateTime>(
+                _field_4,
+                batch.CreatedAt.Slice(0, count),
+                cancellationToken: cancellationToken);
+            await groupWriter.WriteAsync<int>(
+                _field_5,
+                batch.Duration.Slice(0, count),
+                cancellationToken: cancellationToken);
+            await groupWriter.WriteAsync<global::System.Guid>(
+                _field_6,
+                batch.CorrelationId.Slice(0, count),
+                cancellationToken: cancellationToken);
+            await groupWriter.WriteAllPartsAsync<global::System.Guid>(
+                _field_7,
+                batch.OptionalGuid,
+                batch.OptionalGuidDefinitionLevels.Slice(0, count),
+                null,
+                cancellationToken: cancellationToken);
+            await groupWriter.WriteAsync<global::System.ReadOnlyMemory<byte>>(
+                _field_8,
+                batch.Payload.Slice(0, count),
+                cancellationToken: cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// Positional form of the columnar hand-off: one parameter per schema column, in schema order.
+    /// Prefer the <c>OrderEventColumnarBatch</c> overload — it binds buffers to columns by name.
+    /// </summary>
+    public static global::System.Threading.Tasks.Task WriteParquetRowGroupColumnarAsync(
+        this global::Parquet.ParquetWriter writer,
+        int rowCount,
+        global::System.ReadOnlyMemory<int> id,
+        global::System.ReadOnlyMemory<global::System.ReadOnlyMemory<char>?> name,
+        global::System.ReadOnlyMemory<double> score,
+        global::System.ReadOnlyMemory<decimal> price,
+        global::System.ReadOnlyMemory<System.DateTime> createdAt,
+        global::System.ReadOnlyMemory<int> duration,
+        global::System.ReadOnlyMemory<global::System.Guid> correlationId,
+        global::System.ReadOnlyMemory<global::System.Guid> optionalGuid,
+        global::System.ReadOnlyMemory<int> optionalGuidDefinitionLevels,
+        global::System.ReadOnlyMemory<global::System.ReadOnlyMemory<byte>?> payload,
+        global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        var batch = new OrderEventColumnarBatch
+        {
+            RowCount = rowCount,
+            Id = id,
+            Name = name,
+            Score = score,
+            Price = price,
+            CreatedAt = createdAt,
+            Duration = duration,
+            CorrelationId = correlationId,
+            OptionalGuid = optionalGuid,
+            OptionalGuidDefinitionLevels = optionalGuidDefinitionLevels,
+            Payload = payload,
+        };
+        return writer.WriteParquetRowGroupAsync(batch, cancellationToken);
+    }
+
+    /// <summary>
+    /// Writes a complete single-row-group Parquet stream from one <c>OrderEventColumnarBatch</c>.
+    /// </summary>
+    public static async global::System.Threading.Tasks.Task WriteParquetAsync(
+        this OrderEventColumnarBatch batch,
+        global::System.IO.Stream stream,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));
+        cancellationToken.ThrowIfCancellationRequested();
+
+        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
+
+        await using var writer = await global::Parquet.ParquetWriter.CreateAsync(
+            Schema,
+            stream,
+            BuildFormatOptions(options),
+            cancellationToken: cancellationToken);
+        await writer.WriteParquetRowGroupAsync(batch, cancellationToken);
+    }
+
+    /// <summary>
     /// Asynchronously serializes all <c>OrderEvent</c> items using Parquet.Net low-level primitives.
     /// </summary>
     public static async global::System.Threading.Tasks.Task WriteParquetAsync(
@@ -1733,4 +1872,55 @@ public static partial class OrderEventParquetExtensions
             ? new global::System.IO.MemoryStream(segment.Array!, segment.Offset, segment.Count, writable: false)
             : new global::System.IO.MemoryStream(parquetBytes.ToArray(), writable: false);
     }
+}
+
+/// <summary>
+/// One row group of <c>OrderEvent</c> data held as caller-owned column buffers.
+/// </summary>
+/// <remarks>
+/// Buffers are passed to Parquet.Net verbatim — nothing here is rented, copied or pooled.
+/// Members are public fields rather than <c>init</c> properties so the type needs no
+/// <c>IsExternalInit</c> polyfill on downstream targets, and object-initializer syntax keeps the
+/// column-to-buffer binding by name instead of by position.
+/// </remarks>
+public struct OrderEventColumnarBatch
+{
+    /// <summary>Number of rows this batch describes.</summary>
+    public int RowCount;
+
+    /// <summary>Values for column <c>Id</c>; at least <c>RowCount</c> entries.</summary>
+    public global::System.ReadOnlyMemory<int> Id;
+
+    /// <summary>Values for column <c>Name</c>; at least <c>RowCount</c> entries.</summary>
+    /// <remarks>Build entries with <c>AsColumnarText</c>, or cast an explicit null to
+    /// <c>global::System.ReadOnlyMemory<char>?</c>: a bare conditional binds to the non-nullable memory type and
+    /// stores an empty value where a null was meant.</remarks>
+    public global::System.ReadOnlyMemory<global::System.ReadOnlyMemory<char>?> Name;
+
+    /// <summary>Values for column <c>Score</c>; at least <c>RowCount</c> entries.</summary>
+    public global::System.ReadOnlyMemory<double> Score;
+
+    /// <summary>Values for column <c>Price</c>; at least <c>RowCount</c> entries.</summary>
+    public global::System.ReadOnlyMemory<decimal> Price;
+
+    /// <summary>Values for column <c>CreatedAt</c>; at least <c>RowCount</c> entries.</summary>
+    public global::System.ReadOnlyMemory<System.DateTime> CreatedAt;
+
+    /// <summary>Values for column <c>Duration</c>; at least <c>RowCount</c> entries.</summary>
+    public global::System.ReadOnlyMemory<int> Duration;
+
+    /// <summary>Values for column <c>CorrelationId</c>; at least <c>RowCount</c> entries.</summary>
+    public global::System.ReadOnlyMemory<global::System.Guid> CorrelationId;
+
+    /// <summary>Packed non-null values for nullable column <c>OptionalGuid</c>; length equals the number of 1s in <c>OptionalGuidDefinitionLevels</c>.</summary>
+    public global::System.ReadOnlyMemory<global::System.Guid> OptionalGuid;
+
+    /// <summary>Definition levels for column <c>OptionalGuid</c>: one entry per row, 1 = present, 0 = null.</summary>
+    public global::System.ReadOnlyMemory<int> OptionalGuidDefinitionLevels;
+
+    /// <summary>Values for column <c>Payload</c>; at least <c>RowCount</c> entries.</summary>
+    /// <remarks>Build entries with <c>AsColumnarBinary</c>, or cast an explicit null to
+    /// <c>global::System.ReadOnlyMemory<byte>?</c>: a bare conditional binds to the non-nullable memory type and
+    /// stores an empty value where a null was meant.</remarks>
+    public global::System.ReadOnlyMemory<global::System.ReadOnlyMemory<byte>?> Payload;
 }

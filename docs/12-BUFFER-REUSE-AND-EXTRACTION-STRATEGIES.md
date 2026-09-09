@@ -182,3 +182,114 @@ finally
 | **In-Memory POCO Collections (`List<T>`, `T[]`, `IReadOnlyCollection<T>`)** | **Row-Oriented Single Pass + Eager Progressive Returns** *(Production Default)* | Maximizes L1/L2 CPU cache spatial locality. 1.8×–5.5× faster than multi-pass pipelining. Eager returns immediately release memory during column compression/I/O. |
 | **Extreme Memory-Constrained Environments (e.g. AWS Lambda with 128MB RAM, 100+ columns)** | **Column-Pipelined with Type Buffer Reuse** *(Optional Future Flag)* | Reduces peak active memory from $O(N \times \text{batch})$ to $O(1 \times \text{batch})$ at the cost of 2×–3× CPU traversal time. |
 | **Column-Oriented In-Memory Sources (e.g. Apache Arrow RecordBatches)** | **Direct Columnar Handoff** | When data is already arranged in contiguous column buffers, zero extraction is needed—buffers can be passed straight to `WriteAsync` with zero passes over rows. |
+
+---
+
+## 🚚 6. Direct Columnar Handoff — Measured (issue #137)
+
+§5 recommended direct columnar handoff for callers whose data is already in contiguous column
+buffers, but recommended it on reasoning rather than measurement. The generator now emits the API
+(`WriteParquetRowGroupAsync(batch)`, `WriteParquetRowGroupColumnarAsync(...)`), so the
+recommendation can be checked.
+
+### 6.1 What Was Measured
+
+`benchmarks/Parquet.SourceGenerator.Benchmarks/ColumnarHandoffBenchmark.cs`, on
+`BenchmarkTpchLineItem` — the same 16-column wide analytical schema as §3.1, with 11 nullable value
+columns and 5 nullable string columns, ~6% nulls per nullable column.
+
+| Benchmark | What it includes |
+| :--- | :--- |
+| **Row-oriented write** | Rent 27 pooled buffers → transpose the row collection → encode → compress → write. The production default. |
+| **Columnar handoff write** | Same file from buffers the caller already owns. No rentals, no transpose. |
+| **Transpose only** | The extraction pass on its own (rent, one pass over rows, return). No Parquet call — this is the work the handoff deletes, isolated from encode/compress/I-O. |
+
+### 6.2 Results
+
+Apple M1 (8 cores), macOS 15.7.7, .NET 9.0.315 host, `net8.0` target, BenchmarkDotNet 0.14.0,
+in-process toolchain, 3 warmups / 15 iterations. **The machine was not idle** (1-minute load average
+2.5–4.2, other processes active), so treat the end-to-end absolute times as indicative and the
+ratios — which are measured within a single interleaved run — as the meaningful figures. A repeat of
+the 8-iteration Workstation run under heavier load produced 4.5% / 3.4% instead of the numbers below;
+the `Transpose only` measurement is the stable one (standard deviation under 2%) and it independently
+bounds the maximum possible saving.
+
+**Workstation GC (concurrent):**
+
+| Rows | Row-oriented | Columnar handoff | Transpose only | Handoff saving | Allocated (row / columnar) |
+| ---: | ---: | ---: | ---: | ---: | :--- |
+| 10,000 | 4,208.5 µs | 3,933.9 µs | 240.5 µs | **6.5%** | 2,273,504 B / 2,273,696 B |
+| 50,000 | 21,669.2 µs | 20,111.4 µs | 1,649.8 µs | **7.2%** | 11,078,944 B / 11,078,944 B |
+
+**Server GC (concurrent):**
+
+| Rows | Row-oriented | Columnar handoff | Transpose only | Handoff saving | Allocated (row / columnar) |
+| ---: | ---: | ---: | ---: | ---: | :--- |
+| 10,000 | 4,057.4 µs | 3,773.5 µs | 253.8 µs | **7.0%** | 2,273,237 B / 2,273,317 B |
+| 50,000 | 21,428.9 µs | 19,312.0 µs | 1,699.7 µs | **9.9%** | 11,078,935 B / 11,078,935 B |
+
+Both GC modes agree — the saving is present, positive and of the same magnitude in each. Worth
+stating explicitly: PRs #209 and #211 each found modes that disagreed, in one case inverting the
+conclusion. Not here.
+
+### 6.3 What The Numbers Say
+
+1. **The saving is real but small, and it is bounded by the transpose.** The handoff removes roughly
+   3–10% of end-to-end write time depending on run and load, clustering around 7%. The standalone
+   transpose measurement accounts for essentially all of it (240.5 µs of a 4,208.5 µs write = 5.7%;
+   1,649.8 µs of 21,669.2 µs = 7.6%), and it is the low-variance measurement of the three, so it is
+   the number to trust. There is no second-order win hiding anywhere: the transpose is exactly what
+   disappears, nothing else changes.
+
+2. **Roughly 92% of a Parquet write is not the extraction.** Encoding, compression and page assembly
+   inside Parquet.Net dominate. Any future work aimed at the write path's headline number should be
+   pointed there, not at extraction — §3's optimisation of extraction has already taken it as far as
+   removing it entirely can go.
+
+3. **Allocation is unchanged.** This is the result that most contradicts the intuition behind the
+   API. The row-oriented path rents from `ArrayPool.Shared`, and after warmup those rentals allocate
+   nothing; the ~2.3 MB / ~11 MB measured is Parquet.Net's own encode and compress buffers, which
+   both paths pay identically. "No `ArrayPool` rentals in the columnar path" is a true structural
+   property of the generated code and it eliminates the *peak buffer footprint* (27 buffers ×
+   batch), but it does not show up as fewer allocated bytes per write.
+
+4. **The API's real value is therefore not the 7%.** It is that a caller holding Arrow buffers, a
+   query engine's column vectors, or pre-split `ReadOnlyMemory<T>[]` no longer has to materialise a
+   POCO collection at all — the row objects, and their allocation and GC pressure, never exist. That
+   cost is upstream of every measurement in this table, so this benchmark understates the benefit
+   for a caller who is genuinely columnar and overstates it for one who is not.
+
+### 6.4 SIMD Nullable Extraction, Re-measured on Columnar Input (issues #145 / #137)
+
+PR #210 made the write path's nullable extraction branchless and left a `NullableColumnExtractor`
+SIMD helper behind, noting that its two-pass vectorised split/compact lost against the write path's
+array-of-structures source and should be re-measured on genuinely columnar input. This issue is that
+input, so it was re-measured (`ColumnarNullExtractionProbe.cs`, a benchmark-local copy of #210's
+routines — #210 owns the shipped API and this is not a second copy of it).
+
+50,000-element contiguous `long?[]`, same machine and runtime as above:
+
+| Null % | Branchless (WS / Server) | Two-pass SIMD (WS / Server) | Ratio (WS / Server) |
+| ---: | ---: | ---: | ---: |
+| 0 | 58.05 / 57.70 µs | 70.82 / 77.34 µs | 1.22× / 1.34× **slower** |
+| 6 | 34.17 / 34.08 µs | 75.68 / 75.26 µs | 2.21× / 2.21× **slower** |
+| 50 | 34.45 / 34.31 µs | 73.34 / 78.44 µs | 2.13× / 2.29× **slower** |
+
+**Negative result, and a clear one.** The vector path loses on columnar input too, in both GC modes,
+at every null density tested — by more than it lost on array-of-structures data. The two-pass form
+touches the payload buffer twice (write unpacked, then compact in place) and the presence buffer
+three times, and on a 50,000-element `long` column that second pass is a second walk through
+~400 KB, well past L1/L2. The single branchless pass writes each payload once at its final position.
+Vector width cannot buy back a doubled memory traffic bill.
+
+The practical conclusion: `NullableColumnExtractor`'s vectorised entry points have no measured
+workload on which they win, on this hardware. #137's columnar handoff does not use them — a caller
+supplying packed values and definition levels has already done the split, which is the point.
+
+### 6.5 Scope Of The Emitted API
+
+The handoff is emitted for all-leaf models only. Struct, list and map members carry a
+definition–repetition ladder that a caller cannot express as flat per-column buffers, so those
+models keep the row-oriented API alone. Lifting that restriction means designing a caller-facing
+representation of the level ladder, which is a separate piece of API design rather than an
+extension of this one.
