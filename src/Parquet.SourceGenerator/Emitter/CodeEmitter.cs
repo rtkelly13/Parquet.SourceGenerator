@@ -1227,6 +1227,19 @@ public static class CodeEmitter
 
     private static void EmitReadStreamAsync(StringBuilder builder, TargetClassModel model)
     {
+        EmitReadStreamDispatcher(builder, model);
+        builder.AppendLine();
+        EmitReadStreamSequentialAsync(builder, model);
+        builder.AppendLine();
+        EmitReadStreamPrefetched(builder, model);
+    }
+
+    /// <summary>
+    /// Emits the public streaming entry point. It is a plain method rather than an async iterator so
+    /// the prefetch decision is taken once, at call time, instead of once per enumeration step.
+    /// </summary>
+    private static void EmitReadStreamDispatcher(StringBuilder builder, TargetClassModel model)
+    {
         builder.AppendLine("    /// <summary>");
         builder.AppendLine(
             $"    /// Asynchronously streams <c>{model.ClassName}</c> items row-group by row-group as an <see cref=\"global::System.Collections.Generic.IAsyncEnumerable{{T}}\"/>."
@@ -1235,15 +1248,29 @@ public static class CodeEmitter
             "    /// Memory usage is bounded by a single row group rather than the whole file."
         );
         builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    /// <remarks>");
         builder.AppendLine(
-            $"    public static async global::System.Collections.Generic.IAsyncEnumerable<{model.ClassName}> ReadParquetStreamAsync("
-        );
-        builder.AppendLine($"        global::System.IO.Stream stream,");
-        builder.AppendLine(
-            $"        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,"
+            "    /// With <c>ParquetSerializerOptions.PrefetchNextRowGroup</c> set, row group <c>r+1</c> is read,"
         );
         builder.AppendLine(
-            $"        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default)"
+            "    /// decompressed and materialised on a background task while the caller is still consuming row"
+        );
+        builder.AppendLine(
+            "    /// group <c>r</c>, so I/O and decode overlap the caller's own work. In-flight memory stays bounded"
+        );
+        builder.AppendLine(
+            "    /// by <c>PrefetchDepth + 1</c> row groups: the channel is bounded and the producer blocks when full."
+        );
+        builder.AppendLine("    /// </remarks>");
+        builder.AppendLine(
+            $"    public static global::System.Collections.Generic.IAsyncEnumerable<{model.ClassName}> ReadParquetStreamAsync("
+        );
+        builder.AppendLine("        global::System.IO.Stream stream,");
+        builder.AppendLine(
+            "        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,"
+        );
+        builder.AppendLine(
+            "        global::System.Threading.CancellationToken cancellationToken = default)"
         );
         builder.AppendLine("    {");
         builder.AppendLine(
@@ -1254,6 +1281,45 @@ public static class CodeEmitter
             "        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;"
         );
         builder.AppendLine();
+        builder.AppendLine("        if (!options.PrefetchNextRowGroup)");
+        builder.AppendLine("        {");
+        builder.AppendLine(
+            "            return ReadParquetStreamSequentialAsync(stream, options, cancellationToken);"
+        );
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        int prefetchDepth = options.PrefetchDepth;");
+        builder.AppendLine("        if (prefetchDepth < 1) prefetchDepth = 1;");
+        builder.AppendLine(
+            "        return ReadParquetStreamPrefetchedAsync(stream, options, prefetchDepth, cancellationToken);"
+        );
+        builder.AppendLine("    }");
+    }
+
+    /// <summary>
+    /// Emits the original stop-and-go streaming reader: decode a row group, yield it, decode the next.
+    /// </summary>
+    private static void EmitReadStreamSequentialAsync(StringBuilder builder, TargetClassModel model)
+    {
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine(
+            $"    /// Streams <c>{model.ClassName}</c> items with no overlap: each row group is decoded only once the"
+        );
+        builder.AppendLine(
+            "    /// caller has finished the previous one. This is the historic behaviour and remains the default."
+        );
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine(
+            $"    private static async global::System.Collections.Generic.IAsyncEnumerable<{model.ClassName}> ReadParquetStreamSequentialAsync("
+        );
+        builder.AppendLine("        global::System.IO.Stream stream,");
+        builder.AppendLine(
+            "        global::Parquet.SourceGenerator.ParquetSerializerOptions options,"
+        );
+        builder.AppendLine(
+            "        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken)"
+        );
+        builder.AppendLine("    {");
         builder.AppendLine(
             "        await using var reader = await global::Parquet.ParquetReader.CreateAsync("
         );
@@ -1321,6 +1387,289 @@ public static class CodeEmitter
         EmitReturnsFor(builder, model, indent: "                ");
 
         builder.AppendLine("            }");
+        builder.AppendLine("        }");
+        builder.AppendLine("    }");
+    }
+
+    /// <summary>
+    /// Emits the overlapped streaming reader (#146): a background producer decodes and materialises
+    /// each row group into a pooled array and hands it to the consumer over a bounded channel.
+    /// </summary>
+    /// <remarks>
+    /// Materialising the objects on the producer side, rather than shipping the raw column buffers
+    /// across the boundary, is what keeps this tractable: only one pooled array type crosses the
+    /// channel whatever the model's shape, and the domain objects were going to be allocated anyway.
+    /// Every column buffer is rented and returned inside a single producer iteration, so the pooled
+    /// column lifetimes are unchanged from the sequential path.
+    /// </remarks>
+    private static void EmitReadStreamPrefetched(StringBuilder builder, TargetClassModel model)
+    {
+        string cls = model.ClassName;
+
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine(
+            $"    /// One decoded row group in flight: a pooled <c>{cls}[]</c> and the number of live entries in it."
+        );
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    private readonly struct PrefetchedRowGroup");
+        builder.AppendLine("    {");
+        builder.AppendLine($"        public PrefetchedRowGroup({cls}[] items, int count)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            Items = items;");
+        builder.AppendLine("            Count = count;");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine($"        public {cls}[] Items {{ get; }}");
+        builder.AppendLine();
+        builder.AppendLine("        public int Count { get; }");
+        builder.AppendLine("    }");
+        builder.AppendLine();
+
+        // ── consumer ────────────────────────────────────────────────────────────
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine(
+            $"    /// Streams <c>{cls}</c> items while a background task runs ahead decoding the next row group."
+        );
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine(
+            $"    private static async global::System.Collections.Generic.IAsyncEnumerable<{cls}> ReadParquetStreamPrefetchedAsync("
+        );
+        builder.AppendLine("        global::System.IO.Stream stream,");
+        builder.AppendLine(
+            "        global::Parquet.SourceGenerator.ParquetSerializerOptions options,"
+        );
+        builder.AppendLine("        int prefetchDepth,");
+        builder.AppendLine(
+            "        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken)"
+        );
+        builder.AppendLine("    {");
+        builder.AppendLine(
+            "        var channel = global::System.Threading.Channels.Channel.CreateBounded<PrefetchedRowGroup>("
+        );
+        builder.AppendLine(
+            "            new global::System.Threading.Channels.BoundedChannelOptions(prefetchDepth)"
+        );
+        builder.AppendLine("            {");
+        builder.AppendLine("                SingleReader = true,");
+        builder.AppendLine("                SingleWriter = true,");
+        builder.AppendLine(
+            "                FullMode = global::System.Threading.Channels.BoundedChannelFullMode.Wait,"
+        );
+        builder.AppendLine("            });");
+        builder.AppendLine();
+        builder.AppendLine(
+            "        // Linked so that early enumerator disposal tears the producer down even when the caller's"
+        );
+        builder.AppendLine("        // own token is never cancelled.");
+        builder.AppendLine(
+            "        using var prefetchCts = global::System.Threading.CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);"
+        );
+        builder.AppendLine(
+            "        var producer = PrefetchRowGroupsAsync(stream, options, channel.Writer, prefetchCts.Token);"
+        );
+        builder.AppendLine();
+        builder.AppendLine("        try");
+        builder.AppendLine("        {");
+        builder.AppendLine(
+            "            while (await channel.Reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))"
+        );
+        builder.AppendLine("            {");
+        builder.AppendLine("                while (channel.Reader.TryRead(out var prefetched))");
+        builder.AppendLine("                {");
+        builder.AppendLine("                    try");
+        builder.AppendLine("                    {");
+        builder.AppendLine("                        for (int i = 0; i < prefetched.Count; i++)");
+        builder.AppendLine("                        {");
+        builder.AppendLine("                            yield return prefetched.Items[i];");
+        builder.AppendLine("                        }");
+        builder.AppendLine("                    }");
+        builder.AppendLine("                    finally");
+        builder.AppendLine("                    {");
+        builder.AppendLine(
+            $"                        global::System.Buffers.ArrayPool<{cls}>.Shared.Return(prefetched.Items, clearArray: true);"
+        );
+        builder.AppendLine("                    }");
+        builder.AppendLine("                }");
+        builder.AppendLine("            }");
+        builder.AppendLine("        }");
+        builder.AppendLine("        finally");
+        builder.AppendLine("        {");
+        builder.AppendLine(
+            "            // Runs on normal completion, on an exception, and on early enumerator disposal."
+        );
+        builder.AppendLine("            prefetchCts.Cancel();");
+        builder.AppendLine("            DrainPrefetchChannel(channel.Reader);");
+        builder.AppendLine(
+            "            await ObservePrefetchProducerAsync(producer).ConfigureAwait(false);"
+        );
+        builder.AppendLine(
+            "            // The producer may have published one last row group between the drain and its own exit."
+        );
+        builder.AppendLine("            DrainPrefetchChannel(channel.Reader);");
+        builder.AppendLine("        }");
+        builder.AppendLine("    }");
+        builder.AppendLine();
+
+        // ── drain helper ────────────────────────────────────────────────────────
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine(
+            "    /// Returns every row group still sitting in the channel to the pool. Without this, breaking out of"
+        );
+        builder.AppendLine(
+            "    /// the loop early would leak the arrays the producer had already run ahead and rented."
+        );
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    private static void DrainPrefetchChannel(");
+        builder.AppendLine(
+            "        global::System.Threading.Channels.ChannelReader<PrefetchedRowGroup> reader)"
+        );
+        builder.AppendLine("    {");
+        builder.AppendLine("        while (reader.TryRead(out var prefetched))");
+        builder.AppendLine("        {");
+        builder.AppendLine(
+            $"            global::System.Buffers.ArrayPool<{cls}>.Shared.Return(prefetched.Items, clearArray: true);"
+        );
+        builder.AppendLine("        }");
+        builder.AppendLine("    }");
+        builder.AppendLine();
+
+        // ── producer observation helper ─────────────────────────────────────────
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine(
+            "    /// Awaits the prefetch task so a decode failure surfaces to the caller rather than being swallowed"
+        );
+        builder.AppendLine(
+            "    /// as an unobserved task exception. Cancellation is the one outcome that is expected and ignored:"
+        );
+        builder.AppendLine(
+            "    /// it is how the producer is told to stop when the consumer walks away early."
+        );
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine(
+            "    private static async global::System.Threading.Tasks.Task ObservePrefetchProducerAsync("
+        );
+        builder.AppendLine("        global::System.Threading.Tasks.Task producer)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        try");
+        builder.AppendLine("        {");
+        builder.AppendLine("            await producer.ConfigureAwait(false);");
+        builder.AppendLine("        }");
+        builder.AppendLine("        catch (global::System.OperationCanceledException)");
+        builder.AppendLine("        {");
+        builder.AppendLine("        }");
+        builder.AppendLine("    }");
+        builder.AppendLine();
+
+        // ── producer ────────────────────────────────────────────────────────────
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine(
+            $"    /// Reads, decodes and materialises every row group of <c>{cls}</c>, publishing each one to the"
+        );
+        builder.AppendLine(
+            "    /// bounded channel. Blocks on a full channel, which is what caps the memory in flight."
+        );
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine(
+            "    private static async global::System.Threading.Tasks.Task PrefetchRowGroupsAsync("
+        );
+        builder.AppendLine("        global::System.IO.Stream stream,");
+        builder.AppendLine(
+            "        global::Parquet.SourceGenerator.ParquetSerializerOptions options,"
+        );
+        builder.AppendLine(
+            "        global::System.Threading.Channels.ChannelWriter<PrefetchedRowGroup> writer,"
+        );
+        builder.AppendLine("        global::System.Threading.CancellationToken cancellationToken)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        try");
+        builder.AppendLine("        {");
+        builder.AppendLine(
+            "            await using var reader = await global::Parquet.ParquetReader.CreateAsync("
+        );
+        builder.AppendLine("                stream,");
+        builder.AppendLine("                BuildFormatOptions(options),");
+        builder.AppendLine("                cancellationToken: cancellationToken);");
+        builder.AppendLine("            var fileFields = reader.Schema.DataFields;");
+        builder.AppendLine();
+
+        if (model.Properties.Length > 0)
+        {
+            builder.AppendLine(
+                "            global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;"
+            );
+            foreach (LeafColumn col in EmissionPlan.For(model).Columns)
+            {
+                builder.AppendLine(
+                    $"            var field_{col.Slot} = ResolveSchemaField(fileFields, {col.Slot}, _field_{col.Slot}, ref fieldsByName);"
+                );
+            }
+
+            builder.AppendLine();
+        }
+
+        StringDeduplicatorComponent.EmitDeduplicatorDeclaration(builder, model, "            ");
+
+        builder.AppendLine("            for (int r = 0; r < reader.RowGroupCount; r++)");
+        builder.AppendLine("            {");
+        builder.AppendLine("                cancellationToken.ThrowIfCancellationRequested();");
+        builder.AppendLine("                using var groupReader = reader.OpenRowGroupReader(r);");
+        builder.AppendLine("                int rowCount = (int)groupReader.RowCount;");
+        builder.AppendLine(
+            $"                var items = global::System.Buffers.ArrayPool<{cls}>.Shared.Rent(rowCount);"
+        );
+        builder.AppendLine("                bool published = false;");
+        builder.AppendLine();
+
+        EmitRentalsFor(builder, model, "rowCount", indent: "                ");
+
+        builder.AppendLine("                try");
+        builder.AppendLine("                {");
+
+        foreach (LeafColumn col in EmissionPlan.For(model).Columns)
+        {
+            EmitReadWithNullBypass(
+                builder,
+                col,
+                $"field_{col.Slot}",
+                $"buffer_{col.Slot}",
+                indent: "                    "
+            );
+        }
+
+        builder.AppendLine();
+        EmitArrayMaterializationFor(builder, model, "items", "0", indent: "                    ");
+        builder.AppendLine();
+        builder.AppendLine(
+            "                    await writer.WriteAsync(new PrefetchedRowGroup(items, rowCount), cancellationToken).ConfigureAwait(false);"
+        );
+        builder.AppendLine("                    published = true;");
+        builder.AppendLine("                }");
+        builder.AppendLine("                finally");
+        builder.AppendLine("                {");
+
+        EmitReturnsFor(builder, model, indent: "                    ");
+
+        builder.AppendLine(
+            "                    // Ownership of the item array transfers to the consumer only once it is in the channel."
+        );
+        builder.AppendLine("                    if (!published)");
+        builder.AppendLine("                    {");
+        builder.AppendLine(
+            $"                        global::System.Buffers.ArrayPool<{cls}>.Shared.Return(items, clearArray: true);"
+        );
+        builder.AppendLine("                    }");
+        builder.AppendLine("                }");
+        builder.AppendLine("            }");
+        builder.AppendLine("        }");
+        builder.AppendLine("        finally");
+        builder.AppendLine("        {");
+        builder.AppendLine(
+            "            // Completed without a fault deliberately: the consumer awaits this task and rethrows the"
+        );
+        builder.AppendLine(
+            "            // original exception, which keeps the caller's stack trace instead of a ChannelClosedException."
+        );
+        builder.AppendLine("            writer.TryComplete();");
         builder.AppendLine("        }");
         builder.AppendLine("    }");
     }

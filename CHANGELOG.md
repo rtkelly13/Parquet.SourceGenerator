@@ -12,6 +12,12 @@ Changes since `0.0.1`. That version is published on nuget.org (alongside the `0.
 `0.0.1-dev.2` prereleases); this section becomes the next release entry when one is cut.
 
 ### Added
+- **Opt-in overlapped row-group prefetching** for `ReadParquetStreamAsync`
+  (`ParquetSerializerOptions.PrefetchNextRowGroup`, capacity via `PrefetchDepth`). A background task
+  decodes and materialises row group `r+1` into a pooled array while the caller consumes row group
+  `r`, handing it over a bounded `Channel`. Off by default: measured at 15–19% faster under Server
+  GC and 6% faster on a high-latency stream with a busy consumer, but 2–5% *slower* on a warm local
+  file under the default workstation GC. Numbers in `docs/BENCHMARKS.md`.
 - **Roslyn incremental source generator**: compiles zero-reflection Parquet serializers and
   deserializers against Parquet.Net low-level primitives.
 - **Native AOT support**, exercised on every CI run by publishing the AOT test project with

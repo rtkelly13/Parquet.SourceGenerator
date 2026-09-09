@@ -89,6 +89,66 @@ Artifacts: `BenchmarkDotNet.Artifacts/results/*-report-github.md` (2026-09-08 ru
 
 ---
 
+## 🔀 Overlapped Row-Group Prefetching (#146, 2026-09-09)
+
+`PrefetchStreamingBenchmark`. 500,000 rows, four columns (`int`, `double`, `long`, `string`),
+20,000-row row groups (25 row groups). Every method drains the same file through
+`ReadParquetStreamAsync` and does the same per-item work; only the source stream and
+`PrefetchNextRowGroup` vary. `ConsumerWorkPerItem` is a per-item spin: `0` is a tight loop that does
+nothing but read two fields, `50` is a caller that actually computes something.
+
+`SlowStream` is a synthetic latency stream that busy-waits 200 µs per `Read` call — 4,029 reads per
+pass, so **806 ms of modelled I/O latency per op**, standing in for network or cold storage.
+`WarmFile` is a real `FileStream` over a local file with a warm page cache.
+
+**Machine/runtime:** Apple M1 (8 cores), macOS 15.7.7 (Darwin 24.6.0), 8 GB RAM,
+.NET 9.0.17 Arm64 RyuJIT AdvSIMD, BenchmarkDotNet v0.14.0, `InProcess`, Release, host otherwise idle.
+
+### Default (Concurrent Workstation GC)
+
+| Scenario | Consumer work | Sequential | Prefetched | Change |
+|:---|---:|---:|---:|---:|
+| In-memory buffer | 0 | 49.62 ms | 46.11 ms | **−7%** |
+| Warm local file | 0 | 49.55 ms | 45.26 ms | **−9%** |
+| 806 ms latency stream | 0 | 853.41 ms | 852.44 ms | 0% |
+| In-memory buffer | 50 | 99.23 ms | 104.03 ms | **+5% (slower)** |
+| Warm local file | 50 | 101.55 ms | 103.83 ms | **+2% (slower)** |
+| 806 ms latency stream | 50 | 905.68 ms | 848.73 ms | **−6%** |
+
+### Same benchmark under Server GC (`DOTNET_gcServer=1`)
+
+| Scenario | Consumer work | Sequential | Prefetched | Change |
+|:---|---:|---:|---:|---:|
+| In-memory buffer | 0 | 34.40 ms | 29.40 ms | **−15%** |
+| In-memory buffer | 50 | 89.19 ms | 72.10 ms | **−19%** |
+
+### What the numbers say
+
+1. **Prefetching hides the consumer, not the I/O.** A single `Stream` cannot be read concurrently
+   with itself, so the 806 ms of modelled latency is still paid serially: with a do-nothing consumer
+   the slow-stream case is a dead heat (853 → 852 ms). Give the same slow stream a consumer that
+   does work and the whole 57 ms of that work disappears into the latency (906 → 849 ms). What
+   overlaps is *caller work against reader work*, which is exactly the mechanism #146 described,
+   but it means the win is bounded by `min(decode time, consumer time)` and not by I/O latency.
+2. **The warm-cache regression is a GC artefact, not a pipeline cost.** Under the default
+   Concurrent Workstation GC, prefetching a busy consumer's row groups is 2–5% *slower*, and the
+   allocation columns say why: identical bytes allocated (87.14 MB either way) but 3.6× the Gen2
+   collections (1,200 vs 333 per 11 ops), because the run-ahead row group survives long enough to
+   be promoted. Flip to Server GC on the same machine, same benchmark, and the regression turns into
+   a 19% win. This is the same GC-bound behaviour PR #204 hit on this 8 GB host.
+3. **Hence the default is off.** `PrefetchNextRowGroup` is opt-in: there is no configuration in
+   which it is free, and at least one common one (workstation GC, warm file, busy consumer) where it
+   costs a few percent.
+
+Reproduce with:
+
+```bash
+dotnet run -c Release --project benchmarks/Parquet.SourceGenerator.Benchmarks/Parquet.SourceGenerator.Benchmarks.csproj -- --filter "*PrefetchStreamingBenchmark*"
+DOTNET_gcServer=1 dotnet run -c Release --project benchmarks/Parquet.SourceGenerator.Benchmarks/Parquet.SourceGenerator.Benchmarks.csproj -- --filter "*PrefetchStreamingBenchmark.Memory*"
+```
+
+---
+
 ## 🛠️ Running Benchmarks Locally
 
 You can execute the full BenchmarkDotNet suite locally using the .NET CLI:

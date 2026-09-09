@@ -452,6 +452,12 @@ public class ZeroBoxingSerializationTests
             global::Microsoft.CodeAnalysis.MetadataReference.CreateFromFile(
                 typeof(System.IO.Compression.CompressionLevel).Assembly.Location
             ),
+            // The streaming reader's prefetch pipeline is built on bounded channels. Part of the
+            // shared framework for any real consumer, but this hand-rolled reference set has to
+            // name it explicitly or the emitted source will not compile here.
+            global::Microsoft.CodeAnalysis.MetadataReference.CreateFromFile(
+                typeof(System.Threading.Channels.Channel).Assembly.Location
+            ),
         };
 
         var compilation = global::Microsoft.CodeAnalysis.CSharp.CSharpCompilation.Create(

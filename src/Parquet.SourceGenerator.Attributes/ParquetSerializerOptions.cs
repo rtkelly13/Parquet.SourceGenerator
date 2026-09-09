@@ -113,6 +113,32 @@ public sealed class ParquetSerializerOptions
     public int MaxDegreeOfParallelism { get; set; } = -1;
 
     /// <summary>
+    /// Gets or sets whether <c>ReadParquetStreamAsync</c> should decode the next row group on a
+    /// background task while the caller is still consuming the current one (default is <c>false</c>).
+    /// </summary>
+    /// <remarks>
+    /// Off by default. Overlapping only pays when the caller does real per-item work, or when the
+    /// underlying stream has genuine latency to hide; over a warm local file consumed by a tight
+    /// loop it costs a task hop and a bounded channel and wins nothing. Measure before enabling.
+    /// <para>
+    /// Only the <c>Stream</c> and <c>ReadOnlyMemory&lt;byte&gt;</c> streaming readers observe this.
+    /// The eager and parallel readers already have the whole file in play.
+    /// </para>
+    /// </remarks>
+    public bool PrefetchNextRowGroup { get; set; }
+
+    /// <summary>
+    /// Gets or sets how many decoded row groups may sit ahead of the caller when
+    /// <see cref="PrefetchNextRowGroup"/> is enabled (default is 1). Values below 1 are clamped to 1.
+    /// </summary>
+    /// <remarks>
+    /// This is the bounded channel's capacity, so peak in-flight memory is <c>PrefetchDepth + 1</c>
+    /// row groups: the ones queued plus the one the producer is decoding. A depth of 1 is the
+    /// classic double buffer and is enough to hide one row group of latency.
+    /// </remarks>
+    public int PrefetchDepth { get; set; } = 1;
+
+    /// <summary>
     /// Gets or sets the compression method to apply when creating Parquet files (default is Snappy).
     /// </summary>
     public ParquetCompressionMethod CompressionMethod { get; set; } =

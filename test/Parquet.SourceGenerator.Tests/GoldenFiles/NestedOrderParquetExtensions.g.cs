@@ -1576,15 +1576,40 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
     /// Asynchronously streams <c>NestedOrder</c> items row-group by row-group as an <see cref="global::System.Collections.Generic.IAsyncEnumerable{T}"/>.
     /// Memory usage is bounded by a single row group rather than the whole file.
     /// </summary>
-    public static async global::System.Collections.Generic.IAsyncEnumerable<NestedOrder> ReadParquetStreamAsync(
+    /// <remarks>
+    /// With <c>ParquetSerializerOptions.PrefetchNextRowGroup</c> set, row group <c>r+1</c> is read,
+    /// decompressed and materialised on a background task while the caller is still consuming row
+    /// group <c>r</c>, so I/O and decode overlap the caller's own work. In-flight memory stays bounded
+    /// by <c>PrefetchDepth + 1</c> row groups: the channel is bounded and the producer blocks when full.
+    /// </remarks>
+    public static global::System.Collections.Generic.IAsyncEnumerable<NestedOrder> ReadParquetStreamAsync(
         global::System.IO.Stream stream,
         global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
-        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default)
+        global::System.Threading.CancellationToken cancellationToken = default)
     {
         if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));
 
         options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
 
+        if (!options.PrefetchNextRowGroup)
+        {
+            return ReadParquetStreamSequentialAsync(stream, options, cancellationToken);
+        }
+
+        int prefetchDepth = options.PrefetchDepth;
+        if (prefetchDepth < 1) prefetchDepth = 1;
+        return ReadParquetStreamPrefetchedAsync(stream, options, prefetchDepth, cancellationToken);
+    }
+
+    /// <summary>
+    /// Streams <c>NestedOrder</c> items with no overlap: each row group is decoded only once the
+    /// caller has finished the previous one. This is the historic behaviour and remains the default.
+    /// </summary>
+    private static async global::System.Collections.Generic.IAsyncEnumerable<NestedOrder> ReadParquetStreamSequentialAsync(
+        global::System.IO.Stream stream,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions options,
+        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken)
+    {
         await using var reader = await global::Parquet.ParquetReader.CreateAsync(
             stream,
             BuildFormatOptions(options),
@@ -1772,6 +1797,324 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                 global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_8, clearArray: true);
                 global::System.Buffers.ArrayPool<int>.Shared.Return(defLevels_8, clearArray: false);
             }
+        }
+    }
+
+    /// <summary>
+    /// One decoded row group in flight: a pooled <c>NestedOrder[]</c> and the number of live entries in it.
+    /// </summary>
+    private readonly struct PrefetchedRowGroup
+    {
+        public PrefetchedRowGroup(NestedOrder[] items, int count)
+        {
+            Items = items;
+            Count = count;
+        }
+
+        public NestedOrder[] Items { get; }
+
+        public int Count { get; }
+    }
+
+    /// <summary>
+    /// Streams <c>NestedOrder</c> items while a background task runs ahead decoding the next row group.
+    /// </summary>
+    private static async global::System.Collections.Generic.IAsyncEnumerable<NestedOrder> ReadParquetStreamPrefetchedAsync(
+        global::System.IO.Stream stream,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions options,
+        int prefetchDepth,
+        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken)
+    {
+        var channel = global::System.Threading.Channels.Channel.CreateBounded<PrefetchedRowGroup>(
+            new global::System.Threading.Channels.BoundedChannelOptions(prefetchDepth)
+            {
+                SingleReader = true,
+                SingleWriter = true,
+                FullMode = global::System.Threading.Channels.BoundedChannelFullMode.Wait,
+            });
+
+        // Linked so that early enumerator disposal tears the producer down even when the caller's
+        // own token is never cancelled.
+        using var prefetchCts = global::System.Threading.CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var producer = PrefetchRowGroupsAsync(stream, options, channel.Writer, prefetchCts.Token);
+
+        try
+        {
+            while (await channel.Reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
+            {
+                while (channel.Reader.TryRead(out var prefetched))
+                {
+                    try
+                    {
+                        for (int i = 0; i < prefetched.Count; i++)
+                        {
+                            yield return prefetched.Items[i];
+                        }
+                    }
+                    finally
+                    {
+                        global::System.Buffers.ArrayPool<NestedOrder>.Shared.Return(prefetched.Items, clearArray: true);
+                    }
+                }
+            }
+        }
+        finally
+        {
+            // Runs on normal completion, on an exception, and on early enumerator disposal.
+            prefetchCts.Cancel();
+            DrainPrefetchChannel(channel.Reader);
+            await ObservePrefetchProducerAsync(producer).ConfigureAwait(false);
+            // The producer may have published one last row group between the drain and its own exit.
+            DrainPrefetchChannel(channel.Reader);
+        }
+    }
+
+    /// <summary>
+    /// Returns every row group still sitting in the channel to the pool. Without this, breaking out of
+    /// the loop early would leak the arrays the producer had already run ahead and rented.
+    /// </summary>
+    private static void DrainPrefetchChannel(
+        global::System.Threading.Channels.ChannelReader<PrefetchedRowGroup> reader)
+    {
+        while (reader.TryRead(out var prefetched))
+        {
+            global::System.Buffers.ArrayPool<NestedOrder>.Shared.Return(prefetched.Items, clearArray: true);
+        }
+    }
+
+    /// <summary>
+    /// Awaits the prefetch task so a decode failure surfaces to the caller rather than being swallowed
+    /// as an unobserved task exception. Cancellation is the one outcome that is expected and ignored:
+    /// it is how the producer is told to stop when the consumer walks away early.
+    /// </summary>
+    private static async global::System.Threading.Tasks.Task ObservePrefetchProducerAsync(
+        global::System.Threading.Tasks.Task producer)
+    {
+        try
+        {
+            await producer.ConfigureAwait(false);
+        }
+        catch (global::System.OperationCanceledException)
+        {
+        }
+    }
+
+    /// <summary>
+    /// Reads, decodes and materialises every row group of <c>NestedOrder</c>, publishing each one to the
+    /// bounded channel. Blocks on a full channel, which is what caps the memory in flight.
+    /// </summary>
+    private static async global::System.Threading.Tasks.Task PrefetchRowGroupsAsync(
+        global::System.IO.Stream stream,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions options,
+        global::System.Threading.Channels.ChannelWriter<PrefetchedRowGroup> writer,
+        global::System.Threading.CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using var reader = await global::Parquet.ParquetReader.CreateAsync(
+                stream,
+                BuildFormatOptions(options),
+                cancellationToken: cancellationToken);
+            var fileFields = reader.Schema.DataFields;
+
+            global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
+            var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
+            var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
+            var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
+            var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
+            var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName);
+            var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName);
+            var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName);
+            var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName);
+            var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName);
+
+            for (int r = 0; r < reader.RowGroupCount; r++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                using var groupReader = reader.OpenRowGroupReader(r);
+                int rowCount = (int)groupReader.RowCount;
+                var items = global::System.Buffers.ArrayPool<NestedOrder>.Shared.Rent(rowCount);
+                bool published = false;
+
+                var buffer_0 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                var buffer_1 = global::System.Buffers.ArrayPool<global::System.ReadOnlyMemory<char>>.Shared.Rent(rowCount);
+                var defLevels_1 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                var buffer_2 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                var defLevels_2 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                var buffer_3 = global::System.Buffers.ArrayPool<global::System.ReadOnlyMemory<char>>.Shared.Rent(rowCount);
+                var defLevels_3 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                var buffer_4 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                var defLevels_4 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                var buffer_5 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                var defLevels_5 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                var buffer_6 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                var defLevels_6 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                var buffer_7 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                var defLevels_7 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                var buffer_8 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                var defLevels_8 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                try
+                {
+                    await groupReader.ReadAsync<int>(
+                        field_0,
+                        new global::System.Memory<int>(buffer_0, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                    await groupReader.ReadRawAsync<global::System.ReadOnlyMemory<char>>(
+                        field_1,
+                        new global::System.Memory<global::System.ReadOnlyMemory<char>>(buffer_1, 0, rowCount),
+                        new global::System.Memory<int>(defLevels_1, 0, rowCount),
+                        null,
+                        cancellationToken);
+                    await groupReader.ReadRawAsync<int>(
+                        field_2,
+                        new global::System.Memory<int>(buffer_2, 0, rowCount),
+                        new global::System.Memory<int>(defLevels_2, 0, rowCount),
+                        null,
+                        cancellationToken);
+                    await groupReader.ReadRawAsync<global::System.ReadOnlyMemory<char>>(
+                        field_3,
+                        new global::System.Memory<global::System.ReadOnlyMemory<char>>(buffer_3, 0, rowCount),
+                        new global::System.Memory<int>(defLevels_3, 0, rowCount),
+                        null,
+                        cancellationToken);
+                    await groupReader.ReadRawAsync<int>(
+                        field_4,
+                        new global::System.Memory<int>(buffer_4, 0, rowCount),
+                        new global::System.Memory<int>(defLevels_4, 0, rowCount),
+                        null,
+                        cancellationToken);
+                    await groupReader.ReadRawAsync<int>(
+                        field_5,
+                        new global::System.Memory<int>(buffer_5, 0, rowCount),
+                        new global::System.Memory<int>(defLevels_5, 0, rowCount),
+                        null,
+                        cancellationToken);
+                    await groupReader.ReadRawAsync<int>(
+                        field_6,
+                        new global::System.Memory<int>(buffer_6, 0, rowCount),
+                        new global::System.Memory<int>(defLevels_6, 0, rowCount),
+                        null,
+                        cancellationToken);
+                    await groupReader.ReadRawAsync<int>(
+                        field_7,
+                        new global::System.Memory<int>(buffer_7, 0, rowCount),
+                        new global::System.Memory<int>(defLevels_7, 0, rowCount),
+                        null,
+                        cancellationToken);
+                    await groupReader.ReadRawAsync<int>(
+                        field_8,
+                        new global::System.Memory<int>(buffer_8, 0, rowCount),
+                        new global::System.Memory<int>(defLevels_8, 0, rowCount),
+                        null,
+                        cancellationToken);
+
+                    int cursor_1 = 0;
+                    int cursor_2 = 0;
+                    int cursor_3 = 0;
+                    int cursor_4 = 0;
+                    int cursor_5 = 0;
+                    int cursor_6 = 0;
+                    int cursor_7 = 0;
+                    int cursor_8 = 0;
+                    var objs_3 = new global::SampleDomain.Models.Point[rowCount];
+                    for (int ri_3 = 0; ri_3 < rowCount; ri_3++)
+                    {
+                        if (defLevels_7[ri_3] >= 1)
+                        {
+                            var o_3 = new global::SampleDomain.Models.Point
+                            {
+                                X = defLevels_7[ri_3] >= 1 ? buffer_7[cursor_7++] : default,
+                                Y = defLevels_8[ri_3] >= 1 ? buffer_8[cursor_8++] : default,
+                            };
+                            objs_3[ri_3] = o_3;
+                        }
+                    }
+                    var objs_2 = new global::SampleDomain.Models.Point[rowCount];
+                    for (int ri_2 = 0; ri_2 < rowCount; ri_2++)
+                    {
+                        if (defLevels_5[ri_2] >= 1)
+                        {
+                            var o_2 = new global::SampleDomain.Models.Point
+                            {
+                                X = defLevels_5[ri_2] >= 1 ? buffer_5[cursor_5++] : default,
+                                Y = defLevels_6[ri_2] >= 1 ? buffer_6[cursor_6++] : default,
+                            };
+                            objs_2[ri_2] = o_2;
+                        }
+                    }
+                    var objs_1 = new global::SampleDomain.Models.Address?[rowCount];
+                    for (int ri_1 = 0; ri_1 < rowCount; ri_1++)
+                    {
+                        if (defLevels_3[ri_1] >= 1)
+                        {
+                            var o_1 = new global::SampleDomain.Models.Address
+                            {
+                                City = defLevels_3[ri_1] >= 2 ? buffer_3[cursor_3++].ToString() : null!,
+                                Zip = defLevels_4[ri_1] >= 2 ? buffer_4[cursor_4++] : null!,
+                            };
+                            objs_1[ri_1] = o_1;
+                        }
+                    }
+                    var objs_0 = new global::SampleDomain.Models.Address?[rowCount];
+                    for (int ri_0 = 0; ri_0 < rowCount; ri_0++)
+                    {
+                        if (defLevels_1[ri_0] >= 1)
+                        {
+                            var o_0 = new global::SampleDomain.Models.Address
+                            {
+                                City = defLevels_1[ri_0] >= 2 ? buffer_1[cursor_1++].ToString() : null!,
+                                Zip = defLevels_2[ri_0] >= 2 ? buffer_2[cursor_2++] : null!,
+                            };
+                            objs_0[ri_0] = o_0;
+                        }
+                    }
+                    for (int i = 0; i < rowCount; i++)
+                    {
+                        items[0 + i] = new NestedOrder
+                        {
+                            Id = buffer_0[i],
+                            Ship = objs_0[i],
+                            Bill = objs_1[i]!,
+                            Origin = objs_2[i],
+                            Start = objs_3[i],
+                        };
+                    }
+
+                    await writer.WriteAsync(new PrefetchedRowGroup(items, rowCount), cancellationToken).ConfigureAwait(false);
+                    published = true;
+                }
+                finally
+                {
+                    global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_0, clearArray: false);
+                    global::System.Buffers.ArrayPool<global::System.ReadOnlyMemory<char>>.Shared.Return(buffer_1, clearArray: true);
+                    global::System.Buffers.ArrayPool<int>.Shared.Return(defLevels_1, clearArray: false);
+                    global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_2, clearArray: true);
+                    global::System.Buffers.ArrayPool<int>.Shared.Return(defLevels_2, clearArray: false);
+                    global::System.Buffers.ArrayPool<global::System.ReadOnlyMemory<char>>.Shared.Return(buffer_3, clearArray: true);
+                    global::System.Buffers.ArrayPool<int>.Shared.Return(defLevels_3, clearArray: false);
+                    global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_4, clearArray: true);
+                    global::System.Buffers.ArrayPool<int>.Shared.Return(defLevels_4, clearArray: false);
+                    global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_5, clearArray: true);
+                    global::System.Buffers.ArrayPool<int>.Shared.Return(defLevels_5, clearArray: false);
+                    global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_6, clearArray: true);
+                    global::System.Buffers.ArrayPool<int>.Shared.Return(defLevels_6, clearArray: false);
+                    global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_7, clearArray: true);
+                    global::System.Buffers.ArrayPool<int>.Shared.Return(defLevels_7, clearArray: false);
+                    global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_8, clearArray: true);
+                    global::System.Buffers.ArrayPool<int>.Shared.Return(defLevels_8, clearArray: false);
+                    // Ownership of the item array transfers to the consumer only once it is in the channel.
+                    if (!published)
+                    {
+                        global::System.Buffers.ArrayPool<NestedOrder>.Shared.Return(items, clearArray: true);
+                    }
+                }
+            }
+        }
+        finally
+        {
+            // Completed without a fault deliberately: the consumer awaits this task and rethrows the
+            // original exception, which keeps the caller's stack trace instead of a ChannelClosedException.
+            writer.TryComplete();
         }
     }
 

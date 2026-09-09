@@ -137,7 +137,21 @@ await foreach (var e in UserEventParquetExtensions.ReadParquetStreamAsync(buffer
 {
     // Process item by item with O(1) memory
 }
+
+// Overlapped streaming: decode row group r+1 on a background task while you consume row group r
+var overlapped = new ParquetSerializerOptions { PrefetchNextRowGroup = true };
+await foreach (var e in UserEventParquetExtensions.ReadParquetStreamAsync(stream, overlapped))
+{
+    await HandleAsync(e); // I/O and decode run while this does
+}
 ```
+
+`PrefetchNextRowGroup` is **off by default** and worth turning on only where there is something to
+overlap: a stream with real latency (network, cold storage) or a consumer that does meaningful work
+per item. Over a warm local file consumed by a tight loop it can cost a few percent rather than save
+it, because the run-ahead row group survives longer and pushes more work onto the GC. `PrefetchDepth`
+(default 1) sets the bounded channel's capacity, so peak memory is `PrefetchDepth + 1` row groups.
+Measured numbers are in [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
 
 ### 5. Custom Configuration (`ParquetSerializerOptions`)
 

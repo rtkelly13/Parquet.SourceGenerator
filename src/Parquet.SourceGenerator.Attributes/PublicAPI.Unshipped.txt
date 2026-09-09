@@ -15,6 +15,10 @@ Parquet.SourceGenerator.ParquetSerializerOptions.DictionaryEncodingSampleSize.ge
 Parquet.SourceGenerator.ParquetSerializerOptions.DictionaryEncodingSampleSize.set -> void
 Parquet.SourceGenerator.ParquetSerializerOptions.DictionaryEncodingThreshold.get -> double?
 Parquet.SourceGenerator.ParquetSerializerOptions.DictionaryEncodingThreshold.set -> void
+Parquet.SourceGenerator.ParquetSerializerOptions.PrefetchDepth.get -> int
+Parquet.SourceGenerator.ParquetSerializerOptions.PrefetchDepth.set -> void
+Parquet.SourceGenerator.ParquetSerializerOptions.PrefetchNextRowGroup.get -> bool
+Parquet.SourceGenerator.ParquetSerializerOptions.PrefetchNextRowGroup.set -> void
 Parquet.SourceGenerator.VectorizedColumnTransforms
 static Parquet.SourceGenerator.VectorizedColumnTransforms.ConvertDateTimeToEpochMilliseconds(System.ReadOnlySpan<System.DateTime> source, System.Span<long> destination) -> void
 static Parquet.SourceGenerator.VectorizedColumnTransforms.ConvertDateTimeToEpochMicroseconds(System.ReadOnlySpan<System.DateTime> source, System.Span<long> destination) -> void
