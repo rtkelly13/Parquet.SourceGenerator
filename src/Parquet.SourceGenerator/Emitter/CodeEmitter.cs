@@ -2060,32 +2060,27 @@ public static class CodeEmitter
             }
             if (BufferPoolComponent.UsesWriteAllParts(prop))
             {
+                // Branchless definition-level extraction and value compaction (issue #145):
+                // the presence flag is read as a byte with no conditional jump, the payload is
+                // stored unconditionally at the current compaction cursor (a null's write is
+                // overwritten by the next non-null, and the cursor never leaves the buffer
+                // because nonNullCount <= i < count <= buffer.Length), and the cursor advances
+                // by the flag. No unpredictable branch remains in the hot loop.
                 string valVar = $"val_{i}";
+                string hasVar = $"has_{i}";
+                string flagVar = $"hv_{i}";
                 builder.AppendLine($"{prefix}var {valVar} = item.{prop.Name};");
-                builder.AppendLine($"{prefix}if ({valVar}.HasValue)");
-                builder.AppendLine($"{prefix}{{");
-                string nonNullExpr = prop.Kind switch
-                {
-                    PropertyKind.Enum => $"({prop.EnumUnderlyingTypeName ?? "int"}){valVar}.Value",
-                    PropertyKind.TimeSpan => $"checked((int){valVar}.Value.TotalMilliseconds)",
-                    PropertyKind.TimeOnly => $"{valVar}.Value.Ticks / 10L",
-                    PropertyKind.DateOnly =>
-                        $"{valVar}.Value.ToDateTime(global::System.TimeOnly.MinValue)",
-                    _ => $"{valVar}.Value",
-                };
+                builder.AppendLine($"{prefix}bool {hasVar} = {valVar}.HasValue;");
                 builder.AppendLine(
-                    $"{prefix}    global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_{i}, nonNullCount_{i}++) = {nonNullExpr};"
+                    $"{prefix}int {flagVar} = global::System.Runtime.CompilerServices.Unsafe.As<bool, byte>(ref {hasVar});"
                 );
                 builder.AppendLine(
-                    $"{prefix}    global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_{i}, i) = 1;"
+                    $"{prefix}global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_{i}, nonNullCount_{i}) = {GetBranchlessNonNullExpression(prop, valVar)};"
                 );
-                builder.AppendLine($"{prefix}}}");
-                builder.AppendLine($"{prefix}else");
-                builder.AppendLine($"{prefix}{{");
+                builder.AppendLine($"{prefix}nonNullCount_{i} += {flagVar};");
                 builder.AppendLine(
-                    $"{prefix}    global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_{i}, i) = 0;"
+                    $"{prefix}global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_{i}, i) = {flagVar};"
                 );
-                builder.AppendLine($"{prefix}}}");
             }
             else
             {
@@ -2121,27 +2116,14 @@ public static class CodeEmitter
             if (BufferPoolComponent.UsesWriteAllParts(prop))
             {
                 string valVar = $"val_{i}";
+                string flagVar = $"hv_{i}";
                 builder.AppendLine($"{prefix}var {valVar} = item.{prop.Name};");
-                builder.AppendLine($"{prefix}if ({valVar}.HasValue)");
-                builder.AppendLine($"{prefix}{{");
-                string nonNullExpr = prop.Kind switch
-                {
-                    PropertyKind.Enum => $"({prop.EnumUnderlyingTypeName ?? "int"}){valVar}.Value",
-                    PropertyKind.TimeSpan => $"checked((int){valVar}.Value.TotalMilliseconds)",
-                    PropertyKind.TimeOnly => $"{valVar}.Value.Ticks / 10L",
-                    PropertyKind.DateOnly =>
-                        $"{valVar}.Value.ToDateTime(global::System.TimeOnly.MinValue)",
-                    _ => $"{valVar}.Value",
-                };
+                builder.AppendLine($"{prefix}int {flagVar} = {valVar}.HasValue ? 1 : 0;");
                 builder.AppendLine(
-                    $"{prefix}    {bufPrefix}{i}[nonNullCount_{i}++] = {nonNullExpr};"
+                    $"{prefix}{bufPrefix}{i}[nonNullCount_{i}] = {GetBranchlessNonNullExpression(prop, valVar)};"
                 );
-                builder.AppendLine($"{prefix}    defLevels_{i}[i] = 1;");
-                builder.AppendLine($"{prefix}}}");
-                builder.AppendLine($"{prefix}else");
-                builder.AppendLine($"{prefix}{{");
-                builder.AppendLine($"{prefix}    defLevels_{i}[i] = 0;");
-                builder.AppendLine($"{prefix}}}");
+                builder.AppendLine($"{prefix}nonNullCount_{i} += {flagVar};");
+                builder.AppendLine($"{prefix}defLevels_{i}[i] = {flagVar};");
             }
             else
             {
@@ -2175,27 +2157,14 @@ public static class CodeEmitter
             if (BufferPoolComponent.UsesWriteAllParts(prop))
             {
                 string valVar = $"val_{i}";
+                string flagVar = $"hv_{i}";
                 builder.AppendLine($"{prefix}var {valVar} = item.{prop.Name};");
-                builder.AppendLine($"{prefix}if ({valVar}.HasValue)");
-                builder.AppendLine($"{prefix}{{");
-                string nonNullExpr = prop.Kind switch
-                {
-                    PropertyKind.Enum => $"({prop.EnumUnderlyingTypeName ?? "int"}){valVar}.Value",
-                    PropertyKind.TimeSpan => $"checked((int){valVar}.Value.TotalMilliseconds)",
-                    PropertyKind.TimeOnly => $"{valVar}.Value.Ticks / 10L",
-                    PropertyKind.DateOnly =>
-                        $"{valVar}.Value.ToDateTime(global::System.TimeOnly.MinValue)",
-                    _ => $"{valVar}.Value",
-                };
+                builder.AppendLine($"{prefix}int {flagVar} = {valVar}.HasValue ? 1 : 0;");
                 builder.AppendLine(
-                    $"{prefix}    {bufPrefix}{i}[nonNullCount_{i}++] = {nonNullExpr};"
+                    $"{prefix}{bufPrefix}{i}[nonNullCount_{i}] = {GetBranchlessNonNullExpression(prop, valVar)};"
                 );
-                builder.AppendLine($"{prefix}    defLevels_{i}[idx] = 1;");
-                builder.AppendLine($"{prefix}}}");
-                builder.AppendLine($"{prefix}else");
-                builder.AppendLine($"{prefix}{{");
-                builder.AppendLine($"{prefix}    defLevels_{i}[idx] = 0;");
-                builder.AppendLine($"{prefix}}}");
+                builder.AppendLine($"{prefix}nonNullCount_{i} += {flagVar};");
+                builder.AppendLine($"{prefix}defLevels_{i}[idx] = {flagVar};");
             }
             else
             {
@@ -2308,6 +2277,25 @@ public static class CodeEmitter
             indent
         );
     }
+
+    /// <summary>
+    /// The unconditional (branch-free) payload conversion for a nullable value column: reads the
+    /// underlying value with <c>GetValueOrDefault()</c> so it is legal to evaluate even when the
+    /// slot is null. Every conversion here is total over <c>default(T)</c>, so a null row simply
+    /// stores a discardable default at the compaction cursor.
+    /// </summary>
+    internal static string GetBranchlessNonNullExpression(PropertyModel prop, string valVar) =>
+        prop.Kind switch
+        {
+            PropertyKind.Enum =>
+                $"({prop.EnumUnderlyingTypeName ?? "int"}){valVar}.GetValueOrDefault()",
+            PropertyKind.TimeSpan =>
+                $"checked((int){valVar}.GetValueOrDefault().TotalMilliseconds)",
+            PropertyKind.TimeOnly => $"{valVar}.GetValueOrDefault().Ticks / 10L",
+            PropertyKind.DateOnly =>
+                $"{valVar}.GetValueOrDefault().ToDateTime(global::System.TimeOnly.MinValue)",
+            _ => $"{valVar}.GetValueOrDefault()",
+        };
 
     private static string GetBufferElementType(PropertyModel prop) =>
         BufferPoolComponent.GetBufferElementType(prop);

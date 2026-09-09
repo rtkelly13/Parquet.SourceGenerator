@@ -248,15 +248,11 @@ public static partial class OrderEventParquetExtensions
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_5, i) = checked((int)item.Duration.TotalMilliseconds);
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_6, i) = item.CorrelationId;
                         var val_7 = item.OptionalGuid;
-                        if (val_7.HasValue)
-                        {
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_7, nonNullCount_7++) = val_7.Value;
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_7, i) = 1;
-                        }
-                        else
-                        {
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_7, i) = 0;
-                        }
+                        bool has_7 = val_7.HasValue;
+                        int hv_7 = global::System.Runtime.CompilerServices.Unsafe.As<bool, byte>(ref has_7);
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_7, nonNullCount_7) = val_7.GetValueOrDefault();
+                        nonNullCount_7 += hv_7;
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_7, i) = hv_7;
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_8, i) = item.Payload is null ? (global::System.ReadOnlyMemory<byte>?)null : global::System.MemoryExtensions.AsMemory(item.Payload);
                     }
                 }
@@ -273,15 +269,10 @@ public static partial class OrderEventParquetExtensions
                     buffer_5[i] = checked((int)item.Duration.TotalMilliseconds);
                     buffer_6[i] = item.CorrelationId;
                     var val_7 = item.OptionalGuid;
-                    if (val_7.HasValue)
-                    {
-                        buffer_7[nonNullCount_7++] = val_7.Value;
-                        defLevels_7[i] = 1;
-                    }
-                    else
-                    {
-                        defLevels_7[i] = 0;
-                    }
+                    int hv_7 = val_7.HasValue ? 1 : 0;
+                    buffer_7[nonNullCount_7] = val_7.GetValueOrDefault();
+                    nonNullCount_7 += hv_7;
+                    defLevels_7[i] = hv_7;
                     buffer_8[i] = item.Payload is null ? (global::System.ReadOnlyMemory<byte>?)null : global::System.MemoryExtensions.AsMemory(item.Payload);
                 }
 #endif
@@ -313,15 +304,11 @@ public static partial class OrderEventParquetExtensions
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_5, i) = checked((int)item.Duration.TotalMilliseconds);
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_6, i) = item.CorrelationId;
                         var val_7 = item.OptionalGuid;
-                        if (val_7.HasValue)
-                        {
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_7, nonNullCount_7++) = val_7.Value;
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_7, i) = 1;
-                        }
-                        else
-                        {
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_7, i) = 0;
-                        }
+                        bool has_7 = val_7.HasValue;
+                        int hv_7 = global::System.Runtime.CompilerServices.Unsafe.As<bool, byte>(ref has_7);
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_7, nonNullCount_7) = val_7.GetValueOrDefault();
+                        nonNullCount_7 += hv_7;
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_7, i) = hv_7;
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_8, i) = item.Payload is null ? (global::System.ReadOnlyMemory<byte>?)null : global::System.MemoryExtensions.AsMemory(item.Payload);
                     }
                 }
@@ -338,15 +325,10 @@ public static partial class OrderEventParquetExtensions
                     buffer_5[i] = checked((int)item.Duration.TotalMilliseconds);
                     buffer_6[i] = item.CorrelationId;
                     var val_7 = item.OptionalGuid;
-                    if (val_7.HasValue)
-                    {
-                        buffer_7[nonNullCount_7++] = val_7.Value;
-                        defLevels_7[i] = 1;
-                    }
-                    else
-                    {
-                        defLevels_7[i] = 0;
-                    }
+                    int hv_7 = val_7.HasValue ? 1 : 0;
+                    buffer_7[nonNullCount_7] = val_7.GetValueOrDefault();
+                    nonNullCount_7 += hv_7;
+                    defLevels_7[i] = hv_7;
                     buffer_8[i] = item.Payload is null ? (global::System.ReadOnlyMemory<byte>?)null : global::System.MemoryExtensions.AsMemory(item.Payload);
                 }
 #endif
@@ -364,15 +346,10 @@ public static partial class OrderEventParquetExtensions
                     buffer_5[idx] = checked((int)item.Duration.TotalMilliseconds);
                     buffer_6[idx] = item.CorrelationId;
                     var val_7 = item.OptionalGuid;
-                    if (val_7.HasValue)
-                    {
-                        buffer_7[nonNullCount_7++] = val_7.Value;
-                        defLevels_7[idx] = 1;
-                    }
-                    else
-                    {
-                        defLevels_7[idx] = 0;
-                    }
+                    int hv_7 = val_7.HasValue ? 1 : 0;
+                    buffer_7[nonNullCount_7] = val_7.GetValueOrDefault();
+                    nonNullCount_7 += hv_7;
+                    defLevels_7[idx] = hv_7;
                     buffer_8[idx] = item.Payload is null ? (global::System.ReadOnlyMemory<byte>?)null : global::System.MemoryExtensions.AsMemory(item.Payload);
                     idx++;
                 }
