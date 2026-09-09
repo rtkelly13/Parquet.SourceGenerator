@@ -139,7 +139,31 @@ await foreach (var e in UserEventParquetExtensions.ReadParquetStreamAsync(buffer
 }
 ```
 
-### 5. Custom Configuration (`ParquetSerializerOptions`)
+### 5. Row-Group Pruning with Min/Max Statistics
+
+The stream, array and streaming readers take an optional predicate over the statistics Parquet records
+in the file footer. A row group the zone map rules out is never opened: no page read, no decompression,
+no buffer rental.
+
+```csharp
+// Only the row groups whose [min, max] range can still hold a key >= 1000 are read.
+List<OrderEvent> recent = await OrderEventParquetExtensions.ReadParquetAsync(
+    stream,
+    predicate: meta => meta.OrderKey.MayContainAtLeast(1_000));
+
+// Conjunctive filters compose; any column that cannot match prunes the whole group.
+List<OrderEvent> narrow = await OrderEventParquetExtensions.ReadParquetAsync(
+    stream,
+    predicate: meta => meta.OrderKey.MayContainBetween(1_000, 2_000)
+                    && meta.Region.MayContain("emea"));
+```
+
+The generated `<Model>RowGroupMetadata` struct exposes `RowGroupIndex`, `RowCount` and one
+`ParquetColumnStatistics<T>` per integral, floating-point or string column, carrying `Min`, `Max`,
+`NullCount`, `DistinctCount` and the `May*` range helpers. Pruning is conservative: a row group whose
+statistics are incomplete is always read.
+
+### 6. Custom Configuration (`ParquetSerializerOptions`)
 
 ```csharp
 var options = new ParquetSerializerOptions

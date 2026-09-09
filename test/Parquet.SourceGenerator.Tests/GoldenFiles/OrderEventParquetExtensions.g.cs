@@ -576,7 +576,8 @@ public static partial class OrderEventParquetExtensions
     public static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<OrderEvent>> ReadParquetAsync(
         global::System.IO.Stream stream,
         global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
-        global::System.Threading.CancellationToken cancellationToken = default)
+        global::System.Threading.CancellationToken cancellationToken = default,
+        global::System.Func<global::SampleDomain.Models.OrderEventRowGroupMetadata, bool>? predicate = null)
     {
         if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));
 
@@ -586,15 +587,6 @@ public static partial class OrderEventParquetExtensions
             stream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
-        int totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);
-#if NET8_0_OR_GREATER
-        var results = new global::System.Collections.Generic.List<OrderEvent>(totalRows);
-        global::System.Runtime.InteropServices.CollectionsMarshal.SetCount(results, totalRows);
-#else
-        var results = new global::System.Collections.Generic.List<OrderEvent>(totalRows);
-#endif
-        int currentOffset = 0;
-
         var fileFields = reader.Schema.DataFields;
 
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
@@ -608,12 +600,41 @@ public static partial class OrderEventParquetExtensions
         var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName);
         var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName);
 
+        int totalRows;
+        bool[]? selectedGroups = null;
+        if (predicate == null)
+        {
+            totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);
+        }
+        else
+        {
+            // Zone-map pre-pass: footer statistics only. Surviving groups are the only ones
+            // whose pages are ever read, and the result is sized to exactly their rows.
+            selectedGroups = new bool[reader.RowGroupCount];
+            totalRows = 0;
+            for (int r = 0; r < reader.RowGroupCount; r++)
+            {
+                using var probeReader = reader.OpenRowGroupReader(r);
+                if (!AcceptRowGroup(predicate, probeReader, r, field_0, field_1, field_2)) continue;
+                selectedGroups[r] = true;
+                totalRows += (int)probeReader.RowCount;
+            }
+        }
+#if NET8_0_OR_GREATER
+        var results = new global::System.Collections.Generic.List<OrderEvent>(totalRows);
+        global::System.Runtime.InteropServices.CollectionsMarshal.SetCount(results, totalRows);
+#else
+        var results = new global::System.Collections.Generic.List<OrderEvent>(totalRows);
+#endif
+        int currentOffset = 0;
+
         using var stringDeduplicator = new StringDeduplicator(512);
         bool deduplicateStrings = options.DeduplicateStrings;
 
         for (int r = 0; r < reader.RowGroupCount; r++)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (selectedGroups != null && !selectedGroups[r]) continue;
             using var groupReader = reader.OpenRowGroupReader(r);
             int rowCount = (int)groupReader.RowCount;
 
@@ -757,7 +778,8 @@ public static partial class OrderEventParquetExtensions
     public static async global::System.Threading.Tasks.Task<OrderEvent[]> ReadParquetArrayAsync(
         global::System.IO.Stream stream,
         global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
-        global::System.Threading.CancellationToken cancellationToken = default)
+        global::System.Threading.CancellationToken cancellationToken = default,
+        global::System.Func<global::SampleDomain.Models.OrderEventRowGroupMetadata, bool>? predicate = null)
     {
         if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));
 
@@ -767,10 +789,6 @@ public static partial class OrderEventParquetExtensions
             stream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
-        int totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);
-        var results = new OrderEvent[totalRows];
-        int currentOffset = 0;
-
         var fileFields = reader.Schema.DataFields;
 
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
@@ -784,12 +802,36 @@ public static partial class OrderEventParquetExtensions
         var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName);
         var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName);
 
+        int totalRows;
+        bool[]? selectedGroups = null;
+        if (predicate == null)
+        {
+            totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);
+        }
+        else
+        {
+            // Zone-map pre-pass: footer statistics only. Surviving groups are the only ones
+            // whose pages are ever read, and the result is sized to exactly their rows.
+            selectedGroups = new bool[reader.RowGroupCount];
+            totalRows = 0;
+            for (int r = 0; r < reader.RowGroupCount; r++)
+            {
+                using var probeReader = reader.OpenRowGroupReader(r);
+                if (!AcceptRowGroup(predicate, probeReader, r, field_0, field_1, field_2)) continue;
+                selectedGroups[r] = true;
+                totalRows += (int)probeReader.RowCount;
+            }
+        }
+        var results = new OrderEvent[totalRows];
+        int currentOffset = 0;
+
         using var stringDeduplicator = new StringDeduplicator(512);
         bool deduplicateStrings = options.DeduplicateStrings;
 
         for (int r = 0; r < reader.RowGroupCount; r++)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (selectedGroups != null && !selectedGroups[r]) continue;
             using var groupReader = reader.OpenRowGroupReader(r);
             int rowCount = (int)groupReader.RowCount;
 
@@ -1098,7 +1140,8 @@ public static partial class OrderEventParquetExtensions
     public static async global::System.Collections.Generic.IAsyncEnumerable<OrderEvent> ReadParquetStreamAsync(
         global::System.IO.Stream stream,
         global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
-        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default)
+        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default,
+        global::System.Func<global::SampleDomain.Models.OrderEventRowGroupMetadata, bool>? predicate = null)
     {
         if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));
 
@@ -1129,6 +1172,7 @@ public static partial class OrderEventParquetExtensions
             cancellationToken.ThrowIfCancellationRequested();
             using var groupReader = reader.OpenRowGroupReader(r);
             int rowCount = (int)groupReader.RowCount;
+            if (!AcceptRowGroup(predicate, groupReader, r, field_0, field_1, field_2)) continue;
 
             var buffer_0 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
             var buffer_1 = global::System.Buffers.ArrayPool<string?>.Shared.Rent(rowCount);
@@ -1711,10 +1755,11 @@ public static partial class OrderEventParquetExtensions
     public static async global::System.Collections.Generic.IAsyncEnumerable<OrderEvent> ReadParquetStreamAsync(
         global::System.ReadOnlyMemory<byte> parquetBytes,
         global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
-        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default)
+        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default,
+        global::System.Func<global::SampleDomain.Models.OrderEventRowGroupMetadata, bool>? predicate = null)
     {
         using var stream = CreateBufferStream(parquetBytes);
-        await foreach (var item in ReadParquetStreamAsync(stream, options, cancellationToken))
+        await foreach (var item in ReadParquetStreamAsync(stream, options, cancellationToken, predicate))
         {
             yield return item;
         }
@@ -1733,4 +1778,91 @@ public static partial class OrderEventParquetExtensions
             ? new global::System.IO.MemoryStream(segment.Array!, segment.Offset, segment.Count, writable: false)
             : new global::System.IO.MemoryStream(parquetBytes.ToArray(), writable: false);
     }
+
+    /// <summary>
+    /// Decides whether a row group can hold a row matching <paramref name="predicate"/>, using
+    /// only the column-chunk statistics already present in the file footer.
+    /// </summary>
+    /// <remarks>
+    /// Returns <c>true</c> — read the group — whenever the answer is not certain: a null predicate,
+    /// or a chunk that recorded no usable min/max. Pruning only ever removes row groups the
+    /// statistics prove cannot match.
+    /// </remarks>
+    private static bool AcceptRowGroup(
+        global::System.Func<global::SampleDomain.Models.OrderEventRowGroupMetadata, bool>? predicate,
+        global::Parquet.ParquetRowGroupReader groupReader,
+        int rowGroupIndex,
+        global::Parquet.Schema.DataField field_0,
+        global::Parquet.Schema.DataField field_1,
+        global::Parquet.Schema.DataField field_2)
+    {
+        if (predicate == null) return true;
+
+        var stats_0 = groupReader.GetStatistics(field_0);
+        var stats_1 = groupReader.GetStatistics(field_1);
+        var stats_2 = groupReader.GetStatistics(field_2);
+
+        bool hasStatistics =
+              stats_0 != null && stats_0.MinValue != null && stats_0.MaxValue != null
+            && stats_1 != null && stats_1.MinValue != null && stats_1.MaxValue != null
+            && stats_2 != null && stats_2.MinValue != null && stats_2.MaxValue != null;
+
+        // A chunk with no usable zone map disables pruning for the whole group rather than
+        // letting a raw Min/Max comparison against a default value skip live rows.
+        if (!hasStatistics) return true;
+
+        var metadata = new global::SampleDomain.Models.OrderEventRowGroupMetadata(
+            rowGroupIndex,
+            groupReader.RowCount,
+            true,
+            global::Parquet.SourceGenerator.ParquetColumnStatistics.FromRaw<int>(stats_0!.MinValue, stats_0!.MaxValue, stats_0!.NullCount, stats_0!.DistinctCount),
+            global::Parquet.SourceGenerator.ParquetColumnStatistics.FromRaw<string>(stats_1!.MinValue, stats_1!.MaxValue, stats_1!.NullCount, stats_1!.DistinctCount),
+            global::Parquet.SourceGenerator.ParquetColumnStatistics.FromRaw<double>(stats_2!.MinValue, stats_2!.MaxValue, stats_2!.NullCount, stats_2!.DistinctCount));
+
+        return predicate(metadata);
+    }
+}
+
+/// <summary>
+/// Footer statistics for one row group of a <c>OrderEvent</c> Parquet file, as seen by a
+/// row-group pruning predicate. Reading a property costs nothing beyond the footer that was
+/// already parsed when the file was opened.
+/// </summary>
+public readonly struct OrderEventRowGroupMetadata
+{
+    /// <summary>Creates a row-group zone map.</summary>
+    public OrderEventRowGroupMetadata(
+        int rowGroupIndex,
+        long rowCount,
+        bool hasStatistics,
+        global::Parquet.SourceGenerator.ParquetColumnStatistics<int> column_0,
+        global::Parquet.SourceGenerator.ParquetColumnStatistics<string> column_1,
+        global::Parquet.SourceGenerator.ParquetColumnStatistics<double> column_2)
+    {
+        RowGroupIndex = rowGroupIndex;
+        RowCount = rowCount;
+        HasStatistics = hasStatistics;
+        Id = column_0;
+        Name = column_1;
+        Score = column_2;
+    }
+
+    /// <summary>Zero-based index of this row group in the file.</summary>
+    public int RowGroupIndex { get; }
+
+    /// <summary>Rows in this row group.</summary>
+    public long RowCount { get; }
+
+    /// <summary>Whether every projected column recorded a usable min/max. Always true inside a
+    /// pruning predicate: a group without complete statistics is read rather than tested.</summary>
+    public bool HasStatistics { get; }
+
+    /// <summary>Zone map for the <c>id</c> column.</summary>
+    public global::Parquet.SourceGenerator.ParquetColumnStatistics<int> Id { get; }
+
+    /// <summary>Zone map for the <c>name</c> column.</summary>
+    public global::Parquet.SourceGenerator.ParquetColumnStatistics<string> Name { get; }
+
+    /// <summary>Zone map for the <c>score</c> column.</summary>
+    public global::Parquet.SourceGenerator.ParquetColumnStatistics<double> Score { get; }
 }

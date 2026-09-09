@@ -99,7 +99,16 @@ public static class CodeEmitter
         // Zero-copy ReadOnlyMemory overloads
         EmitReadMemoryOverloads(builder, model);
 
+        // Row-group predicate pushdown (#149) — the zone-map guard the read loops call.
+        if (RowGroupPruningComponent.IsEnabled(model))
+        {
+            builder.AppendLine();
+            RowGroupPruningComponent.EmitAcceptRowGroup(builder, model);
+        }
+
         builder.AppendLine("}");
+
+        RowGroupPruningComponent.EmitMetadataStruct(builder, model);
 
         return builder.ToString();
     }
@@ -948,7 +957,7 @@ public static class CodeEmitter
             $"        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,"
         );
         builder.AppendLine(
-            $"        global::System.Threading.CancellationToken cancellationToken = default)"
+            $"        global::System.Threading.CancellationToken cancellationToken = default{RowGroupPruningComponent.SignatureSuffix(model)}"
         );
         builder.AppendLine("    {");
         builder.AppendLine(
@@ -965,23 +974,6 @@ public static class CodeEmitter
         builder.AppendLine("            stream,");
         builder.AppendLine("            BuildFormatOptions(options),");
         builder.AppendLine("            cancellationToken: cancellationToken);");
-        builder.AppendLine(
-            "        int totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);"
-        );
-        builder.AppendLine("#if NET8_0_OR_GREATER");
-        builder.AppendLine(
-            $"        var results = new global::System.Collections.Generic.List<{model.ClassName}>(totalRows);"
-        );
-        builder.AppendLine(
-            "        global::System.Runtime.InteropServices.CollectionsMarshal.SetCount(results, totalRows);"
-        );
-        builder.AppendLine("#else");
-        builder.AppendLine(
-            $"        var results = new global::System.Collections.Generic.List<{model.ClassName}>(totalRows);"
-        );
-        builder.AppendLine("#endif");
-        builder.AppendLine("        int currentOffset = 0;");
-        builder.AppendLine();
         builder.AppendLine("        var fileFields = reader.Schema.DataFields;");
         builder.AppendLine();
 
@@ -999,12 +991,28 @@ public static class CodeEmitter
 
             builder.AppendLine();
         }
+        RowGroupPruningComponent.EmitSelectionPass(builder, model, "totalRows");
+        builder.AppendLine("#if NET8_0_OR_GREATER");
+        builder.AppendLine(
+            $"        var results = new global::System.Collections.Generic.List<{model.ClassName}>(totalRows);"
+        );
+        builder.AppendLine(
+            "        global::System.Runtime.InteropServices.CollectionsMarshal.SetCount(results, totalRows);"
+        );
+        builder.AppendLine("#else");
+        builder.AppendLine(
+            $"        var results = new global::System.Collections.Generic.List<{model.ClassName}>(totalRows);"
+        );
+        builder.AppendLine("#endif");
+        builder.AppendLine("        int currentOffset = 0;");
+        builder.AppendLine();
 
         StringDeduplicatorComponent.EmitDeduplicatorDeclaration(builder, model);
 
         builder.AppendLine("        for (int r = 0; r < reader.RowGroupCount; r++)");
         builder.AppendLine("        {");
         builder.AppendLine("            cancellationToken.ThrowIfCancellationRequested();");
+        RowGroupPruningComponent.EmitSelectionCheck(builder, model, "            ");
         builder.AppendLine("            using var groupReader = reader.OpenRowGroupReader(r);");
         builder.AppendLine("            int rowCount = (int)groupReader.RowCount;");
         builder.AppendLine();
@@ -1142,7 +1150,7 @@ public static class CodeEmitter
             $"        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,"
         );
         builder.AppendLine(
-            $"        global::System.Threading.CancellationToken cancellationToken = default)"
+            $"        global::System.Threading.CancellationToken cancellationToken = default{RowGroupPruningComponent.SignatureSuffix(model)}"
         );
         builder.AppendLine("    {");
         builder.AppendLine(
@@ -1159,12 +1167,6 @@ public static class CodeEmitter
         builder.AppendLine("            stream,");
         builder.AppendLine("            BuildFormatOptions(options),");
         builder.AppendLine("            cancellationToken: cancellationToken);");
-        builder.AppendLine(
-            "        int totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);"
-        );
-        builder.AppendLine($"        var results = new {model.ClassName}[totalRows];");
-        builder.AppendLine("        int currentOffset = 0;");
-        builder.AppendLine();
         builder.AppendLine("        var fileFields = reader.Schema.DataFields;");
         builder.AppendLine();
 
@@ -1182,12 +1184,17 @@ public static class CodeEmitter
 
             builder.AppendLine();
         }
+        RowGroupPruningComponent.EmitSelectionPass(builder, model, "totalRows");
+        builder.AppendLine($"        var results = new {model.ClassName}[totalRows];");
+        builder.AppendLine("        int currentOffset = 0;");
+        builder.AppendLine();
 
         StringDeduplicatorComponent.EmitDeduplicatorDeclaration(builder, model);
 
         builder.AppendLine("        for (int r = 0; r < reader.RowGroupCount; r++)");
         builder.AppendLine("        {");
         builder.AppendLine("            cancellationToken.ThrowIfCancellationRequested();");
+        RowGroupPruningComponent.EmitSelectionCheck(builder, model, "            ");
         builder.AppendLine("            using var groupReader = reader.OpenRowGroupReader(r);");
         builder.AppendLine("            int rowCount = (int)groupReader.RowCount;");
         builder.AppendLine();
@@ -1243,7 +1250,7 @@ public static class CodeEmitter
             $"        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,"
         );
         builder.AppendLine(
-            $"        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default)"
+            $"        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default{RowGroupPruningComponent.SignatureSuffix(model)}"
         );
         builder.AppendLine("    {");
         builder.AppendLine(
@@ -1285,6 +1292,7 @@ public static class CodeEmitter
         builder.AppendLine("            cancellationToken.ThrowIfCancellationRequested();");
         builder.AppendLine("            using var groupReader = reader.OpenRowGroupReader(r);");
         builder.AppendLine("            int rowCount = (int)groupReader.RowCount;");
+        RowGroupPruningComponent.EmitLoopGuard(builder, model, "            ");
         builder.AppendLine();
 
         EmitRentalsFor(builder, model, "rowCount", indent: "            ");
@@ -1393,12 +1401,12 @@ public static class CodeEmitter
             $"        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,"
         );
         builder.AppendLine(
-            $"        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default)"
+            $"        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default{RowGroupPruningComponent.SignatureSuffix(model)}"
         );
         builder.AppendLine("    {");
         builder.AppendLine("        using var stream = CreateBufferStream(parquetBytes);");
         builder.AppendLine(
-            "        await foreach (var item in ReadParquetStreamAsync(stream, options, cancellationToken))"
+            $"        await foreach (var item in ReadParquetStreamAsync(stream, options, cancellationToken{RowGroupPruningComponent.ForwardArgument(model)}))"
         );
         builder.AppendLine("        {");
         builder.AppendLine("            yield return item;");
