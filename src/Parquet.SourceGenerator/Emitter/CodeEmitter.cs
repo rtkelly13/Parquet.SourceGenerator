@@ -99,6 +99,19 @@ public static class CodeEmitter
         // Zero-copy ReadOnlyMemory overloads
         EmitReadMemoryOverloads(builder, model);
 
+        // Struct-of-arrays columnar batch API (#147) — flat models only
+        if (ColumnBatchComponent.Supports(model))
+        {
+            builder.AppendLine();
+            ColumnBatchComponent.EmitBatchStruct(builder, model);
+            builder.AppendLine();
+            ColumnBatchComponent.EmitReadBatchesAsync(
+                builder,
+                model,
+                static (b, col, field, buf) => EmitReadWithNullBypass(b, col, field, buf)
+            );
+        }
+
         builder.AppendLine("}");
 
         return builder.ToString();
@@ -371,7 +384,7 @@ public static class CodeEmitter
     /// the rented buffer is zeroed instead, skipping I/O, decompression and decoding.
     /// Columns without statistics (or partial nulls) fall through to the standard read.
     /// </summary>
-    private static void EmitReadWithNullBypass(
+    internal static void EmitReadWithNullBypass(
         StringBuilder builder,
         LeafColumn col,
         string fieldAccess,

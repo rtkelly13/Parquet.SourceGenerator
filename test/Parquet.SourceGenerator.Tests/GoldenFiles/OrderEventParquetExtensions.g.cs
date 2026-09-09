@@ -1733,4 +1733,249 @@ public static partial class OrderEventParquetExtensions
             ? new global::System.IO.MemoryStream(segment.Array!, segment.Offset, segment.Count, writable: false)
             : new global::System.IO.MemoryStream(parquetBytes.ToArray(), writable: false);
     }
+
+    /// <summary>
+    /// Struct-of-arrays view over one row group of <c>OrderEvent</c> data.
+    /// Each column is exposed as a <see cref="global::System.ReadOnlySpan{T}"/> over a pooled buffer.
+    /// </summary>
+    /// <remarks>
+    /// The buffers belong to <see cref="global::System.Buffers.ArrayPool{T}"/> and are returned when the
+    /// producing enumerator advances or is disposed. Copy anything you need to outlive the current
+    /// iteration; never store the batch itself.
+    /// </remarks>
+    public readonly struct ColumnBatch
+    {
+        private readonly int[] _buffer_0;
+        private readonly string?[] _buffer_1;
+        private readonly double[] _buffer_2;
+        private readonly decimal[] _buffer_3;
+        private readonly System.DateTime[] _buffer_4;
+        private readonly int[] _buffer_5;
+        private readonly global::System.Guid[] _buffer_6;
+        private readonly global::System.Guid?[] _buffer_7;
+        private readonly byte[][] _buffer_8;
+
+        /// <summary>Number of rows in this row group.</summary>
+        public int RowCount { get; }
+
+        /// <summary>Zero-based index of the row group this batch came from.</summary>
+        public int RowGroupIndex { get; }
+
+        internal ColumnBatch(int rowCount, int rowGroupIndex, int[] buffer_0, string?[] buffer_1, double[] buffer_2, decimal[] buffer_3, System.DateTime[] buffer_4, int[] buffer_5, global::System.Guid[] buffer_6, global::System.Guid?[] buffer_7, byte[][] buffer_8)
+        {
+            RowCount = rowCount;
+            RowGroupIndex = rowGroupIndex;
+            _buffer_0 = buffer_0;
+            _buffer_1 = buffer_1;
+            _buffer_2 = buffer_2;
+            _buffer_3 = buffer_3;
+            _buffer_4 = buffer_4;
+            _buffer_5 = buffer_5;
+            _buffer_6 = buffer_6;
+            _buffer_7 = buffer_7;
+            _buffer_8 = buffer_8;
+        }
+
+        /// <summary>
+        /// Column <c>id</c> (<c>Id</c>) for the rows in this batch.
+        /// </summary>
+        public global::System.ReadOnlySpan<int> IdSpan =>
+            new global::System.ReadOnlySpan<int>(_buffer_0, 0, RowCount);
+
+        /// <summary>
+        /// Column <c>name</c> (<c>Name</c>) for the rows in this batch.
+        /// </summary>
+        public global::System.ReadOnlySpan<string?> NameSpan =>
+            new global::System.ReadOnlySpan<string?>(_buffer_1, 0, RowCount);
+
+        /// <summary>
+        /// Column <c>score</c> (<c>Score</c>) for the rows in this batch.
+        /// </summary>
+        public global::System.ReadOnlySpan<double> ScoreSpan =>
+            new global::System.ReadOnlySpan<double>(_buffer_2, 0, RowCount);
+
+        /// <summary>
+        /// Column <c>price</c> (<c>Price</c>) for the rows in this batch.
+        /// </summary>
+        public global::System.ReadOnlySpan<decimal> PriceSpan =>
+            new global::System.ReadOnlySpan<decimal>(_buffer_3, 0, RowCount);
+
+        /// <summary>
+        /// Column <c>created_at</c> (<c>CreatedAt</c>) for the rows in this batch.
+        /// </summary>
+        public global::System.ReadOnlySpan<System.DateTime> CreatedAtSpan =>
+            new global::System.ReadOnlySpan<System.DateTime>(_buffer_4, 0, RowCount);
+
+        /// <summary>
+        /// Column <c>duration</c> (<c>Duration</c>) for the rows in this batch.
+        /// </summary>
+        public global::System.ReadOnlySpan<int> DurationSpan =>
+            new global::System.ReadOnlySpan<int>(_buffer_5, 0, RowCount);
+
+        /// <summary>
+        /// Column <c>correlation_id</c> (<c>CorrelationId</c>) for the rows in this batch.
+        /// </summary>
+        public global::System.ReadOnlySpan<global::System.Guid> CorrelationIdSpan =>
+            new global::System.ReadOnlySpan<global::System.Guid>(_buffer_6, 0, RowCount);
+
+        /// <summary>
+        /// Column <c>optional_guid</c> (<c>OptionalGuid</c>) for the rows in this batch.
+        /// </summary>
+        public global::System.ReadOnlySpan<global::System.Guid?> OptionalGuidSpan =>
+            new global::System.ReadOnlySpan<global::System.Guid?>(_buffer_7, 0, RowCount);
+
+        /// <summary>
+        /// Column <c>payload</c> (<c>Payload</c>) for the rows in this batch.
+        /// </summary>
+        public global::System.ReadOnlySpan<byte[]> PayloadSpan =>
+            new global::System.ReadOnlySpan<byte[]>(_buffer_8, 0, RowCount);
+    }
+
+    /// <summary>
+    /// Asynchronously streams <c>OrderEvent</c> data as columnar batches — one per row group —
+    /// without materializing a single <c>OrderEvent</c> instance.
+    /// </summary>
+    /// <remarks>
+    /// Each yielded <see cref="ColumnBatch"/> aliases pooled buffers that are returned as soon as the
+    /// enumerator advances or is disposed, so the spans must not escape the loop body.
+    /// </remarks>
+    public static async global::System.Collections.Generic.IAsyncEnumerable<ColumnBatch> ReadParquetBatchesAsync(
+        global::System.IO.Stream stream,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));
+
+        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
+
+        await using var reader = await global::Parquet.ParquetReader.CreateAsync(
+            stream,
+            BuildFormatOptions(options),
+            cancellationToken: cancellationToken);
+        var fileFields = reader.Schema.DataFields;
+
+        global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
+        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
+        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
+        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
+        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
+        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName);
+        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName);
+        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName);
+        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName);
+        var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName);
+
+        for (int r = 0; r < reader.RowGroupCount; r++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using var groupReader = reader.OpenRowGroupReader(r);
+            int rowCount = (int)groupReader.RowCount;
+
+            var buffer_0 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+            var buffer_1 = global::System.Buffers.ArrayPool<string?>.Shared.Rent(rowCount);
+            var buffer_2 = global::System.Buffers.ArrayPool<double>.Shared.Rent(rowCount);
+            var buffer_3 = global::System.Buffers.ArrayPool<decimal>.Shared.Rent(rowCount);
+            var buffer_4 = global::System.Buffers.ArrayPool<System.DateTime>.Shared.Rent(rowCount);
+            var buffer_5 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+            var buffer_6 = global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Rent(rowCount);
+            var buffer_7 = global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Rent(rowCount);
+            var buffer_8 = global::System.Buffers.ArrayPool<byte[]>.Shared.Rent(rowCount);
+
+            try
+            {
+                await groupReader.ReadAsync<int>(
+                    field_0,
+                    new global::System.Memory<int>(buffer_0, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                var chunkStats_1 = groupReader.GetStatistics(field_1);
+                if (chunkStats_1?.NullCount == rowCount)
+                {
+                    // All-null chunk: skip page reading, decompression and decoding entirely.
+                    global::System.Array.Clear(buffer_1, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync(
+                        field_1,
+                        new global::System.Memory<string?>(buffer_1, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
+                await groupReader.ReadAsync<double>(
+                    field_2,
+                    new global::System.Memory<double>(buffer_2, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<decimal>(
+                    field_3,
+                    new global::System.Memory<decimal>(buffer_3, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<System.DateTime>(
+                    field_4,
+                    new global::System.Memory<System.DateTime>(buffer_4, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<int>(
+                    field_5,
+                    new global::System.Memory<int>(buffer_5, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<global::System.Guid>(
+                    field_6,
+                    new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                var chunkStats_7 = groupReader.GetStatistics(field_7);
+                if (chunkStats_7?.NullCount == rowCount)
+                {
+                    // All-null chunk: skip page reading, decompression and decoding entirely.
+                    global::System.Array.Clear(buffer_7, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync<global::System.Guid>(
+                        field_7,
+                        new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
+                var chunkStats_8 = groupReader.GetStatistics(field_8);
+                if (chunkStats_8?.NullCount == rowCount)
+                {
+                    // All-null chunk: skip page reading, decompression and decoding entirely.
+                    global::System.Array.Clear(buffer_8, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync(
+                        field_8,
+                        new global::System.Memory<byte[]?>(buffer_8, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
+
+                yield return new ColumnBatch(rowCount, r, buffer_0, buffer_1, buffer_2, buffer_3, buffer_4, buffer_5, buffer_6, buffer_7, buffer_8);
+            }
+            finally
+            {
+                global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_0, clearArray: false);
+                global::System.Buffers.ArrayPool<string?>.Shared.Return(buffer_1, clearArray: true);
+                global::System.Buffers.ArrayPool<double>.Shared.Return(buffer_2, clearArray: false);
+                global::System.Buffers.ArrayPool<decimal>.Shared.Return(buffer_3, clearArray: false);
+                global::System.Buffers.ArrayPool<System.DateTime>.Shared.Return(buffer_4, clearArray: false);
+                global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_5, clearArray: false);
+                global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(buffer_6, clearArray: false);
+                global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Return(buffer_7, clearArray: false);
+                global::System.Buffers.ArrayPool<byte[]>.Shared.Return(buffer_8, clearArray: true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Asynchronously streams <c>OrderEvent</c> columnar batches from an in-memory byte buffer.
+    /// </summary>
+    public static async global::System.Collections.Generic.IAsyncEnumerable<ColumnBatch> ReadParquetBatchesAsync(
+        global::System.ReadOnlyMemory<byte> parquetBytes,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        using var stream = CreateBufferStream(parquetBytes);
+        await foreach (var batch in ReadParquetBatchesAsync(stream, options, cancellationToken))
+        {
+            yield return batch;
+        }
+    }
 }
