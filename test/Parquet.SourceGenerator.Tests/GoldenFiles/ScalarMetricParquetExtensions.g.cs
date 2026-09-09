@@ -1599,4 +1599,434 @@ public static partial class ScalarMetricParquetExtensions
             ? new global::System.IO.MemoryStream(segment.Array!, segment.Offset, segment.Count, writable: false)
             : new global::System.IO.MemoryStream(parquetBytes.ToArray(), writable: false);
     }
+
+    /// <summary>
+    /// Compares two row-group statistic values as <c>TKey</c>. Returns false — meaning
+    /// "unknown, do not prune" — when either value is not a <c>TKey</c>, so a file whose statistics
+    /// were written with a different physical type degrades to a full scan instead of a wrong answer.
+    /// The type test unboxes rather than boxing the key, so no allocation reaches the heap.
+    /// </summary>
+    private static bool TryCompareStatistics<TKey>(object left, object right, out int comparison)
+    {
+        if (left is TKey leftKey && right is TKey rightKey)
+        {
+            comparison = global::System.Collections.Generic.Comparer<TKey>.Default.Compare(leftKey, rightKey);
+            return true;
+        }
+
+        comparison = 0;
+        return false;
+    }
+
+    /// <summary>
+    /// Compares one row-group statistic value against the sought key, without boxing the key.
+    /// </summary>
+    private static bool TryCompareStatisticToKey<TKey>(object statistic, TKey key, out int comparison)
+    {
+        if (statistic is TKey statisticKey)
+        {
+            comparison = global::System.Collections.Generic.Comparer<TKey>.Default.Compare(statisticKey, key);
+            return true;
+        }
+
+        comparison = 0;
+        return false;
+    }
+
+    /// <summary>
+    /// Certifies the key column as sorted from the footer metadata alone and, if so, binary searches
+    /// the row-group <c>[Min, Max]</c> intervals for the contiguous span that can contain
+    /// <c>[lowerBound, upperBound]</c>. Returns false when the column cannot be certified, in which
+    /// case the caller must scan every row group. No column data is read: statistics come from the
+    /// footer already parsed in memory.
+    /// </summary>
+    private static bool TryPruneSortedRowGroups<TKey>(
+        global::Parquet.ParquetReader reader,
+        global::Parquet.Schema.DataField keyField,
+        TKey lowerBound,
+        TKey upperBound,
+        out int firstRowGroup,
+        out int lastRowGroup,
+        out bool strictlyMonotonic)
+    {
+        int rowGroupCount = reader.RowGroupCount;
+        firstRowGroup = 0;
+        lastRowGroup = rowGroupCount - 1;
+        strictlyMonotonic = false;
+        if (rowGroupCount <= 0)
+        {
+            return false;
+        }
+
+        var minima = new object[rowGroupCount];
+        var maxima = new object[rowGroupCount];
+        for (int r = 0; r < rowGroupCount; r++)
+        {
+            using var groupReader = reader.OpenRowGroupReader(r);
+            global::Parquet.Data.DataColumnStatistics? statistics = groupReader.GetStatistics(keyField);
+            object? min = statistics?.MinValue;
+            object? max = statistics?.MaxValue;
+            if (min is null || max is null)
+            {
+                return false;
+            }
+
+            minima[r] = min;
+            maxima[r] = max;
+        }
+
+        // Non-overlapping and non-decreasing is what binary search actually needs;
+        // strict monotonicity is recorded separately for the caller's diagnostics.
+        bool strict = true;
+        for (int r = 0; r < rowGroupCount; r++)
+        {
+            if (!TryCompareStatistics<TKey>(minima[r], maxima[r], out int within) || within > 0)
+            {
+                return false;
+            }
+
+            if (r + 1 < rowGroupCount)
+            {
+                if (!TryCompareStatistics<TKey>(maxima[r], minima[r + 1], out int across) || across > 0)
+                {
+                    return false;
+                }
+
+                if (across == 0)
+                {
+                    strict = false;
+                }
+            }
+        }
+
+        // First row group whose Max >= lowerBound.
+        int low = 0;
+        int high = rowGroupCount;
+        while (low < high)
+        {
+            int mid = low + ((high - low) >> 1);
+            if (!TryCompareStatisticToKey<TKey>(maxima[mid], lowerBound, out int comparison))
+            {
+                return false;
+            }
+
+            if (comparison < 0)
+            {
+                low = mid + 1;
+            }
+            else
+            {
+                high = mid;
+            }
+        }
+
+        firstRowGroup = low;
+
+        // Last row group whose Min <= upperBound.
+        low = 0;
+        high = rowGroupCount;
+        while (low < high)
+        {
+            int mid = low + ((high - low) >> 1);
+            if (!TryCompareStatisticToKey<TKey>(minima[mid], upperBound, out int comparison))
+            {
+                return false;
+            }
+
+            if (comparison <= 0)
+            {
+                low = mid + 1;
+            }
+            else
+            {
+                high = mid;
+            }
+        }
+
+        lastRowGroup = low - 1;
+        strictlyMonotonic = strict;
+        return true;
+    }
+
+    /// <summary>
+    /// Reads every <c>ScalarMetric</c> whose key falls in the inclusive range, skipping row groups
+    /// that the footer <c>[Min, Max]</c> statistics prove cannot contain it.
+    /// </summary>
+    private static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<ScalarMetric>> ReadPrunedRangeAsync<TKey>(
+        global::System.IO.Stream stream,
+        int keySlot,
+        global::Parquet.Schema.DataField keyFieldTemplate,
+        TKey lowerBound,
+        TKey upperBound,
+        global::System.Func<ScalarMetric, TKey> keySelector,
+        global::Parquet.SourceGenerator.ParquetPruneStatistics? pruneStatistics,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options,
+        global::System.Threading.CancellationToken cancellationToken)
+    {
+        if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));
+
+        pruneStatistics?.Reset();
+        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
+        var keyComparer = global::System.Collections.Generic.Comparer<TKey>.Default;
+        var results = new global::System.Collections.Generic.List<ScalarMetric>();
+        if (keyComparer.Compare(lowerBound, upperBound) > 0)
+        {
+            return results;
+        }
+
+        await using var reader = await global::Parquet.ParquetReader.CreateAsync(
+            stream,
+            BuildFormatOptions(options),
+            cancellationToken: cancellationToken);
+        var fileFields = reader.Schema.DataFields;
+
+        global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
+        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
+        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
+        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
+        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
+        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName);
+        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName);
+        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName);
+        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName);
+        var keyField = ResolveSchemaField(fileFields, keySlot, keyFieldTemplate, ref fieldsByName);
+
+        int rowGroupCount = reader.RowGroupCount;
+        int firstRowGroup = 0;
+        int lastRowGroup = rowGroupCount - 1;
+        bool sorted = TryPruneSortedRowGroups<TKey>(
+            reader,
+            keyField,
+            lowerBound,
+            upperBound,
+            out int prunedFirst,
+            out int prunedLast,
+            out bool strictlyMonotonic);
+        if (sorted)
+        {
+            firstRowGroup = prunedFirst;
+            lastRowGroup = prunedLast;
+        }
+
+        if (pruneStatistics is not null)
+        {
+            bool anyRead = lastRowGroup >= firstRowGroup;
+            pruneStatistics.RowGroupCount = rowGroupCount;
+            pruneStatistics.SortedColumnDetected = sorted;
+            pruneStatistics.StrictlyMonotonic = sorted && strictlyMonotonic;
+            pruneStatistics.RowGroupsScanned = anyRead ? lastRowGroup - firstRowGroup + 1 : 0;
+            pruneStatistics.FirstRowGroupRead = anyRead ? firstRowGroup : -1;
+            pruneStatistics.LastRowGroupRead = anyRead ? lastRowGroup : -1;
+        }
+
+        for (int r = firstRowGroup; r <= lastRowGroup; r++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using var groupReader = reader.OpenRowGroupReader(r);
+            int rowCount = (int)groupReader.RowCount;
+
+            var buffer_0 = global::System.Buffers.ArrayPool<long>.Shared.Rent(rowCount);
+            var buffer_1 = global::System.Buffers.ArrayPool<bool>.Shared.Rent(rowCount);
+            var buffer_2 = global::System.Buffers.ArrayPool<bool?>.Shared.Rent(rowCount);
+            var buffer_3 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+            var buffer_4 = global::System.Buffers.ArrayPool<int?>.Shared.Rent(rowCount);
+            var buffer_5 = global::System.Buffers.ArrayPool<byte>.Shared.Rent(rowCount);
+            var buffer_6 = global::System.Buffers.ArrayPool<short>.Shared.Rent(rowCount);
+            var buffer_7 = global::System.Buffers.ArrayPool<float>.Shared.Rent(rowCount);
+            try
+            {
+                await groupReader.ReadAsync<long>(
+                    field_0,
+                    new global::System.Memory<long>(buffer_0, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<bool>(
+                    field_1,
+                    new global::System.Memory<bool>(buffer_1, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                var chunkStats_2 = groupReader.GetStatistics(field_2);
+                if (chunkStats_2?.NullCount == rowCount)
+                {
+                    // All-null chunk: skip page reading, decompression and decoding entirely.
+                    global::System.Array.Clear(buffer_2, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync<bool>(
+                        field_2,
+                        new global::System.Memory<bool?>(buffer_2, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
+                await groupReader.ReadAsync<int>(
+                    field_3,
+                    new global::System.Memory<int>(buffer_3, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                var chunkStats_4 = groupReader.GetStatistics(field_4);
+                if (chunkStats_4?.NullCount == rowCount)
+                {
+                    // All-null chunk: skip page reading, decompression and decoding entirely.
+                    global::System.Array.Clear(buffer_4, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync<int>(
+                        field_4,
+                        new global::System.Memory<int?>(buffer_4, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
+                await groupReader.ReadAsync<byte>(
+                    field_5,
+                    new global::System.Memory<byte>(buffer_5, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<short>(
+                    field_6,
+                    new global::System.Memory<short>(buffer_6, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<float>(
+                    field_7,
+                    new global::System.Memory<float>(buffer_7, 0, rowCount),
+                    cancellationToken: cancellationToken);
+
+                for (int i = 0; i < rowCount; i++)
+                {
+                    var item = new ScalarMetric
+                    {
+                        RowId = buffer_0[i],
+                        Flag = buffer_1[i],
+                        NullableFlag = buffer_2[i],
+                        StatusCode = (SampleDomain.Models.ProcessStatus)buffer_3[i],
+                        OptionalStatus = buffer_4[i] is null ? (SampleDomain.Models.ProcessStatus?)null : (SampleDomain.Models.ProcessStatus)buffer_4[i]!,
+                        TinyNum = buffer_5[i],
+                        ShortNum = buffer_6[i],
+                        FloatVal = buffer_7[i],
+                    };
+                    TKey itemKey = keySelector(item);
+                    if (keyComparer.Compare(itemKey, lowerBound) >= 0 && keyComparer.Compare(itemKey, upperBound) <= 0)
+                    {
+                        results.Add(item);
+                    }
+                }
+            }
+            finally
+            {
+                global::System.Buffers.ArrayPool<long>.Shared.Return(buffer_0, clearArray: false);
+                global::System.Buffers.ArrayPool<bool>.Shared.Return(buffer_1, clearArray: false);
+                global::System.Buffers.ArrayPool<bool?>.Shared.Return(buffer_2, clearArray: false);
+                global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_3, clearArray: false);
+                global::System.Buffers.ArrayPool<int?>.Shared.Return(buffer_4, clearArray: false);
+                global::System.Buffers.ArrayPool<byte>.Shared.Return(buffer_5, clearArray: false);
+                global::System.Buffers.ArrayPool<short>.Shared.Return(buffer_6, clearArray: false);
+                global::System.Buffers.ArrayPool<float>.Shared.Return(buffer_7, clearArray: false);
+            }
+        }
+
+        return results;
+    }
+
+    /// <summary>
+    /// Point lookup on <c>RowId</c>. When the file's row-group statistics certify <c>RowId</c> as
+    /// sorted, binary search locates the row group(s) that can hold the key and every other row
+    /// group is skipped without being decompressed; otherwise the read falls back to a full scan.
+    /// The result is identical either way — pruning changes only how much work it costs.
+    /// </summary>
+    public static global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<ScalarMetric>> ReadParquetByRowIdAsync(
+        global::System.IO.Stream stream,
+        long key,
+        global::Parquet.SourceGenerator.ParquetPruneStatistics? pruneStatistics = null,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        global::System.Threading.CancellationToken cancellationToken = default)
+        => ReadPrunedRangeAsync<long>(stream, 0, _field_0, key, key, static item => item.RowId, pruneStatistics, options, cancellationToken);
+
+    /// <summary>
+    /// Inclusive range slice on <c>RowId</c>. Both bounds are binary searched against the row-group
+    /// statistics so only the contiguous span of row groups overlapping the range is decompressed.
+    /// </summary>
+    public static global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<ScalarMetric>> ReadParquetRowIdRangeAsync(
+        global::System.IO.Stream stream,
+        long inclusiveStart,
+        long inclusiveEnd,
+        global::Parquet.SourceGenerator.ParquetPruneStatistics? pruneStatistics = null,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        global::System.Threading.CancellationToken cancellationToken = default)
+        => ReadPrunedRangeAsync<long>(stream, 0, _field_0, inclusiveStart, inclusiveEnd, static item => item.RowId, pruneStatistics, options, cancellationToken);
+
+    /// <summary>
+    /// Point lookup on <c>TinyNum</c>. When the file's row-group statistics certify <c>TinyNum</c> as
+    /// sorted, binary search locates the row group(s) that can hold the key and every other row
+    /// group is skipped without being decompressed; otherwise the read falls back to a full scan.
+    /// The result is identical either way — pruning changes only how much work it costs.
+    /// </summary>
+    public static global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<ScalarMetric>> ReadParquetByTinyNumAsync(
+        global::System.IO.Stream stream,
+        byte key,
+        global::Parquet.SourceGenerator.ParquetPruneStatistics? pruneStatistics = null,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        global::System.Threading.CancellationToken cancellationToken = default)
+        => ReadPrunedRangeAsync<byte>(stream, 5, _field_5, key, key, static item => item.TinyNum, pruneStatistics, options, cancellationToken);
+
+    /// <summary>
+    /// Inclusive range slice on <c>TinyNum</c>. Both bounds are binary searched against the row-group
+    /// statistics so only the contiguous span of row groups overlapping the range is decompressed.
+    /// </summary>
+    public static global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<ScalarMetric>> ReadParquetTinyNumRangeAsync(
+        global::System.IO.Stream stream,
+        byte inclusiveStart,
+        byte inclusiveEnd,
+        global::Parquet.SourceGenerator.ParquetPruneStatistics? pruneStatistics = null,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        global::System.Threading.CancellationToken cancellationToken = default)
+        => ReadPrunedRangeAsync<byte>(stream, 5, _field_5, inclusiveStart, inclusiveEnd, static item => item.TinyNum, pruneStatistics, options, cancellationToken);
+
+    /// <summary>
+    /// Point lookup on <c>ShortNum</c>. When the file's row-group statistics certify <c>ShortNum</c> as
+    /// sorted, binary search locates the row group(s) that can hold the key and every other row
+    /// group is skipped without being decompressed; otherwise the read falls back to a full scan.
+    /// The result is identical either way — pruning changes only how much work it costs.
+    /// </summary>
+    public static global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<ScalarMetric>> ReadParquetByShortNumAsync(
+        global::System.IO.Stream stream,
+        short key,
+        global::Parquet.SourceGenerator.ParquetPruneStatistics? pruneStatistics = null,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        global::System.Threading.CancellationToken cancellationToken = default)
+        => ReadPrunedRangeAsync<short>(stream, 6, _field_6, key, key, static item => item.ShortNum, pruneStatistics, options, cancellationToken);
+
+    /// <summary>
+    /// Inclusive range slice on <c>ShortNum</c>. Both bounds are binary searched against the row-group
+    /// statistics so only the contiguous span of row groups overlapping the range is decompressed.
+    /// </summary>
+    public static global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<ScalarMetric>> ReadParquetShortNumRangeAsync(
+        global::System.IO.Stream stream,
+        short inclusiveStart,
+        short inclusiveEnd,
+        global::Parquet.SourceGenerator.ParquetPruneStatistics? pruneStatistics = null,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        global::System.Threading.CancellationToken cancellationToken = default)
+        => ReadPrunedRangeAsync<short>(stream, 6, _field_6, inclusiveStart, inclusiveEnd, static item => item.ShortNum, pruneStatistics, options, cancellationToken);
+
+    /// <summary>
+    /// Point lookup on <c>FloatVal</c>. When the file's row-group statistics certify <c>FloatVal</c> as
+    /// sorted, binary search locates the row group(s) that can hold the key and every other row
+    /// group is skipped without being decompressed; otherwise the read falls back to a full scan.
+    /// The result is identical either way — pruning changes only how much work it costs.
+    /// </summary>
+    public static global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<ScalarMetric>> ReadParquetByFloatValAsync(
+        global::System.IO.Stream stream,
+        float key,
+        global::Parquet.SourceGenerator.ParquetPruneStatistics? pruneStatistics = null,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        global::System.Threading.CancellationToken cancellationToken = default)
+        => ReadPrunedRangeAsync<float>(stream, 7, _field_7, key, key, static item => item.FloatVal, pruneStatistics, options, cancellationToken);
+
+    /// <summary>
+    /// Inclusive range slice on <c>FloatVal</c>. Both bounds are binary searched against the row-group
+    /// statistics so only the contiguous span of row groups overlapping the range is decompressed.
+    /// </summary>
+    public static global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<ScalarMetric>> ReadParquetFloatValRangeAsync(
+        global::System.IO.Stream stream,
+        float inclusiveStart,
+        float inclusiveEnd,
+        global::Parquet.SourceGenerator.ParquetPruneStatistics? pruneStatistics = null,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        global::System.Threading.CancellationToken cancellationToken = default)
+        => ReadPrunedRangeAsync<float>(stream, 7, _field_7, inclusiveStart, inclusiveEnd, static item => item.FloatVal, pruneStatistics, options, cancellationToken);
 }

@@ -39,6 +39,13 @@ Changes since `0.0.1`. That version is published on nuget.org (alongside the `0.
   member types, unassignable members, types with no parameterless constructor, nested or generic
   target types, and member types the 4.x/5.x backend cannot represent.
 - **CI workflow** building, testing and packing the solution. Benchmarks run on demand.
+- **Sorted row-group pruning (experiment, issue #151)**: for every flat, non-nullable, totally
+  ordered column the generator now emits `ReadParquetBy<Column>Async` (point lookup) and
+  `ReadParquet<Column>RangeAsync` (inclusive slice). Both certify the column as sorted from the
+  footer `[Min, Max]` statistics and binary search that metadata, so only the row groups that can
+  contain the key are decompressed; overlapping or missing statistics fall back to a full scan and
+  the answer is identical either way. Pass a `ParquetPruneStatistics` to see how many row groups
+  were skipped.
 
 ### Fixed before release
 - `CompressionMethod` was accepted and discarded — no compression setting ever reached the writer.

@@ -99,6 +99,17 @@ public static class CodeEmitter
         // Zero-copy ReadOnlyMemory overloads
         EmitReadMemoryOverloads(builder, model);
 
+        // Sorted row-group pruning: binary search over footer [Min, Max] statistics (issue #151)
+        var sortableColumns = SortedRowGroupPruningComponent.SortableColumns(model);
+        if (sortableColumns.Count > 0)
+        {
+            builder.AppendLine();
+            SortedRowGroupPruningComponent.EmitPruningHelpers(builder);
+            builder.AppendLine();
+            EmitReadPrunedRangeAsync(builder, model);
+            SortedRowGroupPruningComponent.EmitLookupOverloads(builder, model, sortableColumns);
+        }
+
         builder.AppendLine("}");
 
         return builder.ToString();
@@ -1432,6 +1443,173 @@ public static class CodeEmitter
         builder.AppendLine(
             "            : new global::System.IO.MemoryStream(parquetBytes.ToArray(), writable: false);"
         );
+        builder.AppendLine("    }");
+    }
+
+    /// <summary>
+    /// Shared core for the sorted-column lookup overloads: prunes row groups from the footer
+    /// statistics (issue #151), reads only the surviving contiguous span, and filters the
+    /// materialised rows to the inclusive key range so the answer is exact whether or not
+    /// pruning was possible.
+    /// </summary>
+    private static void EmitReadPrunedRangeAsync(StringBuilder builder, TargetClassModel model)
+    {
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine(
+            $"    /// Reads every <c>{model.ClassName}</c> whose key falls in the inclusive range, skipping row groups"
+        );
+        builder.AppendLine(
+            "    /// that the footer <c>[Min, Max]</c> statistics prove cannot contain it."
+        );
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine(
+            $"    private static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<{model.ClassName}>> ReadPrunedRangeAsync<TKey>("
+        );
+        builder.AppendLine("        global::System.IO.Stream stream,");
+        builder.AppendLine("        int keySlot,");
+        builder.AppendLine("        global::Parquet.Schema.DataField keyFieldTemplate,");
+        builder.AppendLine("        TKey lowerBound,");
+        builder.AppendLine("        TKey upperBound,");
+        builder.AppendLine($"        global::System.Func<{model.ClassName}, TKey> keySelector,");
+        builder.AppendLine(
+            "        global::Parquet.SourceGenerator.ParquetPruneStatistics? pruneStatistics,"
+        );
+        builder.AppendLine(
+            "        global::Parquet.SourceGenerator.ParquetSerializerOptions? options,"
+        );
+        builder.AppendLine("        global::System.Threading.CancellationToken cancellationToken)");
+        builder.AppendLine("    {");
+        builder.AppendLine(
+            "        if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));"
+        );
+        builder.AppendLine();
+        builder.AppendLine("        pruneStatistics?.Reset();");
+        builder.AppendLine(
+            "        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;"
+        );
+        builder.AppendLine(
+            "        var keyComparer = global::System.Collections.Generic.Comparer<TKey>.Default;"
+        );
+        builder.AppendLine(
+            $"        var results = new global::System.Collections.Generic.List<{model.ClassName}>();"
+        );
+        builder.AppendLine("        if (keyComparer.Compare(lowerBound, upperBound) > 0)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            return results;");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine(
+            "        await using var reader = await global::Parquet.ParquetReader.CreateAsync("
+        );
+        builder.AppendLine("            stream,");
+        builder.AppendLine("            BuildFormatOptions(options),");
+        builder.AppendLine("            cancellationToken: cancellationToken);");
+        builder.AppendLine("        var fileFields = reader.Schema.DataFields;");
+        builder.AppendLine();
+        builder.AppendLine(
+            "        global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;"
+        );
+        foreach (LeafColumn col in EmissionPlan.For(model).Columns)
+        {
+            builder.AppendLine(
+                $"        var field_{col.Slot} = ResolveSchemaField(fileFields, {col.Slot}, _field_{col.Slot}, ref fieldsByName);"
+            );
+        }
+        builder.AppendLine(
+            "        var keyField = ResolveSchemaField(fileFields, keySlot, keyFieldTemplate, ref fieldsByName);"
+        );
+        builder.AppendLine();
+        builder.AppendLine("        int rowGroupCount = reader.RowGroupCount;");
+        builder.AppendLine("        int firstRowGroup = 0;");
+        builder.AppendLine("        int lastRowGroup = rowGroupCount - 1;");
+        builder.AppendLine("        bool sorted = TryPruneSortedRowGroups<TKey>(");
+        builder.AppendLine("            reader,");
+        builder.AppendLine("            keyField,");
+        builder.AppendLine("            lowerBound,");
+        builder.AppendLine("            upperBound,");
+        builder.AppendLine("            out int prunedFirst,");
+        builder.AppendLine("            out int prunedLast,");
+        builder.AppendLine("            out bool strictlyMonotonic);");
+        builder.AppendLine("        if (sorted)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            firstRowGroup = prunedFirst;");
+        builder.AppendLine("            lastRowGroup = prunedLast;");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        if (pruneStatistics is not null)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            bool anyRead = lastRowGroup >= firstRowGroup;");
+        builder.AppendLine("            pruneStatistics.RowGroupCount = rowGroupCount;");
+        builder.AppendLine("            pruneStatistics.SortedColumnDetected = sorted;");
+        builder.AppendLine(
+            "            pruneStatistics.StrictlyMonotonic = sorted && strictlyMonotonic;"
+        );
+        builder.AppendLine(
+            "            pruneStatistics.RowGroupsScanned = anyRead ? lastRowGroup - firstRowGroup + 1 : 0;"
+        );
+        builder.AppendLine(
+            "            pruneStatistics.FirstRowGroupRead = anyRead ? firstRowGroup : -1;"
+        );
+        builder.AppendLine(
+            "            pruneStatistics.LastRowGroupRead = anyRead ? lastRowGroup : -1;"
+        );
+        builder.AppendLine("        }");
+        builder.AppendLine();
+
+        StringDeduplicatorComponent.EmitDeduplicatorDeclaration(builder, model);
+
+        builder.AppendLine("        for (int r = firstRowGroup; r <= lastRowGroup; r++)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            cancellationToken.ThrowIfCancellationRequested();");
+        builder.AppendLine("            using var groupReader = reader.OpenRowGroupReader(r);");
+        builder.AppendLine("            int rowCount = (int)groupReader.RowCount;");
+        builder.AppendLine();
+
+        EmitRentalsFor(builder, model, "rowCount", indent: "            ");
+
+        builder.AppendLine("            try");
+        builder.AppendLine("            {");
+
+        foreach (LeafColumn col in EmissionPlan.For(model).Columns)
+        {
+            EmitReadWithNullBypass(builder, col, $"field_{col.Slot}", $"buffer_{col.Slot}");
+        }
+
+        builder.AppendLine();
+        if (EmissionPlan.For(model).HasCompound)
+            CompoundMapping.EmitCompoundReconstruction(
+                builder,
+                model,
+                "rowCount",
+                "                "
+            );
+
+        builder.AppendLine("                for (int i = 0; i < rowCount; i++)");
+        builder.AppendLine("                {");
+        builder.AppendLine($"                    var item = new {model.ClassName}");
+        builder.AppendLine("                    {");
+
+        CompoundMapping.EmitRootMemberAssignments(builder, model, "i", "                        ");
+
+        builder.AppendLine("                    };");
+        builder.AppendLine("                    TKey itemKey = keySelector(item);");
+        builder.AppendLine(
+            "                    if (keyComparer.Compare(itemKey, lowerBound) >= 0 && keyComparer.Compare(itemKey, upperBound) <= 0)"
+        );
+        builder.AppendLine("                    {");
+        builder.AppendLine("                        results.Add(item);");
+        builder.AppendLine("                    }");
+        builder.AppendLine("                }");
+        builder.AppendLine("            }");
+        builder.AppendLine("            finally");
+        builder.AppendLine("            {");
+
+        EmitReturnsFor(builder, model, indent: "                ");
+
+        builder.AppendLine("            }");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        return results;");
         builder.AppendLine("    }");
     }
 
