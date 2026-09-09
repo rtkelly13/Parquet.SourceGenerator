@@ -89,6 +89,69 @@ Artifacts: `BenchmarkDotNet.Artifacts/results/*-report-github.md` (2026-09-08 ru
 
 ---
 
+## 🗺️ Memory-Mapped File Reads (2026-09-09, dev host) — inconclusive on wall-clock
+
+`FileReadBenchmark` compares the `FileInfo` read overloads, which map the file with
+`MemoryMappedFile.CreateFromFile`, against the buffered `FileStream` and `File.ReadAllBytes` routes
+that callers used before them.
+
+**Host:** Apple M1, 8 GB, macOS 24.6; .NET 9.0.17 running the net8.0 target; BenchmarkDotNet v0.14.0,
+InProcess, Release, `--invocationCount 1 --unrollFactor 1`. Workload: 4,000,000 rows of four scalar
+columns, 100,000-row row groups, Snappy — **67,275,842 bytes on disk**. The OS page cache is warm for
+every iteration, so this measures the user-space cost of reaching the decompressor, not disk latency.
+
+Run 1 (2 warmup, 8 iterations):
+
+| Method | Mean | StdDev | Gen2 | Allocated |
+|:--- |---:|---:|---:|---:|
+| ParallelViaMemoryMappedFile | 262.8 ms | 35.5 ms | 1000 | 394.13 MB |
+| ParallelViaReadAllBytes | 488.1 ms | 106.1 ms | 2000 | 458.31 MB |
+| SequentialViaMemoryMappedFile | 514.4 ms | 195.5 ms | 3000 | 392.70 MB |
+| SequentialViaFileStream (baseline) | 560.6 ms | 184.4 ms | 3000 | 392.77 MB |
+| ParallelViaFileStream | 642.4 ms | 101.2 ms | 3000 | 392.79 MB |
+
+Run 2 (3 warmup, 12 iterations, same binary, same file):
+
+| Method | Mean | Median | StdDev | Gen2 | Allocated |
+|:--- |---:|---:|---:|---:|---:|
+| SequentialViaMemoryMappedFile | 579.3 ms | 546.7 ms | 121.0 ms | 3000 | 392.69 MB |
+| ParallelViaMemoryMappedFile | 748.6 ms | 661.4 ms | 217.5 ms | 1000 | 394.14 MB |
+| ParallelViaReadAllBytes | 916.4 ms | 932.2 ms | 271.7 ms | 2000 | 458.30 MB |
+| SequentialViaFileStream | 1,497.4 ms | 1,527.2 ms | 672.3 ms | 4000 | 392.78 MB |
+| ParallelViaFileStream | 1,663.9 ms | 1,301.3 ms | 1,017.3 ms | 4000 | 392.79 MB |
+
+**Conclusions:**
+
+1. **Wall-clock is inconclusive on this host.** Every configuration allocates ~400 MB per operation on
+   an 8 GB machine, so GC — not I/O — sets the pace, and standard deviations reach 20–60% of the mean.
+   Between the two runs the fastest method changes and the absolute numbers move by 2–3×. The mapping
+   was never *slower* than the stream in either run, but nothing here supports a throughput claim.
+2. **Allocation is the reproducible win, and only for the parallel reader.** Mapped parallel reads
+   allocate 394.1 MB against 458.3 MB for `File.ReadAllBytes` + the buffer overload: 64.2 MB less,
+   which is exactly the file size. That copy is a large-object-heap allocation, and its absence shows
+   up as half the Gen2 collections (1000 vs 2000 per 1000 operations). It scales with the file, so a
+   500 MB file saves 500 MB.
+3. **Sequential mapped reads allocate the same as a `FileStream`** (392.7 MB either way). A
+   `FileStream` never materialises the whole file, so there was no copy to remove — only the 80 KB
+   buffer, which does not register. If the mapping helps a sequential read at all, it is below this
+   host's noise floor.
+4. **The parallel stream overload remains the wrong tool**: it cannot share a cursor, so it decodes
+   sequentially and pays the coordination cost for nothing. The `FileInfo` overload is what makes a
+   parallel file read actually parallel.
+
+Reproduce with:
+
+```bash
+dotnet run -c Release --project benchmarks/Parquet.SourceGenerator.Benchmarks/Parquet.SourceGenerator.Benchmarks.csproj \
+  -- --filter "*FileReadBenchmark*" --invocationCount 1 --unrollFactor 1
+```
+
+A host with enough RAM to keep a 400 MB working set out of the GC's way — and ideally a
+multi-hundred-megabyte file, which this 8 GB machine cannot hold alongside the materialised rows —
+would be needed to settle the throughput question. See [issue #148](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/148).
+
+---
+
 ## 🛠️ Running Benchmarks Locally
 
 You can execute the full BenchmarkDotNet suite locally using the .NET CLI:

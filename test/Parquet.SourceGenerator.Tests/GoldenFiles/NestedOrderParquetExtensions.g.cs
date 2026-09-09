@@ -1812,9 +1812,9 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
         options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
         var formatOptions = BuildFormatOptions(options);
 
-        var sourceBytes = global::System.Runtime.InteropServices.MemoryMarshal.TryGetArray(parquetBytes, out _)
-            ? parquetBytes
-            : new global::System.ReadOnlyMemory<byte>(parquetBytes.ToArray());
+        // No normalising copy: CreateBufferStream wraps any buffer — array-backed or
+        // memory-mapped — in its own stream, so workers share the source bytes as they are.
+        var sourceBytes = parquetBytes;
 
         int rowGroupCount;
         int totalRows;
@@ -2374,16 +2374,156 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
     }
 
     /// <summary>
-    /// Wraps a byte buffer as a read-only stream, without copying where the buffer is array-backed.
+    /// Wraps a byte buffer as a read-only stream, without copying it.
     /// </summary>
     /// <remarks>
     /// Each call returns an independent stream over the same bytes, which is what makes the parallel
-    /// reader possible: every worker gets its own cursor without copying the file.
+    /// reader possible: every worker gets its own cursor without copying the file. Array-backed
+    /// buffers become a <c>MemoryStream</c>; memory-mapped pages become an <c>UnmanagedMemoryStream</c>.
     /// </remarks>
-    private static global::System.IO.MemoryStream CreateBufferStream(global::System.ReadOnlyMemory<byte> parquetBytes)
+    private static global::System.IO.Stream CreateBufferStream(global::System.ReadOnlyMemory<byte> parquetBytes)
     {
-        return global::System.Runtime.InteropServices.MemoryMarshal.TryGetArray(parquetBytes, out var segment)
-            ? new global::System.IO.MemoryStream(segment.Array!, segment.Offset, segment.Count, writable: false)
-            : new global::System.IO.MemoryStream(parquetBytes.ToArray(), writable: false);
+        return global::Parquet.SourceGenerator.ParquetBufferStreams.Create(parquetBytes);
+    }
+
+    /// <summary>
+    /// Asynchronously deserializes all <c>NestedOrder</c> objects from a Parquet file on disk, mapping the
+    /// file into memory rather than copying it through a stream buffer.
+    /// </summary>
+    public static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<NestedOrder>> ReadParquetAsync(
+        global::System.IO.FileInfo file,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        var results = await ReadParquetArrayAsync(file, options, cancellationToken);
+        return new global::System.Collections.Generic.List<NestedOrder>(results);
+    }
+
+    /// <summary>
+    /// Asynchronously deserializes all <c>NestedOrder</c> objects from a Parquet file on disk into an array,
+    /// mapping the file into memory rather than copying it through a stream buffer.
+    /// </summary>
+    public static async global::System.Threading.Tasks.Task<NestedOrder[]> ReadParquetArrayAsync(
+        global::System.IO.FileInfo file,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        var mapped = OpenMappedFile(file, options);
+        if (mapped is null)
+        {
+            using var stream = OpenReadFileStream(file);
+            return await ReadParquetArrayAsync(stream, options, cancellationToken);
+        }
+
+        using (mapped)
+        {
+            return await ReadParquetArrayAsync(mapped.Memory, options, cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// Asynchronously deserializes all <c>NestedOrder</c> objects from a Parquet file on disk into an array,
+    /// decoding row groups across multiple workers over the mapped file.
+    /// </summary>
+    /// <remarks>
+    /// Unlike the <c>Stream</c> overload this genuinely parallelises: each worker opens its own reader
+    /// over the same mapped pages, so row groups are decoded concurrently without stream contention.
+    /// </remarks>
+    public static async global::System.Threading.Tasks.Task<NestedOrder[]> ReadParquetParallelArrayAsync(
+        global::System.IO.FileInfo file,
+        int maxDegreeOfParallelism = -1,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        var mapped = OpenMappedFile(file, options);
+        if (mapped is null)
+        {
+            using var stream = OpenReadFileStream(file);
+            return await ReadParquetParallelArrayAsync(stream, maxDegreeOfParallelism, options, cancellationToken);
+        }
+
+        using (mapped)
+        {
+            return await ReadParquetParallelArrayAsync(mapped.Memory, maxDegreeOfParallelism, options, cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// Asynchronously deserializes all <c>NestedOrder</c> objects from a Parquet file on disk,
+    /// decoding row groups across multiple workers over the mapped file.
+    /// </summary>
+    public static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<NestedOrder>> ReadParquetParallelAsync(
+        global::System.IO.FileInfo file,
+        int maxDegreeOfParallelism = -1,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        var resultArray = await ReadParquetParallelArrayAsync(file, maxDegreeOfParallelism, options, cancellationToken);
+        return new global::System.Collections.Generic.List<NestedOrder>(resultArray);
+    }
+
+    /// <summary>
+    /// Asynchronously streams <c>NestedOrder</c> items from a Parquet file on disk, row group by row group.
+    /// </summary>
+    public static async global::System.Collections.Generic.IAsyncEnumerable<NestedOrder> ReadParquetStreamAsync(
+        global::System.IO.FileInfo file,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        var mapped = OpenMappedFile(file, options);
+        if (mapped is null)
+        {
+            using var stream = OpenReadFileStream(file);
+            await foreach (var item in ReadParquetStreamAsync(stream, options, cancellationToken))
+            {
+                yield return item;
+            }
+
+            yield break;
+        }
+
+        using (mapped)
+        {
+            await foreach (var item in ReadParquetStreamAsync(mapped.Memory, options, cancellationToken))
+            {
+                yield return item;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Maps <paramref name="file"/> into memory, or returns <c>null</c> when the stream path should be used.
+    /// </summary>
+    /// <remarks>
+    /// Returns <c>null</c> when mapping is switched off, when the file is empty, or when it is larger than
+    /// <c>int.MaxValue</c> bytes and so cannot be surfaced as one <c>ReadOnlyMemory&lt;byte&gt;</c>.
+    /// </remarks>
+    private static global::Parquet.SourceGenerator.ParquetMemoryMappedFile? OpenMappedFile(
+        global::System.IO.FileInfo file,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options)
+    {
+        if (file is null)
+        {
+            throw new global::System.ArgumentNullException(nameof(file));
+        }
+
+        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
+        return options.UseMemoryMappedFiles
+            ? global::Parquet.SourceGenerator.ParquetMemoryMappedFile.TryOpen(file)
+            : null;
+    }
+
+    /// <summary>
+    /// Opens a buffered, sequential-access read stream over <paramref name="file"/>.
+    /// </summary>
+    private static global::System.IO.FileStream OpenReadFileStream(global::System.IO.FileInfo file)
+    {
+        return new global::System.IO.FileStream(
+            file.FullName,
+            global::System.IO.FileMode.Open,
+            global::System.IO.FileAccess.Read,
+            global::System.IO.FileShare.Read,
+            bufferSize: 81920,
+            global::System.IO.FileOptions.Asynchronous | global::System.IO.FileOptions.SequentialScan);
     }
 }

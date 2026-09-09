@@ -25,6 +25,14 @@ Changes since `0.0.1`. That version is published on nuget.org (alongside the `0.
   one `ParquetReader` over one stream per worker, groups claimed dynamically — with results in file
   order. Over an arbitrary `Stream` it stays sequential, because a stream cannot be shared between
   readers, and `maxDegreeOfParallelism` is not honoured there.
+- **Memory-mapped file read overloads (`FileInfo`)**: `ReadParquetAsync`, `ReadParquetArrayAsync`,
+  `ReadParquetParallelAsync`, `ReadParquetParallelArrayAsync` and `ReadParquetStreamAsync` now accept
+  a `FileInfo`. The file is mapped with `MemoryMappedFile.CreateFromFile` and exposed as
+  `ReadOnlyMemory<byte>` over the mapped pages, so nothing is copied into the managed heap and every
+  parallel row-group worker gets its own cursor over the same pages. Files that are empty or larger
+  than `int.MaxValue` fall back to a buffered `FileStream`, as does
+  `ParquetSerializerOptions.UseMemoryMappedFiles = false`. The win is allocation, not wall-clock:
+  measured throughput is within noise of a buffered read (see `docs/BENCHMARKS.md`).
 - **`Parquet.SourceGenerator.V5`**: a second generator emitting against the Parquet.Net 4.x/5.x
   `DataColumn` API, which is what restores .NET Framework 4.7.2 support. It accepts a narrower set
   of member types than the v6 backend and reports the difference as `PARQ011`.

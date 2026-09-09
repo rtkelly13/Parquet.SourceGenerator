@@ -4,6 +4,8 @@
         <IsPackable>false</IsPackable>
         <IsTestProject>true</IsTestProject>
         <RootNamespace>Parquet.SourceGenerator.Tests</RootNamespace>
+        <!-- Buffer tests build MemoryHandle values over pinned arrays. -->
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
     <ItemGroup>

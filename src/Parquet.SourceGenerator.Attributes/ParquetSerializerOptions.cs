@@ -113,6 +113,20 @@ public sealed class ParquetSerializerOptions
     public int MaxDegreeOfParallelism { get; set; } = -1;
 
     /// <summary>
+    /// Gets or sets whether file-path read overloads map the file into memory instead of reading it
+    /// through a <c>FileStream</c> (default is <see langword="true"/>).
+    /// </summary>
+    /// <remarks>
+    /// Applies to the <c>ReadParquetAsync(FileInfo)</c> family only. Mapping removes the intermediate
+    /// buffer copy and lets parallel row-group workers share the same pages without locking, but it is
+    /// not always the faster choice: for a single sequential pass the kernel's read-ahead on a buffered
+    /// <c>FileStream</c> can match or beat page-fault-driven access. Set to <see langword="false"/> to
+    /// take the stream path. Files that are empty or larger than
+    /// <see cref="ParquetMemoryMappedFile.MaxMappableLength"/> always take the stream path regardless.
+    /// </remarks>
+    public bool UseMemoryMappedFiles { get; set; } = true;
+
+    /// <summary>
     /// Gets or sets the compression method to apply when creating Parquet files (default is Snappy).
     /// </summary>
     public ParquetCompressionMethod CompressionMethod { get; set; } =

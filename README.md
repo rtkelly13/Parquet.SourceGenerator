@@ -132,6 +132,11 @@ List<UserEvent> events = await UserEventParquetExtensions.ReadParquetAsync(strea
 ReadOnlyMemory<byte> buffer = File.ReadAllBytes("events.parquet");
 List<UserEvent> fast = await UserEventParquetExtensions.ReadParquetParallelAsync(buffer, maxDegreeOfParallelism: 8);
 
+// Same, without pulling the file onto the managed heap: the FileInfo overloads map the file and
+// give each row-group worker its own cursor over the mapped pages.
+var file = new FileInfo("events.parquet");
+List<UserEvent> mapped = await UserEventParquetExtensions.ReadParquetParallelAsync(file, maxDegreeOfParallelism: 8);
+
 // Low-memory streaming reader
 await foreach (var e in UserEventParquetExtensions.ReadParquetStreamAsync(buffer))
 {
@@ -163,7 +168,8 @@ Supported codecs: `None`, `Snappy` (default), `Gzip`, `Lz4`, `Brotli`, and `Zstd
 - **Low-Level Parquet.Net Primitives**: Emits direct calls to `ParquetRowGroupWriter.WriteAsync` and `WriteAllPartsAsync`, bypassing reflection overhead and boxing.
 - **Eager Progressive Buffer Returns**: Column buffers rented from `ArrayPool.Shared` are returned immediately after writing each column chunk, releasing memory milliseconds earlier during asynchronous I/O and compression.
 - **Single-Pass Row Transposition**: Domain models are traversed once, maximizing CPU L1/L2 cache spatial locality.
-- **Multi-Core Parallel Reader**: Decodes independent row groups concurrently across CPU threads when reading from in-memory buffers (`ReadOnlyMemory<byte>`).
+- **Multi-Core Parallel Reader**: Decodes independent row groups concurrently across CPU threads when reading from in-memory buffers (`ReadOnlyMemory<byte>`) or from a mapped file (`FileInfo`).
+- **Memory-Mapped File Reads**: The `FileInfo` read overloads map the file into virtual memory instead of copying it through a `FileStream` buffer or a whole-file `byte[]`, so parallel workers share the kernel's pages. This cuts allocation sharply; it is not reliably faster than a buffered read — see [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) — and `ParquetSerializerOptions.UseMemoryMappedFiles = false` turns it off.
 - **Nullability-Aware Schemas**: Under `#nullable enable`, non-null types map to `required` columns and nullable types (`T?`) map to `optional` columns automatically.
 
 ---

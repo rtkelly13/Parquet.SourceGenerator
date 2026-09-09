@@ -33,3 +33,14 @@ static Parquet.SourceGenerator.VectorizedColumnTransforms.UtcEpochConstant.get -
 static Parquet.SourceGenerator.VectorizedColumnTransforms.Widen(System.ReadOnlySpan<byte> source, System.Span<int> destination) -> void
 static Parquet.SourceGenerator.VectorizedColumnTransforms.Widen(System.ReadOnlySpan<int> source, System.Span<long> destination) -> void
 static Parquet.SourceGenerator.VectorizedColumnTransforms.Widen(System.ReadOnlySpan<short> source, System.Span<int> destination) -> void
+Parquet.SourceGenerator.ParquetBufferStreams
+Parquet.SourceGenerator.ParquetMemoryMappedFile
+Parquet.SourceGenerator.ParquetMemoryMappedFile.Dispose() -> void
+Parquet.SourceGenerator.ParquetMemoryMappedFile.Length.get -> long
+Parquet.SourceGenerator.ParquetMemoryMappedFile.Memory.get -> System.ReadOnlyMemory<byte>
+Parquet.SourceGenerator.ParquetSerializerOptions.UseMemoryMappedFiles.get -> bool
+Parquet.SourceGenerator.ParquetSerializerOptions.UseMemoryMappedFiles.set -> void
+const Parquet.SourceGenerator.ParquetMemoryMappedFile.MaxMappableLength = 2147483647 -> long
+static Parquet.SourceGenerator.ParquetBufferStreams.Create(System.ReadOnlyMemory<byte> buffer) -> System.IO.Stream!
+static Parquet.SourceGenerator.ParquetMemoryMappedFile.TryOpen(System.IO.FileInfo! file) -> Parquet.SourceGenerator.ParquetMemoryMappedFile?
+static Parquet.SourceGenerator.ParquetMemoryMappedFile.TryOpen(string! path) -> Parquet.SourceGenerator.ParquetMemoryMappedFile?

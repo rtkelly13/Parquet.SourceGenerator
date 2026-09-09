@@ -176,14 +176,14 @@ public sealed class ParallelReadTests
     }
 
     /// <summary>
-    /// A buffer that is not array-backed takes <c>CreateBufferStream</c>'s copying fallback. Because
-    /// every worker builds its own stream, that fallback ran once per worker plus once for the probe
-    /// — the whole file materialised N+1 times, which is precisely the allocation profile the buffer
-    /// overload exists to avoid. The buffer is now normalised to an array once, up front.
+    /// A buffer that is not array-backed used to take <c>CreateBufferStream</c>'s copying fallback,
+    /// once per worker plus once for the probe — the whole file materialised N+1 times, which is
+    /// precisely the allocation profile the buffer overload exists to avoid. Such buffers are now
+    /// pinned and wrapped in an <c>UnmanagedMemoryStream</c>, so no copy is taken at all.
     /// </summary>
     /// <remarks>
-    /// This one asserts the path reads correctly. The copy count itself is pinned by
-    /// <see cref="EmittedParallelReaderNormalisesTheBufferOnceRatherThanPerWorker"/> against the
+    /// This one asserts the path reads correctly. The absence of the copy is pinned by
+    /// <see cref="EmittedParallelReaderSharesTheCallersBufferRatherThanCopyingIt"/> against the
     /// emitted source, and measured by the <c>SourceGeneratorReadParallelBufferAsync</c> benchmark,
     /// whose allocation figure the regression gate watches.
     /// </remarks>
@@ -214,11 +214,13 @@ public sealed class ParallelReadTests
     /// <remarks>
     /// A runtime assertion would have to measure process-wide allocations, which the rest of the
     /// suite pollutes because xUnit runs classes in parallel — so it would be flaky in exactly the
-    /// way that gets a test deleted. The emitted source says the same thing without the noise:
-    /// the buffer is normalised once, and every downstream call takes the normalised value.
+    /// way that gets a test deleted. The emitted source says the same thing without the noise: the
+    /// caller's buffer is passed straight through, and no downstream call copies it. That matters
+    /// most for the memory-mapped file overloads, where a copy would pull the whole file onto the
+    /// managed heap and defeat the mapping.
     /// </remarks>
     [Fact]
-    public void EmittedParallelReaderNormalisesTheBufferOnceRatherThanPerWorker()
+    public void EmittedParallelReaderSharesTheCallersBufferRatherThanCopyingIt()
     {
         var model = new TargetClassModel(
             Namespace: "TestNamespace",
@@ -244,9 +246,9 @@ public sealed class ParallelReadTests
 
         string source = CodeEmitter.EmitSource(model);
 
-        // Normalised exactly once, from the caller's buffer.
-        Assert.Contains("MemoryMarshal.TryGetArray(parquetBytes, out _)", source);
+        // Bound exactly once, straight from the caller's buffer, with no copy anywhere in sight.
         Assert.Equal(1, Occurrences(source, "var sourceBytes ="));
+        Assert.DoesNotContain("parquetBytes.ToArray()", source, StringComparison.Ordinal);
 
         // The probe reads through the normalised value, and both worker dispatch sites — the
         // single-threaded branch and the Task.Run loop — hand it on rather than the original.
@@ -271,18 +273,74 @@ public sealed class ParallelReadTests
     }
 
     /// <summary>
+    /// A buffer that refuses to pin still reads correctly: <c>ParquetBufferStreams</c> falls back to
+    /// copying rather than failing, because a <see cref="MemoryManager{T}"/> is allowed to say no.
+    /// </summary>
+    [Fact]
+    public async Task UnpinnableBufferStillReadsCorrectly()
+    {
+        byte[] bytes = await WriteAsync(rowCount: 400, rowGroupSize: 50);
+        using var owner = new UnpinnableBuffer(bytes);
+
+        List<ParallelRow> read = await ParallelRowParquetExtensions.ReadParquetParallelAsync(
+            owner.Memory,
+            maxDegreeOfParallelism: 4
+        );
+
+        Assert.Equal(400, read.Count);
+        Assert.Equal(Enumerable.Range(1, 400), read.Select(r => r.Id));
+    }
+
+    /// <summary>
     /// Memory owned by a <see cref="MemoryManager{T}"/> reports <c>false</c> from
-    /// <c>MemoryMarshal.TryGetArray</c>, which is the only way to reach the copying fallback.
+    /// <c>MemoryMarshal.TryGetArray</c>, which is the only way to reach the pinning path that the
+    /// memory-mapped overloads take.
     /// </summary>
     private sealed class NonArrayBackedBuffer : MemoryManager<byte>
     {
         private readonly byte[] _bytes;
+        private GCHandle _pin;
 
         public NonArrayBackedBuffer(byte[] bytes) => _bytes = bytes;
 
         public override Span<byte> GetSpan() => _bytes;
 
-        // The read path needs only TryGetArray and ToArray, neither of which pins.
+        public override unsafe MemoryHandle Pin(int elementIndex = 0)
+        {
+            if (!_pin.IsAllocated)
+            {
+                _pin = GCHandle.Alloc(_bytes, GCHandleType.Pinned);
+            }
+
+            return new MemoryHandle(
+                (byte*)_pin.AddrOfPinnedObject() + elementIndex,
+                pinnable: this
+            );
+        }
+
+        public override void Unpin() { }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (_pin.IsAllocated)
+            {
+                _pin.Free();
+            }
+        }
+    }
+
+    /// <summary>
+    /// A non-array-backed buffer that refuses to pin, which is legal for a custom
+    /// <see cref="MemoryManager{T}"/> and forces the copying fallback.
+    /// </summary>
+    private sealed class UnpinnableBuffer : MemoryManager<byte>
+    {
+        private readonly byte[] _bytes;
+
+        public UnpinnableBuffer(byte[] bytes) => _bytes = bytes;
+
+        public override Span<byte> GetSpan() => _bytes;
+
         public override MemoryHandle Pin(int elementIndex = 0) => throw new NotSupportedException();
 
         public override void Unpin() => throw new NotSupportedException();
