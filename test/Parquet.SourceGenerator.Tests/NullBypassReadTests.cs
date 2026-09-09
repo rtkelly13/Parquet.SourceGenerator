@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -120,6 +121,121 @@ public sealed class NullBypassReadTests
         byte[] parquet = await WriteAsync(expected);
         List<NullBypassRecord> actual = await ReadSequentialAsync(parquet);
 
+        Assert.Equal(expected.Count, actual.Count);
+        for (int i = 0; i < expected.Count; i++)
+        {
+            Assert.Equal(expected[i].OptionalInt, actual[i].OptionalInt);
+            Assert.Equal(expected[i].OptionalString, actual[i].OptionalString);
+            Assert.Equal(expected[i].OptionalBytes, actual[i].OptionalBytes);
+            Assert.Equal(expected[i].OptionalGuid, actual[i].OptionalGuid);
+            Assert.Equal(
+                expected[i].OptionalDateTime?.Ticks / TimeSpan.TicksPerMillisecond,
+                actual[i].OptionalDateTime?.Ticks / TimeSpan.TicksPerMillisecond
+            );
+            Assert.Equal(expected[i].OptionalDuration, actual[i].OptionalDuration);
+            Assert.Equal(expected[i].OptionalStatus, actual[i].OptionalStatus);
+        }
+    }
+
+    [Fact]
+    public async Task ZeroNullRowGroupRoundtripsThroughEveryReadPath()
+    {
+        // Every column is populated, so each chunk statistic reports NullCount == 0 and the
+        // generated reader takes the dense (#150) lane instead of the nullable staging buffer.
+        var expected = Enumerable
+            .Range(0, 64)
+            .Select(i => new NullBypassRecord
+            {
+                OptionalInt = i * 7,
+                OptionalString = "value-" + i.ToString(CultureInfo.InvariantCulture),
+                OptionalBytes = new byte[] { (byte)i, (byte)(i + 1) },
+                OptionalGuid = Guid.Parse(
+                    string.Format(
+                        CultureInfo.InvariantCulture,
+                        "{0:x8}-0000-0000-0000-000000000000",
+                        i
+                    )
+                ),
+                OptionalDateTime = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds(
+                    i
+                ),
+                OptionalDuration = TimeSpan.FromMilliseconds(i * 13),
+                OptionalStatus = i % 2 == 0 ? EventStatus.Active : EventStatus.Closed,
+            })
+            .ToList();
+
+        byte[] parquet = await WriteAsync(expected);
+
+        await using (var reader = await ParquetReader.CreateAsync(new MemoryStream(parquet)))
+        {
+            using var rowGroup = reader.OpenRowGroupReader(0);
+            foreach (var field in reader.Schema.DataFields)
+            {
+                Assert.Equal(0, rowGroup.GetStatistics(field)?.NullCount);
+            }
+        }
+
+        AssertMatches(expected, await ReadSequentialAsync(parquet));
+        AssertMatches(
+            expected,
+            await NullBypassRecordParquetExtensions.ReadParquetArrayAsync(new MemoryStream(parquet))
+        );
+        AssertMatches(
+            expected,
+            await NullBypassRecordParquetExtensions.ReadParquetParallelAsync(
+                new MemoryStream(parquet),
+                maxDegreeOfParallelism: 2
+            )
+        );
+        AssertMatches(
+            expected,
+            await NullBypassRecordParquetExtensions.ReadParquetParallelArrayAsync(
+                parquet,
+                maxDegreeOfParallelism: 2
+            )
+        );
+
+        var streamed = new List<NullBypassRecord>();
+        await foreach (
+            NullBypassRecord item in NullBypassRecordParquetExtensions.ReadParquetStreamAsync(
+                new MemoryStream(parquet)
+            )
+        )
+        {
+            streamed.Add(item);
+        }
+        AssertMatches(expected, streamed);
+    }
+
+    [Fact]
+    public async Task ZeroNullAndPartiallyNullRowGroupsDecodeIndependently()
+    {
+        // Row group 0 has no nulls (fast path), row group 1 is partially null (standard decode),
+        // row group 2 is entirely null (all-null bypass). One reader pass must handle all three.
+        var items = new List<NullBypassRecord>
+        {
+            new() { OptionalInt = 1, OptionalStatus = EventStatus.Active },
+            new() { OptionalInt = 2, OptionalStatus = EventStatus.Closed },
+            new() { OptionalInt = 3, OptionalStatus = EventStatus.Active },
+            new() { OptionalInt = null, OptionalStatus = EventStatus.Closed },
+            new() { OptionalInt = null, OptionalStatus = null },
+            new() { OptionalInt = null, OptionalStatus = null },
+        };
+
+        using var stream = new MemoryStream();
+        await items.WriteParquetAsync(stream, new ParquetSerializerOptions { RowGroupSize = 2 });
+        byte[] parquet = stream.ToArray();
+
+        List<NullBypassRecord> actual = await ReadSequentialAsync(parquet);
+        AssertMatches(items, actual);
+    }
+
+    private static void AssertMatches(
+        List<NullBypassRecord> expected,
+        IEnumerable<NullBypassRecord> actualItems
+    )
+    {
+        var actual = actualItems.ToList();
         Assert.Equal(expected.Count, actual.Count);
         for (int i = 0; i < expected.Count; i++)
         {

@@ -605,8 +605,10 @@ public static partial class ScalarMetricParquetExtensions
             var buffer_0 = global::System.Buffers.ArrayPool<long>.Shared.Rent(rowCount);
             var buffer_1 = global::System.Buffers.ArrayPool<bool>.Shared.Rent(rowCount);
             var buffer_2 = global::System.Buffers.ArrayPool<bool?>.Shared.Rent(rowCount);
+            bool[]? raw_2 = null;
             var buffer_3 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
             var buffer_4 = global::System.Buffers.ArrayPool<int?>.Shared.Rent(rowCount);
+            int[]? raw_4 = null;
             var buffer_5 = global::System.Buffers.ArrayPool<byte>.Shared.Rent(rowCount);
             var buffer_6 = global::System.Buffers.ArrayPool<short>.Shared.Rent(rowCount);
             var buffer_7 = global::System.Buffers.ArrayPool<float>.Shared.Rent(rowCount);
@@ -621,11 +623,39 @@ public static partial class ScalarMetricParquetExtensions
                     field_1,
                     new global::System.Memory<bool>(buffer_1, 0, rowCount),
                     cancellationToken: cancellationToken);
+                bool noNulls_2 = false;
                 var chunkStats_2 = groupReader.GetStatistics(field_2);
                 if (chunkStats_2?.NullCount == rowCount)
                 {
                     // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_2, 0, rowCount);
+                }
+                else if (chunkStats_2?.NullCount == 0)
+                {
+                    // Zero-null fast path (#150): the chunk statistic proves every row is present, so the
+                    // dense page values map straight onto rows and the nullable staging buffer is skipped.
+                    noNulls_2 = true;
+                    if (raw_2 is null || raw_2.Length < rowCount)
+                    {
+                        if (raw_2 != null) global::System.Buffers.ArrayPool<bool>.Shared.Return(raw_2, clearArray: false);
+                        raw_2 = global::System.Buffers.ArrayPool<bool>.Shared.Rent(rowCount);
+                    }
+                    // Parquet.Net 6.1.0 rejects a null definition-level buffer for any field with
+                    // MaxDefinitionLevel > 0, so the levels are decoded into scratch and thrown away.
+                    var defScratch_2 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                    try
+                    {
+                        await groupReader.ReadRawAsync<bool>(
+                            field_2,
+                            new global::System.Memory<bool>(raw_2, 0, rowCount),
+                            new global::System.Memory<int>(defScratch_2, 0, rowCount),
+                            null,
+                            cancellationToken);
+                    }
+                    finally
+                    {
+                        global::System.Buffers.ArrayPool<int>.Shared.Return(defScratch_2, clearArray: false);
+                    }
                 }
                 else
                 {
@@ -638,11 +668,39 @@ public static partial class ScalarMetricParquetExtensions
                     field_3,
                     new global::System.Memory<int>(buffer_3, 0, rowCount),
                     cancellationToken: cancellationToken);
+                bool noNulls_4 = false;
                 var chunkStats_4 = groupReader.GetStatistics(field_4);
                 if (chunkStats_4?.NullCount == rowCount)
                 {
                     // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_4, 0, rowCount);
+                }
+                else if (chunkStats_4?.NullCount == 0)
+                {
+                    // Zero-null fast path (#150): the chunk statistic proves every row is present, so the
+                    // dense page values map straight onto rows and the nullable staging buffer is skipped.
+                    noNulls_4 = true;
+                    if (raw_4 is null || raw_4.Length < rowCount)
+                    {
+                        if (raw_4 != null) global::System.Buffers.ArrayPool<int>.Shared.Return(raw_4, clearArray: false);
+                        raw_4 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                    }
+                    // Parquet.Net 6.1.0 rejects a null definition-level buffer for any field with
+                    // MaxDefinitionLevel > 0, so the levels are decoded into scratch and thrown away.
+                    var defScratch_4 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                    try
+                    {
+                        await groupReader.ReadRawAsync<int>(
+                            field_4,
+                            new global::System.Memory<int>(raw_4, 0, rowCount),
+                            new global::System.Memory<int>(defScratch_4, 0, rowCount),
+                            null,
+                            cancellationToken);
+                    }
+                    finally
+                    {
+                        global::System.Buffers.ArrayPool<int>.Shared.Return(defScratch_4, clearArray: false);
+                    }
                 }
                 else
                 {
@@ -674,9 +732,9 @@ public static partial class ScalarMetricParquetExtensions
                         {
                             RowId = buffer_0[i],
                             Flag = buffer_1[i],
-                            NullableFlag = buffer_2[i],
+                            NullableFlag = noNulls_2 ? (bool?)raw_2![i] : (buffer_2[i]),
                             StatusCode = (SampleDomain.Models.ProcessStatus)buffer_3[i],
-                            OptionalStatus = buffer_4[i] is null ? (SampleDomain.Models.ProcessStatus?)null : (SampleDomain.Models.ProcessStatus)buffer_4[i]!,
+                            OptionalStatus = noNulls_4 ? (SampleDomain.Models.ProcessStatus?)(SampleDomain.Models.ProcessStatus)raw_4![i] : (buffer_4[i] is null ? (SampleDomain.Models.ProcessStatus?)null : (SampleDomain.Models.ProcessStatus)buffer_4[i]!),
                             TinyNum = buffer_5[i],
                             ShortNum = buffer_6[i],
                             FloatVal = buffer_7[i],
@@ -691,9 +749,9 @@ public static partial class ScalarMetricParquetExtensions
                     {
                         RowId = buffer_0[i],
                         Flag = buffer_1[i],
-                        NullableFlag = buffer_2[i],
+                        NullableFlag = noNulls_2 ? (bool?)raw_2![i] : (buffer_2[i]),
                         StatusCode = (SampleDomain.Models.ProcessStatus)buffer_3[i],
-                        OptionalStatus = buffer_4[i] is null ? (SampleDomain.Models.ProcessStatus?)null : (SampleDomain.Models.ProcessStatus)buffer_4[i]!,
+                        OptionalStatus = noNulls_4 ? (SampleDomain.Models.ProcessStatus?)(SampleDomain.Models.ProcessStatus)raw_4![i] : (buffer_4[i] is null ? (SampleDomain.Models.ProcessStatus?)null : (SampleDomain.Models.ProcessStatus)buffer_4[i]!),
                         TinyNum = buffer_5[i],
                         ShortNum = buffer_6[i],
                         FloatVal = buffer_7[i],
@@ -707,8 +765,10 @@ public static partial class ScalarMetricParquetExtensions
                 global::System.Buffers.ArrayPool<long>.Shared.Return(buffer_0, clearArray: false);
                 global::System.Buffers.ArrayPool<bool>.Shared.Return(buffer_1, clearArray: false);
                 global::System.Buffers.ArrayPool<bool?>.Shared.Return(buffer_2, clearArray: false);
+                if (raw_2 != null) global::System.Buffers.ArrayPool<bool>.Shared.Return(raw_2, clearArray: false);
                 global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_3, clearArray: false);
                 global::System.Buffers.ArrayPool<int?>.Shared.Return(buffer_4, clearArray: false);
+                if (raw_4 != null) global::System.Buffers.ArrayPool<int>.Shared.Return(raw_4, clearArray: false);
                 global::System.Buffers.ArrayPool<byte>.Shared.Return(buffer_5, clearArray: false);
                 global::System.Buffers.ArrayPool<short>.Shared.Return(buffer_6, clearArray: false);
                 global::System.Buffers.ArrayPool<float>.Shared.Return(buffer_7, clearArray: false);
@@ -760,8 +820,10 @@ public static partial class ScalarMetricParquetExtensions
             var buffer_0 = global::System.Buffers.ArrayPool<long>.Shared.Rent(rowCount);
             var buffer_1 = global::System.Buffers.ArrayPool<bool>.Shared.Rent(rowCount);
             var buffer_2 = global::System.Buffers.ArrayPool<bool?>.Shared.Rent(rowCount);
+            bool[]? raw_2 = null;
             var buffer_3 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
             var buffer_4 = global::System.Buffers.ArrayPool<int?>.Shared.Rent(rowCount);
+            int[]? raw_4 = null;
             var buffer_5 = global::System.Buffers.ArrayPool<byte>.Shared.Rent(rowCount);
             var buffer_6 = global::System.Buffers.ArrayPool<short>.Shared.Rent(rowCount);
             var buffer_7 = global::System.Buffers.ArrayPool<float>.Shared.Rent(rowCount);
@@ -776,11 +838,39 @@ public static partial class ScalarMetricParquetExtensions
                     field_1,
                     new global::System.Memory<bool>(buffer_1, 0, rowCount),
                     cancellationToken: cancellationToken);
+                bool noNulls_2 = false;
                 var chunkStats_2 = groupReader.GetStatistics(field_2);
                 if (chunkStats_2?.NullCount == rowCount)
                 {
                     // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_2, 0, rowCount);
+                }
+                else if (chunkStats_2?.NullCount == 0)
+                {
+                    // Zero-null fast path (#150): the chunk statistic proves every row is present, so the
+                    // dense page values map straight onto rows and the nullable staging buffer is skipped.
+                    noNulls_2 = true;
+                    if (raw_2 is null || raw_2.Length < rowCount)
+                    {
+                        if (raw_2 != null) global::System.Buffers.ArrayPool<bool>.Shared.Return(raw_2, clearArray: false);
+                        raw_2 = global::System.Buffers.ArrayPool<bool>.Shared.Rent(rowCount);
+                    }
+                    // Parquet.Net 6.1.0 rejects a null definition-level buffer for any field with
+                    // MaxDefinitionLevel > 0, so the levels are decoded into scratch and thrown away.
+                    var defScratch_2 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                    try
+                    {
+                        await groupReader.ReadRawAsync<bool>(
+                            field_2,
+                            new global::System.Memory<bool>(raw_2, 0, rowCount),
+                            new global::System.Memory<int>(defScratch_2, 0, rowCount),
+                            null,
+                            cancellationToken);
+                    }
+                    finally
+                    {
+                        global::System.Buffers.ArrayPool<int>.Shared.Return(defScratch_2, clearArray: false);
+                    }
                 }
                 else
                 {
@@ -793,11 +883,39 @@ public static partial class ScalarMetricParquetExtensions
                     field_3,
                     new global::System.Memory<int>(buffer_3, 0, rowCount),
                     cancellationToken: cancellationToken);
+                bool noNulls_4 = false;
                 var chunkStats_4 = groupReader.GetStatistics(field_4);
                 if (chunkStats_4?.NullCount == rowCount)
                 {
                     // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_4, 0, rowCount);
+                }
+                else if (chunkStats_4?.NullCount == 0)
+                {
+                    // Zero-null fast path (#150): the chunk statistic proves every row is present, so the
+                    // dense page values map straight onto rows and the nullable staging buffer is skipped.
+                    noNulls_4 = true;
+                    if (raw_4 is null || raw_4.Length < rowCount)
+                    {
+                        if (raw_4 != null) global::System.Buffers.ArrayPool<int>.Shared.Return(raw_4, clearArray: false);
+                        raw_4 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                    }
+                    // Parquet.Net 6.1.0 rejects a null definition-level buffer for any field with
+                    // MaxDefinitionLevel > 0, so the levels are decoded into scratch and thrown away.
+                    var defScratch_4 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                    try
+                    {
+                        await groupReader.ReadRawAsync<int>(
+                            field_4,
+                            new global::System.Memory<int>(raw_4, 0, rowCount),
+                            new global::System.Memory<int>(defScratch_4, 0, rowCount),
+                            null,
+                            cancellationToken);
+                    }
+                    finally
+                    {
+                        global::System.Buffers.ArrayPool<int>.Shared.Return(defScratch_4, clearArray: false);
+                    }
                 }
                 else
                 {
@@ -825,9 +943,9 @@ public static partial class ScalarMetricParquetExtensions
                     {
                         RowId = buffer_0[i],
                         Flag = buffer_1[i],
-                        NullableFlag = buffer_2[i],
+                        NullableFlag = noNulls_2 ? (bool?)raw_2![i] : (buffer_2[i]),
                         StatusCode = (SampleDomain.Models.ProcessStatus)buffer_3[i],
-                        OptionalStatus = buffer_4[i] is null ? (SampleDomain.Models.ProcessStatus?)null : (SampleDomain.Models.ProcessStatus)buffer_4[i]!,
+                        OptionalStatus = noNulls_4 ? (SampleDomain.Models.ProcessStatus?)(SampleDomain.Models.ProcessStatus)raw_4![i] : (buffer_4[i] is null ? (SampleDomain.Models.ProcessStatus?)null : (SampleDomain.Models.ProcessStatus)buffer_4[i]!),
                         TinyNum = buffer_5[i],
                         ShortNum = buffer_6[i],
                         FloatVal = buffer_7[i],
@@ -840,8 +958,10 @@ public static partial class ScalarMetricParquetExtensions
                 global::System.Buffers.ArrayPool<long>.Shared.Return(buffer_0, clearArray: false);
                 global::System.Buffers.ArrayPool<bool>.Shared.Return(buffer_1, clearArray: false);
                 global::System.Buffers.ArrayPool<bool?>.Shared.Return(buffer_2, clearArray: false);
+                if (raw_2 != null) global::System.Buffers.ArrayPool<bool>.Shared.Return(raw_2, clearArray: false);
                 global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_3, clearArray: false);
                 global::System.Buffers.ArrayPool<int?>.Shared.Return(buffer_4, clearArray: false);
+                if (raw_4 != null) global::System.Buffers.ArrayPool<int>.Shared.Return(raw_4, clearArray: false);
                 global::System.Buffers.ArrayPool<byte>.Shared.Return(buffer_5, clearArray: false);
                 global::System.Buffers.ArrayPool<short>.Shared.Return(buffer_6, clearArray: false);
                 global::System.Buffers.ArrayPool<float>.Shared.Return(buffer_7, clearArray: false);
@@ -915,8 +1035,10 @@ public static partial class ScalarMetricParquetExtensions
             var buffer_0 = global::System.Buffers.ArrayPool<long>.Shared.Rent(rowCount);
             var buffer_1 = global::System.Buffers.ArrayPool<bool>.Shared.Rent(rowCount);
             var buffer_2 = global::System.Buffers.ArrayPool<bool?>.Shared.Rent(rowCount);
+            bool[]? raw_2 = null;
             var buffer_3 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
             var buffer_4 = global::System.Buffers.ArrayPool<int?>.Shared.Rent(rowCount);
+            int[]? raw_4 = null;
             var buffer_5 = global::System.Buffers.ArrayPool<byte>.Shared.Rent(rowCount);
             var buffer_6 = global::System.Buffers.ArrayPool<short>.Shared.Rent(rowCount);
             var buffer_7 = global::System.Buffers.ArrayPool<float>.Shared.Rent(rowCount);
@@ -931,11 +1053,39 @@ public static partial class ScalarMetricParquetExtensions
                     field_1,
                     new global::System.Memory<bool>(buffer_1, 0, rowCount),
                     cancellationToken: cancellationToken);
+                bool noNulls_2 = false;
                 var chunkStats_2 = groupReader.GetStatistics(field_2);
                 if (chunkStats_2?.NullCount == rowCount)
                 {
                     // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_2, 0, rowCount);
+                }
+                else if (chunkStats_2?.NullCount == 0)
+                {
+                    // Zero-null fast path (#150): the chunk statistic proves every row is present, so the
+                    // dense page values map straight onto rows and the nullable staging buffer is skipped.
+                    noNulls_2 = true;
+                    if (raw_2 is null || raw_2.Length < rowCount)
+                    {
+                        if (raw_2 != null) global::System.Buffers.ArrayPool<bool>.Shared.Return(raw_2, clearArray: false);
+                        raw_2 = global::System.Buffers.ArrayPool<bool>.Shared.Rent(rowCount);
+                    }
+                    // Parquet.Net 6.1.0 rejects a null definition-level buffer for any field with
+                    // MaxDefinitionLevel > 0, so the levels are decoded into scratch and thrown away.
+                    var defScratch_2 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                    try
+                    {
+                        await groupReader.ReadRawAsync<bool>(
+                            field_2,
+                            new global::System.Memory<bool>(raw_2, 0, rowCount),
+                            new global::System.Memory<int>(defScratch_2, 0, rowCount),
+                            null,
+                            cancellationToken);
+                    }
+                    finally
+                    {
+                        global::System.Buffers.ArrayPool<int>.Shared.Return(defScratch_2, clearArray: false);
+                    }
                 }
                 else
                 {
@@ -948,11 +1098,39 @@ public static partial class ScalarMetricParquetExtensions
                     field_3,
                     new global::System.Memory<int>(buffer_3, 0, rowCount),
                     cancellationToken: cancellationToken);
+                bool noNulls_4 = false;
                 var chunkStats_4 = groupReader.GetStatistics(field_4);
                 if (chunkStats_4?.NullCount == rowCount)
                 {
                     // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_4, 0, rowCount);
+                }
+                else if (chunkStats_4?.NullCount == 0)
+                {
+                    // Zero-null fast path (#150): the chunk statistic proves every row is present, so the
+                    // dense page values map straight onto rows and the nullable staging buffer is skipped.
+                    noNulls_4 = true;
+                    if (raw_4 is null || raw_4.Length < rowCount)
+                    {
+                        if (raw_4 != null) global::System.Buffers.ArrayPool<int>.Shared.Return(raw_4, clearArray: false);
+                        raw_4 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                    }
+                    // Parquet.Net 6.1.0 rejects a null definition-level buffer for any field with
+                    // MaxDefinitionLevel > 0, so the levels are decoded into scratch and thrown away.
+                    var defScratch_4 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                    try
+                    {
+                        await groupReader.ReadRawAsync<int>(
+                            field_4,
+                            new global::System.Memory<int>(raw_4, 0, rowCount),
+                            new global::System.Memory<int>(defScratch_4, 0, rowCount),
+                            null,
+                            cancellationToken);
+                    }
+                    finally
+                    {
+                        global::System.Buffers.ArrayPool<int>.Shared.Return(defScratch_4, clearArray: false);
+                    }
                 }
                 else
                 {
@@ -980,9 +1158,9 @@ public static partial class ScalarMetricParquetExtensions
                     {
                         RowId = buffer_0[i],
                         Flag = buffer_1[i],
-                        NullableFlag = buffer_2[i],
+                        NullableFlag = noNulls_2 ? (bool?)raw_2![i] : (buffer_2[i]),
                         StatusCode = (SampleDomain.Models.ProcessStatus)buffer_3[i],
-                        OptionalStatus = buffer_4[i] is null ? (SampleDomain.Models.ProcessStatus?)null : (SampleDomain.Models.ProcessStatus)buffer_4[i]!,
+                        OptionalStatus = noNulls_4 ? (SampleDomain.Models.ProcessStatus?)(SampleDomain.Models.ProcessStatus)raw_4![i] : (buffer_4[i] is null ? (SampleDomain.Models.ProcessStatus?)null : (SampleDomain.Models.ProcessStatus)buffer_4[i]!),
                         TinyNum = buffer_5[i],
                         ShortNum = buffer_6[i],
                         FloatVal = buffer_7[i],
@@ -994,8 +1172,10 @@ public static partial class ScalarMetricParquetExtensions
                 global::System.Buffers.ArrayPool<long>.Shared.Return(buffer_0, clearArray: false);
                 global::System.Buffers.ArrayPool<bool>.Shared.Return(buffer_1, clearArray: false);
                 global::System.Buffers.ArrayPool<bool?>.Shared.Return(buffer_2, clearArray: false);
+                if (raw_2 != null) global::System.Buffers.ArrayPool<bool>.Shared.Return(raw_2, clearArray: false);
                 global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_3, clearArray: false);
                 global::System.Buffers.ArrayPool<int?>.Shared.Return(buffer_4, clearArray: false);
+                if (raw_4 != null) global::System.Buffers.ArrayPool<int>.Shared.Return(raw_4, clearArray: false);
                 global::System.Buffers.ArrayPool<byte>.Shared.Return(buffer_5, clearArray: false);
                 global::System.Buffers.ArrayPool<short>.Shared.Return(buffer_6, clearArray: false);
                 global::System.Buffers.ArrayPool<float>.Shared.Return(buffer_7, clearArray: false);
@@ -1057,8 +1237,10 @@ public static partial class ScalarMetricParquetExtensions
             var buffer_0 = global::System.Buffers.ArrayPool<long>.Shared.Rent(rowCount);
             var buffer_1 = global::System.Buffers.ArrayPool<bool>.Shared.Rent(rowCount);
             var buffer_2 = global::System.Buffers.ArrayPool<bool?>.Shared.Rent(rowCount);
+            bool[]? raw_2 = null;
             var buffer_3 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
             var buffer_4 = global::System.Buffers.ArrayPool<int?>.Shared.Rent(rowCount);
+            int[]? raw_4 = null;
             var buffer_5 = global::System.Buffers.ArrayPool<byte>.Shared.Rent(rowCount);
             var buffer_6 = global::System.Buffers.ArrayPool<short>.Shared.Rent(rowCount);
             var buffer_7 = global::System.Buffers.ArrayPool<float>.Shared.Rent(rowCount);
@@ -1072,11 +1254,39 @@ public static partial class ScalarMetricParquetExtensions
                     field_1,
                     new global::System.Memory<bool>(buffer_1, 0, rowCount),
                     cancellationToken: cancellationToken);
+                bool noNulls_2 = false;
                 var chunkStats_2 = groupReader.GetStatistics(field_2);
                 if (chunkStats_2?.NullCount == rowCount)
                 {
                     // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_2, 0, rowCount);
+                }
+                else if (chunkStats_2?.NullCount == 0)
+                {
+                    // Zero-null fast path (#150): the chunk statistic proves every row is present, so the
+                    // dense page values map straight onto rows and the nullable staging buffer is skipped.
+                    noNulls_2 = true;
+                    if (raw_2 is null || raw_2.Length < rowCount)
+                    {
+                        if (raw_2 != null) global::System.Buffers.ArrayPool<bool>.Shared.Return(raw_2, clearArray: false);
+                        raw_2 = global::System.Buffers.ArrayPool<bool>.Shared.Rent(rowCount);
+                    }
+                    // Parquet.Net 6.1.0 rejects a null definition-level buffer for any field with
+                    // MaxDefinitionLevel > 0, so the levels are decoded into scratch and thrown away.
+                    var defScratch_2 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                    try
+                    {
+                        await groupReader.ReadRawAsync<bool>(
+                            field_2,
+                            new global::System.Memory<bool>(raw_2, 0, rowCount),
+                            new global::System.Memory<int>(defScratch_2, 0, rowCount),
+                            null,
+                            cancellationToken);
+                    }
+                    finally
+                    {
+                        global::System.Buffers.ArrayPool<int>.Shared.Return(defScratch_2, clearArray: false);
+                    }
                 }
                 else
                 {
@@ -1089,11 +1299,39 @@ public static partial class ScalarMetricParquetExtensions
                     field_3,
                     new global::System.Memory<int>(buffer_3, 0, rowCount),
                     cancellationToken: cancellationToken);
+                bool noNulls_4 = false;
                 var chunkStats_4 = groupReader.GetStatistics(field_4);
                 if (chunkStats_4?.NullCount == rowCount)
                 {
                     // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_4, 0, rowCount);
+                }
+                else if (chunkStats_4?.NullCount == 0)
+                {
+                    // Zero-null fast path (#150): the chunk statistic proves every row is present, so the
+                    // dense page values map straight onto rows and the nullable staging buffer is skipped.
+                    noNulls_4 = true;
+                    if (raw_4 is null || raw_4.Length < rowCount)
+                    {
+                        if (raw_4 != null) global::System.Buffers.ArrayPool<int>.Shared.Return(raw_4, clearArray: false);
+                        raw_4 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                    }
+                    // Parquet.Net 6.1.0 rejects a null definition-level buffer for any field with
+                    // MaxDefinitionLevel > 0, so the levels are decoded into scratch and thrown away.
+                    var defScratch_4 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                    try
+                    {
+                        await groupReader.ReadRawAsync<int>(
+                            field_4,
+                            new global::System.Memory<int>(raw_4, 0, rowCount),
+                            new global::System.Memory<int>(defScratch_4, 0, rowCount),
+                            null,
+                            cancellationToken);
+                    }
+                    finally
+                    {
+                        global::System.Buffers.ArrayPool<int>.Shared.Return(defScratch_4, clearArray: false);
+                    }
                 }
                 else
                 {
@@ -1121,9 +1359,9 @@ public static partial class ScalarMetricParquetExtensions
                     {
                         RowId = buffer_0[i],
                         Flag = buffer_1[i],
-                        NullableFlag = buffer_2[i],
+                        NullableFlag = noNulls_2 ? (bool?)raw_2![i] : (buffer_2[i]),
                         StatusCode = (SampleDomain.Models.ProcessStatus)buffer_3[i],
-                        OptionalStatus = buffer_4[i] is null ? (SampleDomain.Models.ProcessStatus?)null : (SampleDomain.Models.ProcessStatus)buffer_4[i]!,
+                        OptionalStatus = noNulls_4 ? (SampleDomain.Models.ProcessStatus?)(SampleDomain.Models.ProcessStatus)raw_4![i] : (buffer_4[i] is null ? (SampleDomain.Models.ProcessStatus?)null : (SampleDomain.Models.ProcessStatus)buffer_4[i]!),
                         TinyNum = buffer_5[i],
                         ShortNum = buffer_6[i],
                         FloatVal = buffer_7[i],
@@ -1135,8 +1373,10 @@ public static partial class ScalarMetricParquetExtensions
                 global::System.Buffers.ArrayPool<long>.Shared.Return(buffer_0, clearArray: false);
                 global::System.Buffers.ArrayPool<bool>.Shared.Return(buffer_1, clearArray: false);
                 global::System.Buffers.ArrayPool<bool?>.Shared.Return(buffer_2, clearArray: false);
+                if (raw_2 != null) global::System.Buffers.ArrayPool<bool>.Shared.Return(raw_2, clearArray: false);
                 global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_3, clearArray: false);
                 global::System.Buffers.ArrayPool<int?>.Shared.Return(buffer_4, clearArray: false);
+                if (raw_4 != null) global::System.Buffers.ArrayPool<int>.Shared.Return(raw_4, clearArray: false);
                 global::System.Buffers.ArrayPool<byte>.Shared.Return(buffer_5, clearArray: false);
                 global::System.Buffers.ArrayPool<short>.Shared.Return(buffer_6, clearArray: false);
                 global::System.Buffers.ArrayPool<float>.Shared.Return(buffer_7, clearArray: false);
@@ -1326,8 +1566,10 @@ public static partial class ScalarMetricParquetExtensions
             var buffer_0 = global::System.Buffers.ArrayPool<long>.Shared.Rent(maxRowGroupSize);
             var buffer_1 = global::System.Buffers.ArrayPool<bool>.Shared.Rent(maxRowGroupSize);
             var buffer_2 = global::System.Buffers.ArrayPool<bool?>.Shared.Rent(maxRowGroupSize);
+            bool[]? raw_2 = null;
             var buffer_3 = global::System.Buffers.ArrayPool<int>.Shared.Rent(maxRowGroupSize);
             var buffer_4 = global::System.Buffers.ArrayPool<int?>.Shared.Rent(maxRowGroupSize);
+            int[]? raw_4 = null;
             var buffer_5 = global::System.Buffers.ArrayPool<byte>.Shared.Rent(maxRowGroupSize);
             var buffer_6 = global::System.Buffers.ArrayPool<short>.Shared.Rent(maxRowGroupSize);
             var buffer_7 = global::System.Buffers.ArrayPool<float>.Shared.Rent(maxRowGroupSize);
@@ -1352,11 +1594,39 @@ public static partial class ScalarMetricParquetExtensions
                         field_1,
                         new global::System.Memory<bool>(buffer_1, 0, rowCount),
                         cancellationToken: cancellationToken);
+                    bool noNulls_2 = false;
                     var chunkStats_2 = groupReader.GetStatistics(field_2);
                     if (chunkStats_2?.NullCount == rowCount)
                     {
                         // All-null chunk: skip page reading, decompression and decoding entirely.
                         global::System.Array.Clear(buffer_2, 0, rowCount);
+                    }
+                    else if (chunkStats_2?.NullCount == 0)
+                    {
+                        // Zero-null fast path (#150): the chunk statistic proves every row is present, so the
+                        // dense page values map straight onto rows and the nullable staging buffer is skipped.
+                        noNulls_2 = true;
+                        if (raw_2 is null || raw_2.Length < rowCount)
+                        {
+                            if (raw_2 != null) global::System.Buffers.ArrayPool<bool>.Shared.Return(raw_2, clearArray: false);
+                            raw_2 = global::System.Buffers.ArrayPool<bool>.Shared.Rent(rowCount);
+                        }
+                        // Parquet.Net 6.1.0 rejects a null definition-level buffer for any field with
+                        // MaxDefinitionLevel > 0, so the levels are decoded into scratch and thrown away.
+                        var defScratch_2 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                        try
+                        {
+                            await groupReader.ReadRawAsync<bool>(
+                                field_2,
+                                new global::System.Memory<bool>(raw_2, 0, rowCount),
+                                new global::System.Memory<int>(defScratch_2, 0, rowCount),
+                                null,
+                                cancellationToken);
+                        }
+                        finally
+                        {
+                            global::System.Buffers.ArrayPool<int>.Shared.Return(defScratch_2, clearArray: false);
+                        }
                     }
                     else
                     {
@@ -1369,11 +1639,39 @@ public static partial class ScalarMetricParquetExtensions
                         field_3,
                         new global::System.Memory<int>(buffer_3, 0, rowCount),
                         cancellationToken: cancellationToken);
+                    bool noNulls_4 = false;
                     var chunkStats_4 = groupReader.GetStatistics(field_4);
                     if (chunkStats_4?.NullCount == rowCount)
                     {
                         // All-null chunk: skip page reading, decompression and decoding entirely.
                         global::System.Array.Clear(buffer_4, 0, rowCount);
+                    }
+                    else if (chunkStats_4?.NullCount == 0)
+                    {
+                        // Zero-null fast path (#150): the chunk statistic proves every row is present, so the
+                        // dense page values map straight onto rows and the nullable staging buffer is skipped.
+                        noNulls_4 = true;
+                        if (raw_4 is null || raw_4.Length < rowCount)
+                        {
+                            if (raw_4 != null) global::System.Buffers.ArrayPool<int>.Shared.Return(raw_4, clearArray: false);
+                            raw_4 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                        }
+                        // Parquet.Net 6.1.0 rejects a null definition-level buffer for any field with
+                        // MaxDefinitionLevel > 0, so the levels are decoded into scratch and thrown away.
+                        var defScratch_4 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                        try
+                        {
+                            await groupReader.ReadRawAsync<int>(
+                                field_4,
+                                new global::System.Memory<int>(raw_4, 0, rowCount),
+                                new global::System.Memory<int>(defScratch_4, 0, rowCount),
+                                null,
+                                cancellationToken);
+                        }
+                        finally
+                        {
+                            global::System.Buffers.ArrayPool<int>.Shared.Return(defScratch_4, clearArray: false);
+                        }
                     }
                     else
                     {
@@ -1401,9 +1699,9 @@ public static partial class ScalarMetricParquetExtensions
                         {
                             RowId = buffer_0[i],
                             Flag = buffer_1[i],
-                            NullableFlag = buffer_2[i],
+                            NullableFlag = noNulls_2 ? (bool?)raw_2![i] : (buffer_2[i]),
                             StatusCode = (SampleDomain.Models.ProcessStatus)buffer_3[i],
-                            OptionalStatus = buffer_4[i] is null ? (SampleDomain.Models.ProcessStatus?)null : (SampleDomain.Models.ProcessStatus)buffer_4[i]!,
+                            OptionalStatus = noNulls_4 ? (SampleDomain.Models.ProcessStatus?)(SampleDomain.Models.ProcessStatus)raw_4![i] : (buffer_4[i] is null ? (SampleDomain.Models.ProcessStatus?)null : (SampleDomain.Models.ProcessStatus)buffer_4[i]!),
                             TinyNum = buffer_5[i],
                             ShortNum = buffer_6[i],
                             FloatVal = buffer_7[i],
@@ -1416,8 +1714,10 @@ public static partial class ScalarMetricParquetExtensions
                 global::System.Buffers.ArrayPool<long>.Shared.Return(buffer_0, clearArray: false);
                 global::System.Buffers.ArrayPool<bool>.Shared.Return(buffer_1, clearArray: false);
                 global::System.Buffers.ArrayPool<bool?>.Shared.Return(buffer_2, clearArray: false);
+                if (raw_2 != null) global::System.Buffers.ArrayPool<bool>.Shared.Return(raw_2, clearArray: false);
                 global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_3, clearArray: false);
                 global::System.Buffers.ArrayPool<int?>.Shared.Return(buffer_4, clearArray: false);
+                if (raw_4 != null) global::System.Buffers.ArrayPool<int>.Shared.Return(raw_4, clearArray: false);
                 global::System.Buffers.ArrayPool<byte>.Shared.Return(buffer_5, clearArray: false);
                 global::System.Buffers.ArrayPool<short>.Shared.Return(buffer_6, clearArray: false);
                 global::System.Buffers.ArrayPool<float>.Shared.Return(buffer_7, clearArray: false);
@@ -1473,8 +1773,10 @@ public static partial class ScalarMetricParquetExtensions
         var buffer_0 = global::System.Buffers.ArrayPool<long>.Shared.Rent(maxRowCount);
         var buffer_1 = global::System.Buffers.ArrayPool<bool>.Shared.Rent(maxRowCount);
         var buffer_2 = global::System.Buffers.ArrayPool<bool?>.Shared.Rent(maxRowCount);
+        bool[]? raw_2 = null;
         var buffer_3 = global::System.Buffers.ArrayPool<int>.Shared.Rent(maxRowCount);
         var buffer_4 = global::System.Buffers.ArrayPool<int?>.Shared.Rent(maxRowCount);
+        int[]? raw_4 = null;
         var buffer_5 = global::System.Buffers.ArrayPool<byte>.Shared.Rent(maxRowCount);
         var buffer_6 = global::System.Buffers.ArrayPool<short>.Shared.Rent(maxRowCount);
         var buffer_7 = global::System.Buffers.ArrayPool<float>.Shared.Rent(maxRowCount);
@@ -1496,11 +1798,39 @@ public static partial class ScalarMetricParquetExtensions
                     field_1,
                     new global::System.Memory<bool>(buffer_1, 0, rowCount),
                     cancellationToken: cancellationToken);
+                bool noNulls_2 = false;
                 var chunkStats_2 = groupReader.GetStatistics(field_2);
                 if (chunkStats_2?.NullCount == rowCount)
                 {
                     // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_2, 0, rowCount);
+                }
+                else if (chunkStats_2?.NullCount == 0)
+                {
+                    // Zero-null fast path (#150): the chunk statistic proves every row is present, so the
+                    // dense page values map straight onto rows and the nullable staging buffer is skipped.
+                    noNulls_2 = true;
+                    if (raw_2 is null || raw_2.Length < rowCount)
+                    {
+                        if (raw_2 != null) global::System.Buffers.ArrayPool<bool>.Shared.Return(raw_2, clearArray: false);
+                        raw_2 = global::System.Buffers.ArrayPool<bool>.Shared.Rent(rowCount);
+                    }
+                    // Parquet.Net 6.1.0 rejects a null definition-level buffer for any field with
+                    // MaxDefinitionLevel > 0, so the levels are decoded into scratch and thrown away.
+                    var defScratch_2 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                    try
+                    {
+                        await groupReader.ReadRawAsync<bool>(
+                            field_2,
+                            new global::System.Memory<bool>(raw_2, 0, rowCount),
+                            new global::System.Memory<int>(defScratch_2, 0, rowCount),
+                            null,
+                            cancellationToken);
+                    }
+                    finally
+                    {
+                        global::System.Buffers.ArrayPool<int>.Shared.Return(defScratch_2, clearArray: false);
+                    }
                 }
                 else
                 {
@@ -1513,11 +1843,39 @@ public static partial class ScalarMetricParquetExtensions
                     field_3,
                     new global::System.Memory<int>(buffer_3, 0, rowCount),
                     cancellationToken: cancellationToken);
+                bool noNulls_4 = false;
                 var chunkStats_4 = groupReader.GetStatistics(field_4);
                 if (chunkStats_4?.NullCount == rowCount)
                 {
                     // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_4, 0, rowCount);
+                }
+                else if (chunkStats_4?.NullCount == 0)
+                {
+                    // Zero-null fast path (#150): the chunk statistic proves every row is present, so the
+                    // dense page values map straight onto rows and the nullable staging buffer is skipped.
+                    noNulls_4 = true;
+                    if (raw_4 is null || raw_4.Length < rowCount)
+                    {
+                        if (raw_4 != null) global::System.Buffers.ArrayPool<int>.Shared.Return(raw_4, clearArray: false);
+                        raw_4 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                    }
+                    // Parquet.Net 6.1.0 rejects a null definition-level buffer for any field with
+                    // MaxDefinitionLevel > 0, so the levels are decoded into scratch and thrown away.
+                    var defScratch_4 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                    try
+                    {
+                        await groupReader.ReadRawAsync<int>(
+                            field_4,
+                            new global::System.Memory<int>(raw_4, 0, rowCount),
+                            new global::System.Memory<int>(defScratch_4, 0, rowCount),
+                            null,
+                            cancellationToken);
+                    }
+                    finally
+                    {
+                        global::System.Buffers.ArrayPool<int>.Shared.Return(defScratch_4, clearArray: false);
+                    }
                 }
                 else
                 {
@@ -1545,9 +1903,9 @@ public static partial class ScalarMetricParquetExtensions
                     {
                         RowId = buffer_0[i],
                         Flag = buffer_1[i],
-                        NullableFlag = buffer_2[i],
+                        NullableFlag = noNulls_2 ? (bool?)raw_2![i] : (buffer_2[i]),
                         StatusCode = (SampleDomain.Models.ProcessStatus)buffer_3[i],
-                        OptionalStatus = buffer_4[i] is null ? (SampleDomain.Models.ProcessStatus?)null : (SampleDomain.Models.ProcessStatus)buffer_4[i]!,
+                        OptionalStatus = noNulls_4 ? (SampleDomain.Models.ProcessStatus?)(SampleDomain.Models.ProcessStatus)raw_4![i] : (buffer_4[i] is null ? (SampleDomain.Models.ProcessStatus?)null : (SampleDomain.Models.ProcessStatus)buffer_4[i]!),
                         TinyNum = buffer_5[i],
                         ShortNum = buffer_6[i],
                         FloatVal = buffer_7[i],
@@ -1561,8 +1919,10 @@ public static partial class ScalarMetricParquetExtensions
             global::System.Buffers.ArrayPool<long>.Shared.Return(buffer_0, clearArray: false);
             global::System.Buffers.ArrayPool<bool>.Shared.Return(buffer_1, clearArray: false);
             global::System.Buffers.ArrayPool<bool?>.Shared.Return(buffer_2, clearArray: false);
+            if (raw_2 != null) global::System.Buffers.ArrayPool<bool>.Shared.Return(raw_2, clearArray: false);
             global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_3, clearArray: false);
             global::System.Buffers.ArrayPool<int?>.Shared.Return(buffer_4, clearArray: false);
+            if (raw_4 != null) global::System.Buffers.ArrayPool<int>.Shared.Return(raw_4, clearArray: false);
             global::System.Buffers.ArrayPool<byte>.Shared.Return(buffer_5, clearArray: false);
             global::System.Buffers.ArrayPool<short>.Shared.Return(buffer_6, clearArray: false);
             global::System.Buffers.ArrayPool<float>.Shared.Return(buffer_7, clearArray: false);

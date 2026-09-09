@@ -625,6 +625,7 @@ public static partial class OrderEventParquetExtensions
             var buffer_5 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
             var buffer_6 = global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Rent(rowCount);
             var buffer_7 = global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Rent(rowCount);
+            global::System.Guid[]? raw_7 = null;
             var buffer_8 = global::System.Buffers.ArrayPool<byte[]>.Shared.Rent(rowCount);
 
             try
@@ -666,11 +667,39 @@ public static partial class OrderEventParquetExtensions
                     field_6,
                     new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount),
                     cancellationToken: cancellationToken);
+                bool noNulls_7 = false;
                 var chunkStats_7 = groupReader.GetStatistics(field_7);
                 if (chunkStats_7?.NullCount == rowCount)
                 {
                     // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_7, 0, rowCount);
+                }
+                else if (chunkStats_7?.NullCount == 0)
+                {
+                    // Zero-null fast path (#150): the chunk statistic proves every row is present, so the
+                    // dense page values map straight onto rows and the nullable staging buffer is skipped.
+                    noNulls_7 = true;
+                    if (raw_7 is null || raw_7.Length < rowCount)
+                    {
+                        if (raw_7 != null) global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(raw_7, clearArray: false);
+                        raw_7 = global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Rent(rowCount);
+                    }
+                    // Parquet.Net 6.1.0 rejects a null definition-level buffer for any field with
+                    // MaxDefinitionLevel > 0, so the levels are decoded into scratch and thrown away.
+                    var defScratch_7 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                    try
+                    {
+                        await groupReader.ReadRawAsync<global::System.Guid>(
+                            field_7,
+                            new global::System.Memory<global::System.Guid>(raw_7, 0, rowCount),
+                            new global::System.Memory<int>(defScratch_7, 0, rowCount),
+                            null,
+                            cancellationToken);
+                    }
+                    finally
+                    {
+                        global::System.Buffers.ArrayPool<int>.Shared.Return(defScratch_7, clearArray: false);
+                    }
                 }
                 else
                 {
@@ -708,7 +737,7 @@ public static partial class OrderEventParquetExtensions
                             CreatedAt = buffer_4[i],
                             Duration = global::System.TimeSpan.FromMilliseconds(buffer_5[i]),
                             CorrelationId = buffer_6[i],
-                            OptionalGuid = buffer_7[i],
+                            OptionalGuid = noNulls_7 ? (System.Guid?)raw_7![i] : (buffer_7[i]),
                             Payload = buffer_8[i],
                         };
                     }
@@ -726,7 +755,7 @@ public static partial class OrderEventParquetExtensions
                         CreatedAt = buffer_4[i],
                         Duration = global::System.TimeSpan.FromMilliseconds(buffer_5[i]),
                         CorrelationId = buffer_6[i],
-                        OptionalGuid = buffer_7[i],
+                        OptionalGuid = noNulls_7 ? (System.Guid?)raw_7![i] : (buffer_7[i]),
                         Payload = buffer_8[i],
                     });
                 }
@@ -743,6 +772,7 @@ public static partial class OrderEventParquetExtensions
                 global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_5, clearArray: false);
                 global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(buffer_6, clearArray: false);
                 global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Return(buffer_7, clearArray: false);
+                if (raw_7 != null) global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(raw_7, clearArray: false);
                 global::System.Buffers.ArrayPool<byte[]>.Shared.Return(buffer_8, clearArray: true);
             }
         }
@@ -801,6 +831,7 @@ public static partial class OrderEventParquetExtensions
             var buffer_5 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
             var buffer_6 = global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Rent(rowCount);
             var buffer_7 = global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Rent(rowCount);
+            global::System.Guid[]? raw_7 = null;
             var buffer_8 = global::System.Buffers.ArrayPool<byte[]>.Shared.Rent(rowCount);
 
             try
@@ -842,11 +873,39 @@ public static partial class OrderEventParquetExtensions
                     field_6,
                     new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount),
                     cancellationToken: cancellationToken);
+                bool noNulls_7 = false;
                 var chunkStats_7 = groupReader.GetStatistics(field_7);
                 if (chunkStats_7?.NullCount == rowCount)
                 {
                     // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_7, 0, rowCount);
+                }
+                else if (chunkStats_7?.NullCount == 0)
+                {
+                    // Zero-null fast path (#150): the chunk statistic proves every row is present, so the
+                    // dense page values map straight onto rows and the nullable staging buffer is skipped.
+                    noNulls_7 = true;
+                    if (raw_7 is null || raw_7.Length < rowCount)
+                    {
+                        if (raw_7 != null) global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(raw_7, clearArray: false);
+                        raw_7 = global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Rent(rowCount);
+                    }
+                    // Parquet.Net 6.1.0 rejects a null definition-level buffer for any field with
+                    // MaxDefinitionLevel > 0, so the levels are decoded into scratch and thrown away.
+                    var defScratch_7 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                    try
+                    {
+                        await groupReader.ReadRawAsync<global::System.Guid>(
+                            field_7,
+                            new global::System.Memory<global::System.Guid>(raw_7, 0, rowCount),
+                            new global::System.Memory<int>(defScratch_7, 0, rowCount),
+                            null,
+                            cancellationToken);
+                    }
+                    finally
+                    {
+                        global::System.Buffers.ArrayPool<int>.Shared.Return(defScratch_7, clearArray: false);
+                    }
                 }
                 else
                 {
@@ -880,7 +939,7 @@ public static partial class OrderEventParquetExtensions
                         CreatedAt = buffer_4[i],
                         Duration = global::System.TimeSpan.FromMilliseconds(buffer_5[i]),
                         CorrelationId = buffer_6[i],
-                        OptionalGuid = buffer_7[i],
+                        OptionalGuid = noNulls_7 ? (System.Guid?)raw_7![i] : (buffer_7[i]),
                         Payload = buffer_8[i],
                     };
                 }
@@ -896,6 +955,7 @@ public static partial class OrderEventParquetExtensions
                 global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_5, clearArray: false);
                 global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(buffer_6, clearArray: false);
                 global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Return(buffer_7, clearArray: false);
+                if (raw_7 != null) global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(raw_7, clearArray: false);
                 global::System.Buffers.ArrayPool<byte[]>.Shared.Return(buffer_8, clearArray: true);
             }
         }
@@ -976,6 +1036,7 @@ public static partial class OrderEventParquetExtensions
             var buffer_5 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
             var buffer_6 = global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Rent(rowCount);
             var buffer_7 = global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Rent(rowCount);
+            global::System.Guid[]? raw_7 = null;
             var buffer_8 = global::System.Buffers.ArrayPool<byte[]>.Shared.Rent(rowCount);
 
             try
@@ -1017,11 +1078,39 @@ public static partial class OrderEventParquetExtensions
                     field_6,
                     new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount),
                     cancellationToken: cancellationToken);
+                bool noNulls_7 = false;
                 var chunkStats_7 = groupReader.GetStatistics(field_7);
                 if (chunkStats_7?.NullCount == rowCount)
                 {
                     // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_7, 0, rowCount);
+                }
+                else if (chunkStats_7?.NullCount == 0)
+                {
+                    // Zero-null fast path (#150): the chunk statistic proves every row is present, so the
+                    // dense page values map straight onto rows and the nullable staging buffer is skipped.
+                    noNulls_7 = true;
+                    if (raw_7 is null || raw_7.Length < rowCount)
+                    {
+                        if (raw_7 != null) global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(raw_7, clearArray: false);
+                        raw_7 = global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Rent(rowCount);
+                    }
+                    // Parquet.Net 6.1.0 rejects a null definition-level buffer for any field with
+                    // MaxDefinitionLevel > 0, so the levels are decoded into scratch and thrown away.
+                    var defScratch_7 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                    try
+                    {
+                        await groupReader.ReadRawAsync<global::System.Guid>(
+                            field_7,
+                            new global::System.Memory<global::System.Guid>(raw_7, 0, rowCount),
+                            new global::System.Memory<int>(defScratch_7, 0, rowCount),
+                            null,
+                            cancellationToken);
+                    }
+                    finally
+                    {
+                        global::System.Buffers.ArrayPool<int>.Shared.Return(defScratch_7, clearArray: false);
+                    }
                 }
                 else
                 {
@@ -1055,7 +1144,7 @@ public static partial class OrderEventParquetExtensions
                         CreatedAt = buffer_4[i],
                         Duration = global::System.TimeSpan.FromMilliseconds(buffer_5[i]),
                         CorrelationId = buffer_6[i],
-                        OptionalGuid = buffer_7[i],
+                        OptionalGuid = noNulls_7 ? (System.Guid?)raw_7![i] : (buffer_7[i]),
                         Payload = buffer_8[i],
                     };
                 }
@@ -1070,6 +1159,7 @@ public static partial class OrderEventParquetExtensions
                 global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_5, clearArray: false);
                 global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(buffer_6, clearArray: false);
                 global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Return(buffer_7, clearArray: false);
+                if (raw_7 != null) global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(raw_7, clearArray: false);
                 global::System.Buffers.ArrayPool<byte[]>.Shared.Return(buffer_8, clearArray: true);
             }
         }
@@ -1138,6 +1228,7 @@ public static partial class OrderEventParquetExtensions
             var buffer_5 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
             var buffer_6 = global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Rent(rowCount);
             var buffer_7 = global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Rent(rowCount);
+            global::System.Guid[]? raw_7 = null;
             var buffer_8 = global::System.Buffers.ArrayPool<byte[]>.Shared.Rent(rowCount);
             try
             {
@@ -1178,11 +1269,39 @@ public static partial class OrderEventParquetExtensions
                     field_6,
                     new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount),
                     cancellationToken: cancellationToken);
+                bool noNulls_7 = false;
                 var chunkStats_7 = groupReader.GetStatistics(field_7);
                 if (chunkStats_7?.NullCount == rowCount)
                 {
                     // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_7, 0, rowCount);
+                }
+                else if (chunkStats_7?.NullCount == 0)
+                {
+                    // Zero-null fast path (#150): the chunk statistic proves every row is present, so the
+                    // dense page values map straight onto rows and the nullable staging buffer is skipped.
+                    noNulls_7 = true;
+                    if (raw_7 is null || raw_7.Length < rowCount)
+                    {
+                        if (raw_7 != null) global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(raw_7, clearArray: false);
+                        raw_7 = global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Rent(rowCount);
+                    }
+                    // Parquet.Net 6.1.0 rejects a null definition-level buffer for any field with
+                    // MaxDefinitionLevel > 0, so the levels are decoded into scratch and thrown away.
+                    var defScratch_7 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                    try
+                    {
+                        await groupReader.ReadRawAsync<global::System.Guid>(
+                            field_7,
+                            new global::System.Memory<global::System.Guid>(raw_7, 0, rowCount),
+                            new global::System.Memory<int>(defScratch_7, 0, rowCount),
+                            null,
+                            cancellationToken);
+                    }
+                    finally
+                    {
+                        global::System.Buffers.ArrayPool<int>.Shared.Return(defScratch_7, clearArray: false);
+                    }
                 }
                 else
                 {
@@ -1216,7 +1335,7 @@ public static partial class OrderEventParquetExtensions
                         CreatedAt = buffer_4[i],
                         Duration = global::System.TimeSpan.FromMilliseconds(buffer_5[i]),
                         CorrelationId = buffer_6[i],
-                        OptionalGuid = buffer_7[i],
+                        OptionalGuid = noNulls_7 ? (System.Guid?)raw_7![i] : (buffer_7[i]),
                         Payload = buffer_8[i],
                     };
                 }
@@ -1231,6 +1350,7 @@ public static partial class OrderEventParquetExtensions
                 global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_5, clearArray: false);
                 global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(buffer_6, clearArray: false);
                 global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Return(buffer_7, clearArray: false);
+                if (raw_7 != null) global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(raw_7, clearArray: false);
                 global::System.Buffers.ArrayPool<byte[]>.Shared.Return(buffer_8, clearArray: true);
             }
         }
@@ -1427,6 +1547,7 @@ public static partial class OrderEventParquetExtensions
             var buffer_5 = global::System.Buffers.ArrayPool<int>.Shared.Rent(maxRowGroupSize);
             var buffer_6 = global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Rent(maxRowGroupSize);
             var buffer_7 = global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Rent(maxRowGroupSize);
+            global::System.Guid[]? raw_7 = null;
             var buffer_8 = global::System.Buffers.ArrayPool<byte[]>.Shared.Rent(maxRowGroupSize);
 
             try
@@ -1480,11 +1601,39 @@ public static partial class OrderEventParquetExtensions
                         field_6,
                         new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount),
                         cancellationToken: cancellationToken);
+                    bool noNulls_7 = false;
                     var chunkStats_7 = groupReader.GetStatistics(field_7);
                     if (chunkStats_7?.NullCount == rowCount)
                     {
                         // All-null chunk: skip page reading, decompression and decoding entirely.
                         global::System.Array.Clear(buffer_7, 0, rowCount);
+                    }
+                    else if (chunkStats_7?.NullCount == 0)
+                    {
+                        // Zero-null fast path (#150): the chunk statistic proves every row is present, so the
+                        // dense page values map straight onto rows and the nullable staging buffer is skipped.
+                        noNulls_7 = true;
+                        if (raw_7 is null || raw_7.Length < rowCount)
+                        {
+                            if (raw_7 != null) global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(raw_7, clearArray: false);
+                            raw_7 = global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Rent(rowCount);
+                        }
+                        // Parquet.Net 6.1.0 rejects a null definition-level buffer for any field with
+                        // MaxDefinitionLevel > 0, so the levels are decoded into scratch and thrown away.
+                        var defScratch_7 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                        try
+                        {
+                            await groupReader.ReadRawAsync<global::System.Guid>(
+                                field_7,
+                                new global::System.Memory<global::System.Guid>(raw_7, 0, rowCount),
+                                new global::System.Memory<int>(defScratch_7, 0, rowCount),
+                                null,
+                                cancellationToken);
+                        }
+                        finally
+                        {
+                            global::System.Buffers.ArrayPool<int>.Shared.Return(defScratch_7, clearArray: false);
+                        }
                     }
                     else
                     {
@@ -1518,7 +1667,7 @@ public static partial class OrderEventParquetExtensions
                             CreatedAt = buffer_4[i],
                             Duration = global::System.TimeSpan.FromMilliseconds(buffer_5[i]),
                             CorrelationId = buffer_6[i],
-                            OptionalGuid = buffer_7[i],
+                            OptionalGuid = noNulls_7 ? (System.Guid?)raw_7![i] : (buffer_7[i]),
                             Payload = buffer_8[i],
                         };
                     }
@@ -1534,6 +1683,7 @@ public static partial class OrderEventParquetExtensions
                 global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_5, clearArray: false);
                 global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(buffer_6, clearArray: false);
                 global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Return(buffer_7, clearArray: false);
+                if (raw_7 != null) global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(raw_7, clearArray: false);
                 global::System.Buffers.ArrayPool<byte[]>.Shared.Return(buffer_8, clearArray: true);
             }
         }
@@ -1593,6 +1743,7 @@ public static partial class OrderEventParquetExtensions
         var buffer_5 = global::System.Buffers.ArrayPool<int>.Shared.Rent(maxRowCount);
         var buffer_6 = global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Rent(maxRowCount);
         var buffer_7 = global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Rent(maxRowCount);
+        global::System.Guid[]? raw_7 = null;
         var buffer_8 = global::System.Buffers.ArrayPool<byte[]>.Shared.Rent(maxRowCount);
 
         using var stringDeduplicator = new StringDeduplicator(512);
@@ -1644,11 +1795,39 @@ public static partial class OrderEventParquetExtensions
                     field_6,
                     new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount),
                     cancellationToken: cancellationToken);
+                bool noNulls_7 = false;
                 var chunkStats_7 = groupReader.GetStatistics(field_7);
                 if (chunkStats_7?.NullCount == rowCount)
                 {
                     // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_7, 0, rowCount);
+                }
+                else if (chunkStats_7?.NullCount == 0)
+                {
+                    // Zero-null fast path (#150): the chunk statistic proves every row is present, so the
+                    // dense page values map straight onto rows and the nullable staging buffer is skipped.
+                    noNulls_7 = true;
+                    if (raw_7 is null || raw_7.Length < rowCount)
+                    {
+                        if (raw_7 != null) global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(raw_7, clearArray: false);
+                        raw_7 = global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Rent(rowCount);
+                    }
+                    // Parquet.Net 6.1.0 rejects a null definition-level buffer for any field with
+                    // MaxDefinitionLevel > 0, so the levels are decoded into scratch and thrown away.
+                    var defScratch_7 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+                    try
+                    {
+                        await groupReader.ReadRawAsync<global::System.Guid>(
+                            field_7,
+                            new global::System.Memory<global::System.Guid>(raw_7, 0, rowCount),
+                            new global::System.Memory<int>(defScratch_7, 0, rowCount),
+                            null,
+                            cancellationToken);
+                    }
+                    finally
+                    {
+                        global::System.Buffers.ArrayPool<int>.Shared.Return(defScratch_7, clearArray: false);
+                    }
                 }
                 else
                 {
@@ -1682,7 +1861,7 @@ public static partial class OrderEventParquetExtensions
                         CreatedAt = buffer_4[i],
                         Duration = global::System.TimeSpan.FromMilliseconds(buffer_5[i]),
                         CorrelationId = buffer_6[i],
-                        OptionalGuid = buffer_7[i],
+                        OptionalGuid = noNulls_7 ? (System.Guid?)raw_7![i] : (buffer_7[i]),
                         Payload = buffer_8[i],
                     };
                 }
@@ -1699,6 +1878,7 @@ public static partial class OrderEventParquetExtensions
             global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_5, clearArray: false);
             global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(buffer_6, clearArray: false);
             global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Return(buffer_7, clearArray: false);
+            if (raw_7 != null) global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(raw_7, clearArray: false);
             global::System.Buffers.ArrayPool<byte[]>.Shared.Return(buffer_8, clearArray: true);
         }
 

@@ -141,6 +141,16 @@ public sealed class ParserAndEmitterTests
         Assert.Contains("WriteAllPartsAsync", source);
         Assert.Contains("ReadParquetParallelAsync", source);
         Assert.Contains("if (chunkStats_1?.NullCount == rowCount)", source);
+        // Zero-null fast path (#150): dense lane, raw read and loop-invariant selector for the
+        // nullable value-type columns (slot 5 = Guid?, slot 6 = enum backed by int).
+        Assert.Contains("else if (chunkStats_6?.NullCount == 0)", source);
+        Assert.Contains("bool noNulls_6 = false;", source);
+        Assert.Contains("int[]? raw_6 = null;", source);
+        Assert.Contains("await groupReader.ReadRawAsync<int>(", source);
+        Assert.Contains("await groupReader.ReadRawAsync<global::System.Guid>(", source);
+        // Reference-typed nullable columns keep their existing decode: null is the reference
+        // itself, so there is no nullable staging buffer to bypass.
+        Assert.DoesNotContain("else if (chunkStats_1?.NullCount == 0)", source);
         Assert.Contains("global::System.Array.Clear(buffer_1, 0, rowCount);", source);
         Assert.Contains(
             "else\n                {\n                    await groupReader.ReadAsync(",

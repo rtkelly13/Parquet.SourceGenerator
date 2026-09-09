@@ -200,6 +200,10 @@ internal static class CompoundBuffers
             builder.AppendLine(
                 $"{indent}var {varPrefix}{i} = global::System.Buffers.ArrayPool<{bufType}>.Shared.Rent({sizeExpr});"
             );
+            if (!isWrite && ZeroNullReadComponent.IsEligible(col.Leaf))
+            {
+                ZeroNullReadComponent.EmitDeclaration(builder, col.Leaf, i, indent);
+            }
         }
     }
 
@@ -236,6 +240,10 @@ internal static class CompoundBuffers
             builder.AppendLine(
                 $"{indent}global::System.Buffers.ArrayPool<{bufType}>.Shared.Return({varPrefix}{i}, {clearArg});"
             );
+            if (!isWrite && ZeroNullReadComponent.IsEligible(col.Leaf))
+            {
+                ZeroNullReadComponent.EmitReturn(builder, col.Leaf, i, indent);
+            }
         }
     }
 }

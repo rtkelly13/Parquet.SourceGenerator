@@ -203,7 +203,8 @@ internal static class BufferPoolComponent
         string sizeExpr,
         string varPrefix = "buffer_",
         string indent = "        ",
-        bool isWrite = false
+        bool isWrite = false,
+        bool zeroNullFastPath = false
     )
     {
         for (int i = 0; i < model.Properties.Length; i++)
@@ -213,6 +214,10 @@ internal static class BufferPoolComponent
             builder.AppendLine(
                 $"{indent}var {varPrefix}{i} = global::System.Buffers.ArrayPool<{bufType}>.Shared.Rent({sizeExpr});"
             );
+            if (!isWrite && zeroNullFastPath && ZeroNullReadComponent.IsEligible(prop))
+            {
+                ZeroNullReadComponent.EmitDeclaration(builder, prop, i, indent);
+            }
         }
     }
 
@@ -224,7 +229,8 @@ internal static class BufferPoolComponent
         TargetClassModel model,
         string varPrefix = "buffer_",
         string indent = "            ",
-        bool isWrite = false
+        bool isWrite = false,
+        bool zeroNullFastPath = false
     )
     {
         for (int i = 0; i < model.Properties.Length; i++)
@@ -236,6 +242,10 @@ internal static class BufferPoolComponent
             builder.AppendLine(
                 $"{indent}global::System.Buffers.ArrayPool<{bufType}>.Shared.Return({varPrefix}{i}, {clearArg});"
             );
+            if (!isWrite && zeroNullFastPath && ZeroNullReadComponent.IsEligible(prop))
+            {
+                ZeroNullReadComponent.EmitReturn(builder, prop, i, indent);
+            }
         }
     }
 }

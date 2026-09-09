@@ -88,7 +88,8 @@ internal static class PropertyMappingComponent
         string rowCountVar = "rowCount",
         string indexVar = "i",
         string bufferPrefix = "buffer_",
-        string indent = "                "
+        string indent = "                ",
+        bool zeroNullFastPath = false
     )
     {
         if (IsSingleFieldBlittableStruct(model))
@@ -139,7 +140,8 @@ internal static class PropertyMappingComponent
                 startOffsetVar,
                 indexVar,
                 bufferPrefix: bufferPrefix,
-                indent: indent + "    "
+                indent: indent + "    ",
+                zeroNullFastPath: zeroNullFastPath
             );
             builder.AppendLine($"{indent}}}");
         }
@@ -259,7 +261,8 @@ internal static class PropertyMappingComponent
         string offsetExpr,
         string indexVar,
         string bufferPrefix = "buffer_",
-        string indent = "                "
+        string indent = "                ",
+        bool zeroNullFastPath = false
     )
     {
         string targetSlot = string.IsNullOrEmpty(offsetExpr)
@@ -272,7 +275,13 @@ internal static class PropertyMappingComponent
         for (int i = 0; i < model.Properties.Length; i++)
         {
             PropertyModel prop = model.Properties[i];
-            string readExpr = GetReadExpression(prop, $"{bufferPrefix}{i}[{indexVar}]");
+            string readExpr = ZeroNullReadComponent.SelectReadExpression(
+                prop,
+                i,
+                indexVar,
+                bufferPrefix,
+                zeroNullFastPath
+            );
             builder.AppendLine($"{indent}    {prop.Name} = {readExpr},");
         }
 

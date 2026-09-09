@@ -405,9 +405,12 @@ internal static class CompoundMapping
             }
 
             int slot = plan.ColumnSlotByProperty[p];
-            string readExpr = PropertyMappingComponent.GetReadExpression(
+            string readExpr = ZeroNullReadComponent.SelectReadExpression(
                 prop,
-                $"{bufferPrefix}{slot}[{indexVar}]"
+                slot,
+                indexVar,
+                bufferPrefix,
+                zeroNullFastPath: true
             );
             builder.AppendLine($"{prefix}{prop.Name} = {readExpr},");
         }

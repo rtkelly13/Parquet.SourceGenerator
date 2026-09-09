@@ -453,6 +453,12 @@ public static class CodeEmitter
             return;
         }
 
+        bool zeroNull = ZeroNullReadComponent.IsEligible(prop);
+        if (zeroNull)
+        {
+            builder.AppendLine($"{indent}bool {ZeroNullReadComponent.FlagVar(propIndex)} = false;");
+        }
+
         builder.AppendLine(
             $"{indent}var chunkStats_{propIndex} = groupReader.GetStatistics({fieldAccess});"
         );
@@ -463,6 +469,19 @@ public static class CodeEmitter
         );
         builder.AppendLine($"{indent}    global::System.Array.Clear({bufName}, 0, rowCount);");
         builder.AppendLine($"{indent}}}");
+        if (zeroNull)
+        {
+            builder.AppendLine($"{indent}else if (chunkStats_{propIndex}?.NullCount == 0)");
+            builder.AppendLine($"{indent}{{");
+            ZeroNullReadComponent.EmitFastRead(
+                builder,
+                prop,
+                propIndex,
+                fieldAccess,
+                indent + "    "
+            );
+            builder.AppendLine($"{indent}}}");
+        }
         builder.AppendLine($"{indent}else");
         builder.AppendLine($"{indent}{{");
         builder.AppendLine(GetReadPrimitiveCall(prop, fieldAccess, bufName, indent + "    "));
@@ -2222,7 +2241,15 @@ public static class CodeEmitter
             CompoundBuffers.EmitRentals(builder, model, sizeExpr, varPrefix, indent);
             return;
         }
-        BufferPoolComponent.EmitRentals(builder, model, sizeExpr, varPrefix, indent, isWrite);
+        BufferPoolComponent.EmitRentals(
+            builder,
+            model,
+            sizeExpr,
+            varPrefix,
+            indent,
+            isWrite,
+            zeroNullFastPath: !isWrite
+        );
     }
 
     private static void EmitReturnsFor(
@@ -2238,7 +2265,14 @@ public static class CodeEmitter
             CompoundBuffers.EmitReturns(builder, model, varPrefix, indent);
             return;
         }
-        BufferPoolComponent.EmitReturns(builder, model, varPrefix, indent, isWrite);
+        BufferPoolComponent.EmitReturns(
+            builder,
+            model,
+            varPrefix,
+            indent,
+            isWrite,
+            zeroNullFastPath: !isWrite
+        );
     }
 
     private static void EmitWriteRentalsFor(
@@ -2305,7 +2339,8 @@ public static class CodeEmitter
             rowCountVar,
             indexVar,
             bufferPrefix,
-            indent
+            indent,
+            zeroNullFastPath: true
         );
     }
 
