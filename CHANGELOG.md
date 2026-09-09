@@ -12,6 +12,17 @@ Changes since `0.0.1`. That version is published on nuget.org (alongside the `0.
 `0.0.1-dev.2` prereleases); this section becomes the next release entry when one is cut.
 
 ### Added
+- **`ParquetSerializerOptions.WriteStrategy`**: `RowOriented` (default), `ColumnPipelined` or
+  `Auto`. The column-pipelined path traverses the rows once per column and reuses one pooled buffer
+  per distinct physical element type, computed as a static reuse map at codegen time. On a
+  16-column interleaved schema that is 5 `ArrayPool` rentals instead of 27 and 60 peak concurrent
+  buffer bytes per row instead of 284, measured as a 17-24 % cut in cold-pool allocated bytes and a
+  24-32 % cut in peak managed heap, for a 2-13 % CPU cost. `Auto` compares
+  `rowCount * PeakRowOrientedBufferBytesPerRow` (a generated constant) against
+  `ColumnPipelinedMemoryThresholdBytes` (default 64 MiB). Output is byte-identical to the
+  row-oriented path. Models with nested struct or list columns report
+  `SupportsColumnPipelinedWrite == false` and stay row-oriented. See
+  `docs/12-BUFFER-REUSE-AND-EXTRACTION-STRATEGIES.md` §6.
 - **Roslyn incremental source generator**: compiles zero-reflection Parquet serializers and
   deserializers against Parquet.Net low-level primitives.
 - **Native AOT support**, exercised on every CI run by publishing the AOT test project with

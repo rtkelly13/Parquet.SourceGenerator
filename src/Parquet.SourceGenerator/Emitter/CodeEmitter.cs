@@ -64,8 +64,23 @@ public static class CodeEmitter
             builder.AppendLine();
         }
 
+        // Codegen-time buffer footprint constants driving the WriteStrategy.Auto heuristic
+        ColumnPipelineComponent.EmitConstants(builder, model);
+        builder.AppendLine();
+
         // Streaming row group writer — low level primitives, 100M+ scale, Native AOT compatible
         EmitWriteRowGroupAsync(builder, model);
+        builder.AppendLine();
+
+        if (ColumnPipelineComponent.IsSupported(model))
+        {
+            // Column-pipelined row group writer — one pooled buffer per distinct element type
+            ColumnPipelineComponent.EmitColumnPipelinedWrite(builder, model);
+            builder.AppendLine();
+        }
+
+        // Strategy-dispatching row group writer overload
+        ColumnPipelineComponent.EmitStrategyDispatch(builder, model);
         builder.AppendLine();
 
         // Primary write API — async (v6 requires async for writer creation)
@@ -266,6 +281,18 @@ public static class CodeEmitter
         builder.AppendLine("        return formatOptions;");
         builder.AppendLine("    }");
     }
+
+    /// <summary>
+    /// Column-pipelined emission reuses the row-oriented write call verbatim; the pipelined body
+    /// declares <c>buffer_N</c>, <c>defLevels_N</c> and <c>nonNullCount_N</c> aliases with the same
+    /// names inside each column's block so the two paths emit identical Parquet calls.
+    /// </summary>
+    internal static string GetWritePrimitiveCallForPipeline(
+        LeafColumn col,
+        string fieldAccess,
+        string bufName,
+        string indent
+    ) => GetWritePrimitiveCall(col, fieldAccess, bufName, indent);
 
     private static string GetWritePrimitiveCall(
         LeafColumn col,
@@ -781,7 +808,7 @@ public static class CodeEmitter
         builder.AppendLine("            BuildFormatOptions(options),");
         builder.AppendLine("            cancellationToken: cancellationToken);");
         builder.AppendLine(
-            "        await writer.WriteParquetRowGroupAsync(items, cancellationToken);"
+            "        await writer.WriteParquetRowGroupAsync(items, options, cancellationToken);"
         );
         builder.AppendLine("    }");
     }
@@ -828,7 +855,7 @@ public static class CodeEmitter
         builder.AppendLine("                BuildFormatOptions(options),");
         builder.AppendLine("                cancellationToken: cancellationToken);");
         builder.AppendLine(
-            "            await singleWriter.WriteParquetRowGroupAsync(col, cancellationToken);"
+            "            await singleWriter.WriteParquetRowGroupAsync(col, options, cancellationToken);"
         );
         builder.AppendLine("            return;");
         builder.AppendLine("        }");
@@ -850,14 +877,14 @@ public static class CodeEmitter
         builder.AppendLine("            if (buffer.Count == targetChunkSize)");
         builder.AppendLine("            {");
         builder.AppendLine(
-            "                await writer.WriteParquetRowGroupAsync(buffer, cancellationToken);"
+            "                await writer.WriteParquetRowGroupAsync(buffer, options, cancellationToken);"
         );
         builder.AppendLine("                buffer.Clear();");
         builder.AppendLine("            }");
         builder.AppendLine("        }");
         builder.AppendLine("        if (buffer.Count > 0)");
         builder.AppendLine(
-            "            await writer.WriteParquetRowGroupAsync(buffer, cancellationToken);"
+            "            await writer.WriteParquetRowGroupAsync(buffer, options, cancellationToken);"
         );
         builder.AppendLine("    }");
     }
@@ -909,14 +936,14 @@ public static class CodeEmitter
         builder.AppendLine("            if (buffer.Count == targetChunkSize)");
         builder.AppendLine("            {");
         builder.AppendLine(
-            "                await writer.WriteParquetRowGroupAsync(buffer, cancellationToken);"
+            "                await writer.WriteParquetRowGroupAsync(buffer, options, cancellationToken);"
         );
         builder.AppendLine("                buffer.Clear();");
         builder.AppendLine("            }");
         builder.AppendLine("        }");
         builder.AppendLine("        if (buffer.Count > 0)");
         builder.AppendLine(
-            "            await writer.WriteParquetRowGroupAsync(buffer, cancellationToken);"
+            "            await writer.WriteParquetRowGroupAsync(buffer, options, cancellationToken);"
         );
         builder.AppendLine("    }");
     }

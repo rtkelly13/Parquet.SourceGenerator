@@ -8,7 +8,25 @@ sealed partial class Program
 {
     static async Task Main(string[] args)
     {
-        if (
+        if (TryGetOption(args, "--peak-memory", out string? strategyName))
+        {
+            int rows = 50_000;
+            if (
+                TryGetOption(args, "--rows", out string? rowsText)
+                && int.TryParse(
+                    rowsText,
+                    System.Globalization.NumberStyles.Integer,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out int parsed
+                )
+            )
+            {
+                rows = parsed;
+            }
+
+            await PeakMemoryProbe.ExecuteAsync(strategyName!, rows);
+        }
+        else if (
             args.Contains("--profile", StringComparer.Ordinal)
             || args.Contains("profile", StringComparer.Ordinal)
         )

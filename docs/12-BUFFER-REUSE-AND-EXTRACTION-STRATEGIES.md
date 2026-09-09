@@ -182,3 +182,106 @@ finally
 | **In-Memory POCO Collections (`List<T>`, `T[]`, `IReadOnlyCollection<T>`)** | **Row-Oriented Single Pass + Eager Progressive Returns** *(Production Default)* | Maximizes L1/L2 CPU cache spatial locality. 1.8×–5.5× faster than multi-pass pipelining. Eager returns immediately release memory during column compression/I/O. |
 | **Extreme Memory-Constrained Environments (e.g. AWS Lambda with 128MB RAM, 100+ columns)** | **Column-Pipelined with Type Buffer Reuse** *(Optional Future Flag)* | Reduces peak active memory from $O(N \times \text{batch})$ to $O(1 \times \text{batch})$ at the cost of 2×–3× CPU traversal time. |
 | **Column-Oriented In-Memory Sources (e.g. Apache Arrow RecordBatches)** | **Direct Columnar Handoff** | When data is already arranged in contiguous column buffers, zero extraction is needed—buffers can be passed straight to `WriteAsync` with zero passes over rows. |
+
+---
+
+## 🧪 6. Shipped Implementation (issue #136) and Re-measurement
+
+Strategy 4 is now generated. `ParquetSerializerOptions.WriteStrategy` selects between
+`RowOriented` (default), `ColumnPipelined` and `Auto`; `Auto` compares
+`rowCount * PeakRowOrientedBufferBytesPerRow` — a codegen-time constant emitted onto every
+generated extensions class — against `ColumnPipelinedMemoryThresholdBytes` (default 64 MiB).
+
+### 6.1 The reuse map
+
+At emission time the generator groups the schema's columns by *physical buffer element type* and
+assigns one pooled slot per distinct type. A slot is rented on its first column and returned after
+its last, so a slot whose columns are non-consecutive is carried across the intermediate writes
+that Parquet's fixed schema order forces (§4.2). Nullable value columns additionally share one
+`int[]` definition-level buffer across the whole row group.
+
+For the 16-column interleaved lineitem schema this gives four data slots plus one shared
+`defLevels` buffer — **5 rentals against the row-oriented path's 27**, reproducing the figure in
+§2 — and reduces peak concurrent buffer bytes from **284 to 60 bytes per row**.
+
+Peak is not `O(1 × batchSize)` as originally hoped: it is
+`O(max simultaneously-live type slots × batchSize)`. Returning at each column's last use, rather
+than after every column, is what buys the rental reduction, and the schema's interleaving decides
+how many slots overlap. A schema whose same-type columns are consecutive collapses to a single live
+slot; a fully interleaved one keeps every distinct type live at once.
+
+### 6.2 Why "Allocated" is the wrong metric
+
+Sibling experiment #212 established that on this codebase `ArrayPool` rentals cost nothing in
+allocated bytes once the pool is warm. That is confirmed here: across all four benchmark arms
+below, BenchmarkDotNet reports **identical** allocated bytes. The claim this strategy makes is
+about *peak concurrently-live buffer bytes*, which only shows up against a cold pool or in a heap
+peak, so it is measured separately.
+
+### 6.3 Measured — peak memory, cold pool, fresh process per reading
+
+`dotnet test/Parquet.SourceGenerator.CLI.dll --peak-memory <strategy> --rows N`, macOS 24.6.0 /
+Apple Silicon arm64, .NET 8.0 runtime, Parquet.Net 6.1.0, uncompressed, one row group.
+`coldAllocated` is the `GC.GetTotalAllocatedBytes` delta across the first write in the process, so
+every rental is a real allocation. `peakHeap` is the maximum of `GC.GetTotalMemory(false)` sampled
+from a dedicated high-priority thread for the duration of the write, minus the pre-write baseline.
+Figures were byte-identical across three repeats.
+
+| Rows | GC mode | Metric | Row-oriented | Column-pipelined | Change |
+| ---: | :--- | :--- | ---: | ---: | ---: |
+| 10,000 | Workstation | cold-pool allocated | 15,198,120 B | 11,583,472 B | **−23.8 %** |
+| 10,000 | Workstation | peak managed heap | 15,767,488 B | 10,701,440 B | **−32.1 %** |
+| 10,000 | Workstation | warm-pool allocated | 8,703,368 B | 8,699,464 B | −0.04 % |
+| 10,000 | Server | cold-pool allocated | 15,197,784 B | 11,582,368 B | **−23.8 %** |
+| 10,000 | Server | peak managed heap | 15,219,728 B | 11,604,376 B | **−23.8 %** |
+| 50,000 | Workstation | cold-pool allocated | 85,779,832 B | 71,352,048 B | **−16.8 %** |
+| 50,000 | Workstation | peak managed heap | 64,671,152 B | 49,155,448 B | **−24.0 %** |
+| 50,000 | Workstation | warm-pool allocated | 60,007,424 B | 60,014,904 B | +0.01 % |
+| 50,000 | Server | cold-pool allocated | 85,779,752 B | 71,347,808 B | **−16.8 %** |
+| 50,000 | Server | peak managed heap | 76.8–78.3 MB | 71,429,312 B | −7 to −9 % |
+
+The cold-pool saving tracks the emitted constants closely once `ArrayPool`'s power-of-two bucket
+rounding is accounted for: at 50,000 rows the pool serves 65,536-element arrays, so the predicted
+saving is `65,536 × (284 − 60) = 14.68 MB` against 14.43 MB measured (1.7 % off). At 10,000 rows,
+`16,384 × 224 = 3.67 MB` predicted against 3.61 MB measured.
+
+Server GC shows a smaller heap-peak improvement because it defers collection, so the peak is
+dominated by uncollected garbage rather than by live buffers; the cold-pool figure, which is
+allocation-exact, is unaffected by GC mode.
+
+### 6.4 Measured — CPU cost and heuristic selection
+
+BenchmarkDotNet, `[InProcess]`, same machine, uncompressed, one row group.
+
+| Rows | Arm | Mean | Ratio | Allocated |
+| ---: | :--- | ---: | ---: | ---: |
+| 10,000 | RowOriented | 8.662 ms | 1.00 | 9.30 MB |
+| 10,000 | Auto (below threshold) | 8.683 ms | 1.00 | 9.30 MB |
+| 10,000 | ColumnPipelined | 8.793 ms | 1.02 | 9.30 MB |
+| 10,000 | Auto (above threshold) | 8.794 ms | 1.02 | 9.30 MB |
+| 50,000 | Auto (below threshold) | 44.826 ms | 1.00 | 54.23 MB |
+| 50,000 | RowOriented | 44.855 ms | 1.00 | 54.23 MB |
+| 50,000 | Auto (above threshold) | 50.736 ms | 1.13 | 54.23 MB |
+| 50,000 | ColumnPipelined | 50.809 ms | 1.13 | 54.23 MB |
+
+Each `Auto` arm lands on the mean of the strategy its threshold selects, which is the empirical
+validation of the crossover: with the threshold set to exactly
+`rowCount * PeakRowOrientedBufferBytesPerRow` the heuristic stays row-oriented, and one byte below
+it switches.
+
+The CPU penalty measured here — **2 % at 10k rows and 13 % at 50k** — is far smaller than the
+1.8×–5.5× recorded in §3. Two reasons: §3 timed extraction prototypes rather than the full write,
+and the generated pipelined path only makes N passes over the *row references*, with Parquet.Net's
+encoding and compression dominating the total. The §3 conclusion still stands directionally
+(row-oriented is faster), but the price of the memory-constrained path on this codebase is a
+single-digit-to-low-teens percentage, not a multiple.
+
+### 6.5 Not covered
+
+- Models with nested struct or list columns emit no pipelined path
+  (`SupportsColumnPipelinedWrite == false`) and silently stay row-oriented; their packed lanes are
+  not one value per row, so the reuse map does not apply unchanged.
+- The V4 legacy backend (`ParquetLegacyIncrementalGenerator`) allocates `new T[count]` per column
+  rather than renting, so the reuse map would be a different, GC-side optimisation there; it is
+  unimplemented. The modern generator's pipelined path itself uses no API newer than
+  `netstandard2.0`, so consumers targeting .NET Standard 2.0 / .NET Framework do get it.

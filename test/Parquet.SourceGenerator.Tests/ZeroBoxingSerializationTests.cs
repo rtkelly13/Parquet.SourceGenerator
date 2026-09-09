@@ -156,16 +156,27 @@ public class ZeroBoxingSerializationTests
         return boxes;
     }
 
+    /// <summary>
+    /// Every generated row-group write entry point: the row-oriented writer, the strategy
+    /// dispatcher overload, and (where emitted) the column-pipelined writer. Named lookup alone is
+    /// ambiguous now that the dispatcher shares the row-oriented method's name.
+    /// </summary>
+    private static MethodInfo[] GetRowGroupWriteMethods(Type type) =>
+        [
+            .. type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
+                .Where(m =>
+                    m.Name == "WriteParquetRowGroupAsync"
+                    || m.Name == "WriteParquetRowGroupColumnPipelinedAsync"
+                ),
+        ];
+
     [Fact]
     public void WriteParquetRowGroupAsyncEmitsZeroBoxingOpcodes()
     {
-        MethodInfo? method = typeof(ZeroBoxingRecordParquetExtensions).GetMethod(
-            "WriteParquetRowGroupAsync",
-            BindingFlags.Public | BindingFlags.Static
-        );
+        MethodInfo[] methods = GetRowGroupWriteMethods(typeof(ZeroBoxingRecordParquetExtensions));
 
-        Assert.NotNull(method);
-        int boxCount = CountBoxInstructionsInMethodAndStateMachine(method);
+        Assert.NotEmpty(methods);
+        int boxCount = methods.Sum(CountBoxInstructionsInMethodAndStateMachine);
         Assert.Equal(0, boxCount);
     }
 
@@ -282,17 +293,14 @@ public class ZeroBoxingSerializationTests
 
         foreach (Type type in extensionTypes)
         {
-            MethodInfo? method = type.GetMethod(
-                "WriteParquetRowGroupAsync",
-                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
-            );
+            MethodInfo[] methods = GetRowGroupWriteMethods(type);
 
-            if (method == null)
+            if (methods.Length == 0)
             {
                 continue;
             }
 
-            int boxCount = CountBoxInstructionsInMethodAndStateMachine(method);
+            int boxCount = methods.Sum(CountBoxInstructionsInMethodAndStateMachine);
             if (boxCount > 0)
             {
                 violations.Add($"{type.FullName}: found {boxCount} box opcode(s)");
@@ -337,13 +345,10 @@ public class ZeroBoxingSerializationTests
         Type? extType = compiledAssembly.GetType("DynamicBoxingTest.TestModelParquetExtensions");
         Assert.NotNull(extType);
 
-        MethodInfo? method = extType.GetMethod(
-            "WriteParquetRowGroupAsync",
-            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
-        );
-        Assert.NotNull(method);
+        MethodInfo[] methods = GetRowGroupWriteMethods(extType);
+        Assert.NotEmpty(methods);
 
-        int boxCount = CountBoxInstructionsInMethodAndStateMachine(method);
+        int boxCount = methods.Sum(CountBoxInstructionsInMethodAndStateMachine);
         Assert.Equal(0, boxCount);
     }
 
@@ -400,13 +405,10 @@ public class ZeroBoxingSerializationTests
         );
         Assert.NotNull(extType);
 
-        MethodInfo? method = extType.GetMethod(
-            "WriteParquetRowGroupAsync",
-            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
-        );
-        Assert.NotNull(method);
+        MethodInfo[] methods = GetRowGroupWriteMethods(extType);
+        Assert.NotEmpty(methods);
 
-        int boxCount = CountBoxInstructionsInMethodAndStateMachine(method);
+        int boxCount = methods.Sum(CountBoxInstructionsInMethodAndStateMachine);
         Assert.Equal(0, boxCount);
     }
 

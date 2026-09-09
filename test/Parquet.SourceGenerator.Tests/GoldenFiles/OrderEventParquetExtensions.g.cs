@@ -193,6 +193,30 @@ public static partial class OrderEventParquetExtensions
     }
 
     /// <summary>
+    /// Whether a column-pipelined write path was generated for this model. False for models
+    /// with nested struct or list columns, whose packed lanes are not one value per row.
+    /// </summary>
+    public const bool SupportsColumnPipelinedWrite = true;
+
+    /// <summary>
+    /// Estimated pooled column-buffer bytes held concurrently, per row, by the row-oriented path.
+    /// </summary>
+    public const int PeakRowOrientedBufferBytesPerRow = 124;
+
+    /// <summary>
+    /// Estimated peak pooled column-buffer bytes held concurrently, per row, by the
+    /// column-pipelined path under the static type-reuse map (equals the row-oriented
+    /// figure when no pipelined path was generated).
+    /// </summary>
+    public const int PeakColumnPipelinedBufferBytesPerRow = 28;
+
+    /// <summary>ArrayPool rentals the row-oriented path performs per row group.</summary>
+    public const int RowOrientedBufferRentals = 10;
+
+    /// <summary>ArrayPool rentals the column-pipelined path performs per row group.</summary>
+    public const int ColumnPipelinedBufferRentals = 8;
+
+    /// <summary>
     /// Writes a single row group chunk using Parquet.Net low-level primitives for maximum speed and Native AOT compatibility.
     /// </summary>
     public static async global::System.Threading.Tasks.Task WriteParquetRowGroupAsync(
@@ -456,6 +480,384 @@ public static partial class OrderEventParquetExtensions
     }
 
     /// <summary>
+    /// Writes a single row group chunk column by column, reusing one pooled buffer per distinct
+    /// physical element type. Produces byte-identical output to the row-oriented writer while
+    /// holding at most 28 buffer bytes per row concurrently rather than 124.
+    /// </summary>
+    public static async global::System.Threading.Tasks.Task WriteParquetRowGroupColumnPipelinedAsync(
+        this global::Parquet.ParquetWriter writer,
+        global::System.Collections.Generic.IReadOnlyCollection<OrderEvent> chunk,
+        global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        if (writer == null) throw new global::System.ArgumentNullException(nameof(writer));
+        if (chunk == null) throw new global::System.ArgumentNullException(nameof(chunk));
+
+        int count = chunk.Count;
+        if (count == 0) return;
+
+        var listItems = chunk as global::System.Collections.Generic.List<OrderEvent>;
+        var arrayItems = chunk as OrderEvent[];
+        OrderEvent[]? rentedSource = null;
+        int[]? slot_0 = null;
+        global::System.ReadOnlyMemory<char>?[]? slot_1 = null;
+        double[]? slot_2 = null;
+        decimal[]? slot_3 = null;
+        System.DateTime[]? slot_4 = null;
+        global::System.Guid[]? slot_5 = null;
+        global::System.ReadOnlyMemory<byte>?[]? slot_6 = null;
+        int[]? defSlot = null;
+
+        try
+        {
+            if (listItems is null && arrayItems is null)
+            {
+                rentedSource = global::System.Buffers.ArrayPool<OrderEvent>.Shared.Rent(count);
+                int copyIndex = 0;
+                foreach (var sourceItem in chunk)
+                {
+                    rentedSource[copyIndex++] = sourceItem;
+                }
+                arrayItems = rentedSource;
+            }
+
+            using (var groupWriter = writer.CreateRowGroup())
+            {
+                // column 0: Id -> slot_0 (int)
+                {
+                    int[] buffer_0 = slot_0 ??= global::System.Buffers.ArrayPool<int>.Shared.Rent(count);
+                    void Extract_0()
+                    {
+                        if (arrayItems != null)
+                        {
+                            for (int i = 0; i < count; i++)
+                            {
+                                var item = arrayItems[i];
+                                buffer_0[i] = item.Id;
+                            }
+                        }
+                        else
+                        {
+                            for (int i = 0; i < count; i++)
+                            {
+                                var item = listItems![i];
+                                buffer_0[i] = item.Id;
+                            }
+                        }
+                    }
+                    Extract_0();
+                    await groupWriter.WriteAsync<int>(
+                        _field_0,
+                        new global::System.ReadOnlyMemory<int>(buffer_0, 0, count),
+                        cancellationToken: cancellationToken);
+                }
+                // column 1: Name -> slot_1 (global::System.ReadOnlyMemory<char>?)
+                {
+                    global::System.ReadOnlyMemory<char>?[] buffer_1 = slot_1 ??= global::System.Buffers.ArrayPool<global::System.ReadOnlyMemory<char>?>.Shared.Rent(count);
+                    void Extract_1()
+                    {
+                        if (arrayItems != null)
+                        {
+                            for (int i = 0; i < count; i++)
+                            {
+                                var item = arrayItems[i];
+                                buffer_1[i] = item.Name is null ? (global::System.ReadOnlyMemory<char>?)null : global::System.MemoryExtensions.AsMemory(item.Name);
+                            }
+                        }
+                        else
+                        {
+                            for (int i = 0; i < count; i++)
+                            {
+                                var item = listItems![i];
+                                buffer_1[i] = item.Name is null ? (global::System.ReadOnlyMemory<char>?)null : global::System.MemoryExtensions.AsMemory(item.Name);
+                            }
+                        }
+                    }
+                    Extract_1();
+                    await groupWriter.WriteAsync<global::System.ReadOnlyMemory<char>>(
+                        _field_1,
+                        new global::System.ReadOnlyMemory<global::System.ReadOnlyMemory<char>?>(buffer_1, 0, count),
+                        cancellationToken: cancellationToken);
+                }
+                global::System.Buffers.ArrayPool<global::System.ReadOnlyMemory<char>?>.Shared.Return(slot_1, clearArray: true);
+                slot_1 = null;
+                // column 2: Score -> slot_2 (double)
+                {
+                    double[] buffer_2 = slot_2 ??= global::System.Buffers.ArrayPool<double>.Shared.Rent(count);
+                    void Extract_2()
+                    {
+                        if (arrayItems != null)
+                        {
+                            for (int i = 0; i < count; i++)
+                            {
+                                var item = arrayItems[i];
+                                buffer_2[i] = item.Score;
+                            }
+                        }
+                        else
+                        {
+                            for (int i = 0; i < count; i++)
+                            {
+                                var item = listItems![i];
+                                buffer_2[i] = item.Score;
+                            }
+                        }
+                    }
+                    Extract_2();
+                    await groupWriter.WriteAsync<double>(
+                        _field_2,
+                        new global::System.ReadOnlyMemory<double>(buffer_2, 0, count),
+                        cancellationToken: cancellationToken);
+                }
+                global::System.Buffers.ArrayPool<double>.Shared.Return(slot_2, clearArray: false);
+                slot_2 = null;
+                // column 3: Price -> slot_3 (decimal)
+                {
+                    decimal[] buffer_3 = slot_3 ??= global::System.Buffers.ArrayPool<decimal>.Shared.Rent(count);
+                    void Extract_3()
+                    {
+                        if (arrayItems != null)
+                        {
+                            for (int i = 0; i < count; i++)
+                            {
+                                var item = arrayItems[i];
+                                buffer_3[i] = item.Price;
+                            }
+                        }
+                        else
+                        {
+                            for (int i = 0; i < count; i++)
+                            {
+                                var item = listItems![i];
+                                buffer_3[i] = item.Price;
+                            }
+                        }
+                    }
+                    Extract_3();
+                    await groupWriter.WriteAsync<decimal>(
+                        _field_3,
+                        new global::System.ReadOnlyMemory<decimal>(buffer_3, 0, count),
+                        cancellationToken: cancellationToken);
+                }
+                global::System.Buffers.ArrayPool<decimal>.Shared.Return(slot_3, clearArray: false);
+                slot_3 = null;
+                // column 4: CreatedAt -> slot_4 (System.DateTime)
+                {
+                    System.DateTime[] buffer_4 = slot_4 ??= global::System.Buffers.ArrayPool<System.DateTime>.Shared.Rent(count);
+                    void Extract_4()
+                    {
+                        if (arrayItems != null)
+                        {
+                            for (int i = 0; i < count; i++)
+                            {
+                                var item = arrayItems[i];
+                                buffer_4[i] = item.CreatedAt;
+                            }
+                        }
+                        else
+                        {
+                            for (int i = 0; i < count; i++)
+                            {
+                                var item = listItems![i];
+                                buffer_4[i] = item.CreatedAt;
+                            }
+                        }
+                    }
+                    Extract_4();
+                    await groupWriter.WriteAsync<System.DateTime>(
+                        _field_4,
+                        new global::System.ReadOnlyMemory<System.DateTime>(buffer_4, 0, count),
+                        cancellationToken: cancellationToken);
+                }
+                global::System.Buffers.ArrayPool<System.DateTime>.Shared.Return(slot_4, clearArray: false);
+                slot_4 = null;
+                // column 5: Duration -> slot_0 (int)
+                {
+                    int[] buffer_5 = slot_0 ??= global::System.Buffers.ArrayPool<int>.Shared.Rent(count);
+                    void Extract_5()
+                    {
+                        if (arrayItems != null)
+                        {
+                            for (int i = 0; i < count; i++)
+                            {
+                                var item = arrayItems[i];
+                                buffer_5[i] = checked((int)item.Duration.TotalMilliseconds);
+                            }
+                        }
+                        else
+                        {
+                            for (int i = 0; i < count; i++)
+                            {
+                                var item = listItems![i];
+                                buffer_5[i] = checked((int)item.Duration.TotalMilliseconds);
+                            }
+                        }
+                    }
+                    Extract_5();
+                    await groupWriter.WriteAsync<int>(
+                        _field_5,
+                        new global::System.ReadOnlyMemory<int>(buffer_5, 0, count),
+                        cancellationToken: cancellationToken);
+                }
+                global::System.Buffers.ArrayPool<int>.Shared.Return(slot_0, clearArray: false);
+                slot_0 = null;
+                // column 6: CorrelationId -> slot_5 (global::System.Guid)
+                {
+                    global::System.Guid[] buffer_6 = slot_5 ??= global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Rent(count);
+                    void Extract_6()
+                    {
+                        if (arrayItems != null)
+                        {
+                            for (int i = 0; i < count; i++)
+                            {
+                                var item = arrayItems[i];
+                                buffer_6[i] = item.CorrelationId;
+                            }
+                        }
+                        else
+                        {
+                            for (int i = 0; i < count; i++)
+                            {
+                                var item = listItems![i];
+                                buffer_6[i] = item.CorrelationId;
+                            }
+                        }
+                    }
+                    Extract_6();
+                    await groupWriter.WriteAsync<global::System.Guid>(
+                        _field_6,
+                        new global::System.ReadOnlyMemory<global::System.Guid>(buffer_6, 0, count),
+                        cancellationToken: cancellationToken);
+                }
+                // column 7: OptionalGuid -> slot_5 (global::System.Guid)
+                {
+                    global::System.Guid[] buffer_7 = slot_5 ??= global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Rent(count);
+                    int[] defLevels_7 = defSlot ??= global::System.Buffers.ArrayPool<int>.Shared.Rent(count);
+                    int nonNullCount_7 = 0;
+                    void Extract_7()
+                    {
+                        int nonNull = 0;
+                        if (arrayItems != null)
+                        {
+                            for (int i = 0; i < count; i++)
+                            {
+                                var item = arrayItems[i];
+                                var val_7 = item.OptionalGuid;
+                                if (val_7.HasValue)
+                                {
+                                    buffer_7[nonNull++] = val_7.Value;
+                                    defLevels_7[i] = 1;
+                                }
+                                else
+                                {
+                                    defLevels_7[i] = 0;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            for (int i = 0; i < count; i++)
+                            {
+                                var item = listItems![i];
+                                var val_7 = item.OptionalGuid;
+                                if (val_7.HasValue)
+                                {
+                                    buffer_7[nonNull++] = val_7.Value;
+                                    defLevels_7[i] = 1;
+                                }
+                                else
+                                {
+                                    defLevels_7[i] = 0;
+                                }
+                            }
+                        }
+                        nonNullCount_7 = nonNull;
+                    }
+                    Extract_7();
+                    await groupWriter.WriteAllPartsAsync<global::System.Guid>(
+                        _field_7,
+                        new global::System.ReadOnlyMemory<global::System.Guid>(buffer_7, 0, nonNullCount_7),
+                        new global::System.ReadOnlyMemory<int>(defLevels_7, 0, count),
+                        null,
+                        cancellationToken: cancellationToken);
+                }
+                global::System.Buffers.ArrayPool<int>.Shared.Return(defSlot, clearArray: false);
+                defSlot = null;
+                global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(slot_5, clearArray: false);
+                slot_5 = null;
+                // column 8: Payload -> slot_6 (global::System.ReadOnlyMemory<byte>?)
+                {
+                    global::System.ReadOnlyMemory<byte>?[] buffer_8 = slot_6 ??= global::System.Buffers.ArrayPool<global::System.ReadOnlyMemory<byte>?>.Shared.Rent(count);
+                    void Extract_8()
+                    {
+                        if (arrayItems != null)
+                        {
+                            for (int i = 0; i < count; i++)
+                            {
+                                var item = arrayItems[i];
+                                buffer_8[i] = item.Payload is null ? (global::System.ReadOnlyMemory<byte>?)null : global::System.MemoryExtensions.AsMemory(item.Payload);
+                            }
+                        }
+                        else
+                        {
+                            for (int i = 0; i < count; i++)
+                            {
+                                var item = listItems![i];
+                                buffer_8[i] = item.Payload is null ? (global::System.ReadOnlyMemory<byte>?)null : global::System.MemoryExtensions.AsMemory(item.Payload);
+                            }
+                        }
+                    }
+                    Extract_8();
+                    await groupWriter.WriteAsync<global::System.ReadOnlyMemory<byte>>(
+                        _field_8,
+                        new global::System.ReadOnlyMemory<global::System.ReadOnlyMemory<byte>?>(buffer_8, 0, count),
+                        cancellationToken: cancellationToken);
+                }
+                global::System.Buffers.ArrayPool<global::System.ReadOnlyMemory<byte>?>.Shared.Return(slot_6, clearArray: true);
+                slot_6 = null;
+            }
+        }
+        finally
+        {
+            if (slot_0 != null) global::System.Buffers.ArrayPool<int>.Shared.Return(slot_0, clearArray: false);
+            if (slot_1 != null) global::System.Buffers.ArrayPool<global::System.ReadOnlyMemory<char>?>.Shared.Return(slot_1, clearArray: true);
+            if (slot_2 != null) global::System.Buffers.ArrayPool<double>.Shared.Return(slot_2, clearArray: false);
+            if (slot_3 != null) global::System.Buffers.ArrayPool<decimal>.Shared.Return(slot_3, clearArray: false);
+            if (slot_4 != null) global::System.Buffers.ArrayPool<System.DateTime>.Shared.Return(slot_4, clearArray: false);
+            if (slot_5 != null) global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(slot_5, clearArray: false);
+            if (slot_6 != null) global::System.Buffers.ArrayPool<global::System.ReadOnlyMemory<byte>?>.Shared.Return(slot_6, clearArray: true);
+            if (defSlot != null) global::System.Buffers.ArrayPool<int>.Shared.Return(defSlot, clearArray: false);
+            if (rentedSource != null) global::System.Buffers.ArrayPool<OrderEvent>.Shared.Return(rentedSource, clearArray: true);
+        }
+    }
+
+    /// <summary>
+    /// Writes a single row group chunk, selecting the extraction strategy from <paramref name="options"/>.
+    /// </summary>
+    public static global::System.Threading.Tasks.Task WriteParquetRowGroupAsync(
+        this global::Parquet.ParquetWriter writer,
+        global::System.Collections.Generic.IReadOnlyCollection<OrderEvent> chunk,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options,
+        global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        if (writer == null) throw new global::System.ArgumentNullException(nameof(writer));
+        if (chunk == null) throw new global::System.ArgumentNullException(nameof(chunk));
+
+        var strategy = options?.WriteStrategy ?? global::Parquet.SourceGenerator.ParquetWriteStrategy.RowOriented;
+        if (strategy == global::Parquet.SourceGenerator.ParquetWriteStrategy.Auto)
+        {
+            long thresholdBytes = options?.ColumnPipelinedMemoryThresholdBytes ?? (64L * 1024 * 1024);
+            long estimatedPeakBytes = (long)chunk.Count * PeakRowOrientedBufferBytesPerRow;
+            strategy = estimatedPeakBytes > thresholdBytes
+                ? global::Parquet.SourceGenerator.ParquetWriteStrategy.ColumnPipelined
+                : global::Parquet.SourceGenerator.ParquetWriteStrategy.RowOriented;
+        }
+
+        return strategy == global::Parquet.SourceGenerator.ParquetWriteStrategy.ColumnPipelined
+            ? writer.WriteParquetRowGroupColumnPipelinedAsync(chunk, cancellationToken)
+            : writer.WriteParquetRowGroupAsync(chunk, cancellationToken);
+    }
+
+    /// <summary>
     /// Asynchronously serializes all <c>OrderEvent</c> items using Parquet.Net low-level primitives.
     /// </summary>
     public static async global::System.Threading.Tasks.Task WriteParquetAsync(
@@ -475,7 +877,7 @@ public static partial class OrderEventParquetExtensions
             stream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
-        await writer.WriteParquetRowGroupAsync(items, cancellationToken);
+        await writer.WriteParquetRowGroupAsync(items, options, cancellationToken);
     }
 
     /// <summary>
@@ -505,7 +907,7 @@ public static partial class OrderEventParquetExtensions
                 stream,
                 BuildFormatOptions(options),
                 cancellationToken: cancellationToken);
-            await singleWriter.WriteParquetRowGroupAsync(col, cancellationToken);
+            await singleWriter.WriteParquetRowGroupAsync(col, options, cancellationToken);
             return;
         }
 
@@ -521,12 +923,12 @@ public static partial class OrderEventParquetExtensions
             buffer.Add(item);
             if (buffer.Count == targetChunkSize)
             {
-                await writer.WriteParquetRowGroupAsync(buffer, cancellationToken);
+                await writer.WriteParquetRowGroupAsync(buffer, options, cancellationToken);
                 buffer.Clear();
             }
         }
         if (buffer.Count > 0)
-            await writer.WriteParquetRowGroupAsync(buffer, cancellationToken);
+            await writer.WriteParquetRowGroupAsync(buffer, options, cancellationToken);
     }
 
     /// <summary>
@@ -561,12 +963,12 @@ public static partial class OrderEventParquetExtensions
             buffer.Add(item);
             if (buffer.Count == targetChunkSize)
             {
-                await writer.WriteParquetRowGroupAsync(buffer, cancellationToken);
+                await writer.WriteParquetRowGroupAsync(buffer, options, cancellationToken);
                 buffer.Clear();
             }
         }
         if (buffer.Count > 0)
-            await writer.WriteParquetRowGroupAsync(buffer, cancellationToken);
+            await writer.WriteParquetRowGroupAsync(buffer, options, cancellationToken);
     }
 
     /// <summary>

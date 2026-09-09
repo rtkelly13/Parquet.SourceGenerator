@@ -71,6 +71,38 @@ public enum ParquetCompressionLevel
 }
 
 /// <summary>
+/// Selects how a row group's column buffers are produced during serialization.
+/// </summary>
+/// <remarks>
+/// The two paths write byte-identical Parquet. They differ only in how many pooled column buffers
+/// are alive at once, and in how many times the source collection is traversed. See
+/// <c>docs/12-BUFFER-REUSE-AND-EXTRACTION-STRATEGIES.md</c>.
+/// </remarks>
+public enum ParquetWriteStrategy
+{
+    /// <summary>
+    /// Default. One pass over the rows filling every column buffer, which keeps the row object in
+    /// L1/L2 cache across all of its properties. Fastest for in-memory POCO collections, but holds
+    /// all N column buffers concurrently.
+    /// </summary>
+    RowOriented = 0,
+
+    /// <summary>
+    /// One pass per column, reusing a single pooled buffer per distinct physical element type.
+    /// Peak concurrent buffer bytes drop to the size of the live type slots rather than all N
+    /// columns, at roughly 2x-3x the extraction CPU cost.
+    /// </summary>
+    ColumnPipelined = 1,
+
+    /// <summary>
+    /// Picks <see cref="ColumnPipelined"/> when the estimated peak row-oriented buffer footprint
+    /// for this chunk exceeds <see cref="ParquetSerializerOptions.ColumnPipelinedMemoryThresholdBytes"/>,
+    /// and <see cref="RowOriented"/> otherwise.
+    /// </summary>
+    Auto = 2,
+}
+
+/// <summary>
 /// Configurable options for Parquet source generator serialization and deserialization operations.
 /// </summary>
 public sealed class ParquetSerializerOptions
@@ -148,6 +180,26 @@ public sealed class ParquetSerializerOptions
     /// avoiding expensive full-column scans on high-cardinality data. Default is null (leaving Parquet.Net's default of 0 / full scan).
     /// </summary>
     public int? DictionaryEncodingSampleSize { get; set; }
+
+    /// <summary>
+    /// Gets or sets which row-group write strategy the generated writer uses (default is
+    /// <see cref="ParquetWriteStrategy.RowOriented"/>).
+    /// </summary>
+    public ParquetWriteStrategy WriteStrategy { get; set; } = ParquetWriteStrategy.RowOriented;
+
+    /// <summary>
+    /// Gets or sets the estimated peak column-buffer footprint, in bytes, above which
+    /// <see cref="ParquetWriteStrategy.Auto"/> switches to the column-pipelined path
+    /// (default is 64 MiB).
+    /// </summary>
+    /// <remarks>
+    /// The estimate is <c>rowCount * PeakRowOrientedBufferBytesPerRow</c>, where the per-row figure
+    /// is a codegen-time constant emitted onto each generated extensions class. It counts pooled
+    /// column buffer bytes only: the row objects themselves, Parquet.Net's internal encode buffers
+    /// and the output stream are not included, so the threshold is a proxy for buffer pressure and
+    /// not a total process working-set budget.
+    /// </remarks>
+    public long ColumnPipelinedMemoryThresholdBytes { get; set; } = 64L * 1024 * 1024;
 
     /// <summary>
     /// Specifies runtime encoding hints to the writer for specific columns by column path or name.

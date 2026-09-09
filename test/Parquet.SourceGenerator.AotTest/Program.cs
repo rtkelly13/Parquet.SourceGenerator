@@ -185,6 +185,10 @@ internal static class Program
             ReorderedColumnsAsync
         );
         await CheckAsync("every compression codec round-trips", CompressionCodecsAsync);
+        await CheckAsync(
+            "column-pipelined write matches row-oriented byte for byte",
+            ColumnPipelinedWriteAsync
+        );
 
         Console.WriteLine("=================================================");
         if (_failures == 0)
@@ -545,6 +549,65 @@ internal static class Program
         );
         Expect(read[0].Int64Value == written[0].Int64Value, "reordered long mismatch");
         Expect(read[0].DoubleValue == written[0].DoubleValue, "reordered double mismatch");
+    }
+
+    private static async Task ColumnPipelinedWriteAsync()
+    {
+        // The pipelined path emits a separate generated method with its own local functions and
+        // pooled slot locals; AOT compiles it independently of the row-oriented one.
+        var written = new List<AotWideRecord>();
+        for (int i = 0; i < 200; i++)
+        {
+            written.Add(SampleWide(i));
+        }
+
+        Expect(
+            AotWideRecordParquetExtensions.SupportsColumnPipelinedWrite,
+            "expected a column-pipelined path for the wide record"
+        );
+        Expect(
+            AotWideRecordParquetExtensions.PeakColumnPipelinedBufferBytesPerRow
+                < AotWideRecordParquetExtensions.PeakRowOrientedBufferBytesPerRow,
+            "reuse map did not reduce the peak buffer footprint"
+        );
+
+        using var rowOriented = new MemoryStream();
+        await written.WriteParquetAsync(
+            rowOriented,
+            new ParquetSerializerOptions { WriteStrategy = ParquetWriteStrategy.RowOriented }
+        );
+
+        using var pipelined = new MemoryStream();
+        await written.WriteParquetAsync(
+            pipelined,
+            new ParquetSerializerOptions { WriteStrategy = ParquetWriteStrategy.ColumnPipelined }
+        );
+
+        using var auto = new MemoryStream();
+        await written.WriteParquetAsync(
+            auto,
+            new ParquetSerializerOptions
+            {
+                WriteStrategy = ParquetWriteStrategy.Auto,
+                ColumnPipelinedMemoryThresholdBytes = 1,
+            }
+        );
+
+        byte[] a = rowOriented.ToArray();
+        byte[] b = pipelined.ToArray();
+        byte[] c = auto.ToArray();
+        Expect(a.Length == b.Length, $"length differs: {a.Length} vs {b.Length}");
+        for (int i = 0; i < a.Length; i++)
+        {
+            Expect(a[i] == b[i], $"byte {i} differs between the two write strategies");
+        }
+        Expect(c.Length == b.Length, "Auto did not take the column-pipelined path");
+
+        pipelined.Position = 0;
+        List<AotWideRecord> read = await AotWideRecordParquetExtensions.ReadParquetAsync(pipelined);
+        Expect(read.Count == written.Count, $"expected {written.Count} rows, read {read.Count}");
+        ExpectWideEqual(written[0], read[0], 0);
+        ExpectWideEqual(written[199], read[199], 199);
     }
 
     private static async Task CompressionCodecsAsync()

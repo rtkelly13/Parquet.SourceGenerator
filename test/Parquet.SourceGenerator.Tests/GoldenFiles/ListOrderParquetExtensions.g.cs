@@ -136,6 +136,30 @@ public static partial class ListOrderParquetExtensions
     }
 
     /// <summary>
+    /// Whether a column-pipelined write path was generated for this model. False for models
+    /// with nested struct or list columns, whose packed lanes are not one value per row.
+    /// </summary>
+    public const bool SupportsColumnPipelinedWrite = false;
+
+    /// <summary>
+    /// Estimated pooled column-buffer bytes held concurrently, per row, by the row-oriented path.
+    /// </summary>
+    public const int PeakRowOrientedBufferBytesPerRow = 64;
+
+    /// <summary>
+    /// Estimated peak pooled column-buffer bytes held concurrently, per row, by the
+    /// column-pipelined path under the static type-reuse map (equals the row-oriented
+    /// figure when no pipelined path was generated).
+    /// </summary>
+    public const int PeakColumnPipelinedBufferBytesPerRow = 64;
+
+    /// <summary>ArrayPool rentals the row-oriented path performs per row group.</summary>
+    public const int RowOrientedBufferRentals = 10;
+
+    /// <summary>ArrayPool rentals the column-pipelined path performs per row group.</summary>
+    public const int ColumnPipelinedBufferRentals = 10;
+
+    /// <summary>
     /// Writes a single row group chunk using Parquet.Net low-level primitives for maximum speed and Native AOT compatibility.
     /// </summary>
     public static async global::System.Threading.Tasks.Task WriteParquetRowGroupAsync(
@@ -1285,6 +1309,22 @@ public static partial class ListOrderParquetExtensions
     }
 
     /// <summary>
+    /// Writes a single row group chunk, selecting the extraction strategy from <paramref name="options"/>.
+    /// </summary>
+    public static global::System.Threading.Tasks.Task WriteParquetRowGroupAsync(
+        this global::Parquet.ParquetWriter writer,
+        global::System.Collections.Generic.IReadOnlyCollection<ListOrder> chunk,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options,
+        global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        if (writer == null) throw new global::System.ArgumentNullException(nameof(writer));
+        if (chunk == null) throw new global::System.ArgumentNullException(nameof(chunk));
+
+        // No column-pipelined path exists for this model; the strategy is advisory only.
+        return writer.WriteParquetRowGroupAsync(chunk, cancellationToken);
+    }
+
+    /// <summary>
     /// Asynchronously serializes all <c>ListOrder</c> items using Parquet.Net low-level primitives.
     /// </summary>
     public static async global::System.Threading.Tasks.Task WriteParquetAsync(
@@ -1304,7 +1344,7 @@ public static partial class ListOrderParquetExtensions
             stream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
-        await writer.WriteParquetRowGroupAsync(items, cancellationToken);
+        await writer.WriteParquetRowGroupAsync(items, options, cancellationToken);
     }
 
     /// <summary>
@@ -1334,7 +1374,7 @@ public static partial class ListOrderParquetExtensions
                 stream,
                 BuildFormatOptions(options),
                 cancellationToken: cancellationToken);
-            await singleWriter.WriteParquetRowGroupAsync(col, cancellationToken);
+            await singleWriter.WriteParquetRowGroupAsync(col, options, cancellationToken);
             return;
         }
 
@@ -1350,12 +1390,12 @@ public static partial class ListOrderParquetExtensions
             buffer.Add(item);
             if (buffer.Count == targetChunkSize)
             {
-                await writer.WriteParquetRowGroupAsync(buffer, cancellationToken);
+                await writer.WriteParquetRowGroupAsync(buffer, options, cancellationToken);
                 buffer.Clear();
             }
         }
         if (buffer.Count > 0)
-            await writer.WriteParquetRowGroupAsync(buffer, cancellationToken);
+            await writer.WriteParquetRowGroupAsync(buffer, options, cancellationToken);
     }
 
     /// <summary>
@@ -1390,12 +1430,12 @@ public static partial class ListOrderParquetExtensions
             buffer.Add(item);
             if (buffer.Count == targetChunkSize)
             {
-                await writer.WriteParquetRowGroupAsync(buffer, cancellationToken);
+                await writer.WriteParquetRowGroupAsync(buffer, options, cancellationToken);
                 buffer.Clear();
             }
         }
         if (buffer.Count > 0)
-            await writer.WriteParquetRowGroupAsync(buffer, cancellationToken);
+            await writer.WriteParquetRowGroupAsync(buffer, options, cancellationToken);
     }
 
     /// <summary>
