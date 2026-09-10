@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>netstandard2.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <LangVersion>latest</LangVersion>
+        <RootNamespace>Parquet.SourceGenerator.ApiGates</RootNamespace>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+        <!--
+      This assembly is build-time policy, not product. It is referenced only as an analyzer, by
+      projects inside this repository, and it is never packed: the two generator packages build
+      their nupkg content from `$(TargetPath)` alone (see their PackBuildOutputs targets), so
+      nothing here can reach a consumer's compilation. That property is load-bearing — the emitted
+      API gate compares this repository's golden files against this repository's baselines, and a
+      consumer's own models appear in neither.
+    -->
+        <IsPackable>false</IsPackable>
+        <DevelopmentDependency>true</DevelopmentDependency>
+        <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+
+        <!--
+      RS2008 asks for AnalyzerReleases.{Shipped,Unshipped}.md. Release tracking exists so that
+      consumers of a *published* analyzer package can see which rules arrived in which version.
+      This assembly is never published: it is repository build policy, referenced by path, versioned
+      by the commit that changes it. The rules are documented where their audience reads —
+      docs/18-API-CHANGE-CONTRACT.md — rather than in a release file nobody receives.
+    -->
+        <NoWarn>$(NoWarn);RS2008</NoWarn>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference
+            Include="Microsoft.CodeAnalysis.CSharp"
+            VersionOverride="4.0.1"
+            PrivateAssets="all"
+        />
+        <PackageReference
+            Include="Microsoft.CodeAnalysis.Analyzers"
+            VersionOverride="3.3.3"
+            PrivateAssets="all"
+        />
+    </ItemGroup>
+</Project>

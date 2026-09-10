@@ -99,6 +99,13 @@ Welcome to the **Parquet.SourceGenerator** documentation repository. This folder
      - Why it borrows the `PublicAPI.Shipped.txt` grammar, and the two deliberate deviations.
      - Deterministic ordinal ordering, the `UPDATE_GOLDEN_FILES` refresh path, and the CI gate.
 
+19. **[18 - The API Change Contract](./18-API-CHANGE-CONTRACT.md)**
+     - The rule: nothing enters a governed surface without a catalogue line *and* a ledger entry.
+     - The three surfaces (emitted / shipped package / internal seams) and their build gates
+       `PARQAPI001`, `RS0016` and `PARQAPI002`.
+     - Semver buckets, the pre-1.0 stance, the `**Unapproved-by-design:**` escape hatch, and the
+       four-step author process.
+
 
 ---
 

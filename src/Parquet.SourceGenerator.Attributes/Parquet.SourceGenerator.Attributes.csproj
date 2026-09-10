@@ -17,4 +17,21 @@
         <AdditionalFiles Include="PublicAPI.Shipped.txt" />
         <AdditionalFiles Include="PublicAPI.Unshipped.txt" />
     </ItemGroup>
+
+    <!--
+    PARQAPI002 (docs/18-API-CHANGE-CONTRACT.md). The gate is an analyzer, referenced build-time
+    only: ReferenceOutputAssembly="false" keeps it out of the compile scope and PrivateAssets="all"
+    keeps it out of the produced package. It short-circuits unless it is handed src/api/seams.txt,
+    which only the projects in this ItemGroup supply.
+  -->
+    <ItemGroup>
+        <ProjectReference
+            Include="..\..\tools\Parquet.SourceGenerator.ApiGates\Parquet.SourceGenerator.ApiGates.csproj"
+            OutputItemType="Analyzer"
+            ReferenceOutputAssembly="false"
+            PrivateAssets="all"
+        />
+        <AdditionalFiles Include="..\api\seams.txt" />
+        <AdditionalFiles Include="..\..\docs\api\LEDGER.md" />
+    </ItemGroup>
 </Project>
