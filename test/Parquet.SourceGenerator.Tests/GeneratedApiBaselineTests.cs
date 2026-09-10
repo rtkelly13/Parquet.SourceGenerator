@@ -1,4 +1,5 @@
 using System.Globalization;
+using Parquet.SourceGenerator.ApiGates;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;

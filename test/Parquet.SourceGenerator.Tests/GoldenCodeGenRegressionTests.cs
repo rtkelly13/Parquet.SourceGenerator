@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Parquet.SourceGenerator.ApiGates;
 using Parquet.SourceGenerator.Diagnostics;
 using Parquet.SourceGenerator.Emitter;
 using Parquet.SourceGenerator.Models;

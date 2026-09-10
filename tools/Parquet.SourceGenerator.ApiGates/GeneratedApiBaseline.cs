@@ -3,7 +3,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace Parquet.SourceGenerator.Tests;
+namespace Parquet.SourceGenerator.ApiGates;
 
 /// <summary>
 /// Renders a signature-only baseline of the public API a generated source file emits.
@@ -69,7 +69,7 @@ namespace Parquet.SourceGenerator.Tests;
 /// containing it is likewise. A <c>public</c> member of a <c>private</c> nested helper — the
 /// emitted <c>StringDeduplicator</c>, for instance — is not public API and is not listed.</para>
 /// </remarks>
-internal static class GeneratedApiBaseline
+public static class GeneratedApiBaseline
 {
     /// <summary>First line of every baseline file, mirroring <c>PublicAPI.Shipped.txt</c>.</summary>
     public const string NullableHeader = "#nullable enable";
@@ -198,7 +198,14 @@ internal static class GeneratedApiBaseline
             if (enumMember.EqualsValue is { } equalsValue)
             {
                 value = Normalize(equalsValue.Value.ToString());
-                if (long.TryParse(value, out long parsed))
+                if (
+                    long.TryParse(
+                        value,
+                        System.Globalization.NumberStyles.Integer,
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        out long parsed
+                    )
+                )
                 {
                     implicitValue = parsed + 1;
                 }
@@ -466,6 +473,31 @@ internal static class GeneratedApiBaseline
         string.IsNullOrEmpty(containerName) ? name : containerName + "." + name;
 
     /// <summary>
+    /// Ordinal <c>string.Replace</c>. The <c>StringComparison</c> overload does not exist on
+    /// netstandard2.0, which this assembly targets so that it can load as a Roslyn analyzer.
+    /// </summary>
+    private static string RemoveOrdinal(string text, string value)
+    {
+        int index = text.IndexOf(value, StringComparison.Ordinal);
+        if (index < 0)
+        {
+            return text;
+        }
+
+        var builder = new StringBuilder(text.Length);
+        int start = 0;
+        while (index >= 0)
+        {
+            builder.Append(text, start, index - start);
+            start = index + value.Length;
+            index = text.IndexOf(value, start, StringComparison.Ordinal);
+        }
+
+        builder.Append(text, start, text.Length - start);
+        return builder.ToString();
+    }
+
+    /// <summary>
     /// Collapses the layout the emitter chose — parameter lists wrap across many lines — into one
     /// canonical single-line spelling, and drops <c>global::</c> qualifiers.
     /// </summary>
@@ -476,7 +508,7 @@ internal static class GeneratedApiBaseline
             return string.Empty;
         }
 
-        string withoutGlobal = text!.Replace("global::", string.Empty, StringComparison.Ordinal);
+        string withoutGlobal = RemoveOrdinal(text!, "global::");
 
         var builder = new StringBuilder(withoutGlobal.Length);
         bool pendingSpace = false;

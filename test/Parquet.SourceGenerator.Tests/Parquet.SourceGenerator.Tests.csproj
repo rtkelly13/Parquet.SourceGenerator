@@ -60,4 +60,43 @@
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
     </ItemGroup>
+
+    <!--
+    PARQAPI001 (docs/18-API-CHANGE-CONTRACT.md). The emitted-API gate is a build error, not just a
+    test failure, and it lives here because this is the project that owns GoldenFiles/.
+
+    The renderer is shared rather than duplicated: GeneratedApiBaseline.cs is compiled into both
+    this assembly (where GoldenCodeGenRegressionTests uses it to write and diff the baselines) and
+    into the analyzer (where PARQAPI001 uses it to re-derive the surface at build time). One
+    physical file means the build gate and the test gate cannot disagree about what a signature
+    looks like.
+  -->
+    <ItemGroup>
+        <Compile
+            Include="..\..\tools\Parquet.SourceGenerator.ApiGates\GeneratedApiBaseline.cs"
+            Link="GeneratedApiBaseline.cs"
+        />
+        <!--
+      The catalogue reader and the escape-hatch matcher are subtle enough to deserve unit tests of
+      their own, and an analyzer's internals are otherwise only reachable through a full
+      compilation. Linked in for the same reason as the renderer above: one implementation.
+    -->
+        <Compile
+            Include="..\..\tools\Parquet.SourceGenerator.ApiGates\ApiCatalogue.cs"
+            Link="ApiCatalogue.cs"
+        />
+        <Compile
+            Include="..\..\tools\Parquet.SourceGenerator.ApiGates\ApiLedger.cs"
+            Link="ApiLedger.cs"
+        />
+        <ProjectReference
+            Include="..\..\tools\Parquet.SourceGenerator.ApiGates\Parquet.SourceGenerator.ApiGates.csproj"
+            OutputItemType="Analyzer"
+            ReferenceOutputAssembly="false"
+            PrivateAssets="all"
+        />
+        <AdditionalFiles Include="GoldenFiles\**\*.g.cs" />
+        <AdditionalFiles Include="GoldenFiles\**\*.api.txt" />
+        <AdditionalFiles Include="..\..\docs\api\LEDGER.md" />
+    </ItemGroup>
 </Project>

@@ -88,7 +88,8 @@ references, so no semantic model exists.
 `GoldenCodeGenRegressionTests.AssertGoldenMatch` writes the golden `.g.cs` and the `.api.txt`
 **from the same emitted string, in the same call**. The two cannot drift, because there is no code
 path that produces one without the other. The renderer lives in
-`test/Parquet.SourceGenerator.Tests/GeneratedApiBaseline.cs` and parses the emitted source with
+`tools/Parquet.SourceGenerator.ApiGates/GeneratedApiBaseline.cs` (compiled into both the test
+assembly and the `PARQAPI001` analyzer) and parses the emitted source with
 Roslyn (`CSharpSyntaxTree.ParseText`), walking declaration syntax — never regex over text, never
 reflection, never symbol enumeration order.
 
@@ -131,7 +132,12 @@ refresh it with UPDATE_GOLDEN_FILES=true (or comment /update-golden on the PR) a
   1 removed, 1 added, 55 public members emitted in total.
 ```
 
-Because the ordinary CI test run executes this suite, an unreviewed API change cannot land.
+Because the ordinary CI test run executes this suite, an unreviewed API change cannot land. Since
+[18](./18-API-CHANGE-CONTRACT.md), the same comparison also runs at **build** time as `PARQAPI001`,
+from the same renderer — `GeneratedApiBaseline.cs` is compiled into both this test assembly and the
+analyzer in `tools/Parquet.SourceGenerator.ApiGates`, so the build gate and the test gate cannot
+disagree about what a signature looks like. The build error covers additions; this test still
+covers removals and ordering.
 
 ## What the baselines currently say
 
@@ -150,8 +156,9 @@ attribute. That number is the point of this document: it was not previously visi
 
 ## Stability contract
 
-A follow-up will enforce this format as a build error and require a ledger entry per line, so the
-format is fixed in the two ways that matter:
+[18 - The API Change Contract](./18-API-CHANGE-CONTRACT.md) now enforces this format as a **build
+error** (`PARQAPI001`) and requires a `docs/api/LEDGER.md` entry per added line, so the format is
+fixed in the two ways that matter:
 
 - **A line is self-contained.** It never depends on another line's presence or position.
 - **A line is stable.** It changes only when the member it describes changes.

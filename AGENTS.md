@@ -18,4 +18,14 @@
    The `--disable-parallel` flag is strictly required to prevent package extraction race conditions between CLI tools sharing package name prefixes.
 10. **Diagnostics Invocation**: Always execute installed tools via `dotnet tool run <command>` (e.g. `dotnet tool run ilspycmd`, `dotnet tool run dotnet-inspect`, `dotnet tool run dotnet-dump`) or via dedicated repository runners (`scripts/InterrogateIL.cs`, `scripts/TriageMemoryDump.cs`).
 
-11. **Upstream Dependency Limitations**: Track package limitations and candidate upstream improvements in `UPSTREAM_DEPENDENCY_LIMITATIONS.md`, not in this file.
+11. **API Change Contract**: Three API surfaces are governed — the emitted consumer API
+    (`*.api.txt` beside each golden file, gated by `PARQAPI001`), the shipped package API
+    (`PublicAPI.Unshipped.txt`, gated by `RS0016`) and internal seams (`src/api/seams.txt`, gated
+    by `PARQAPI002`). Nothing enters any of them without **both** a catalogue line and a
+    `docs/api/LEDGER.md` entry recording its semver bucket. All three gates are **build errors**,
+    not test failures. Body, performance and comment changes alter the golden `.g.cs` but not the
+    `.api.txt`, and are not API changes. A ledger entry marked `**Unapproved-by-design:**`
+    suppresses the build error for spikes and cannot merge to `main`. Full rule:
+    `docs/18-API-CHANGE-CONTRACT.md`.
+
+12. **Upstream Dependency Limitations**: Track package limitations and candidate upstream improvements in `UPSTREAM_DEPENDENCY_LIMITATIONS.md`, not in this file.

@@ -12,6 +12,17 @@ Changes since `0.0.1`. That version is published on nuget.org (alongside the `0.
 `0.0.1-dev.2` prereleases); this section becomes the next release entry when one is cut.
 
 ### Added
+- **API change contract (`PARQAPI001` / `PARQAPI002`)**: three API surfaces are now governed, and
+  nothing enters one without a catalogue line *and* a `docs/api/LEDGER.md` entry recording its
+  semver bucket. The emitted consumer API is gated at **build** time against the `*.api.txt`
+  baselines added by #215 (`PARQAPI001`); internal seams — members widened past `private` for
+  cross-component reuse — are catalogued in the new `src/api/seams.txt` and gated by `PARQAPI002`;
+  the shipped package API keeps its existing `RS0016` gate unchanged. Body, performance and comment
+  changes alter the golden `.g.cs` but not the `.api.txt`, and do not trip anything. A
+  `**Unapproved-by-design:**` ledger entry suppresses the build error for spikes and is rejected by
+  CI on `main`. Both gates are analyzers in `tools/Parquet.SourceGenerator.ApiGates`, are never
+  packed, and short-circuit unless handed their catalogue as an `AdditionalFile`, so they cannot
+  run in a consumer's compilation. See `docs/18-API-CHANGE-CONTRACT.md`.
 - **Direct columnar handoff (write)**: flat `[ParquetSerializable]` models now also emit a
   `{Type}ColumnarBatch` struct plus `WriteParquetRowGroupAsync(batch)`,
   `WriteParquetRowGroupColumnarAsync(rowCount, ...)` and a stream-level `batch.WriteParquetAsync`.
