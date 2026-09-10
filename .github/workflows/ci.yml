@@ -159,6 +159,34 @@ jobs:
             --generated "$RUNNER_TEMP/parquet-source-generator/generated-csharp.parquet" \
             --output "$RUNNER_TEMP/parquet-source-generator/generated-duckdb.parquet"
 
+      # Apache conformance (#167): independent file-format validation of every generated and
+      # checked-in fixture with the pinned parquet-cli in test/data/apache-conformance.json.
+      # Temurin 17 is part of the pin: the tool rides on Hadoop's UserGroupInformation, which
+      # newer JDKs refuse. Every SHA-256 is re-verified from the manifest before use, and all
+      # tool dumps plus the source and corrupt files are uploaded when this gate fails.
+      - name: Setup Java (Apache Parquet conformance tooling)
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Restore Apache Parquet Conformance Tooling
+        run: dotnet run scripts/VerifyApacheConformance.cs -- --restore "$RUNNER_TEMP/apache-parquet-tools"
+
+      - name: Verify Apache Parquet Conformance
+        run: |
+          dotnet run scripts/VerifyApacheConformance.cs -- \
+            --tools-dir "$RUNNER_TEMP/apache-parquet-tools" \
+            --generated "$RUNNER_TEMP/parquet-source-generator/generated-csharp.parquet" \
+            --output-dir "$RUNNER_TEMP/apache-conformance"
+
+      - name: Upload Apache Conformance Evidence
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: apache-conformance-evidence
+          path: ${{ runner.temp }}/apache-conformance/
+
       - name: Interrogate IL & Verify Zero Boxing Regression Gate
         run: dotnet run scripts/InterrogateIL.cs --assembly test/Parquet.SourceGenerator.CLI/bin/Release/net8.0/Parquet.SourceGenerator.CLI.dll --check
 
