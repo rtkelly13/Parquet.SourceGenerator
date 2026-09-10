@@ -1,0 +1,7 @@
+<Project>
+    <!--
+    Intentionally does not import the repository root Directory.Build.props. This generator pins an
+    OLD Parquet.Net (6.0.3) on purpose, so it must stay isolated from the solution-wide package
+    metadata, analyzers and SourceLink that assume the pinned current version.
+  -->
+</Project>

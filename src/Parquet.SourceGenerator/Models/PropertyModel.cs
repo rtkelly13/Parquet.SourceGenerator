@@ -116,6 +116,14 @@ public sealed record PropertyModel(
     public PropertyModel? MapValue { get; init; }
 
     /// <summary>
+    /// True when the member carries <c>[ParquetSortKey]</c>, opting it in to the emitted
+    /// sorted row-group pruning lookups (issue #151). Left off the positional parameter list
+    /// deliberately: it is an opt-in flag a handful of members set, and every existing
+    /// construction site — including the golden-file models — must keep meaning "not a sort key".
+    /// </summary>
+    public bool IsSortKey { get; init; }
+
+    /// <summary>
     /// Struct members: whether the nested C# type is a value type. Every Parquet group is
     /// optional (docs/15 §2.4) so the definition-level ladder counts the rung either way, but
     /// the write extraction emits the ancestor null test only for reference types — a struct

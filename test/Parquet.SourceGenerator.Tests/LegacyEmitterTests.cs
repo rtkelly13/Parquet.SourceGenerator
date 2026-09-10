@@ -55,7 +55,10 @@ public class LegacyEmitterTests
         Assert.DoesNotContain("new byte[][count]", code);
 
         // The read cast has to name the jagged type, where the rank does belong at the end.
-        Assert.Contains("(byte[][])col_0.Data;", code);
+        // The optional column is read through the schema-evolution ternary, so the cast sits on the
+        // awaited read rather than on a separate col_0 local.
+        Assert.Contains("? new byte[groupRows][]", code);
+        Assert.Contains("(byte[][])(await rgReader.ReadColumnAsync(field_0", code);
     }
 
     /// <summary>
@@ -183,7 +186,7 @@ public class LegacyEmitterTests
         Assert.Equal(1, CountOccurrences(code, "reader.Schema.GetDataFields()"));
         Assert.Equal(
             1,
-            CountOccurrences(code, "ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName)")
+            CountOccurrences(code, "ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName,")
         );
 
         // Row counts come from row-group metadata, so the file is not walked twice just to total them.
