@@ -109,9 +109,6 @@ jobs:
       - name: Verify C# Code Formatting (CSharpier)
         run: dotnet csharpier check .
 
-      - name: Verify C# Code Formatting (Whitespace)
-        run: dotnet format whitespace --verify-no-changes --verbosity diagnostic
-
       - name: Build solution (Release)
         run: dotnet build Parquet.SourceGenertor.sln --configuration Release --no-restore -warnaserror
 
