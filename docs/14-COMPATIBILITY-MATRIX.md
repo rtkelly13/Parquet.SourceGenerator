@@ -177,6 +177,89 @@ Compatibility means equivalent schema meaning and logical values. It does not re
 files, identical page boundaries, identical statistics encoding, or identical metadata ordering across
 independent writers.
 
+## Apache Arrow RecordBatch Ingestion (Experimental, #177)
+
+When — and only when — the consumer compilation references **Apache.Arrow**, the generator emits one
+extra file per `[ParquetSerializable]` type:
+
+```
+{Namespace}.{Type}.Arrow.g.cs
+```
+
+It contributes a second overload into the same `partial` extensions class:
+
+```csharp
+FooParquetExtensions.WriteParquetRowGroupAsync(
+    ParquetWriter writer,
+    Apache.Arrow.RecordBatch batch,
+    ParquetSerializerOptions? options = null,
+    CancellationToken cancellationToken = default);
+```
+
+### Conditional emission
+
+- The generator gates the file on an `IncrementalValueProvider<bool>` derived from
+  `Compilation.ReferencedAssemblyNames` plus a `GetTypeByMetadataName("Apache.Arrow.RecordBatch")`
+  confirmation. Neither the generator package nor the Attributes runtime package takes a dependency
+  on Apache.Arrow — the consumer opts in with a `PackageReference`.
+- Because the gate is a single `bool`, adding or removing the Arrow reference re-runs only the
+  Arrow-gated source output; the main emission stays cached and byte-identical.
+- **File-count implication:** a project that references Apache.Arrow generates *two* files per
+  annotated type rather than one. Golden-file and generated-file-count assertions in downstream
+  projects must account for this.
+- Types the bridge cannot express get no `.Arrow.g.cs` at all (see below), so the file count is
+  "one per type, plus one per *Arrow-representable* type".
+
+### Supported Apache.Arrow floor
+
+`23.0.0`. Apache.Arrow ships `net462`/`netstandard2.0`/`net8.0`, so every TFM this product line
+supports can consume the bridge. The emitted code calls Apache.Arrow's public API directly — there is
+no helper assembly and therefore no version-skew surface beyond the API used here.
+
+### Physical type mapping
+
+| C# member | Parquet column | Required Arrow type | Handoff |
+|:---|:---|:---|:---|
+| `sbyte` / `short` / `int` / `long` | same | `Int8` / `Int16` / `Int32` / `Int64` | zero-copy |
+| `byte` / `ushort` / `uint` / `ulong` | same | `UInt8` / `UInt16` / `UInt32` / `UInt64` | zero-copy |
+| `float` / `double` | same | `Float` / `Double` | zero-copy |
+| enum | underlying integer | matching integer type | zero-copy |
+| `TimeOnly` | `TimeDataField(Micros)` | `Time64(Microsecond)` | zero-copy |
+| `bool` | `bool` | `Boolean` | expanded (Arrow packs bits) |
+| `decimal` | `DecimalDataField(p,s)` | `Decimal128(p,s)` | converted |
+| `DateTime` | `DateTimeDataField` | `Timestamp(Microsecond)` with `[ParquetTimestamp(Microseconds)]`, otherwise `Timestamp(Millisecond)` | converted |
+| `DateOnly` | `DateTimeDataField` | `Date32` | converted |
+| `TimeSpan` | `TimeDataField(Millis)` | `Duration(Millisecond)` | converted |
+| `Guid` | `DataField<Guid>` | `FixedSizeBinary(16)`, RFC 4122 byte order | converted |
+| `string` | `string` | `Utf8` | one rented `char[]`, sliced per value |
+| `byte[]` | `byte[]` | `Binary` | slices of the Arrow value buffer |
+
+Nullable columns take their definition levels from the Arrow validity bitmap; no caller-supplied
+level arrays are needed, and the resulting file is byte-identical to the POCO write path.
+
+### Rejected inputs
+
+Validation runs before a single byte is written and reports **every** offending field at once as an
+`InvalidDataException` — nothing is silently coerced.
+
+- missing column, extra nulls in a required column, mismatched column length
+- physical/logical type mismatch (including `LargeUtf8`, `LargeBinary`, `StringView`, `Date64`,
+  `Time32`, `Decimal256`)
+- timestamp / time / duration unit mismatch, decimal precision-scale mismatch, `FixedSizeBinary`
+  width other than 16
+- `DictionaryArray` — a Parquet dictionary is a physical encoding, not a logical type; decode first
+
+Types with a compound member (nested group, list, map — #176) or an exotic leaf get **no** bridge at
+all rather than a partial one.
+
+### Deliberate deviation from the issue's signature
+
+#177 proposed `this ParquetWriter writer`. An extension method cannot work here: `RecordBatch` carries
+no generic parameter, so every `[ParquetSerializable]` type in scope would contribute an
+indistinguishable `WriteParquetRowGroupAsync(ParquetWriter, RecordBatch, …)` extension and every call
+site would be `CS0121` ambiguous. (The POCO overload escapes this because `IReadOnlyCollection<T>`
+names the type.) The bridge is therefore a plain static method, called qualified.
+
 ## Evidence And Test Ownership
 
 | Claim | Evidence required |
@@ -204,3 +287,4 @@ substitute for semantic interoperability tests.
 - [Issue #168](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/168) adds version and schema-evolution testing; results in [document 16](16-VERSION-AND-SCHEMA-EVOLUTION.md).
 - [Issue #169](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/169) adds property-based and negative testing.
 - [Issue #170](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/170) provides the `/regression` execution modes.
+- [Issue #177](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/177) adds the Apache Arrow `RecordBatch` ingestion bridge.
