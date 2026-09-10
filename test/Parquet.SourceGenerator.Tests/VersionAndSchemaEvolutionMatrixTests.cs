@@ -753,7 +753,7 @@ public sealed class VersionAndSchemaEvolutionMatrixTests
 
         using var stream = new MemoryStream();
         await global::Parquet.Serialization.ParquetSerializer.SerializeUntypedAsync(
-            rows.ConvertAll(r => (IDictionary<string, object>)r),
+            rows.ConvertAll(r => (IDictionary<string, object?>)r!),
             EvoBaselineParquetExtensions.Schema,
             stream,
             customMetadata: new Dictionary<string, string>(StringComparer.Ordinal)

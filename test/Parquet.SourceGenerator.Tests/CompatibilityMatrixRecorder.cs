@@ -59,6 +59,8 @@ public static class CompatibilityMatrixRecorder
 {
     private static readonly ConcurrentBag<CompatibilityMatrixResult> Results = new();
 
+    private static readonly JsonSerializerOptions IndentedJson = new() { WriteIndented = true };
+
     /// <summary>
     /// The Parquet.Net version underneath the generated code, which is the consumer version for
     /// every in-process case and the producer version for files written during the run.
@@ -121,7 +123,7 @@ public static class CompatibilityMatrixRecorder
                     parquetNetVersion = ParquetNetVersion,
                     results = snapshot,
                 },
-                new JsonSerializerOptions { WriteIndented = true }
+                IndentedJson
             )
         );
 
