@@ -72,3 +72,8 @@ static Parquet.SourceGenerator.Parser.TargetParserResult.operator !=(Parquet.Sou
 static Parquet.SourceGenerator.Parser.TargetParserResult.operator ==(Parquet.SourceGenerator.Parser.TargetParserResult? left, Parquet.SourceGenerator.Parser.TargetParserResult? right) -> bool
 static readonly Parquet.SourceGenerator.Diagnostics.DiagnosticDescriptors.NestedTypeCycleDetected -> Microsoft.CodeAnalysis.DiagnosticDescriptor!
 static readonly Parquet.SourceGenerator.Diagnostics.DiagnosticDescriptors.NestedTypeTooDeep -> Microsoft.CodeAnalysis.DiagnosticDescriptor!
+Parquet.SourceGenerator.Models.PropertyModel.IsSortKey.get -> bool
+Parquet.SourceGenerator.Models.PropertyModel.IsSortKey.init -> void
+Parquet.SourceGenerator.Models.SortKeyEligibility
+static Parquet.SourceGenerator.Models.SortKeyEligibility.IsEligible(Parquet.SourceGenerator.Models.PropertyModel! property, out string! reason) -> bool
+static readonly Parquet.SourceGenerator.Diagnostics.DiagnosticDescriptors.SortKeyNotEligible -> Microsoft.CodeAnalysis.DiagnosticDescriptor!

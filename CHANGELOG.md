@@ -39,6 +39,20 @@ Changes since `0.0.1`. That version is published on nuget.org (alongside the `0.
   member types, unassignable members, types with no parameterless constructor, nested or generic
   target types, and member types the 4.x/5.x backend cannot represent.
 - **CI workflow** building, testing and packing the solution. Benchmarks run on demand.
+- **Sorted row-group pruning (experiment, issue #151)**: mark a column `[ParquetSortKey]` and the
+  generator emits `ReadParquetBy<Column>Async` (point lookup) and `ReadParquet<Column>RangeAsync`
+  (inclusive slice) for it. Both certify the column as sorted from the footer `[Min, Max]`
+  statistics and binary search that metadata, so only the row groups that can contain the key are
+  decompressed; overlapping or missing statistics fall back to a full scan and the answer is
+  identical either way. Pass a `ParquetPruneStatistics` to see how many row groups were skipped.
+  The marker is opt-in: a model with no `[ParquetSortKey]` emits exactly what it did before, with
+  none of the lookup API. Marking a member the rules cannot support — nullable, `string`, a
+  compound member, or a type with no Parquet statistics order — is reported as **PARQ014** with the
+  reason rather than silently emitting nothing.
+  Note the cost shape: certifying sortedness reads every row group's statistics, so the metadata
+  phase is O(N) in row groups. Only decompression is logarithmic — that is where the speedup
+  comes from, and it is why the win grows with row-group payload size rather than with row-group
+  count alone.
 
 ### Changed
 - **Formatting tooling consolidated on CSharpier.** `dotnet format whitespace` is removed from CI:
