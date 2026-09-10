@@ -404,6 +404,128 @@ public static partial class ScalarMetricParquetExtensions
     }
 
     /// <summary>
+    /// Writes one row group directly from caller-owned column buffers, with no row traversal and no pooled rentals.
+    /// </summary>
+    public static async global::System.Threading.Tasks.Task WriteParquetRowGroupAsync(
+        this global::Parquet.ParquetWriter writer,
+        ScalarMetricColumnarBatch batch,
+        global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        if (writer == null) throw new global::System.ArgumentNullException(nameof(writer));
+
+        int count = batch.RowCount;
+        if (count < 0) throw new global::System.ArgumentOutOfRangeException(nameof(batch), "RowCount cannot be negative.");
+        if (count == 0) return;
+
+        if (batch.RowId.Length < count) throw new global::System.ArgumentException("Column 'RowId' supplied " + batch.RowId.Length + " values for " + count + " rows.", nameof(batch));
+        if (batch.Flag.Length < count) throw new global::System.ArgumentException("Column 'Flag' supplied " + batch.Flag.Length + " values for " + count + " rows.", nameof(batch));
+        if (batch.NullableFlagDefinitionLevels.Length < count) throw new global::System.ArgumentException("Column 'NullableFlag' supplied " + batch.NullableFlagDefinitionLevels.Length + " definition levels for " + count + " rows.", nameof(batch));
+        if (batch.StatusCode.Length < count) throw new global::System.ArgumentException("Column 'StatusCode' supplied " + batch.StatusCode.Length + " values for " + count + " rows.", nameof(batch));
+        if (batch.OptionalStatusDefinitionLevels.Length < count) throw new global::System.ArgumentException("Column 'OptionalStatus' supplied " + batch.OptionalStatusDefinitionLevels.Length + " definition levels for " + count + " rows.", nameof(batch));
+        if (batch.TinyNum.Length < count) throw new global::System.ArgumentException("Column 'TinyNum' supplied " + batch.TinyNum.Length + " values for " + count + " rows.", nameof(batch));
+        if (batch.ShortNum.Length < count) throw new global::System.ArgumentException("Column 'ShortNum' supplied " + batch.ShortNum.Length + " values for " + count + " rows.", nameof(batch));
+        if (batch.FloatVal.Length < count) throw new global::System.ArgumentException("Column 'FloatVal' supplied " + batch.FloatVal.Length + " values for " + count + " rows.", nameof(batch));
+
+        using (var groupWriter = writer.CreateRowGroup())
+        {
+            await groupWriter.WriteAsync<long>(
+                _field_0,
+                batch.RowId.Slice(0, count),
+                cancellationToken: cancellationToken);
+            await groupWriter.WriteAsync<bool>(
+                _field_1,
+                batch.Flag.Slice(0, count),
+                cancellationToken: cancellationToken);
+            await groupWriter.WriteAllPartsAsync<bool>(
+                _field_2,
+                batch.NullableFlag,
+                batch.NullableFlagDefinitionLevels.Slice(0, count),
+                null,
+                cancellationToken: cancellationToken);
+            await groupWriter.WriteAsync<int>(
+                _field_3,
+                batch.StatusCode.Slice(0, count),
+                cancellationToken: cancellationToken);
+            await groupWriter.WriteAllPartsAsync<int>(
+                _field_4,
+                batch.OptionalStatus,
+                batch.OptionalStatusDefinitionLevels.Slice(0, count),
+                null,
+                cancellationToken: cancellationToken);
+            await groupWriter.WriteAsync<byte>(
+                _field_5,
+                batch.TinyNum.Slice(0, count),
+                cancellationToken: cancellationToken);
+            await groupWriter.WriteAsync<short>(
+                _field_6,
+                batch.ShortNum.Slice(0, count),
+                cancellationToken: cancellationToken);
+            await groupWriter.WriteAsync<float>(
+                _field_7,
+                batch.FloatVal.Slice(0, count),
+                cancellationToken: cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// Positional form of the columnar hand-off: one parameter per schema column, in schema order.
+    /// Prefer the <c>ScalarMetricColumnarBatch</c> overload — it binds buffers to columns by name.
+    /// </summary>
+    public static global::System.Threading.Tasks.Task WriteParquetRowGroupColumnarAsync(
+        this global::Parquet.ParquetWriter writer,
+        int rowCount,
+        global::System.ReadOnlyMemory<long> rowId,
+        global::System.ReadOnlyMemory<bool> flag,
+        global::System.ReadOnlyMemory<bool> nullableFlag,
+        global::System.ReadOnlyMemory<int> nullableFlagDefinitionLevels,
+        global::System.ReadOnlyMemory<int> statusCode,
+        global::System.ReadOnlyMemory<int> optionalStatus,
+        global::System.ReadOnlyMemory<int> optionalStatusDefinitionLevels,
+        global::System.ReadOnlyMemory<byte> tinyNum,
+        global::System.ReadOnlyMemory<short> shortNum,
+        global::System.ReadOnlyMemory<float> floatVal,
+        global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        var batch = new ScalarMetricColumnarBatch
+        {
+            RowCount = rowCount,
+            RowId = rowId,
+            Flag = flag,
+            NullableFlag = nullableFlag,
+            NullableFlagDefinitionLevels = nullableFlagDefinitionLevels,
+            StatusCode = statusCode,
+            OptionalStatus = optionalStatus,
+            OptionalStatusDefinitionLevels = optionalStatusDefinitionLevels,
+            TinyNum = tinyNum,
+            ShortNum = shortNum,
+            FloatVal = floatVal,
+        };
+        return writer.WriteParquetRowGroupAsync(batch, cancellationToken);
+    }
+
+    /// <summary>
+    /// Writes a complete single-row-group Parquet stream from one <c>ScalarMetricColumnarBatch</c>.
+    /// </summary>
+    public static async global::System.Threading.Tasks.Task WriteParquetAsync(
+        this ScalarMetricColumnarBatch batch,
+        global::System.IO.Stream stream,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));
+        cancellationToken.ThrowIfCancellationRequested();
+
+        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
+
+        await using var writer = await global::Parquet.ParquetWriter.CreateAsync(
+            Schema,
+            stream,
+            BuildFormatOptions(options),
+            cancellationToken: cancellationToken);
+        await writer.WriteParquetRowGroupAsync(batch, cancellationToken);
+    }
+
+    /// <summary>
     /// Asynchronously serializes all <c>ScalarMetric</c> items using Parquet.Net low-level primitives.
     /// </summary>
     public static async global::System.Threading.Tasks.Task WriteParquetAsync(
@@ -1934,4 +2056,49 @@ public readonly struct ScalarMetricRowGroupMetadata
 
     /// <summary>Zone map for the <c>float_val</c> column.</summary>
     public global::Parquet.SourceGenerator.ParquetColumnStatistics<float> FloatVal { get; }
+}
+
+/// <summary>
+/// One row group of <c>ScalarMetric</c> data held as caller-owned column buffers.
+/// </summary>
+/// <remarks>
+/// Buffers are passed to Parquet.Net verbatim — nothing here is rented, copied or pooled.
+/// Members are public fields rather than <c>init</c> properties so the type needs no
+/// <c>IsExternalInit</c> polyfill on downstream targets, and object-initializer syntax keeps the
+/// column-to-buffer binding by name instead of by position.
+/// </remarks>
+public struct ScalarMetricColumnarBatch
+{
+    /// <summary>Number of rows this batch describes.</summary>
+    public int RowCount;
+
+    /// <summary>Values for column <c>RowId</c>; at least <c>RowCount</c> entries.</summary>
+    public global::System.ReadOnlyMemory<long> RowId;
+
+    /// <summary>Values for column <c>Flag</c>; at least <c>RowCount</c> entries.</summary>
+    public global::System.ReadOnlyMemory<bool> Flag;
+
+    /// <summary>Packed non-null values for nullable column <c>NullableFlag</c>; length equals the number of 1s in <c>NullableFlagDefinitionLevels</c>.</summary>
+    public global::System.ReadOnlyMemory<bool> NullableFlag;
+
+    /// <summary>Definition levels for column <c>NullableFlag</c>: one entry per row, 1 = present, 0 = null.</summary>
+    public global::System.ReadOnlyMemory<int> NullableFlagDefinitionLevels;
+
+    /// <summary>Values for column <c>StatusCode</c>; at least <c>RowCount</c> entries.</summary>
+    public global::System.ReadOnlyMemory<int> StatusCode;
+
+    /// <summary>Packed non-null values for nullable column <c>OptionalStatus</c>; length equals the number of 1s in <c>OptionalStatusDefinitionLevels</c>.</summary>
+    public global::System.ReadOnlyMemory<int> OptionalStatus;
+
+    /// <summary>Definition levels for column <c>OptionalStatus</c>: one entry per row, 1 = present, 0 = null.</summary>
+    public global::System.ReadOnlyMemory<int> OptionalStatusDefinitionLevels;
+
+    /// <summary>Values for column <c>TinyNum</c>; at least <c>RowCount</c> entries.</summary>
+    public global::System.ReadOnlyMemory<byte> TinyNum;
+
+    /// <summary>Values for column <c>ShortNum</c>; at least <c>RowCount</c> entries.</summary>
+    public global::System.ReadOnlyMemory<short> ShortNum;
+
+    /// <summary>Values for column <c>FloatVal</c>; at least <c>RowCount</c> entries.</summary>
+    public global::System.ReadOnlyMemory<float> FloatVal;
 }
