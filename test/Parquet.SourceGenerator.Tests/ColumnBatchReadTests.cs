@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Parquet.SourceGenerator.Emitter;
 using Parquet.SourceGenerator.Models;
@@ -138,7 +139,12 @@ public sealed class ColumnBatchReadTests
 
         // The only allocation in the batch path is the batch struct itself (a value type) — no
         // `new TestEntity` anywhere below the batch reader.
-        Assert.DoesNotContain("new TestEntity", batchApi);
+        //
+        // Matched as a whole identifier rather than a prefix: the slice runs to the end of the
+        // emitted file, which since #217 also contains the read builders, and `new
+        // TestEntityParquetStreamSource(...)` starts with the domain type's name without
+        // constructing one.
+        Assert.DoesNotMatch(new Regex(@"new TestEntity(?![A-Za-z0-9_])"), batchApi);
     }
 
     [Fact]

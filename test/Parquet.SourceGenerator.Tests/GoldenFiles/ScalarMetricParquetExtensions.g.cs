@@ -2092,3 +2092,195 @@ public struct ScalarMetricColumnarBatch
     /// <summary>Values for column <c>FloatVal</c>; at least <c>RowCount</c> entries.</summary>
     public global::System.ReadOnlyMemory<float> FloatVal;
 }
+
+/// <summary>
+/// Entry point for reading <c>ScalarMetric</c> values from Parquet (issue #217).
+/// </summary>
+public static partial class ScalarMetricParquet
+{
+    /// <summary>Reads from a <see cref="System.IO.Stream"/>.</summary>
+    public static ScalarMetricParquetStreamSource From(global::System.IO.Stream stream)
+        => new ScalarMetricParquetStreamSource(stream ?? throw new global::System.ArgumentNullException(nameof(stream)), null);
+
+    /// <summary>Reads from an in-memory buffer.</summary>
+    public static ScalarMetricParquetMemorySource From(global::System.ReadOnlyMemory<byte> parquetBytes)
+        => new ScalarMetricParquetMemorySource(parquetBytes, null);
+}
+
+/// <summary>
+/// A pending read of <c>ScalarMetric</c> from a stream.
+/// </summary>
+/// <remarks>
+/// There is deliberately no <c>Parallel</c> member. A single <c>ParquetReader</c> seeks
+/// within its stream, so concurrent row-group reads would corrupt one another, and an
+/// arbitrary stream cannot be handed to more than one reader. Buffer the file and use
+/// <c>From(ReadOnlyMemory&lt;byte&gt;)</c> for genuine decode parallelism.
+/// </remarks>
+public readonly struct ScalarMetricParquetStreamSource
+{
+    private readonly global::System.IO.Stream _stream;
+    private readonly global::Parquet.SourceGenerator.ParquetSerializerOptions? _options;
+
+    internal ScalarMetricParquetStreamSource(global::System.IO.Stream stream, global::Parquet.SourceGenerator.ParquetSerializerOptions? options)
+    {
+        _stream = stream;
+        _options = options;
+    }
+
+    /// <summary>Replaces the serializer options.</summary>
+    public ScalarMetricParquetStreamSource WithOptions(global::Parquet.SourceGenerator.ParquetSerializerOptions options)
+        => new ScalarMetricParquetStreamSource(_stream, options ?? throw new global::System.ArgumentNullException(nameof(options)));
+
+    /// <summary>Skips row groups whose footer statistics cannot satisfy the predicate.</summary>
+    public ScalarMetricParquetFilteredSource Where(global::System.Func<global::SampleDomain.Models.ScalarMetricRowGroupMetadata, bool> predicate)
+        => new ScalarMetricParquetFilteredSource(_stream, default, _options, predicate ?? throw new global::System.ArgumentNullException(nameof(predicate)));
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<ScalarMetric>> ToListAsync(global::System.Threading.CancellationToken cancellationToken = default)
+        => ScalarMetricParquetExtensions.ReadParquetAsync(_stream, _options, cancellationToken);
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Threading.Tasks.Task<ScalarMetric[]> ToArrayAsync(global::System.Threading.CancellationToken cancellationToken = default)
+        => ScalarMetricParquetExtensions.ReadParquetArrayAsync(_stream, _options, cancellationToken);
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Collections.Generic.IAsyncEnumerable<ScalarMetric> AsAsyncEnumerable(global::System.Threading.CancellationToken cancellationToken = default)
+        => ScalarMetricParquetExtensions.ReadParquetStreamAsync(_stream, _options, cancellationToken);
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Collections.Generic.IAsyncEnumerable<ScalarMetricParquetExtensions.ColumnBatch> Batches(global::System.Threading.CancellationToken cancellationToken = default)
+        => ScalarMetricParquetExtensions.ReadParquetBatchesAsync(_stream, _options, cancellationToken);
+
+}
+
+/// <summary>
+/// A pending read of <c>ScalarMetric</c> from an in-memory buffer.
+/// </summary>
+public readonly struct ScalarMetricParquetMemorySource
+{
+    private readonly global::System.ReadOnlyMemory<byte> _bytes;
+    private readonly global::Parquet.SourceGenerator.ParquetSerializerOptions? _options;
+
+    internal ScalarMetricParquetMemorySource(global::System.ReadOnlyMemory<byte> bytes, global::Parquet.SourceGenerator.ParquetSerializerOptions? options)
+    {
+        _bytes = bytes;
+        _options = options;
+    }
+
+    /// <summary>Replaces the serializer options.</summary>
+    public ScalarMetricParquetMemorySource WithOptions(global::Parquet.SourceGenerator.ParquetSerializerOptions options)
+        => new ScalarMetricParquetMemorySource(_bytes, options ?? throw new global::System.ArgumentNullException(nameof(options)));
+
+    /// <summary>Decodes row groups concurrently, each worker over its own view of the buffer.</summary>
+    public ScalarMetricParquetParallelSource Parallel(int maxDegreeOfParallelism = -1)
+        => new ScalarMetricParquetParallelSource(_bytes, _options, maxDegreeOfParallelism);
+
+    /// <summary>Skips row groups whose footer statistics cannot satisfy the predicate.</summary>
+    public ScalarMetricParquetFilteredSource Where(global::System.Func<global::SampleDomain.Models.ScalarMetricRowGroupMetadata, bool> predicate)
+        => new ScalarMetricParquetFilteredSource(null, _bytes, _options, predicate ?? throw new global::System.ArgumentNullException(nameof(predicate)));
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<ScalarMetric>> ToListAsync(global::System.Threading.CancellationToken cancellationToken = default)
+        => ScalarMetricParquetExtensions.ReadParquetAsync(_bytes, _options, cancellationToken);
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Threading.Tasks.Task<ScalarMetric[]> ToArrayAsync(global::System.Threading.CancellationToken cancellationToken = default)
+        => ScalarMetricParquetExtensions.ReadParquetArrayAsync(_bytes, _options, cancellationToken);
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Collections.Generic.IAsyncEnumerable<ScalarMetric> AsAsyncEnumerable(global::System.Threading.CancellationToken cancellationToken = default)
+        => ScalarMetricParquetExtensions.ReadParquetStreamAsync(_bytes, _options, cancellationToken);
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Collections.Generic.IAsyncEnumerable<ScalarMetricParquetExtensions.ColumnBatch> Batches(global::System.Threading.CancellationToken cancellationToken = default)
+        => ScalarMetricParquetExtensions.ReadParquetBatchesAsync(_bytes, _options, cancellationToken);
+
+}
+
+/// <summary>
+/// A pending read of <c>ScalarMetric</c> with a row-group predicate applied.
+/// </summary>
+/// <remarks>
+/// There is deliberately no <c>Parallel</c> member: no parallel reader accepts a
+/// predicate yet (issue #222). When one does, this type gains the member.
+/// </remarks>
+public readonly struct ScalarMetricParquetFilteredSource
+{
+    private readonly global::System.IO.Stream? _stream;
+    private readonly global::System.ReadOnlyMemory<byte> _bytes;
+    private readonly global::Parquet.SourceGenerator.ParquetSerializerOptions? _options;
+    private readonly global::System.Func<global::SampleDomain.Models.ScalarMetricRowGroupMetadata, bool> _predicate;
+
+    internal ScalarMetricParquetFilteredSource(global::System.IO.Stream? stream, global::System.ReadOnlyMemory<byte> bytes, global::Parquet.SourceGenerator.ParquetSerializerOptions? options, global::System.Func<global::SampleDomain.Models.ScalarMetricRowGroupMetadata, bool> predicate)
+    {
+        _stream = stream;
+        _bytes = bytes;
+        _options = options;
+        _predicate = predicate;
+    }
+
+    /// <summary>Replaces the serializer options.</summary>
+    public ScalarMetricParquetFilteredSource WithOptions(global::Parquet.SourceGenerator.ParquetSerializerOptions options)
+        => new ScalarMetricParquetFilteredSource(_stream, _bytes, options ?? throw new global::System.ArgumentNullException(nameof(options)), _predicate);
+
+    /// <summary>Materializes the surviving rows into a list.</summary>
+    public async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<ScalarMetric>> ToListAsync(global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        if (_stream is not null)
+            return await ScalarMetricParquetExtensions.ReadParquetAsync(_stream, _options, cancellationToken, _predicate).ConfigureAwait(false);
+
+        var results = new global::System.Collections.Generic.List<ScalarMetric>();
+        await foreach (var item in ScalarMetricParquetExtensions.ReadParquetStreamAsync(_bytes, _options, cancellationToken, _predicate))
+            results.Add(item);
+        return results;
+    }
+
+    /// <summary>Materializes the surviving rows into an array.</summary>
+    public async global::System.Threading.Tasks.Task<ScalarMetric[]> ToArrayAsync(global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        if (_stream is not null)
+            return await ScalarMetricParquetExtensions.ReadParquetArrayAsync(_stream, _options, cancellationToken, _predicate).ConfigureAwait(false);
+
+        return (await ToListAsync(cancellationToken).ConfigureAwait(false)).ToArray();
+    }
+
+    /// <summary>Streams the surviving rows without materializing them all.</summary>
+    public global::System.Collections.Generic.IAsyncEnumerable<ScalarMetric> AsAsyncEnumerable(global::System.Threading.CancellationToken cancellationToken = default)
+        => _stream is not null
+            ? ScalarMetricParquetExtensions.ReadParquetStreamAsync(_stream, _options, cancellationToken, _predicate)
+            : ScalarMetricParquetExtensions.ReadParquetStreamAsync(_bytes, _options, cancellationToken, _predicate);
+}
+
+/// <summary>
+/// A pending parallel read of <c>ScalarMetric</c> from an in-memory buffer.
+/// </summary>
+/// <remarks>
+/// Only the materializing shapes are offered: there is no parallel streaming or
+/// columnar-batch reader to delegate to, so offering the member would mean throwing.
+/// </remarks>
+public readonly struct ScalarMetricParquetParallelSource
+{
+    private readonly global::System.ReadOnlyMemory<byte> _bytes;
+    private readonly global::Parquet.SourceGenerator.ParquetSerializerOptions? _options;
+    private readonly int _maxDegreeOfParallelism;
+
+    internal ScalarMetricParquetParallelSource(global::System.ReadOnlyMemory<byte> bytes, global::Parquet.SourceGenerator.ParquetSerializerOptions? options, int maxDegreeOfParallelism)
+    {
+        _bytes = bytes;
+        _options = options;
+        _maxDegreeOfParallelism = maxDegreeOfParallelism;
+    }
+
+    /// <summary>Replaces the serializer options.</summary>
+    public ScalarMetricParquetParallelSource WithOptions(global::Parquet.SourceGenerator.ParquetSerializerOptions options)
+        => new ScalarMetricParquetParallelSource(_bytes, options ?? throw new global::System.ArgumentNullException(nameof(options)), _maxDegreeOfParallelism);
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<ScalarMetric>> ToListAsync(global::System.Threading.CancellationToken cancellationToken = default)
+        => ScalarMetricParquetExtensions.ReadParquetParallelAsync(_bytes, _maxDegreeOfParallelism, _options, cancellationToken);
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Threading.Tasks.Task<ScalarMetric[]> ToArrayAsync(global::System.Threading.CancellationToken cancellationToken = default)
+        => ScalarMetricParquetExtensions.ReadParquetParallelArrayAsync(_bytes, _maxDegreeOfParallelism, _options, cancellationToken);
+
+}

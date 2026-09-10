@@ -2845,3 +2845,187 @@ public readonly struct ListOrderRowGroupMetadata
     /// <summary>Zone map for the <c>Id</c> column.</summary>
     public global::Parquet.SourceGenerator.ParquetColumnStatistics<int> Id { get; }
 }
+
+/// <summary>
+/// Entry point for reading <c>ListOrder</c> values from Parquet (issue #217).
+/// </summary>
+public static partial class ListOrderParquet
+{
+    /// <summary>Reads from a <see cref="System.IO.Stream"/>.</summary>
+    public static ListOrderParquetStreamSource From(global::System.IO.Stream stream)
+        => new ListOrderParquetStreamSource(stream ?? throw new global::System.ArgumentNullException(nameof(stream)), null);
+
+    /// <summary>Reads from an in-memory buffer.</summary>
+    public static ListOrderParquetMemorySource From(global::System.ReadOnlyMemory<byte> parquetBytes)
+        => new ListOrderParquetMemorySource(parquetBytes, null);
+}
+
+/// <summary>
+/// A pending read of <c>ListOrder</c> from a stream.
+/// </summary>
+/// <remarks>
+/// There is deliberately no <c>Parallel</c> member. A single <c>ParquetReader</c> seeks
+/// within its stream, so concurrent row-group reads would corrupt one another, and an
+/// arbitrary stream cannot be handed to more than one reader. Buffer the file and use
+/// <c>From(ReadOnlyMemory&lt;byte&gt;)</c> for genuine decode parallelism.
+/// </remarks>
+public readonly struct ListOrderParquetStreamSource
+{
+    private readonly global::System.IO.Stream _stream;
+    private readonly global::Parquet.SourceGenerator.ParquetSerializerOptions? _options;
+
+    internal ListOrderParquetStreamSource(global::System.IO.Stream stream, global::Parquet.SourceGenerator.ParquetSerializerOptions? options)
+    {
+        _stream = stream;
+        _options = options;
+    }
+
+    /// <summary>Replaces the serializer options.</summary>
+    public ListOrderParquetStreamSource WithOptions(global::Parquet.SourceGenerator.ParquetSerializerOptions options)
+        => new ListOrderParquetStreamSource(_stream, options ?? throw new global::System.ArgumentNullException(nameof(options)));
+
+    /// <summary>Skips row groups whose footer statistics cannot satisfy the predicate.</summary>
+    public ListOrderParquetFilteredSource Where(global::System.Func<global::SampleDomain.Models.ListOrderRowGroupMetadata, bool> predicate)
+        => new ListOrderParquetFilteredSource(_stream, default, _options, predicate ?? throw new global::System.ArgumentNullException(nameof(predicate)));
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<ListOrder>> ToListAsync(global::System.Threading.CancellationToken cancellationToken = default)
+        => ListOrderParquetExtensions.ReadParquetAsync(_stream, _options, cancellationToken);
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Threading.Tasks.Task<ListOrder[]> ToArrayAsync(global::System.Threading.CancellationToken cancellationToken = default)
+        => ListOrderParquetExtensions.ReadParquetArrayAsync(_stream, _options, cancellationToken);
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Collections.Generic.IAsyncEnumerable<ListOrder> AsAsyncEnumerable(global::System.Threading.CancellationToken cancellationToken = default)
+        => ListOrderParquetExtensions.ReadParquetStreamAsync(_stream, _options, cancellationToken);
+
+}
+
+/// <summary>
+/// A pending read of <c>ListOrder</c> from an in-memory buffer.
+/// </summary>
+public readonly struct ListOrderParquetMemorySource
+{
+    private readonly global::System.ReadOnlyMemory<byte> _bytes;
+    private readonly global::Parquet.SourceGenerator.ParquetSerializerOptions? _options;
+
+    internal ListOrderParquetMemorySource(global::System.ReadOnlyMemory<byte> bytes, global::Parquet.SourceGenerator.ParquetSerializerOptions? options)
+    {
+        _bytes = bytes;
+        _options = options;
+    }
+
+    /// <summary>Replaces the serializer options.</summary>
+    public ListOrderParquetMemorySource WithOptions(global::Parquet.SourceGenerator.ParquetSerializerOptions options)
+        => new ListOrderParquetMemorySource(_bytes, options ?? throw new global::System.ArgumentNullException(nameof(options)));
+
+    /// <summary>Decodes row groups concurrently, each worker over its own view of the buffer.</summary>
+    public ListOrderParquetParallelSource Parallel(int maxDegreeOfParallelism = -1)
+        => new ListOrderParquetParallelSource(_bytes, _options, maxDegreeOfParallelism);
+
+    /// <summary>Skips row groups whose footer statistics cannot satisfy the predicate.</summary>
+    public ListOrderParquetFilteredSource Where(global::System.Func<global::SampleDomain.Models.ListOrderRowGroupMetadata, bool> predicate)
+        => new ListOrderParquetFilteredSource(null, _bytes, _options, predicate ?? throw new global::System.ArgumentNullException(nameof(predicate)));
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<ListOrder>> ToListAsync(global::System.Threading.CancellationToken cancellationToken = default)
+        => ListOrderParquetExtensions.ReadParquetAsync(_bytes, _options, cancellationToken);
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Threading.Tasks.Task<ListOrder[]> ToArrayAsync(global::System.Threading.CancellationToken cancellationToken = default)
+        => ListOrderParquetExtensions.ReadParquetArrayAsync(_bytes, _options, cancellationToken);
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Collections.Generic.IAsyncEnumerable<ListOrder> AsAsyncEnumerable(global::System.Threading.CancellationToken cancellationToken = default)
+        => ListOrderParquetExtensions.ReadParquetStreamAsync(_bytes, _options, cancellationToken);
+
+}
+
+/// <summary>
+/// A pending read of <c>ListOrder</c> with a row-group predicate applied.
+/// </summary>
+/// <remarks>
+/// There is deliberately no <c>Parallel</c> member: no parallel reader accepts a
+/// predicate yet (issue #222). When one does, this type gains the member.
+/// </remarks>
+public readonly struct ListOrderParquetFilteredSource
+{
+    private readonly global::System.IO.Stream? _stream;
+    private readonly global::System.ReadOnlyMemory<byte> _bytes;
+    private readonly global::Parquet.SourceGenerator.ParquetSerializerOptions? _options;
+    private readonly global::System.Func<global::SampleDomain.Models.ListOrderRowGroupMetadata, bool> _predicate;
+
+    internal ListOrderParquetFilteredSource(global::System.IO.Stream? stream, global::System.ReadOnlyMemory<byte> bytes, global::Parquet.SourceGenerator.ParquetSerializerOptions? options, global::System.Func<global::SampleDomain.Models.ListOrderRowGroupMetadata, bool> predicate)
+    {
+        _stream = stream;
+        _bytes = bytes;
+        _options = options;
+        _predicate = predicate;
+    }
+
+    /// <summary>Replaces the serializer options.</summary>
+    public ListOrderParquetFilteredSource WithOptions(global::Parquet.SourceGenerator.ParquetSerializerOptions options)
+        => new ListOrderParquetFilteredSource(_stream, _bytes, options ?? throw new global::System.ArgumentNullException(nameof(options)), _predicate);
+
+    /// <summary>Materializes the surviving rows into a list.</summary>
+    public async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<ListOrder>> ToListAsync(global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        if (_stream is not null)
+            return await ListOrderParquetExtensions.ReadParquetAsync(_stream, _options, cancellationToken, _predicate).ConfigureAwait(false);
+
+        var results = new global::System.Collections.Generic.List<ListOrder>();
+        await foreach (var item in ListOrderParquetExtensions.ReadParquetStreamAsync(_bytes, _options, cancellationToken, _predicate))
+            results.Add(item);
+        return results;
+    }
+
+    /// <summary>Materializes the surviving rows into an array.</summary>
+    public async global::System.Threading.Tasks.Task<ListOrder[]> ToArrayAsync(global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        if (_stream is not null)
+            return await ListOrderParquetExtensions.ReadParquetArrayAsync(_stream, _options, cancellationToken, _predicate).ConfigureAwait(false);
+
+        return (await ToListAsync(cancellationToken).ConfigureAwait(false)).ToArray();
+    }
+
+    /// <summary>Streams the surviving rows without materializing them all.</summary>
+    public global::System.Collections.Generic.IAsyncEnumerable<ListOrder> AsAsyncEnumerable(global::System.Threading.CancellationToken cancellationToken = default)
+        => _stream is not null
+            ? ListOrderParquetExtensions.ReadParquetStreamAsync(_stream, _options, cancellationToken, _predicate)
+            : ListOrderParquetExtensions.ReadParquetStreamAsync(_bytes, _options, cancellationToken, _predicate);
+}
+
+/// <summary>
+/// A pending parallel read of <c>ListOrder</c> from an in-memory buffer.
+/// </summary>
+/// <remarks>
+/// Only the materializing shapes are offered: there is no parallel streaming or
+/// columnar-batch reader to delegate to, so offering the member would mean throwing.
+/// </remarks>
+public readonly struct ListOrderParquetParallelSource
+{
+    private readonly global::System.ReadOnlyMemory<byte> _bytes;
+    private readonly global::Parquet.SourceGenerator.ParquetSerializerOptions? _options;
+    private readonly int _maxDegreeOfParallelism;
+
+    internal ListOrderParquetParallelSource(global::System.ReadOnlyMemory<byte> bytes, global::Parquet.SourceGenerator.ParquetSerializerOptions? options, int maxDegreeOfParallelism)
+    {
+        _bytes = bytes;
+        _options = options;
+        _maxDegreeOfParallelism = maxDegreeOfParallelism;
+    }
+
+    /// <summary>Replaces the serializer options.</summary>
+    public ListOrderParquetParallelSource WithOptions(global::Parquet.SourceGenerator.ParquetSerializerOptions options)
+        => new ListOrderParquetParallelSource(_bytes, options ?? throw new global::System.ArgumentNullException(nameof(options)), _maxDegreeOfParallelism);
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<ListOrder>> ToListAsync(global::System.Threading.CancellationToken cancellationToken = default)
+        => ListOrderParquetExtensions.ReadParquetParallelAsync(_bytes, _maxDegreeOfParallelism, _options, cancellationToken);
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Threading.Tasks.Task<ListOrder[]> ToArrayAsync(global::System.Threading.CancellationToken cancellationToken = default)
+        => ListOrderParquetExtensions.ReadParquetParallelArrayAsync(_bytes, _maxDegreeOfParallelism, _options, cancellationToken);
+
+}

@@ -29,6 +29,10 @@ public struct ScalarMetricColumnarBatch
     public System.ReadOnlyMemory<short> ShortNum
     public int RowCount
 
+public static partial class ScalarMetricParquet
+    public static ScalarMetricParquetMemorySource From(System.ReadOnlyMemory<byte> parquetBytes)
+    public static ScalarMetricParquetStreamSource From(System.IO.Stream stream)
+
 public static partial class ScalarMetricParquetExtensions
     public static System.Collections.Generic.IAsyncEnumerable<ColumnBatch> ReadParquetBatchesAsync(System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
     public static System.Collections.Generic.IAsyncEnumerable<ColumnBatch> ReadParquetBatchesAsync(System.ReadOnlyMemory<byte> parquetBytes, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
@@ -50,6 +54,34 @@ public static partial class ScalarMetricParquetExtensions
     public static System.Threading.Tasks.Task<System.Collections.Generic.List<ScalarMetric>> ReadParquetParallelAsync(System.IO.Stream stream, int maxDegreeOfParallelism = -1, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
     public static System.Threading.Tasks.Task<System.Collections.Generic.List<ScalarMetric>> ReadParquetParallelAsync(System.ReadOnlyMemory<byte> parquetBytes, int maxDegreeOfParallelism = -1, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
     public static readonly Parquet.Schema.ParquetSchema Schema
+
+public readonly struct ScalarMetricParquetFilteredSource
+    public ScalarMetricParquetFilteredSource WithOptions(Parquet.SourceGenerator.ParquetSerializerOptions options)
+    public System.Collections.Generic.IAsyncEnumerable<ScalarMetric> AsAsyncEnumerable(System.Threading.CancellationToken cancellationToken = default)
+    public System.Threading.Tasks.Task<ScalarMetric[]> ToArrayAsync(System.Threading.CancellationToken cancellationToken = default)
+    public System.Threading.Tasks.Task<System.Collections.Generic.List<ScalarMetric>> ToListAsync(System.Threading.CancellationToken cancellationToken = default)
+
+public readonly struct ScalarMetricParquetMemorySource
+    public ScalarMetricParquetFilteredSource Where(System.Func<SampleDomain.Models.ScalarMetricRowGroupMetadata, bool> predicate)
+    public ScalarMetricParquetMemorySource WithOptions(Parquet.SourceGenerator.ParquetSerializerOptions options)
+    public ScalarMetricParquetParallelSource Parallel(int maxDegreeOfParallelism = -1)
+    public System.Collections.Generic.IAsyncEnumerable<ScalarMetric> AsAsyncEnumerable(System.Threading.CancellationToken cancellationToken = default)
+    public System.Collections.Generic.IAsyncEnumerable<ScalarMetricParquetExtensions.ColumnBatch> Batches(System.Threading.CancellationToken cancellationToken = default)
+    public System.Threading.Tasks.Task<ScalarMetric[]> ToArrayAsync(System.Threading.CancellationToken cancellationToken = default)
+    public System.Threading.Tasks.Task<System.Collections.Generic.List<ScalarMetric>> ToListAsync(System.Threading.CancellationToken cancellationToken = default)
+
+public readonly struct ScalarMetricParquetParallelSource
+    public ScalarMetricParquetParallelSource WithOptions(Parquet.SourceGenerator.ParquetSerializerOptions options)
+    public System.Threading.Tasks.Task<ScalarMetric[]> ToArrayAsync(System.Threading.CancellationToken cancellationToken = default)
+    public System.Threading.Tasks.Task<System.Collections.Generic.List<ScalarMetric>> ToListAsync(System.Threading.CancellationToken cancellationToken = default)
+
+public readonly struct ScalarMetricParquetStreamSource
+    public ScalarMetricParquetFilteredSource Where(System.Func<SampleDomain.Models.ScalarMetricRowGroupMetadata, bool> predicate)
+    public ScalarMetricParquetStreamSource WithOptions(Parquet.SourceGenerator.ParquetSerializerOptions options)
+    public System.Collections.Generic.IAsyncEnumerable<ScalarMetric> AsAsyncEnumerable(System.Threading.CancellationToken cancellationToken = default)
+    public System.Collections.Generic.IAsyncEnumerable<ScalarMetricParquetExtensions.ColumnBatch> Batches(System.Threading.CancellationToken cancellationToken = default)
+    public System.Threading.Tasks.Task<ScalarMetric[]> ToArrayAsync(System.Threading.CancellationToken cancellationToken = default)
+    public System.Threading.Tasks.Task<System.Collections.Generic.List<ScalarMetric>> ToListAsync(System.Threading.CancellationToken cancellationToken = default)
 
 public readonly struct ScalarMetricRowGroupMetadata
     public Parquet.SourceGenerator.ParquetColumnStatistics<byte> TinyNum { get; }

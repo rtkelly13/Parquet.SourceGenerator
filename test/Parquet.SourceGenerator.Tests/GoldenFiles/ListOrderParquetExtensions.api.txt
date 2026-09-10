@@ -4,6 +4,10 @@
 
 namespace SampleDomain.Models
 
+public static partial class ListOrderParquet
+    public static ListOrderParquetMemorySource From(System.ReadOnlyMemory<byte> parquetBytes)
+    public static ListOrderParquetStreamSource From(System.IO.Stream stream)
+
 public static partial class ListOrderParquetExtensions
     public static System.Collections.Generic.IAsyncEnumerable<ListOrder> ReadParquetStreamAsync(System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default, System.Func<SampleDomain.Models.ListOrderRowGroupMetadata, bool>? predicate = null)
     public static System.Collections.Generic.IAsyncEnumerable<ListOrder> ReadParquetStreamAsync(System.ReadOnlyMemory<byte> parquetBytes, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default, System.Func<SampleDomain.Models.ListOrderRowGroupMetadata, bool>? predicate = null)
@@ -20,6 +24,32 @@ public static partial class ListOrderParquetExtensions
     public static System.Threading.Tasks.Task<System.Collections.Generic.List<ListOrder>> ReadParquetParallelAsync(System.IO.Stream stream, int maxDegreeOfParallelism = -1, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
     public static System.Threading.Tasks.Task<System.Collections.Generic.List<ListOrder>> ReadParquetParallelAsync(System.ReadOnlyMemory<byte> parquetBytes, int maxDegreeOfParallelism = -1, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
     public static readonly Parquet.Schema.ParquetSchema Schema
+
+public readonly struct ListOrderParquetFilteredSource
+    public ListOrderParquetFilteredSource WithOptions(Parquet.SourceGenerator.ParquetSerializerOptions options)
+    public System.Collections.Generic.IAsyncEnumerable<ListOrder> AsAsyncEnumerable(System.Threading.CancellationToken cancellationToken = default)
+    public System.Threading.Tasks.Task<ListOrder[]> ToArrayAsync(System.Threading.CancellationToken cancellationToken = default)
+    public System.Threading.Tasks.Task<System.Collections.Generic.List<ListOrder>> ToListAsync(System.Threading.CancellationToken cancellationToken = default)
+
+public readonly struct ListOrderParquetMemorySource
+    public ListOrderParquetFilteredSource Where(System.Func<SampleDomain.Models.ListOrderRowGroupMetadata, bool> predicate)
+    public ListOrderParquetMemorySource WithOptions(Parquet.SourceGenerator.ParquetSerializerOptions options)
+    public ListOrderParquetParallelSource Parallel(int maxDegreeOfParallelism = -1)
+    public System.Collections.Generic.IAsyncEnumerable<ListOrder> AsAsyncEnumerable(System.Threading.CancellationToken cancellationToken = default)
+    public System.Threading.Tasks.Task<ListOrder[]> ToArrayAsync(System.Threading.CancellationToken cancellationToken = default)
+    public System.Threading.Tasks.Task<System.Collections.Generic.List<ListOrder>> ToListAsync(System.Threading.CancellationToken cancellationToken = default)
+
+public readonly struct ListOrderParquetParallelSource
+    public ListOrderParquetParallelSource WithOptions(Parquet.SourceGenerator.ParquetSerializerOptions options)
+    public System.Threading.Tasks.Task<ListOrder[]> ToArrayAsync(System.Threading.CancellationToken cancellationToken = default)
+    public System.Threading.Tasks.Task<System.Collections.Generic.List<ListOrder>> ToListAsync(System.Threading.CancellationToken cancellationToken = default)
+
+public readonly struct ListOrderParquetStreamSource
+    public ListOrderParquetFilteredSource Where(System.Func<SampleDomain.Models.ListOrderRowGroupMetadata, bool> predicate)
+    public ListOrderParquetStreamSource WithOptions(Parquet.SourceGenerator.ParquetSerializerOptions options)
+    public System.Collections.Generic.IAsyncEnumerable<ListOrder> AsAsyncEnumerable(System.Threading.CancellationToken cancellationToken = default)
+    public System.Threading.Tasks.Task<ListOrder[]> ToArrayAsync(System.Threading.CancellationToken cancellationToken = default)
+    public System.Threading.Tasks.Task<System.Collections.Generic.List<ListOrder>> ToListAsync(System.Threading.CancellationToken cancellationToken = default)
 
 public readonly struct ListOrderRowGroupMetadata
     public Parquet.SourceGenerator.ParquetColumnStatistics<int> Id { get; }

@@ -4,6 +4,10 @@
 
 namespace SampleDomain.Models
 
+public static partial class NestedOrderParquet
+    public static NestedOrderParquetMemorySource From(System.ReadOnlyMemory<byte> parquetBytes)
+    public static NestedOrderParquetStreamSource From(System.IO.Stream stream)
+
 public static partial class NestedOrderParquetExtensions
     public static System.Collections.Generic.IAsyncEnumerable<NestedOrder> ReadParquetStreamAsync(System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default, System.Func<SampleDomain.Models.NestedOrderRowGroupMetadata, bool>? predicate = null)
     public static System.Collections.Generic.IAsyncEnumerable<NestedOrder> ReadParquetStreamAsync(System.ReadOnlyMemory<byte> parquetBytes, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default, System.Func<SampleDomain.Models.NestedOrderRowGroupMetadata, bool>? predicate = null)
@@ -20,6 +24,32 @@ public static partial class NestedOrderParquetExtensions
     public static System.Threading.Tasks.Task<System.Collections.Generic.List<NestedOrder>> ReadParquetParallelAsync(System.IO.Stream stream, int maxDegreeOfParallelism = -1, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
     public static System.Threading.Tasks.Task<System.Collections.Generic.List<NestedOrder>> ReadParquetParallelAsync(System.ReadOnlyMemory<byte> parquetBytes, int maxDegreeOfParallelism = -1, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
     public static readonly Parquet.Schema.ParquetSchema Schema
+
+public readonly struct NestedOrderParquetFilteredSource
+    public NestedOrderParquetFilteredSource WithOptions(Parquet.SourceGenerator.ParquetSerializerOptions options)
+    public System.Collections.Generic.IAsyncEnumerable<NestedOrder> AsAsyncEnumerable(System.Threading.CancellationToken cancellationToken = default)
+    public System.Threading.Tasks.Task<NestedOrder[]> ToArrayAsync(System.Threading.CancellationToken cancellationToken = default)
+    public System.Threading.Tasks.Task<System.Collections.Generic.List<NestedOrder>> ToListAsync(System.Threading.CancellationToken cancellationToken = default)
+
+public readonly struct NestedOrderParquetMemorySource
+    public NestedOrderParquetFilteredSource Where(System.Func<SampleDomain.Models.NestedOrderRowGroupMetadata, bool> predicate)
+    public NestedOrderParquetMemorySource WithOptions(Parquet.SourceGenerator.ParquetSerializerOptions options)
+    public NestedOrderParquetParallelSource Parallel(int maxDegreeOfParallelism = -1)
+    public System.Collections.Generic.IAsyncEnumerable<NestedOrder> AsAsyncEnumerable(System.Threading.CancellationToken cancellationToken = default)
+    public System.Threading.Tasks.Task<NestedOrder[]> ToArrayAsync(System.Threading.CancellationToken cancellationToken = default)
+    public System.Threading.Tasks.Task<System.Collections.Generic.List<NestedOrder>> ToListAsync(System.Threading.CancellationToken cancellationToken = default)
+
+public readonly struct NestedOrderParquetParallelSource
+    public NestedOrderParquetParallelSource WithOptions(Parquet.SourceGenerator.ParquetSerializerOptions options)
+    public System.Threading.Tasks.Task<NestedOrder[]> ToArrayAsync(System.Threading.CancellationToken cancellationToken = default)
+    public System.Threading.Tasks.Task<System.Collections.Generic.List<NestedOrder>> ToListAsync(System.Threading.CancellationToken cancellationToken = default)
+
+public readonly struct NestedOrderParquetStreamSource
+    public NestedOrderParquetFilteredSource Where(System.Func<SampleDomain.Models.NestedOrderRowGroupMetadata, bool> predicate)
+    public NestedOrderParquetStreamSource WithOptions(Parquet.SourceGenerator.ParquetSerializerOptions options)
+    public System.Collections.Generic.IAsyncEnumerable<NestedOrder> AsAsyncEnumerable(System.Threading.CancellationToken cancellationToken = default)
+    public System.Threading.Tasks.Task<NestedOrder[]> ToArrayAsync(System.Threading.CancellationToken cancellationToken = default)
+    public System.Threading.Tasks.Task<System.Collections.Generic.List<NestedOrder>> ToListAsync(System.Threading.CancellationToken cancellationToken = default)
 
 public readonly struct NestedOrderRowGroupMetadata
     public Parquet.SourceGenerator.ParquetColumnStatistics<int> Id { get; }
