@@ -53,6 +53,14 @@ Changes since `0.0.1`. That version is published on nuget.org (alongside the `0.
   phase is O(N) in row groups. Only decompression is logarithmic — that is where the speedup
   comes from, and it is why the win grows with row-group payload size rather than with row-group
   count alone.
+- **Span-keyed string deduplication** (`DeduplicateStrings = true`): string columns are read
+  through Parquet.Net's raw `ReadOnlyMemory<char>` surface and interned against a pooled
+  open-addressed table keyed on `ReadOnlySpan<char>`, so a repeated value costs no `string`
+  allocation at all. Hash matches are always confirmed with a full ordinal comparison. On the
+  Adult Census dataset (32,561 rows, 9 categorical columns) this cuts managed read allocation
+  from 20.38 MB to 8.75 MB. The `ReadOnlySpan<byte>` variant the design originally called for is
+  not reachable — Parquet.Net 6.1.0 exposes no UTF-8 byte surface for string columns; see
+  `UPSTREAM_DEPENDENCY_LIMITATIONS.md`.
 
 ### Changed
 - **Formatting tooling consolidated on CSharpier.** `dotnet format whitespace` is removed from CI:

@@ -150,11 +150,21 @@ public static partial class OrderEventParquetExtensions
     }
 
     /// <summary>
-    /// Lightweight, zero-allocation L1 string cache for deduplicating repeated string instances
-    /// across columnar reads, slashing managed heap allocations on categorical string columns.
+    /// Lightweight L1 string cache keyed directly on <see cref="global::System.ReadOnlySpan{T}"/>
+    /// of <see cref="char"/>, backed by a pooled open-addressed table.
+    /// A cache hit returns the previously materialized <see cref="string"/> instance without
+    /// allocating, so repeated (categorical) column values cost one string per distinct value
+    /// rather than one string per row.
     /// </summary>
+    /// <remarks>
+    /// Hash equality is never trusted on its own: every candidate is confirmed with a full
+    /// ordinal span comparison before it is returned, so collisions can only cost a probe,
+    /// never correctness.
+    /// </remarks>
     private struct StringDeduplicator : global::System.IDisposable
     {
+        private const int ProbeLimit = 4;
+
         private string?[]? _entries;
         private readonly int _mask;
 
@@ -175,15 +185,97 @@ public static partial class OrderEventParquetExtensions
             var entries = _entries;
             if (entries is null) return value;
 
-            int index = value.GetHashCode() & _mask;
-            string? candidate = entries[index];
-            if (candidate is not null && string.Equals(candidate, value, global::System.StringComparison.Ordinal))
+            int mask = _mask;
+            int index = (int)(HashString(value) & (uint)mask);
+            for (int probe = 0; probe < ProbeLimit; probe++)
             {
-                return candidate;
+                int slot = (index + probe) & mask;
+                string? candidate = entries[slot];
+                if (candidate is null)
+                {
+                    entries[slot] = value;
+                    return value;
+                }
+
+                // A matching hash is never trusted on its own: compare in full.
+                if (string.Equals(candidate, value, global::System.StringComparison.Ordinal))
+                {
+                    return candidate;
+                }
             }
 
+            // Probe window exhausted: evict the primary slot so hot values stay resident.
             entries[index] = value;
             return value;
+        }
+
+        /// <summary>
+        /// Returns the cached string equal to <paramref name="value"/>. A cache hit allocates
+        /// nothing at all — no string instance is created for a value already seen.
+        /// </summary>
+        public string GetOrAdd(global::System.ReadOnlySpan<char> value)
+        {
+            if (value.Length == 0) return string.Empty;
+
+            var entries = _entries;
+            if (entries is null) return value.ToString();
+
+            int mask = _mask;
+            int index = (int)(HashSpan(value) & (uint)mask);
+            for (int probe = 0; probe < ProbeLimit; probe++)
+            {
+                int slot = (index + probe) & mask;
+                string? candidate = entries[slot];
+                if (candidate is null)
+                {
+                    string inserted = value.ToString();
+                    entries[slot] = inserted;
+                    return inserted;
+                }
+
+                // A matching hash is never trusted on its own: compare byte-for-byte.
+                if (SpanEqualsOrdinal(value, candidate))
+                {
+                    return candidate;
+                }
+            }
+
+            string replacement = value.ToString();
+            entries[index] = replacement;
+            return replacement;
+        }
+
+        private static bool SpanEqualsOrdinal(global::System.ReadOnlySpan<char> value, string candidate)
+        {
+            if (value.Length != candidate.Length) return false;
+            for (int i = 0; i < value.Length; i++)
+            {
+                if (value[i] != candidate[i]) return false;
+            }
+            return true;
+        }
+
+        /// <summary>FNV-1a over UTF-16 code units; allocation free and span/string identical.</summary>
+        private static uint HashSpan(global::System.ReadOnlySpan<char> value)
+        {
+            uint hash = 2166136261u;
+            for (int i = 0; i < value.Length; i++)
+            {
+                hash ^= value[i];
+                hash *= 16777619u;
+            }
+            return hash;
+        }
+
+        private static uint HashString(string value)
+        {
+            uint hash = 2166136261u;
+            for (int i = 0; i < value.Length; i++)
+            {
+                hash ^= value[i];
+                hash *= 16777619u;
+            }
+            return hash;
         }
 
         public void Dispose()
@@ -193,6 +285,80 @@ public static partial class OrderEventParquetExtensions
             {
                 _entries = null;
                 global::System.Buffers.ArrayPool<string?>.Shared.Return(entries, clearArray: true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Reads a string column through Parquet.Net's raw <c>ReadOnlyMemory&lt;char&gt;</c> surface and
+    /// materializes it via <see cref="StringDeduplicator"/>, so only distinct values allocate.
+    /// </summary>
+    private static async global::System.Threading.Tasks.ValueTask ReadDeduplicatedStringColumnAsync(
+        global::Parquet.ParquetRowGroupReader groupReader,
+        global::Parquet.Schema.DataField field,
+        string?[] destination,
+        int rowCount,
+        StringDeduplicator deduplicator,
+        global::System.Threading.CancellationToken cancellationToken)
+    {
+        var raw = global::System.Buffers.ArrayPool<global::System.ReadOnlyMemory<char>>.Shared.Rent(rowCount);
+        int maxDefinitionLevel = field.MaxDefinitionLevel;
+        int[]? definitionLevels = maxDefinitionLevel > 0
+            ? global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount)
+            : null;
+        try
+        {
+            await groupReader.ReadRawAsync(
+                field,
+                new global::System.Memory<global::System.ReadOnlyMemory<char>>(raw, 0, rowCount),
+                definitionLevels is null
+                    ? (global::System.Memory<int>?)null
+                    : new global::System.Memory<int>(definitionLevels, 0, rowCount),
+                null,
+                cancellationToken);
+
+            MaterializeDeduplicatedStrings(raw, definitionLevels, destination, rowCount, maxDefinitionLevel, deduplicator);
+        }
+        finally
+        {
+            global::System.Buffers.ArrayPool<global::System.ReadOnlyMemory<char>>.Shared.Return(raw, clearArray: true);
+            if (definitionLevels is not null)
+            {
+                global::System.Buffers.ArrayPool<int>.Shared.Return(definitionLevels, clearArray: false);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Spreads the packed raw span lane back over the row lane, interning each value.
+    /// </summary>
+    private static void MaterializeDeduplicatedStrings(
+        global::System.ReadOnlyMemory<char>[] raw,
+        int[]? definitionLevels,
+        string?[] destination,
+        int rowCount,
+        int maxDefinitionLevel,
+        StringDeduplicator deduplicator)
+    {
+        if (definitionLevels is null)
+        {
+            for (int i = 0; i < rowCount; i++)
+            {
+                destination[i] = deduplicator.GetOrAdd(raw[i].Span);
+            }
+            return;
+        }
+
+        int packed = 0;
+        for (int i = 0; i < rowCount; i++)
+        {
+            if (definitionLevels[i] == maxDefinitionLevel)
+            {
+                destination[i] = deduplicator.GetOrAdd(raw[packed++].Span);
+            }
+            else
+            {
+                destination[i] = null;
             }
         }
     }
@@ -645,10 +811,23 @@ public static partial class OrderEventParquetExtensions
                 }
                 else
                 {
-                    await groupReader.ReadAsync(
-                        field_1,
-                        new global::System.Memory<string?>(buffer_1, 0, rowCount),
-                        cancellationToken: cancellationToken);
+                    if (deduplicateStrings && field_1.MaxRepetitionLevel == 0)
+                    {
+                        await ReadDeduplicatedStringColumnAsync(
+                            groupReader,
+                            field_1,
+                            buffer_1,
+                            rowCount,
+                            stringDeduplicator,
+                            cancellationToken);
+                    }
+                    else
+                    {
+                        await groupReader.ReadAsync(
+                            field_1,
+                            new global::System.Memory<string?>(buffer_1, 0, rowCount),
+                            cancellationToken: cancellationToken);
+                    }
                 }
                 await groupReader.ReadAsync<double>(
                     field_2,
@@ -845,10 +1024,23 @@ public static partial class OrderEventParquetExtensions
                 }
                 else
                 {
-                    await groupReader.ReadAsync(
-                        field_1,
-                        new global::System.Memory<string?>(buffer_1, 0, rowCount),
-                        cancellationToken: cancellationToken);
+                    if (deduplicateStrings && field_1.MaxRepetitionLevel == 0)
+                    {
+                        await ReadDeduplicatedStringColumnAsync(
+                            groupReader,
+                            field_1,
+                            buffer_1,
+                            rowCount,
+                            stringDeduplicator,
+                            cancellationToken);
+                    }
+                    else
+                    {
+                        await groupReader.ReadAsync(
+                            field_1,
+                            new global::System.Memory<string?>(buffer_1, 0, rowCount),
+                            cancellationToken: cancellationToken);
+                    }
                 }
                 await groupReader.ReadAsync<double>(
                     field_2,
@@ -1023,10 +1215,23 @@ public static partial class OrderEventParquetExtensions
                 }
                 else
                 {
-                    await groupReader.ReadAsync(
-                        field_1,
-                        new global::System.Memory<string?>(buffer_1, 0, rowCount),
-                        cancellationToken: cancellationToken);
+                    if (deduplicateStrings && field_1.MaxRepetitionLevel == 0)
+                    {
+                        await ReadDeduplicatedStringColumnAsync(
+                            groupReader,
+                            field_1,
+                            buffer_1,
+                            rowCount,
+                            stringDeduplicator,
+                            cancellationToken);
+                    }
+                    else
+                    {
+                        await groupReader.ReadAsync(
+                            field_1,
+                            new global::System.Memory<string?>(buffer_1, 0, rowCount),
+                            cancellationToken: cancellationToken);
+                    }
                 }
                 await groupReader.ReadAsync<double>(
                     field_2,
@@ -1189,10 +1394,23 @@ public static partial class OrderEventParquetExtensions
                 }
                 else
                 {
-                    await groupReader.ReadAsync(
-                        field_1,
-                        new global::System.Memory<string?>(buffer_1, 0, rowCount),
-                        cancellationToken: cancellationToken);
+                    if (deduplicateStrings && field_1.MaxRepetitionLevel == 0)
+                    {
+                        await ReadDeduplicatedStringColumnAsync(
+                            groupReader,
+                            field_1,
+                            buffer_1,
+                            rowCount,
+                            stringDeduplicator,
+                            cancellationToken);
+                    }
+                    else
+                    {
+                        await groupReader.ReadAsync(
+                            field_1,
+                            new global::System.Memory<string?>(buffer_1, 0, rowCount),
+                            cancellationToken: cancellationToken);
+                    }
                 }
                 await groupReader.ReadAsync<double>(
                     field_2,
@@ -1494,10 +1712,23 @@ public static partial class OrderEventParquetExtensions
                     }
                     else
                     {
-                        await groupReader.ReadAsync(
-                            field_1,
-                            new global::System.Memory<string?>(buffer_1, 0, rowCount),
-                            cancellationToken: cancellationToken);
+                        if (deduplicateStrings && field_1.MaxRepetitionLevel == 0)
+                        {
+                            await ReadDeduplicatedStringColumnAsync(
+                                groupReader,
+                                field_1,
+                                buffer_1,
+                                rowCount,
+                                stringDeduplicator,
+                                cancellationToken);
+                        }
+                        else
+                        {
+                            await groupReader.ReadAsync(
+                                field_1,
+                                new global::System.Memory<string?>(buffer_1, 0, rowCount),
+                                cancellationToken: cancellationToken);
+                        }
                     }
                     await groupReader.ReadAsync<double>(
                         field_2,
@@ -1661,10 +1892,23 @@ public static partial class OrderEventParquetExtensions
                 }
                 else
                 {
-                    await groupReader.ReadAsync(
-                        field_1,
-                        new global::System.Memory<string?>(buffer_1, 0, rowCount),
-                        cancellationToken: cancellationToken);
+                    if (deduplicateStrings && field_1.MaxRepetitionLevel == 0)
+                    {
+                        await ReadDeduplicatedStringColumnAsync(
+                            groupReader,
+                            field_1,
+                            buffer_1,
+                            rowCount,
+                            stringDeduplicator,
+                            cancellationToken);
+                    }
+                    else
+                    {
+                        await groupReader.ReadAsync(
+                            field_1,
+                            new global::System.Memory<string?>(buffer_1, 0, rowCount),
+                            cancellationToken: cancellationToken);
+                    }
                 }
                 await groupReader.ReadAsync<double>(
                     field_2,
@@ -1909,6 +2153,9 @@ public static partial class OrderEventParquetExtensions
         var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName, out _);
         var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName, out bool missing_7);
         var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName, out bool missing_8);
+        using var stringDeduplicator = new StringDeduplicator(512);
+        bool deduplicateStrings = options.DeduplicateStrings;
+
 
         for (int r = 0; r < reader.RowGroupCount; r++)
         {
@@ -1941,10 +2188,23 @@ public static partial class OrderEventParquetExtensions
                 }
                 else
                 {
-                    await groupReader.ReadAsync(
-                        field_1,
-                        new global::System.Memory<string?>(buffer_1, 0, rowCount),
-                        cancellationToken: cancellationToken);
+                    if (deduplicateStrings && field_1.MaxRepetitionLevel == 0)
+                    {
+                        await ReadDeduplicatedStringColumnAsync(
+                            groupReader,
+                            field_1,
+                            buffer_1,
+                            rowCount,
+                            stringDeduplicator,
+                            cancellationToken);
+                    }
+                    else
+                    {
+                        await groupReader.ReadAsync(
+                            field_1,
+                            new global::System.Memory<string?>(buffer_1, 0, rowCount),
+                            cancellationToken: cancellationToken);
+                    }
                 }
                 await groupReader.ReadAsync<double>(
                     field_2,

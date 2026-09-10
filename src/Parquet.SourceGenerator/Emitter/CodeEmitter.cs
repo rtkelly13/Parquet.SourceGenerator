@@ -538,7 +538,16 @@ public static class CodeEmitter
 
         if (isString)
         {
-            return $"{indent}await groupReader.ReadAsync(\n{indent}    {fieldAccess},\n{indent}    new global::System.Memory<string?>({bufName}, 0, rowCount),\n{indent}    cancellationToken: cancellationToken);";
+            // Deduplicating path reads raw UTF-16 spans so cache hits never instantiate a string.
+            // Repeated (list) leaves are excluded: their packed lane is not row-aligned.
+            return $"{indent}if (deduplicateStrings && {fieldAccess}.MaxRepetitionLevel == 0)\n"
+                + $"{indent}{{\n"
+                + $"{indent}    await ReadDeduplicatedStringColumnAsync(\n{indent}        groupReader,\n{indent}        {fieldAccess},\n{indent}        {bufName},\n{indent}        rowCount,\n{indent}        stringDeduplicator,\n{indent}        cancellationToken);\n"
+                + $"{indent}}}\n"
+                + $"{indent}else\n"
+                + $"{indent}{{\n"
+                + $"{indent}    await groupReader.ReadAsync(\n{indent}        {fieldAccess},\n{indent}        new global::System.Memory<string?>({bufName}, 0, rowCount),\n{indent}        cancellationToken: cancellationToken);\n"
+                + $"{indent}}}";
         }
         else if (isByteArray)
         {

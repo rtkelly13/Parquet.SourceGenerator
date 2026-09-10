@@ -55,7 +55,10 @@ public static class LegacyCodeEmitter
 
         if (StringDeduplicatorComponent.HasStringProperties(model))
         {
-            StringDeduplicatorComponent.EmitStringDeduplicator(builder);
+            StringDeduplicatorComponent.EmitStringDeduplicator(
+                builder,
+                emitRawSpanColumnReader: false
+            );
             builder.AppendLine();
         }
 
