@@ -49,3 +49,5 @@ Parquet.SourceGenerator.ParquetPruneStatistics.SortedColumnDetected.get -> bool
 Parquet.SourceGenerator.ParquetPruneStatistics.SortedColumnDetected.set -> void
 Parquet.SourceGenerator.ParquetPruneStatistics.StrictlyMonotonic.get -> bool
 Parquet.SourceGenerator.ParquetPruneStatistics.StrictlyMonotonic.set -> void
+Parquet.SourceGenerator.ParquetSortKeyAttribute
+Parquet.SourceGenerator.ParquetSortKeyAttribute.ParquetSortKeyAttribute() -> void

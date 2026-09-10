@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using Microsoft.CodeAnalysis;
@@ -467,6 +468,129 @@ public sealed class DiagnosticTests
         Assert.DoesNotContain(
             diagnostics,
             d => d.Id == DiagnosticDescriptors.GenericTypeNotSupported.Id
+        );
+    }
+
+    [Fact]
+    public void StringSortKeyTriggersPARQ014WithTheOrderingReason()
+    {
+        // Parquet orders BYTE_ARRAY statistics bytewise; string.CompareTo is culture-sensitive.
+        // The two orders can disagree, so a binary search over the statistics could skip a row
+        // group that really does contain the key.
+        string source = """
+            using Parquet.SourceGenerator;
+
+            [ParquetSerializable]
+            public partial class StringSortKeyClass
+            {
+                [ParquetSortKey]
+                public string Name { get; init; } = string.Empty;
+            }
+            """;
+
+        var (diagnostics, _) = RunGenerator(source);
+
+        Diagnostic reported = Assert.Single(
+            diagnostics,
+            d => d.Id == DiagnosticDescriptors.SortKeyNotEligible.Id
+        );
+        Assert.Contains(
+            "culture-sensitive",
+            reported.GetMessage(CultureInfo.InvariantCulture),
+            StringComparison.Ordinal
+        );
+    }
+
+    [Fact]
+    public void NullableSortKeyTriggersPARQ014()
+    {
+        string source = """
+            using Parquet.SourceGenerator;
+
+            [ParquetSerializable]
+            public partial class NullableSortKeyClass
+            {
+                [ParquetSortKey]
+                public int? Id { get; init; }
+            }
+            """;
+
+        var (diagnostics, _) = RunGenerator(source);
+
+        Diagnostic reported = Assert.Single(
+            diagnostics,
+            d => d.Id == DiagnosticDescriptors.SortKeyNotEligible.Id
+        );
+        Assert.Contains(
+            "nullable",
+            reported.GetMessage(CultureInfo.InvariantCulture),
+            StringComparison.Ordinal
+        );
+    }
+
+    [Fact]
+    public void CompoundSortKeyTriggersPARQ014()
+    {
+        string source = """
+            using System.Collections.Generic;
+            using Parquet.SourceGenerator;
+
+            [ParquetSerializable]
+            public partial class CompoundSortKeyClass
+            {
+                [ParquetSortKey]
+                public List<int> Values { get; init; } = new();
+            }
+            """;
+
+        var (diagnostics, _) = RunGenerator(source);
+
+        Assert.Contains(diagnostics, d => d.Id == DiagnosticDescriptors.SortKeyNotEligible.Id);
+    }
+
+    [Fact]
+    public void UnorderedSortKeyTypeTriggersPARQ014()
+    {
+        string source = """
+            using System;
+            using Parquet.SourceGenerator;
+
+            [ParquetSerializable]
+            public partial class GuidSortKeyClass
+            {
+                [ParquetSortKey]
+                public Guid Id { get; init; }
+            }
+            """;
+
+        var (diagnostics, _) = RunGenerator(source);
+
+        Assert.Contains(diagnostics, d => d.Id == DiagnosticDescriptors.SortKeyNotEligible.Id);
+    }
+
+    [Fact]
+    public void EligibleSortKeyReportsNothing()
+    {
+        string source = """
+            using System;
+            using Parquet.SourceGenerator;
+
+            [ParquetSerializable]
+            public partial class EligibleSortKeyClass
+            {
+                [ParquetSortKey]
+                public long Sequence { get; init; }
+
+                [ParquetSortKey]
+                public DateTime Timestamp { get; init; }
+            }
+            """;
+
+        var (diagnostics, _) = RunGenerator(source);
+
+        Assert.DoesNotContain(
+            diagnostics,
+            d => d.Id == DiagnosticDescriptors.SortKeyNotEligible.Id
         );
     }
 

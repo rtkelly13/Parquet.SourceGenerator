@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Text;
 using Parquet.SourceGenerator.Emitter.Compound;
@@ -7,8 +6,9 @@ using Parquet.SourceGenerator.Models;
 namespace Parquet.SourceGenerator.Emitter;
 
 /// <summary>
-/// One sortable key column: a flat, non-nullable, totally ordered root property whose
-/// row-group <c>[Min, Max]</c> statistics can drive binary-search pruning.
+/// One sortable key column: a root property marked <c>[ParquetSortKey]</c> that is flat,
+/// non-nullable and totally ordered, so its row-group <c>[Min, Max]</c> statistics can drive
+/// binary-search pruning.
 /// </summary>
 internal sealed class SortableColumn
 {
@@ -26,32 +26,23 @@ internal sealed class SortableColumn
 /// <c>[Min, Max]</c> statistics so a point lookup or a range slice decompresses only the
 /// row groups that can possibly contain the key, falling back to a full linear scan when
 /// the statistics are missing or the intervals overlap.
+/// <para>
+/// Emission is opt-in per column via <c>[ParquetSortKey]</c>. A model with no marker gets
+/// none of this — the emitted source is exactly what it would be without the feature.
+/// </para>
 /// </summary>
 internal static class SortedRowGroupPruningComponent
 {
     /// <summary>
-    /// Primitive key types whose Parquet statistics round-trip to the identical CLR type and
-    /// whose <c>Comparer&lt;T&gt;.Default</c> order matches the Parquet column order. String is
-    /// deliberately absent: Parquet orders <c>BYTE_ARRAY</c> statistics by unsigned byte value
-    /// while <c>string.CompareTo</c> is culture-sensitive, so the two orders can disagree.
-    /// </summary>
-    private static readonly HashSet<string> OrderedPrimitives = new(StringComparer.Ordinal)
-    {
-        "byte",
-        "sbyte",
-        "short",
-        "ushort",
-        "int",
-        "uint",
-        "long",
-        "ulong",
-        "float",
-        "double",
-    };
-
-    /// <summary>
-    /// Selects the key columns worth emitting lookup overloads for. A candidate must be a flat
-    /// root property (no struct/list/map ancestry), non-nullable, and of a totally ordered type.
+    /// Selects the key columns to emit lookup overloads for: the root properties the model
+    /// author opted in with <c>[ParquetSortKey]</c> and that
+    /// <see cref="SortKeyEligibility"/> accepts. An ineligible marker never reaches here — the
+    /// parser has already reported PARQ014 against it — so this stays a filter, not a second
+    /// place where a rule could silently diverge.
+    /// <para>
+    /// With no marker anywhere on the model this returns empty and nothing at all is emitted:
+    /// no lookups, no shared generic core, no pruning helpers.
+    /// </para>
     /// </summary>
     public static List<SortableColumn> SortableColumns(TargetClassModel model)
     {
@@ -61,7 +52,10 @@ internal static class SortedRowGroupPruningComponent
         for (int i = 0; i < model.Properties.Length; i++)
         {
             PropertyModel prop = model.Properties[i];
-            if (prop.IsNullable)
+            if (!prop.IsSortKey)
+                continue;
+
+            if (!SortKeyEligibility.IsEligible(prop, out _))
                 continue;
 
             int slot = plan.ColumnSlotByProperty[i];
@@ -70,20 +64,6 @@ internal static class SortedRowGroupPruningComponent
 
             LeafColumn column = plan.Columns[slot];
             if (column.IsCompound || column.IsListLeaf)
-                continue;
-
-            bool ordered =
-                (prop.Kind == PropertyKind.Primitive && OrderedPrimitives.Contains(prop.TypeName))
-                || (
-                    prop.Kind == PropertyKind.DateTime
-                    && string.Equals(
-                        prop.TypeName,
-                        "global::System.DateTime",
-                        StringComparison.Ordinal
-                    )
-                );
-
-            if (!ordered)
                 continue;
 
             result.Add(
@@ -171,6 +151,17 @@ internal static class SortedRowGroupPruningComponent
             "    /// case the caller must scan every row group. No column data is read: statistics come from the"
         );
         builder.AppendLine("    /// footer already parsed in memory.");
+        builder.AppendLine("    /// <para>");
+        builder.AppendLine(
+            "    /// Certifying sortedness inspects every row group's statistics, so this metadata phase is O(N)"
+        );
+        builder.AppendLine(
+            "    /// in row groups; only the subsequent decompression is logarithmic. That is where the speedup"
+        );
+        builder.AppendLine(
+            "    /// comes from — reading a footer entry is orders of magnitude cheaper than decompressing a page."
+        );
+        builder.AppendLine("    /// </para>");
         builder.AppendLine("    /// </summary>");
         builder.AppendLine("    private static bool TryPruneSortedRowGroups<TKey>(");
         builder.AppendLine("        global::Parquet.ParquetReader reader,");

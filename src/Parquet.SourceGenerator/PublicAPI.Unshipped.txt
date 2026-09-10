@@ -43,3 +43,8 @@ Parquet.SourceGenerator.Models.PropertyModel.CompoundIsValueType.get -> bool
 Parquet.SourceGenerator.Models.PropertyModel.CompoundIsValueType.init -> void
 static Parquet.SourceGenerator.Parser.TargetParser.GetTargetModel(Microsoft.CodeAnalysis.GeneratorSyntaxContext context, Parquet.SourceGenerator.Parser.ParquetApiLevel apiLevel, Parquet.SourceGenerator.Parser.CompoundKinds compoundKinds) -> Parquet.SourceGenerator.Parser.TargetParserResult!
 static Parquet.SourceGenerator.Parser.TargetParser.GetTargetModel(Microsoft.CodeAnalysis.INamedTypeSymbol! typeSymbol, Parquet.SourceGenerator.Parser.ParquetApiLevel apiLevel, Parquet.SourceGenerator.Parser.CompoundKinds compoundKinds) -> Parquet.SourceGenerator.Parser.TargetParserResult!
+Parquet.SourceGenerator.Models.PropertyModel.IsSortKey.get -> bool
+Parquet.SourceGenerator.Models.PropertyModel.IsSortKey.init -> void
+Parquet.SourceGenerator.Models.SortKeyEligibility
+static Parquet.SourceGenerator.Models.SortKeyEligibility.IsEligible(Parquet.SourceGenerator.Models.PropertyModel! property, out string! reason) -> bool
+static readonly Parquet.SourceGenerator.Diagnostics.DiagnosticDescriptors.SortKeyNotEligible -> Microsoft.CodeAnalysis.DiagnosticDescriptor!

@@ -30,6 +30,8 @@ public static class TargetParser
         "Parquet.SourceGenerator.ParquetDecimalAttribute";
     private const string TimestampAttributeFullName =
         "Parquet.SourceGenerator.ParquetTimestampAttribute";
+    private const string SortKeyAttributeFullName =
+        "Parquet.SourceGenerator.ParquetSortKeyAttribute";
 
     /// <summary>
     /// Parses a Roslyn syntax context and returns a value-equatable <see cref="TargetParserResult"/> containing the target model and diagnostics.
@@ -448,6 +450,19 @@ public static class TargetParser
                         || name is "ParquetColumnAttribute" or "ParquetColumn";
                 });
 
+            // Sorted row-group pruning is opt-in (issue #151): the lookup overloads are public
+            // API on the generated class, so the model author names the keys rather than getting
+            // two methods per eligible column whether or not anything looks them up.
+            bool isSortKey = member
+                .GetAttributes()
+                .Any(a =>
+                {
+                    string? fullName = a.AttributeClass?.ToDisplayString();
+                    string? name = a.AttributeClass?.Name;
+                    return fullName == SortKeyAttributeFullName
+                        || name is "ParquetSortKeyAttribute" or "ParquetSortKey";
+                });
+
             AttributeData? jsonPropertyAttr = member
                 .GetAttributes()
                 .FirstOrDefault(a =>
@@ -675,6 +690,15 @@ public static class TargetParser
                     }
                     if (compoundModel is not null)
                     {
+                        // Rule PARQ014: a compound member has no row-group statistics of its own.
+                        ReportIneligibleSortKey(
+                            isSortKey,
+                            compoundModel,
+                            member,
+                            className,
+                            fallbackLocation,
+                            diagnostics
+                        );
                         propertyModels.Add(compoundModel);
                         continue;
                     }
@@ -739,23 +763,63 @@ public static class TargetParser
 
             string typeName = memberType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
-            propertyModels.Add(
-                new PropertyModel(
-                    Name: member.Name,
-                    ParquetColumnName: columnName,
-                    TypeName: typeName,
-                    TimestampUnit: timestampUnit,
-                    EnumUnderlyingTypeName: enumUnderlyingTypeName,
-                    Order: order,
-                    DecimalPrecision: precision,
-                    DecimalScale: scale,
-                    Kind: kind,
-                    IsNullable: isNullable,
-                    Deduplicate: deduplicate,
-                    Encoding: encoding
-                )
+            var propertyModel = new PropertyModel(
+                Name: member.Name,
+                ParquetColumnName: columnName,
+                TypeName: typeName,
+                TimestampUnit: timestampUnit,
+                EnumUnderlyingTypeName: enumUnderlyingTypeName,
+                Order: order,
+                DecimalPrecision: precision,
+                DecimalScale: scale,
+                Kind: kind,
+                IsNullable: isNullable,
+                Deduplicate: deduplicate,
+                Encoding: encoding
+            )
+            {
+                IsSortKey = isSortKey,
+            };
+
+            // Rule PARQ014: an opt-in marker the pruning rules reject is reported rather than
+            // silently dropped, so the author is not left waiting for a method that never appears.
+            ReportIneligibleSortKey(
+                isSortKey,
+                propertyModel,
+                member,
+                className,
+                fallbackLocation,
+                diagnostics
             );
+
+            propertyModels.Add(propertyModel);
         }
+    }
+
+    /// <summary>
+    /// Reports PARQ014 when a member carries <c>[ParquetSortKey]</c> but cannot drive sorted
+    /// row-group pruning, naming the reason from <see cref="SortKeyEligibility"/>.
+    /// </summary>
+    private static void ReportIneligibleSortKey(
+        bool isSortKey,
+        PropertyModel model,
+        ISymbol member,
+        string className,
+        Location fallbackLocation,
+        List<DiagnosticInfo> diagnostics
+    )
+    {
+        if (!isSortKey || SortKeyEligibility.IsEligible(model, out string reason))
+            return;
+
+        Location loc = member.Locations.FirstOrDefault() ?? fallbackLocation;
+        diagnostics.Add(
+            new DiagnosticInfo(
+                DiagnosticDescriptors.SortKeyNotEligible,
+                loc,
+                new[] { member.Name, className, reason }
+            )
+        );
     }
 
     /// <summary>

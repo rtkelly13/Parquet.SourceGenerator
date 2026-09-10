@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -11,18 +12,42 @@ namespace Parquet.SourceGenerator.Tests;
 /// A time-series shaped row: monotonically increasing <c>SequenceNumber</c> and
 /// <c>Timestamp</c>, an unsorted <c>Bucket</c>, and a payload column so a row group is
 /// worth skipping.
+/// <para>
+/// Three columns carry <c>[ParquetSortKey]</c> and so get lookup overloads; <c>Payload</c>
+/// does not, and is the control for
+/// <see cref="SortedRowGroupPruningTests.UnmarkedColumnGetsNoLookupOverloads"/>. <c>Bucket</c>
+/// is marked but is not actually written in sorted order — the marker asks for the lookup, it
+/// does not promise the data is sorted, and the read has to notice that at runtime.
+/// </para>
 /// </summary>
 [ParquetSerializable]
 public partial record SortedEvent
 {
     [ParquetColumn("sequence_number")]
+    [ParquetSortKey]
     public long SequenceNumber { get; init; }
 
     [ParquetColumn("timestamp")]
+    [ParquetSortKey]
     public DateTime Timestamp { get; init; }
 
     [ParquetColumn("bucket")]
+    [ParquetSortKey]
     public int Bucket { get; init; }
+
+    [ParquetColumn("payload")]
+    public string Payload { get; init; } = string.Empty;
+}
+
+/// <summary>
+/// The same shape with no <c>[ParquetSortKey]</c> anywhere: the opt-out case, whose generated
+/// class must carry none of the pruning API.
+/// </summary>
+[ParquetSerializable]
+public partial record UnmarkedEvent
+{
+    [ParquetColumn("sequence_number")]
+    public long SequenceNumber { get; init; }
 
     [ParquetColumn("payload")]
     public string Payload { get; init; } = string.Empty;
@@ -279,5 +304,47 @@ public sealed class SortedRowGroupPruningTests
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
             SortedEventParquetExtensions.ReadParquetBySequenceNumberAsync((Stream)null!, 1)
         );
+    }
+
+    /// <summary>
+    /// The opt-in guarantee, asserted against the real generator output rather than the
+    /// emitter: a model with no <c>[ParquetSortKey]</c> gains no public API at all — not the
+    /// lookups, not the range overloads, and not the shared pruning core they forward into.
+    /// </summary>
+    [Fact]
+    public void UnmarkedModelGetsNoneOfTheLookupApi()
+    {
+        string[] emitted = typeof(UnmarkedEventParquetExtensions)
+            .GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
+            .Select(m => m.Name)
+            .ToArray();
+
+        Assert.DoesNotContain("ReadParquetBySequenceNumberAsync", emitted);
+        Assert.DoesNotContain("ReadParquetSequenceNumberRangeAsync", emitted);
+        Assert.DoesNotContain("ReadPrunedRangeAsync", emitted);
+        Assert.DoesNotContain("TryPruneSortedRowGroups", emitted);
+        Assert.DoesNotContain("TryCompareStatistics", emitted);
+        Assert.DoesNotContain("TryCompareStatisticToKey", emitted);
+
+        // The ordinary read API is untouched, so the absence above is opt-in and not a
+        // generator that simply failed to run for this model.
+        Assert.Contains("ReadParquetAsync", emitted);
+    }
+
+    /// <summary>
+    /// The per-column half of the same guarantee: <c>Payload</c> shares a model with three
+    /// marked columns, and still gets nothing.
+    /// </summary>
+    [Fact]
+    public void UnmarkedColumnGetsNoLookupOverloads()
+    {
+        string[] emitted = typeof(SortedEventParquetExtensions)
+            .GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
+            .Select(m => m.Name)
+            .ToArray();
+
+        Assert.DoesNotContain("ReadParquetByPayloadAsync", emitted);
+        Assert.DoesNotContain("ReadParquetPayloadRangeAsync", emitted);
+        Assert.Contains("ReadParquetBySequenceNumberAsync", emitted);
     }
 }

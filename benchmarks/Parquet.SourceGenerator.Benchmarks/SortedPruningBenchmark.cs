@@ -15,9 +15,11 @@ namespace Parquet.SourceGenerator.Benchmarks;
 public partial record SortedSeriesEvent
 {
     [ParquetColumn("sequence_number")]
+    [ParquetSortKey]
     public long SequenceNumber { get; init; }
 
     [ParquetColumn("timestamp")]
+    [ParquetSortKey]
     public DateTime Timestamp { get; init; }
 
     [ParquetColumn("value")]
