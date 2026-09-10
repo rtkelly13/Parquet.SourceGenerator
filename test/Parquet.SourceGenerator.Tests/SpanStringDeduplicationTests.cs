@@ -275,7 +275,7 @@ public sealed class SpanStringDeduplicationTests
     }
 
     [Fact]
-    public async Task DeduplicatedReadAllocatesLessThanPlainRead()
+    public async Task DeduplicatedReadReturnsSharedStringInstances()
     {
         var items = new List<SpanDedupRecord>();
         for (int i = 0; i < 20_000; i++)
@@ -284,45 +284,79 @@ public sealed class SpanStringDeduplicationTests
                 new SpanDedupRecord
                 {
                     Id = i,
+                    // Long values so a regression that stopped sharing instances would also be
+                    // visibly expensive, not merely wrong.
                     RequiredCategory =
                         "Category-"
-                        + (i % 8).ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        + (i % 8).ToString(System.Globalization.CultureInfo.InvariantCulture)
+                        + new string('c', 256),
                     OptionalCategory =
                         "Tag-"
-                        + (i % 5).ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        + (i % 5).ToString(System.Globalization.CultureInfo.InvariantCulture)
+                        + new string('t', 256),
                 }
             );
         }
 
         byte[] bytes = await WriteAsync(items);
 
-        async Task<long> MeasureAsync(ParquetSerializerOptions options)
-        {
-            // Warm the code paths first so JIT allocations do not pollute the measurement.
-            _ = await SpanDedupRecordParquetExtensions.ReadParquetAsync(
-                new MemoryStream(bytes),
-                options
-            );
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            GC.Collect();
-            long before = GC.GetTotalAllocatedBytes(precise: true);
-            var read = await SpanDedupRecordParquetExtensions.ReadParquetAsync(
-                new MemoryStream(bytes),
-                options
-            );
-            long after = GC.GetTotalAllocatedBytes(precise: true);
-            Assert.Equal(items.Count, read.Count);
-            return after - before;
-        }
-
-        long plain = await MeasureAsync(NotDeduplicating);
-        long deduplicated = await MeasureAsync(Deduplicating);
-
-        Assert.True(
-            deduplicated < plain,
-            $"Deduplicated read allocated {deduplicated:N0} bytes, plain read allocated {plain:N0} bytes."
+        // Assert the mechanism directly rather than by process-wide allocation counting.
+        // GC.GetTotalAllocatedBytes is process-wide and this measurement spans awaits, so with
+        // xUnit running collections in parallel an unrelated test's allocation lands inside the
+        // window: the comparative form passed in isolation and failed in the full suite. Instance
+        // identity is what deduplication actually promises, and it is deterministic.
+        var deduplicatedRead = await SpanDedupRecordParquetExtensions.ReadParquetAsync(
+            new MemoryStream(bytes),
+            Deduplicating
         );
+        var plainRead = await SpanDedupRecordParquetExtensions.ReadParquetAsync(
+            new MemoryStream(bytes),
+            NotDeduplicating
+        );
+
+        Assert.Equal(items.Count, deduplicatedRead.Count);
+        Assert.Equal(items.Count, plainRead.Count);
+
+        // 8 distinct required + 5 distinct optional values, however many rows carry them.
+        int deduplicatedInstances = CountDistinctInstances(deduplicatedRead);
+        Assert.Equal(13, deduplicatedInstances);
+
+        // Without deduplication every row holds its own instance, so the count tracks rows.
+        int plainInstances = CountDistinctInstances(plainRead);
+        Assert.True(
+            plainInstances > deduplicatedInstances * 100,
+            $"Expected the plain read to hold far more string instances; got {plainInstances:N0} "
+                + $"versus {deduplicatedInstances:N0} deduplicated."
+        );
+
+        // Values must still be correct, not merely shared.
+        Assert.Equal(
+            items.Select(i => i.RequiredCategory).ToList(),
+            deduplicatedRead.Select(r => r.RequiredCategory).ToList()
+        );
+        Assert.Equal(
+            items.Select(i => i.OptionalCategory).ToList(),
+            deduplicatedRead.Select(r => r.OptionalCategory).ToList()
+        );
+
+        static int CountDistinctInstances(List<SpanDedupRecord> rows)
+        {
+            var seen = new HashSet<object>(ReferenceEqualityComparer.Instance);
+            foreach (SpanDedupRecord row in rows)
+            {
+                if (row.RequiredCategory is not null)
+                {
+                    seen.Add(row.RequiredCategory);
+                }
+
+                if (row.OptionalCategory is not null)
+                {
+                    seen.Add(row.OptionalCategory);
+                }
+            }
+
+            return seen.Count;
+        }
     }
 
     /// <summary>
