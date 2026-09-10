@@ -92,6 +92,10 @@ Welcome to the **Parquet.SourceGenerator** documentation repository. This folder
 17. **[16 - Version And Schema-Evolution Matrix](./16-VERSION-AND-SCHEMA-EVOLUTION.md)**
      - Schema-evolution contract: reordering, extra columns, absent optional and required columns.
      - Producer/consumer/version matrix across Parquet.Net, PyArrow and DuckDB, and the recorded report.
+
+18. **[17 - Public API Surface & Naming Grammar](./17-PUBLIC-API-SURFACE.md)**
+     - The generated read/write grid, the eight catalogued surface defects, and the decisions that resolve them.
+     - Where a new option belongs, and how the signature baselines keep the decision honest.
      - Cross-version interoperability between the modern and classic packages.
 
 
