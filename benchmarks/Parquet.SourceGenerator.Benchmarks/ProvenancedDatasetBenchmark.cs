@@ -250,7 +250,7 @@ public class TpchLineItemBenchmark
     {
         return await BenchmarkTpchLineItemParquetExtensions.ReadParquetParallelAsync(
             new ReadOnlyMemory<byte>(_rawBytes),
-            maxDegreeOfParallelism: 4
+            new ParquetSerializerOptions { MaxDegreeOfParallelism = 4 }
         );
     }
 
@@ -369,7 +369,7 @@ public class AdultCensusBenchmark
     {
         return await BenchmarkAdultCensusParquetExtensions.ReadParquetParallelAsync(
             new ReadOnlyMemory<byte>(_rawBytes),
-            maxDegreeOfParallelism: 4
+            new ParquetSerializerOptions { MaxDegreeOfParallelism = 4 }
         );
     }
 
@@ -451,7 +451,7 @@ public class DiamondsBenchmark
     {
         return await BenchmarkDiamondsParquetExtensions.ReadParquetParallelAsync(
             new ReadOnlyMemory<byte>(_rawBytes),
-            maxDegreeOfParallelism: 4
+            new ParquetSerializerOptions { MaxDegreeOfParallelism = 4 }
         );
     }
 

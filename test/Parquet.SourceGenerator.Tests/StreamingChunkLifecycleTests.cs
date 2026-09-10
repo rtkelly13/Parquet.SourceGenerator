@@ -68,7 +68,11 @@ public class StreamingChunkLifecycleTests
             .ToList();
 
         using var stream = new MemoryStream();
-        await ToAsyncEnumerable(items).WriteParquetAsync(stream, rowGroupSize: rowGroupSize);
+        await ToAsyncEnumerable(items)
+            .WriteParquetAsync(
+                stream,
+                new ParquetSerializerOptions { RowGroupSize = rowGroupSize }
+            );
 
         // 1. Verify Parquet low-level row group structure
         stream.Position = 0;
@@ -129,7 +133,11 @@ public class StreamingChunkLifecycleTests
             .ToList();
 
         using var stream = new MemoryStream();
-        await ToAsyncEnumerable(items).WriteParquetAsync(stream, rowGroupSize: rowGroupSize);
+        await ToAsyncEnumerable(items)
+            .WriteParquetAsync(
+                stream,
+                new ParquetSerializerOptions { RowGroupSize = rowGroupSize }
+            );
 
         stream.Position = 0;
         await using (var reader = await ParquetReader.CreateAsync(stream))
@@ -168,7 +176,11 @@ public class StreamingChunkLifecycleTests
             .ToList();
 
         using var stream = new MemoryStream();
-        await ToAsyncEnumerable(items).WriteParquetAsync(stream, rowGroupSize: rowGroupSize);
+        await ToAsyncEnumerable(items)
+            .WriteParquetAsync(
+                stream,
+                new ParquetSerializerOptions { RowGroupSize = rowGroupSize }
+            );
 
         stream.Position = 0;
         await using (var reader = await ParquetReader.CreateAsync(stream))
@@ -194,7 +206,8 @@ public class StreamingChunkLifecycleTests
         var items = Enumerable.Empty<StreamingChunkModel>();
 
         using var stream = new MemoryStream();
-        await ToAsyncEnumerable(items).WriteParquetAsync(stream, rowGroupSize: 10);
+        await ToAsyncEnumerable(items)
+            .WriteParquetAsync(stream, new ParquetSerializerOptions { RowGroupSize = 10 });
 
         stream.Position = 0;
         await using (var reader = await ParquetReader.CreateAsync(stream))
@@ -283,7 +296,8 @@ public class StreamingChunkLifecycleTests
         };
 
         using var stream = new MemoryStream();
-        await ToAsyncEnumerable(items).WriteParquetAsync(stream, rowGroupSize: 5);
+        await ToAsyncEnumerable(items)
+            .WriteParquetAsync(stream, new ParquetSerializerOptions { RowGroupSize = 5 });
 
         // Verify low level
         stream.Position = 0;

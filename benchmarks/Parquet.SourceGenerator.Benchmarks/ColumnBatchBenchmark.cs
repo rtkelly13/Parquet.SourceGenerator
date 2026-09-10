@@ -41,7 +41,12 @@ public class ColumnBatchAggregationBenchmark
             .ToList();
 
         using var stream = new MemoryStream();
-        data.WriteParquetBatchedAsync(stream, rowGroupSize: 20_000).GetAwaiter().GetResult();
+        data.WriteParquetBatchedAsync(
+                stream,
+                new ParquetSerializerOptions { RowGroupSize = 20_000 }
+            )
+            .GetAwaiter()
+            .GetResult();
         _parquetBytes = stream.ToArray();
     }
 

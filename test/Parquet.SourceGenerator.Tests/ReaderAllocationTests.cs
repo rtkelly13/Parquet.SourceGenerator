@@ -61,7 +61,10 @@ public sealed class ReaderAllocationTests
             .ToList();
 
         using var stream = new MemoryStream();
-        await written.WriteParquetBatchedAsync(stream, rowGroupSize: 2);
+        await written.WriteParquetBatchedAsync(
+            stream,
+            new ParquetSerializerOptions { RowGroupSize = 2 }
+        );
         stream.Position = 0;
 
         List<MultiRowGroupModel> read = await MultiRowGroupModelParquetExtensions.ReadParquetAsync(
@@ -82,7 +85,10 @@ public sealed class ReaderAllocationTests
             .ToList();
 
         using var stream = new MemoryStream();
-        await written.WriteParquetBatchedAsync(stream, rowGroupSize: 2);
+        await written.WriteParquetBatchedAsync(
+            stream,
+            new ParquetSerializerOptions { RowGroupSize = 2 }
+        );
 
         stream.Position = 0;
         List<MultiRowGroupModel> sequential =

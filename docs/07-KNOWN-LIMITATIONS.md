@@ -113,7 +113,9 @@ that assembly would have broken that one TFM and no other. Found while evaluatin
 `CodeEmitter.EmitReadParallelAsync` computes `targetParallelism` and never reads it again. The
 emitted body is a sequential `for (int r = 0; r < rgCount; r++)` loop; the emitter contains no
 `Task.Run`, `Parallel.For` or `Task.WhenAll` anywhere. Both the `maxDegreeOfParallelism` parameter
-and `ParquetSerializerOptions.MaxDegreeOfParallelism` are inert.
+and `ParquetSerializerOptions.MaxDegreeOfParallelism` are inert. (The parameter no longer exists —
+[#218](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/218) removed it;
+`ParquetSerializerOptions.MaxDegreeOfParallelism` is now the only place the knob lives.)
 
 The README ("Multi-core parallel read across row groups"), CHANGELOG ("distributes object
 construction across row groups") and the generated XML doc comment all claim otherwise.
@@ -302,11 +304,15 @@ Setting `RowGroupSize = 50_000` explicitly is indistinguishable from leaving it 
 the method parameter silently wins. A nullable `int?` default expresses "unset" without a sentinel.
 `MaxDegreeOfParallelism` uses the same `> 0` pattern.
 
-**Resolved** for row-group sizing: the parameter is now `int?`, precedence is explicit argument →
+**Resolved** for row-group sizing: the parameter was made `int?`, precedence was explicit argument →
 options → the options default, and a non-positive value from either source throws
-`ArgumentOutOfRangeException`. `MaxDegreeOfParallelism` is left alone deliberately — it is inert
-until 2.1 is addressed, and giving it real precedence rules before it does anything would only
-enshrine behaviour that does not exist.
+`ArgumentOutOfRangeException`. `MaxDegreeOfParallelism` was left alone deliberately — it was inert
+until 2.1 was addressed, and giving it real precedence rules before it did anything would only have
+enshrined behaviour that did not exist.
+
+**Superseded** by [#218](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/218): both
+parameters were deleted rather than given precedence rules, so there is now one source and no
+precedence to state. See [19 - Public API Surface](./19-PUBLIC-API-SURFACE.md).
 
 ### 3.3 `ParquetSerializerOptions.Default` is a mutable shared singleton ✅
 

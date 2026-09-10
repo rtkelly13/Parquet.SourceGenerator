@@ -198,7 +198,10 @@ internal static class Program
             .ToList();
 
         using var mem = new MemoryStream();
-        await data.WriteParquetBatchedAsync(mem, rowGroupSize: rowGroupSize);
+        await data.WriteParquetBatchedAsync(
+            mem,
+            new ParquetSerializerOptions { RowGroupSize = rowGroupSize }
+        );
         byte[] bytes = mem.ToArray();
 
         // 1. Sequential buffer read
@@ -216,7 +219,7 @@ internal static class Program
         // 2. Parallel buffer read with degree of parallelism = 4
         List<Reading> parallelRead = await ReadingParquetExtensions.ReadParquetParallelAsync(
             new ReadOnlyMemory<byte>(bytes),
-            maxDegreeOfParallelism: 4
+            new ParquetSerializerOptions { MaxDegreeOfParallelism = 4 }
         );
 
         if (parallelRead.Count != totalCount)

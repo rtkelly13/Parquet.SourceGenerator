@@ -80,7 +80,12 @@ public class SortedPruningBenchmark
             .ToList();
 
         using var stream = new MemoryStream();
-        data.WriteParquetBatchedAsync(stream, RowGroupSize).GetAwaiter().GetResult();
+        data.WriteParquetBatchedAsync(
+                stream,
+                new ParquetSerializerOptions { RowGroupSize = RowGroupSize }
+            )
+            .GetAwaiter()
+            .GetResult();
         _file = stream.ToArray();
 
         // Deliberately near the end of the file: a linear scan pays for everything before it.

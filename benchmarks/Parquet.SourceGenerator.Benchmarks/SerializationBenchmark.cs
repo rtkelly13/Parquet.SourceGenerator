@@ -94,7 +94,10 @@ public class ScalingSerializationBenchmark
     public async Task SourceGeneratorWriteBatchedAsync()
     {
         using var stream = new MemoryStream();
-        await _data.WriteParquetBatchedAsync(stream, rowGroupSize: 20_000);
+        await _data.WriteParquetBatchedAsync(
+            stream,
+            new ParquetSerializerOptions { RowGroupSize = 20_000 }
+        );
     }
 }
 
@@ -124,7 +127,12 @@ public class ScalingDeserializationBenchmark
             .ToList();
 
         using var stream = new MemoryStream();
-        data.WriteParquetBatchedAsync(stream, rowGroupSize: 20_000).GetAwaiter().GetResult();
+        data.WriteParquetBatchedAsync(
+                stream,
+                new ParquetSerializerOptions { RowGroupSize = 20_000 }
+            )
+            .GetAwaiter()
+            .GetResult();
         _parquetBytes = stream.ToArray();
 
         // Guard: ensure the reflection baseline genuinely deserializes column data rather than skipping
@@ -205,7 +213,7 @@ public class ScalingDeserializationBenchmark
     {
         return await ScaleEventParquetExtensions.ReadParquetParallelAsync(
             new ReadOnlyMemory<byte>(_parquetBytes),
-            maxDegreeOfParallelism: 4
+            new ParquetSerializerOptions { MaxDegreeOfParallelism = 4 }
         );
     }
 
@@ -238,7 +246,7 @@ public class ScalingDeserializationBenchmark
     {
         return await ScaleEventParquetExtensions.ReadParquetParallelArrayAsync(
             new ReadOnlyMemory<byte>(_parquetBytes),
-            maxDegreeOfParallelism: 4
+            new ParquetSerializerOptions { MaxDegreeOfParallelism = 4 }
         );
     }
 

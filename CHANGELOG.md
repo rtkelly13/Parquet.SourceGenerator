@@ -93,6 +93,25 @@ Changes since `0.0.1`. That version is published on nuget.org (alongside the `0.
   `UPSTREAM_DEPENDENCY_LIMITATIONS.md`.
 
 ### Changed
+- **Breaking (pre-1.0), #218 — every configuration option now has a single home.** The duplicated
+  positional parameters are removed from the generated API; `ParquetSerializerOptions` is the only
+  place either setting lives:
+  - `maxDegreeOfParallelism` is gone from `ReadParquetParallelAsync` and
+    `ReadParquetParallelArrayAsync` (both the `Stream` and the `ReadOnlyMemory<byte>` overload).
+    Set `ParquetSerializerOptions.MaxDegreeOfParallelism` instead.
+  - `rowGroupSize` is gone from `WriteParquetBatchedAsync` and from the `IAsyncEnumerable<T>`
+    overload of `WriteParquetAsync`, on both the modern and the classic emitter. Set
+    `ParquetSerializerOptions.RowGroupSize` instead.
+
+  Migration is mechanical: `WriteParquetBatchedAsync(stream, rowGroupSize: 10_000)` becomes
+  `WriteParquetBatchedAsync(stream, new ParquetSerializerOptions { RowGroupSize = 10_000 })`. Both
+  parameters sat behind another optional parameter and so were already passed by name, and both
+  previously took precedence over the options property — silently, since the signature said nothing
+  about it. One behaviour change beyond the removal: a non-positive `maxDegreeOfParallelism` used to
+  be discarded without error, so a caller who passed `0` got the options value or
+  `Environment.ProcessorCount`; there is now no argument to discard. The rule this applies is
+  recorded in `docs/19-PUBLIC-API-SURFACE.md`. `0.0.x` permits the break; the decision is recorded
+  as `breaking-major` in `docs/api/LEDGER.md`.
 - **Formatting tooling consolidated on CSharpier.** `dotnet format whitespace` is removed from CI:
   its Roslyn formatter disagrees with CSharpier on layout (case-body and pattern-arm indentation),
   and it policed nothing beyond `.cs` files anyway. `.editorconfig` now carries CSharpier's

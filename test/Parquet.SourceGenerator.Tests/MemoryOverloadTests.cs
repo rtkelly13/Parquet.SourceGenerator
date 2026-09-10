@@ -31,7 +31,10 @@ public sealed class MemoryOverloadTests
             .ToList();
 
         using var stream = new MemoryStream();
-        await rows.WriteParquetBatchedAsync(stream, rowGroupSize);
+        await rows.WriteParquetBatchedAsync(
+            stream,
+            new ParquetSerializerOptions { RowGroupSize = rowGroupSize }
+        );
         return stream.ToArray();
     }
 

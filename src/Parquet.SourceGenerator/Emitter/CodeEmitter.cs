@@ -881,7 +881,6 @@ public static class CodeEmitter
             $"        this global::System.Collections.Generic.IEnumerable<{model.ClassName}> items,"
         );
         builder.AppendLine($"        global::System.IO.Stream stream,");
-        builder.AppendLine($"        int? rowGroupSize = null,");
         builder.AppendLine(
             $"        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,"
         );
@@ -957,7 +956,6 @@ public static class CodeEmitter
             $"        this global::System.Collections.Generic.IAsyncEnumerable<{model.ClassName}> items,"
         );
         builder.AppendLine($"        global::System.IO.Stream stream,");
-        builder.AppendLine($"        int? rowGroupSize = null,");
         builder.AppendLine(
             $"        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,"
         );
@@ -1813,7 +1811,6 @@ public static class CodeEmitter
             $"    public static async global::System.Threading.Tasks.Task<{model.ClassName}[]> ReadParquetParallelArrayAsync("
         );
         builder.AppendLine($"        global::System.IO.Stream stream,");
-        builder.AppendLine($"        int maxDegreeOfParallelism = -1,");
         builder.AppendLine(
             $"        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,"
         );
@@ -1915,7 +1912,6 @@ public static class CodeEmitter
             $"    public static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<{model.ClassName}>> ReadParquetParallelAsync("
         );
         builder.AppendLine($"        global::System.IO.Stream stream,");
-        builder.AppendLine($"        int maxDegreeOfParallelism = -1,");
         builder.AppendLine(
             $"        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,"
         );
@@ -1924,7 +1920,7 @@ public static class CodeEmitter
         );
         builder.AppendLine("    {");
         builder.AppendLine(
-            $"        var resultArray = await ReadParquetParallelArrayAsync(stream, maxDegreeOfParallelism, options, cancellationToken);"
+            $"        var resultArray = await ReadParquetParallelArrayAsync(stream, options, cancellationToken);"
         );
         builder.AppendLine(
             $"        return new global::System.Collections.Generic.List<{model.ClassName}>(resultArray);"
@@ -1946,7 +1942,6 @@ public static class CodeEmitter
             $"    public static async global::System.Threading.Tasks.Task<{model.ClassName}[]> ReadParquetParallelArrayAsync("
         );
         builder.AppendLine($"        global::System.ReadOnlyMemory<byte> parquetBytes,");
-        builder.AppendLine($"        int maxDegreeOfParallelism = -1,");
         builder.AppendLine(
             $"        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,"
         );
@@ -2013,10 +2008,8 @@ public static class CodeEmitter
         builder.AppendLine("        var workerToken = linkedCts.Token;");
         builder.AppendLine("        var cursor = new int[1];");
         builder.AppendLine();
-        builder.AppendLine("        int requested = maxDegreeOfParallelism > 0");
-        builder.AppendLine("            ? maxDegreeOfParallelism");
         builder.AppendLine(
-            "            : (options.MaxDegreeOfParallelism > 0 ? options.MaxDegreeOfParallelism : global::System.Environment.ProcessorCount);"
+            "        int requested = options.MaxDegreeOfParallelism > 0 ? options.MaxDegreeOfParallelism : global::System.Environment.ProcessorCount;"
         );
         builder.AppendLine(
             "        int workerCount = global::System.Math.Max(1, global::System.Math.Min(requested, rowGroupCount));"
@@ -2089,7 +2082,6 @@ public static class CodeEmitter
             $"    public static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<{model.ClassName}>> ReadParquetParallelAsync("
         );
         builder.AppendLine($"        global::System.ReadOnlyMemory<byte> parquetBytes,");
-        builder.AppendLine($"        int maxDegreeOfParallelism = -1,");
         builder.AppendLine(
             $"        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,"
         );
@@ -2098,7 +2090,7 @@ public static class CodeEmitter
         );
         builder.AppendLine("    {");
         builder.AppendLine(
-            $"        var resultArray = await ReadParquetParallelArrayAsync(parquetBytes, maxDegreeOfParallelism, options, cancellationToken);"
+            $"        var resultArray = await ReadParquetParallelArrayAsync(parquetBytes, options, cancellationToken);"
         );
         builder.AppendLine(
             $"        return new global::System.Collections.Generic.List<{model.ClassName}>(resultArray);"

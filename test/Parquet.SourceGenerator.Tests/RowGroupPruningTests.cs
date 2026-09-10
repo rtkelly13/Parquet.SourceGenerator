@@ -53,7 +53,10 @@ public sealed class RowGroupPruningTests
             .ToList();
 
         using var stream = new MemoryStream();
-        await rows.WriteParquetBatchedAsync(stream, RowsPerGroup);
+        await rows.WriteParquetBatchedAsync(
+            stream,
+            new ParquetSerializerOptions { RowGroupSize = RowsPerGroup }
+        );
         return stream.ToArray();
     }
 

@@ -60,7 +60,10 @@ public sealed class BenchmarkBaselineEquivalenceTests
             .ToList();
 
         using var stream = new MemoryStream();
-        await original.WriteParquetBatchedAsync(stream, rowGroupSize: 20);
+        await original.WriteParquetBatchedAsync(
+            stream,
+            new ParquetSerializerOptions { RowGroupSize = 20 }
+        );
         byte[] bytes = stream.ToArray();
 
         // 1. Verify Source Generator deserializes every single field correctly
@@ -108,7 +111,10 @@ public sealed class BenchmarkBaselineEquivalenceTests
             .ToList();
 
         using var stream = new MemoryStream();
-        await original.WriteParquetBatchedAsync(stream, rowGroupSize: 10);
+        await original.WriteParquetBatchedAsync(
+            stream,
+            new ParquetSerializerOptions { RowGroupSize = 10 }
+        );
         byte[] bytes = stream.ToArray();
 
         // Source generator read
@@ -152,7 +158,10 @@ public sealed class BenchmarkBaselineEquivalenceTests
             .ToList();
 
         using var ms = new MemoryStream();
-        await data.WriteParquetBatchedAsync(ms, rowGroupSize: 2_000);
+        await data.WriteParquetBatchedAsync(
+            ms,
+            new ParquetSerializerOptions { RowGroupSize = 2_000 }
+        );
         byte[] bytes = ms.ToArray();
 
         // Warmup

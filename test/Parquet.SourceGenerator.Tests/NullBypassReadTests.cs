@@ -58,12 +58,12 @@ public sealed class NullBypassReadTests
         List<NullBypassRecord> parallel =
             await NullBypassRecordParquetExtensions.ReadParquetParallelAsync(
                 new MemoryStream(parquet),
-                maxDegreeOfParallelism: 2
+                new ParquetSerializerOptions { MaxDegreeOfParallelism = 2 }
             );
         NullBypassRecord[] parallelArray =
             await NullBypassRecordParquetExtensions.ReadParquetParallelArrayAsync(
                 parquet,
-                maxDegreeOfParallelism: 2
+                new ParquetSerializerOptions { MaxDegreeOfParallelism = 2 }
             );
 
         var streamed = new List<NullBypassRecord>();

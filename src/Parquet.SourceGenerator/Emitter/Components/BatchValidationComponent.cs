@@ -8,22 +8,18 @@ namespace Parquet.SourceGenerator.Emitter.Components;
 internal static class BatchValidationComponent
 {
     /// <summary>
-    /// Emits runtime resolution of the row group batch size from explicit parameter and options.
+    /// Emits runtime resolution of the row group batch size from <c>ParquetSerializerOptions</c>,
+    /// the single home for that setting.
     /// </summary>
     public static void EmitRowGroupSizeResolution(
         StringBuilder builder,
         string targetVar = "targetChunkSize"
     )
     {
-        builder.AppendLine("        if (rowGroupSize.HasValue && rowGroupSize.Value <= 0)");
-        builder.AppendLine(
-            "            throw new global::System.ArgumentOutOfRangeException(nameof(rowGroupSize));"
-        );
-        builder.AppendLine();
         builder.AppendLine(
             "        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;"
         );
-        builder.AppendLine($"        int {targetVar} = rowGroupSize ?? options.RowGroupSize;");
+        builder.AppendLine($"        int {targetVar} = options.RowGroupSize;");
         builder.AppendLine($"        if ({targetVar} <= 0)");
         builder.AppendLine(
             "            throw new global::System.ArgumentOutOfRangeException(nameof(options), \"ParquetSerializerOptions.RowGroupSize must be greater than zero.\");"

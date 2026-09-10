@@ -16,6 +16,78 @@ The rule, the three surfaces and the author process are in
 
 <!-- Add new entries directly below this line, newest first. -->
 
+### 2026-09-10 — `ReadParquetParallelAsync(...)` / `ReadParquetParallelArrayAsync(...)`: `maxDegreeOfParallelism` parameter removed
+
+- **Surface:** emitted
+- **Semver:** breaking-major
+- **Issue:** [#218](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/218)
+- **Change:** the `int maxDegreeOfParallelism = -1` parameter is **removed** from four signatures
+  per model — `ReadParquetParallelAsync(Stream, …)`,
+  `ReadParquetParallelAsync(ReadOnlyMemory<byte>, …)`,
+  `ReadParquetParallelArrayAsync(Stream, …)` and
+  `ReadParquetParallelArrayAsync(ReadOnlyMemory<byte>, …)`. 16 catalogue lines change across the
+  four modern golden models; no line is added or deleted, because the members still exist with one
+  fewer parameter. `ParquetSerializerOptions.MaxDegreeOfParallelism` is unchanged and is now the
+  only home for the setting.
+- **Rationale:** the option had two homes and the precedence between them was invisible from the
+  signature. It was `mdop > 0 ? mdop : (options.MaxDegreeOfParallelism > 0 ? … : ProcessorCount)`,
+  so the argument won when positive and was **silently discarded** when zero or negative — a caller
+  passing `0` got neither an error nor their value. On the `Stream` overloads the parameter was
+  inert entirely: that reader is sequential by construction. No caller loses expressiveness; the
+  options property says everything the parameter said.
+- **Alternatives considered:** *Keep the parameter and document the precedence in XML docs* —
+  rejected: a documented precedence rule is only as good as the reader, and the package is `0.0.x`
+  where the duplicate can simply be deleted. *Remove the options property instead and keep the
+  parameter* — rejected: `ParquetSerializerOptions` is the surface every other setting already uses
+  and the one an application can configure once and pass everywhere, and the parameter cannot be
+  reached from `ReadParquetAsync` at all. *Keep it on the `ReadOnlyMemory<byte>` overloads only,
+  where it does something* — rejected: two overloads of one method taking different parameter lists
+  for the same concept is the discoverability defect #216 catalogues, not a fix for it.
+- **Note:** pre-1.0 break. `0.0.x` permits it without a major bump; the bucket records that the
+  call was made deliberately. The rule it applies is
+  [19 - Public API Surface](../19-PUBLIC-API-SURFACE.md).
+
+### 2026-09-10 — `WriteParquetBatchedAsync(...)` / `WriteParquetAsync(IAsyncEnumerable<T>, ...)`: `rowGroupSize` parameter removed
+
+- **Surface:** emitted
+- **Semver:** breaking-major
+- **Issue:** [#218](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/218)
+- **Change:** the `int? rowGroupSize = null` parameter is **removed** from
+  `WriteParquetBatchedAsync(this IEnumerable<T>, Stream, …)` and from
+  `WriteParquetAsync(this IAsyncEnumerable<T>, Stream, …)`. 9 catalogue lines change — two per
+  modern golden model plus `WriteParquetBatchedAsync` on the classic emitter's
+  `LegacyRecordParquetLegacyExtensions`; again no line is added or deleted.
+  `ParquetSerializerOptions.RowGroupSize` is unchanged and is now the only home for the setting.
+- **Rationale:** same defect as the entry above. Resolution was `rowGroupSize ?? options.RowGroupSize`,
+  so the parameter won whenever supplied — the opposite of the caller's likely reading of
+  `WriteParquetBatchedAsync(stream, 1_000, myConfiguredOptions)`, where the explicitly configured
+  options object looks like the more considered instruction. The `ArgumentOutOfRangeException` for
+  a non-positive size now always names `options`, since that is the only source it can come from.
+- **Alternatives considered:** *Keep the parameter on `WriteParquetBatchedAsync` only, since row
+  group size is arguably that method's subject rather than its configuration* — rejected: the same
+  argument applies to the `IAsyncEnumerable` overload, which would leave the pair inconsistent, and
+  the parameter sat behind `stream` and in front of `options`, so it was already passed by name at
+  every call site in this repository. `new ParquetSerializerOptions { RowGroupSize = 10_000 }` is
+  the same shape of expression as `rowGroupSize: 10_000`. *Deprecate with `[Obsolete]` for one
+  release* — rejected: the members are emitted into the consumer's own compilation, so an
+  `[Obsolete]` overload is generated code the consumer cannot suppress per-call-site cleanly, and
+  `0.0.x` has no deprecation window to honour.
+- **Note:** pre-1.0 break, as above.
+
+#### Ledger-format note, recorded rather than fudged
+
+The contract's phrasing — "one entry per added or changed signature" — and
+`scripts/CheckApiLedger.cs`'s counting of *added* catalogue lines both assume additions. This
+change removes a parameter from 25 signatures across five models, which is **one decision**, not
+25. Written literally it would be 25 near-identical entries whose repetition would bury the two
+decisions actually taken. Two entries are written instead, one per option removed, each naming the
+affected signatures and the line count. Note also that a pure removal adds no catalogue line, so
+`CheckApiLedger.cs` would have demanded nothing at all had these signatures not also changed — the
+CI half of the contract is blind to removals by construction, and only
+`GoldenCodeGenRegressionTests` catches them. Both points are raised on
+[#218](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/218) for
+[#230](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/230) to settle.
+
 ### 2026-09-10 — `0.0.x inherited surface`
 
 - **Surface:** emitted, seam

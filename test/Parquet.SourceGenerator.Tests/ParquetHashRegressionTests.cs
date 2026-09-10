@@ -149,11 +149,17 @@ public sealed class ParquetHashRegressionTests
         var records = CreateDeterministicUserRecords(100);
 
         using var stream1 = new MemoryStream();
-        await records.WriteParquetBatchedAsync(stream1, rowGroupSize: rowGroupSize);
+        await records.WriteParquetBatchedAsync(
+            stream1,
+            new ParquetSerializerOptions { RowGroupSize = rowGroupSize }
+        );
         byte[] bytes1 = stream1.ToArray();
 
         using var stream2 = new MemoryStream();
-        await records.WriteParquetBatchedAsync(stream2, rowGroupSize: rowGroupSize);
+        await records.WriteParquetBatchedAsync(
+            stream2,
+            new ParquetSerializerOptions { RowGroupSize = rowGroupSize }
+        );
         byte[] bytes2 = stream2.ToArray();
 
         string hash1 = ComputeSha256(bytes1);
@@ -252,7 +258,10 @@ public sealed class ParquetHashRegressionTests
     {
         var records = CreateDeterministicUserRecords(100);
         using var stream = new MemoryStream();
-        await records.WriteParquetBatchedAsync(stream, rowGroupSize: 25);
+        await records.WriteParquetBatchedAsync(
+            stream,
+            new ParquetSerializerOptions { RowGroupSize = 25 }
+        );
 
         string actualHash = ComputeSha256(stream);
         Assert.Equal(
