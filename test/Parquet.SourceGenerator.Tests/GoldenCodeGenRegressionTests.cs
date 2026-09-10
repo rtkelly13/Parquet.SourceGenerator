@@ -61,6 +61,42 @@ public sealed class GoldenCodeGenRegressionTests
             .GetDiagnostics()
             .Where(d => d.Severity == DiagnosticSeverity.Error);
         Assert.Empty(syntaxDiagnostics);
+
+        // 3. Signature-only API baseline (issue #215). The golden file above catches any codegen
+        //    change; this catches specifically the ones that alter the public surface, which the
+        //    full-body diff cannot distinguish and no .NET API-diff tool can see.
+        AssertApiBaselineMatch(fileName, emittedSource);
+    }
+
+    /// <summary>
+    /// Asserts the signature-only baseline that sits alongside each golden file (issue #215).
+    /// </summary>
+    private static void AssertApiBaselineMatch(string goldenFileName, string emittedSource)
+    {
+        string baselineFileName = string.Concat(
+            goldenFileName.AsSpan(0, goldenFileName.Length - ".g.cs".Length),
+            ".api.txt"
+        );
+        string filePath = IOPath.Combine(GoldenFilesDir, baselineFileName);
+        bool updateGolden = string.Equals(
+            Environment.GetEnvironmentVariable("UPDATE_GOLDEN_FILES"),
+            "true",
+            StringComparison.OrdinalIgnoreCase
+        );
+
+        string extracted = GeneratedApiBaseline
+            .Extract(emittedSource, baselineFileName)
+            .Replace("\r\n", "\n")
+            .TrimEnd();
+
+        if (updateGolden || !IOFile.Exists(filePath))
+        {
+            IODirectory.CreateDirectory(GoldenFilesDir);
+            IOFile.WriteAllText(filePath, extracted + "\n");
+        }
+
+        string expected = IOFile.ReadAllText(filePath).Replace("\r\n", "\n").TrimEnd();
+        Assert.Equal(expected, extracted);
     }
 
     [Fact]

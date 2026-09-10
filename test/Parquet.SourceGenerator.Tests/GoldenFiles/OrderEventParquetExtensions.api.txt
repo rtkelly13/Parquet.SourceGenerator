@@ -1,0 +1,63 @@
+// Generated API baseline — OrderEventParquetExtensions.api.txt
+// Signature-only view of the generated public surface. Bodies are excluded by design;
+// a change to this file is a change to the API. Regenerate with UPDATE_GOLDEN_FILES=true.
+
+namespace SampleDomain.Models
+
+public readonly struct ColumnBatch
+    public System.ReadOnlySpan<System.DateTime> CreatedAtSpan { get; }
+    public System.ReadOnlySpan<System.Guid> CorrelationIdSpan { get; }
+    public System.ReadOnlySpan<System.Guid?> OptionalGuidSpan { get; }
+    public System.ReadOnlySpan<byte[]> PayloadSpan { get; }
+    public System.ReadOnlySpan<decimal> PriceSpan { get; }
+    public System.ReadOnlySpan<double> ScoreSpan { get; }
+    public System.ReadOnlySpan<int> DurationSpan { get; }
+    public System.ReadOnlySpan<int> IdSpan { get; }
+    public System.ReadOnlySpan<string?> NameSpan { get; }
+    public int RowCount { get; }
+    public int RowGroupIndex { get; }
+
+public struct OrderEventColumnarBatch
+    public System.ReadOnlyMemory<System.DateTime> CreatedAt
+    public System.ReadOnlyMemory<System.Guid> CorrelationId
+    public System.ReadOnlyMemory<System.Guid> OptionalGuid
+    public System.ReadOnlyMemory<System.ReadOnlyMemory<byte>?> Payload
+    public System.ReadOnlyMemory<System.ReadOnlyMemory<char>?> Name
+    public System.ReadOnlyMemory<decimal> Price
+    public System.ReadOnlyMemory<double> Score
+    public System.ReadOnlyMemory<int> Duration
+    public System.ReadOnlyMemory<int> Id
+    public System.ReadOnlyMemory<int> OptionalGuidDefinitionLevels
+    public int RowCount
+
+public static partial class OrderEventParquetExtensions
+    public static System.Collections.Generic.IAsyncEnumerable<ColumnBatch> ReadParquetBatchesAsync(System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Collections.Generic.IAsyncEnumerable<ColumnBatch> ReadParquetBatchesAsync(System.ReadOnlyMemory<byte> parquetBytes, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Collections.Generic.IAsyncEnumerable<OrderEvent> ReadParquetStreamAsync(System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default, System.Func<SampleDomain.Models.OrderEventRowGroupMetadata, bool>? predicate = null)
+    public static System.Collections.Generic.IAsyncEnumerable<OrderEvent> ReadParquetStreamAsync(System.ReadOnlyMemory<byte> parquetBytes, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default, System.Func<SampleDomain.Models.OrderEventRowGroupMetadata, bool>? predicate = null)
+    public static System.ReadOnlyMemory<byte>? AsColumnarBinary(byte[]? value)
+    public static System.ReadOnlyMemory<char>? AsColumnarText(string? value)
+    public static System.Threading.Tasks.Task WriteParquetAsync(this OrderEventColumnarBatch batch, System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Threading.Tasks.Task WriteParquetAsync(this System.Collections.Generic.IAsyncEnumerable<OrderEvent> items, System.IO.Stream stream, int? rowGroupSize = null, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Threading.Tasks.Task WriteParquetAsync(this System.Collections.Generic.IReadOnlyCollection<OrderEvent> items, System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Threading.Tasks.Task WriteParquetBatchedAsync(this System.Collections.Generic.IEnumerable<OrderEvent> items, System.IO.Stream stream, int? rowGroupSize = null, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Threading.Tasks.Task WriteParquetRowGroupAsync(this Parquet.ParquetWriter writer, OrderEventColumnarBatch batch, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Threading.Tasks.Task WriteParquetRowGroupAsync(this Parquet.ParquetWriter writer, System.Collections.Generic.IReadOnlyCollection<OrderEvent> chunk, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Threading.Tasks.Task WriteParquetRowGroupColumnarAsync(this Parquet.ParquetWriter writer, int rowCount, System.ReadOnlyMemory<int> id, System.ReadOnlyMemory<System.ReadOnlyMemory<char>?> name, System.ReadOnlyMemory<double> score, System.ReadOnlyMemory<decimal> price, System.ReadOnlyMemory<System.DateTime> createdAt, System.ReadOnlyMemory<int> duration, System.ReadOnlyMemory<System.Guid> correlationId, System.ReadOnlyMemory<System.Guid> optionalGuid, System.ReadOnlyMemory<int> optionalGuidDefinitionLevels, System.ReadOnlyMemory<System.ReadOnlyMemory<byte>?> payload, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Threading.Tasks.Task<OrderEvent[]> ReadParquetArrayAsync(System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default, System.Func<SampleDomain.Models.OrderEventRowGroupMetadata, bool>? predicate = null)
+    public static System.Threading.Tasks.Task<OrderEvent[]> ReadParquetArrayAsync(System.ReadOnlyMemory<byte> parquetBytes, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Threading.Tasks.Task<OrderEvent[]> ReadParquetParallelArrayAsync(System.IO.Stream stream, int maxDegreeOfParallelism = -1, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Threading.Tasks.Task<OrderEvent[]> ReadParquetParallelArrayAsync(System.ReadOnlyMemory<byte> parquetBytes, int maxDegreeOfParallelism = -1, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Threading.Tasks.Task<System.Collections.Generic.List<OrderEvent>> ReadParquetAsync(System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default, System.Func<SampleDomain.Models.OrderEventRowGroupMetadata, bool>? predicate = null)
+    public static System.Threading.Tasks.Task<System.Collections.Generic.List<OrderEvent>> ReadParquetAsync(System.ReadOnlyMemory<byte> parquetBytes, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Threading.Tasks.Task<System.Collections.Generic.List<OrderEvent>> ReadParquetParallelAsync(System.IO.Stream stream, int maxDegreeOfParallelism = -1, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Threading.Tasks.Task<System.Collections.Generic.List<OrderEvent>> ReadParquetParallelAsync(System.ReadOnlyMemory<byte> parquetBytes, int maxDegreeOfParallelism = -1, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
+    public static readonly Parquet.Schema.ParquetSchema Schema
+
+public readonly struct OrderEventRowGroupMetadata
+    public Parquet.SourceGenerator.ParquetColumnStatistics<double> Score { get; }
+    public Parquet.SourceGenerator.ParquetColumnStatistics<int> Id { get; }
+    public Parquet.SourceGenerator.ParquetColumnStatistics<string> Name { get; }
+    public bool HasStatistics { get; }
+    public int RowGroupIndex { get; }
+    public long RowCount { get; }

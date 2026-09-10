@@ -1,0 +1,28 @@
+// Generated API baseline — NestedOrderParquetExtensions.api.txt
+// Signature-only view of the generated public surface. Bodies are excluded by design;
+// a change to this file is a change to the API. Regenerate with UPDATE_GOLDEN_FILES=true.
+
+namespace SampleDomain.Models
+
+public static partial class NestedOrderParquetExtensions
+    public static System.Collections.Generic.IAsyncEnumerable<NestedOrder> ReadParquetStreamAsync(System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default, System.Func<SampleDomain.Models.NestedOrderRowGroupMetadata, bool>? predicate = null)
+    public static System.Collections.Generic.IAsyncEnumerable<NestedOrder> ReadParquetStreamAsync(System.ReadOnlyMemory<byte> parquetBytes, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default, System.Func<SampleDomain.Models.NestedOrderRowGroupMetadata, bool>? predicate = null)
+    public static System.Threading.Tasks.Task WriteParquetAsync(this System.Collections.Generic.IAsyncEnumerable<NestedOrder> items, System.IO.Stream stream, int? rowGroupSize = null, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Threading.Tasks.Task WriteParquetAsync(this System.Collections.Generic.IReadOnlyCollection<NestedOrder> items, System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Threading.Tasks.Task WriteParquetBatchedAsync(this System.Collections.Generic.IEnumerable<NestedOrder> items, System.IO.Stream stream, int? rowGroupSize = null, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Threading.Tasks.Task WriteParquetRowGroupAsync(this Parquet.ParquetWriter writer, System.Collections.Generic.IReadOnlyCollection<NestedOrder> chunk, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Threading.Tasks.Task<NestedOrder[]> ReadParquetArrayAsync(System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default, System.Func<SampleDomain.Models.NestedOrderRowGroupMetadata, bool>? predicate = null)
+    public static System.Threading.Tasks.Task<NestedOrder[]> ReadParquetArrayAsync(System.ReadOnlyMemory<byte> parquetBytes, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Threading.Tasks.Task<NestedOrder[]> ReadParquetParallelArrayAsync(System.IO.Stream stream, int maxDegreeOfParallelism = -1, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Threading.Tasks.Task<NestedOrder[]> ReadParquetParallelArrayAsync(System.ReadOnlyMemory<byte> parquetBytes, int maxDegreeOfParallelism = -1, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Threading.Tasks.Task<System.Collections.Generic.List<NestedOrder>> ReadParquetAsync(System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default, System.Func<SampleDomain.Models.NestedOrderRowGroupMetadata, bool>? predicate = null)
+    public static System.Threading.Tasks.Task<System.Collections.Generic.List<NestedOrder>> ReadParquetAsync(System.ReadOnlyMemory<byte> parquetBytes, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Threading.Tasks.Task<System.Collections.Generic.List<NestedOrder>> ReadParquetParallelAsync(System.IO.Stream stream, int maxDegreeOfParallelism = -1, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Threading.Tasks.Task<System.Collections.Generic.List<NestedOrder>> ReadParquetParallelAsync(System.ReadOnlyMemory<byte> parquetBytes, int maxDegreeOfParallelism = -1, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
+    public static readonly Parquet.Schema.ParquetSchema Schema
+
+public readonly struct NestedOrderRowGroupMetadata
+    public Parquet.SourceGenerator.ParquetColumnStatistics<int> Id { get; }
+    public bool HasStatistics { get; }
+    public int RowGroupIndex { get; }
+    public long RowCount { get; }

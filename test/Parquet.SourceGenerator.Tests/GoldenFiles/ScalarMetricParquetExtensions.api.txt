@@ -1,0 +1,61 @@
+// Generated API baseline — ScalarMetricParquetExtensions.api.txt
+// Signature-only view of the generated public surface. Bodies are excluded by design;
+// a change to this file is a change to the API. Regenerate with UPDATE_GOLDEN_FILES=true.
+
+namespace SampleDomain.Models
+
+public readonly struct ColumnBatch
+    public System.ReadOnlySpan<bool> FlagSpan { get; }
+    public System.ReadOnlySpan<bool?> NullableFlagSpan { get; }
+    public System.ReadOnlySpan<byte> TinyNumSpan { get; }
+    public System.ReadOnlySpan<float> FloatValSpan { get; }
+    public System.ReadOnlySpan<int> StatusCodeSpan { get; }
+    public System.ReadOnlySpan<int?> OptionalStatusSpan { get; }
+    public System.ReadOnlySpan<long> RowIdSpan { get; }
+    public System.ReadOnlySpan<short> ShortNumSpan { get; }
+    public int RowCount { get; }
+    public int RowGroupIndex { get; }
+
+public struct ScalarMetricColumnarBatch
+    public System.ReadOnlyMemory<bool> Flag
+    public System.ReadOnlyMemory<bool> NullableFlag
+    public System.ReadOnlyMemory<byte> TinyNum
+    public System.ReadOnlyMemory<float> FloatVal
+    public System.ReadOnlyMemory<int> NullableFlagDefinitionLevels
+    public System.ReadOnlyMemory<int> OptionalStatus
+    public System.ReadOnlyMemory<int> OptionalStatusDefinitionLevels
+    public System.ReadOnlyMemory<int> StatusCode
+    public System.ReadOnlyMemory<long> RowId
+    public System.ReadOnlyMemory<short> ShortNum
+    public int RowCount
+
+public static partial class ScalarMetricParquetExtensions
+    public static System.Collections.Generic.IAsyncEnumerable<ColumnBatch> ReadParquetBatchesAsync(System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Collections.Generic.IAsyncEnumerable<ColumnBatch> ReadParquetBatchesAsync(System.ReadOnlyMemory<byte> parquetBytes, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Collections.Generic.IAsyncEnumerable<ScalarMetric> ReadParquetStreamAsync(System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default, System.Func<SampleDomain.Models.ScalarMetricRowGroupMetadata, bool>? predicate = null)
+    public static System.Collections.Generic.IAsyncEnumerable<ScalarMetric> ReadParquetStreamAsync(System.ReadOnlyMemory<byte> parquetBytes, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default, System.Func<SampleDomain.Models.ScalarMetricRowGroupMetadata, bool>? predicate = null)
+    public static System.Threading.Tasks.Task WriteParquetAsync(this ScalarMetricColumnarBatch batch, System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Threading.Tasks.Task WriteParquetAsync(this System.Collections.Generic.IAsyncEnumerable<ScalarMetric> items, System.IO.Stream stream, int? rowGroupSize = null, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Threading.Tasks.Task WriteParquetAsync(this System.Collections.Generic.IReadOnlyCollection<ScalarMetric> items, System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Threading.Tasks.Task WriteParquetBatchedAsync(this System.Collections.Generic.IEnumerable<ScalarMetric> items, System.IO.Stream stream, int? rowGroupSize = null, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Threading.Tasks.Task WriteParquetRowGroupAsync(this Parquet.ParquetWriter writer, ScalarMetricColumnarBatch batch, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Threading.Tasks.Task WriteParquetRowGroupAsync(this Parquet.ParquetWriter writer, System.Collections.Generic.IReadOnlyCollection<ScalarMetric> chunk, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Threading.Tasks.Task WriteParquetRowGroupColumnarAsync(this Parquet.ParquetWriter writer, int rowCount, System.ReadOnlyMemory<long> rowId, System.ReadOnlyMemory<bool> flag, System.ReadOnlyMemory<bool> nullableFlag, System.ReadOnlyMemory<int> nullableFlagDefinitionLevels, System.ReadOnlyMemory<int> statusCode, System.ReadOnlyMemory<int> optionalStatus, System.ReadOnlyMemory<int> optionalStatusDefinitionLevels, System.ReadOnlyMemory<byte> tinyNum, System.ReadOnlyMemory<short> shortNum, System.ReadOnlyMemory<float> floatVal, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Threading.Tasks.Task<ScalarMetric[]> ReadParquetArrayAsync(System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default, System.Func<SampleDomain.Models.ScalarMetricRowGroupMetadata, bool>? predicate = null)
+    public static System.Threading.Tasks.Task<ScalarMetric[]> ReadParquetArrayAsync(System.ReadOnlyMemory<byte> parquetBytes, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Threading.Tasks.Task<ScalarMetric[]> ReadParquetParallelArrayAsync(System.IO.Stream stream, int maxDegreeOfParallelism = -1, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Threading.Tasks.Task<ScalarMetric[]> ReadParquetParallelArrayAsync(System.ReadOnlyMemory<byte> parquetBytes, int maxDegreeOfParallelism = -1, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Threading.Tasks.Task<System.Collections.Generic.List<ScalarMetric>> ReadParquetAsync(System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default, System.Func<SampleDomain.Models.ScalarMetricRowGroupMetadata, bool>? predicate = null)
+    public static System.Threading.Tasks.Task<System.Collections.Generic.List<ScalarMetric>> ReadParquetAsync(System.ReadOnlyMemory<byte> parquetBytes, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Threading.Tasks.Task<System.Collections.Generic.List<ScalarMetric>> ReadParquetParallelAsync(System.IO.Stream stream, int maxDegreeOfParallelism = -1, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
+    public static System.Threading.Tasks.Task<System.Collections.Generic.List<ScalarMetric>> ReadParquetParallelAsync(System.ReadOnlyMemory<byte> parquetBytes, int maxDegreeOfParallelism = -1, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default)
+    public static readonly Parquet.Schema.ParquetSchema Schema
+
+public readonly struct ScalarMetricRowGroupMetadata
+    public Parquet.SourceGenerator.ParquetColumnStatistics<byte> TinyNum { get; }
+    public Parquet.SourceGenerator.ParquetColumnStatistics<float> FloatVal { get; }
+    public Parquet.SourceGenerator.ParquetColumnStatistics<long> RowId { get; }
+    public Parquet.SourceGenerator.ParquetColumnStatistics<short> ShortNum { get; }
+    public bool HasStatistics { get; }
+    public int RowGroupIndex { get; }
+    public long RowCount { get; }
