@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using CrossVersionInterop;
 using Parquet.SourceGenerator;
 
 namespace PackageConsumptionLegacy;
@@ -38,8 +39,21 @@ public sealed partial class Measurement
 
 internal static class Program
 {
-    private static async Task<int> Main()
+    private static async Task<int> Main(string[] args)
     {
+        // Cross-version interoperability modes; see CrossVersionInteropDriver.
+        if (args.Length >= 2 && args[0] == "--write-interop")
+        {
+            return await CrossVersionInteropDriver.WriteAsync(args[1]);
+        }
+
+        if (args.Length >= 2 && args[0] == "--read-interop")
+        {
+            string producer = args.Length >= 3 ? args[2] : "unknown";
+            string? matrixPath = args.Length >= 4 ? args[3] : null;
+            return await CrossVersionInteropDriver.ReadAsync(args[1], producer, matrixPath);
+        }
+
         var expected = new List<Measurement>
         {
             new()
@@ -109,7 +123,11 @@ internal static class Program
             }
         }
 
-        if (!await CompressionIsAppliedAsync() || !await BatchedWriteRoundTripsAsync())
+        if (
+            !await CompressionIsAppliedAsync()
+            || !await BatchedWriteRoundTripsAsync()
+            || !await SchemaEvolutionRoundTripsAsync()
+        )
         {
             return 1;
         }
@@ -190,6 +208,30 @@ internal static class Program
                 Console.Error.WriteLine($"FAILED: batched row {i} did not round-trip.");
                 return false;
             }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// The classic backend has its own emitted copy of the schema resolver, so the schema-evolution
+    /// contract — reordered columns matched by name, absent optional columns materialised as null —
+    /// has to be proven here as well as against the modern backend.
+    /// </summary>
+    private static async Task<bool> SchemaEvolutionRoundTripsAsync()
+    {
+        using var stream = new MemoryStream();
+        await CrossVersionInteropDriver.CanonicalRows.WriteParquetAsync(stream);
+        stream.Position = 0;
+
+        List<InteropRowEvolved> read =
+            await InteropRowEvolvedParquetLegacyExtensions.ReadParquetAsync(stream);
+
+        string? failure = InteropVerification.Verify(read, CrossVersionInteropDriver.CanonicalRows);
+        if (failure != null)
+        {
+            Console.Error.WriteLine($"FAILED: schema evolution through the package: {failure}");
+            return false;
         }
 
         return true;

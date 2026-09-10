@@ -157,29 +157,33 @@ public class ZeroBoxingSerializationTests
     }
 
     /// <summary>
-    /// Selects the POCO row-group writer. Compilations that reference Apache.Arrow also carry a
-    /// RecordBatch overload of the same name (#177), so a bare GetMethod call is ambiguous there.
+    /// Every <c>WriteParquetRowGroupAsync</c> overload on a generated extension type. Since #137 a
+    /// flat model gets two — the row-oriented one and the columnar hand-off — and both have to be
+    /// boxing-free, so the lookup enumerates rather than resolving a single method (which now
+    /// throws <see cref="System.Reflection.AmbiguousMatchException"/>).
     /// </summary>
-    private static MethodInfo? GetPocoRowGroupWriter(Type type)
+    private static MethodInfo[] WriteRowGroupOverloads(Type type) =>
+        type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
+            .Where(m => m.Name == "WriteParquetRowGroupAsync")
+            .ToArray();
+
+    private static int CountBoxInstructionsInAllWriteRowGroupOverloads(Type type)
     {
-        return type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
-            .SingleOrDefault(m =>
-                m.Name == "WriteParquetRowGroupAsync"
-                && m.GetParameters().Length > 1
-                && m.GetParameters()[1].ParameterType.IsGenericType
-                && m.GetParameters()[1].ParameterType.GetGenericTypeDefinition()
-                    == typeof(IReadOnlyCollection<>)
-            );
+        int boxes = 0;
+        foreach (MethodInfo overload in WriteRowGroupOverloads(type))
+        {
+            boxes += CountBoxInstructionsInMethodAndStateMachine(overload);
+        }
+
+        return boxes;
     }
 
     [Fact]
     public void WriteParquetRowGroupAsyncEmitsZeroBoxingOpcodes()
     {
-        MethodInfo? method = GetPocoRowGroupWriter(typeof(ZeroBoxingRecordParquetExtensions));
-
-        Assert.NotNull(method);
-        int boxCount = CountBoxInstructionsInMethodAndStateMachine(method);
-        Assert.Equal(0, boxCount);
+        Type type = typeof(ZeroBoxingRecordParquetExtensions);
+        Assert.NotEmpty(WriteRowGroupOverloads(type));
+        Assert.Equal(0, CountBoxInstructionsInAllWriteRowGroupOverloads(type));
     }
 
     [Fact]
@@ -295,14 +299,12 @@ public class ZeroBoxingSerializationTests
 
         foreach (Type type in extensionTypes)
         {
-            MethodInfo? method = GetPocoRowGroupWriter(type);
-
-            if (method == null)
+            if (WriteRowGroupOverloads(type).Length == 0)
             {
                 continue;
             }
 
-            int boxCount = CountBoxInstructionsInMethodAndStateMachine(method);
+            int boxCount = CountBoxInstructionsInAllWriteRowGroupOverloads(type);
             if (boxCount > 0)
             {
                 violations.Add($"{type.FullName}: found {boxCount} box opcode(s)");
@@ -347,14 +349,8 @@ public class ZeroBoxingSerializationTests
         Type? extType = compiledAssembly.GetType("DynamicBoxingTest.TestModelParquetExtensions");
         Assert.NotNull(extType);
 
-        MethodInfo? method = extType.GetMethod(
-            "WriteParquetRowGroupAsync",
-            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
-        );
-        Assert.NotNull(method);
-
-        int boxCount = CountBoxInstructionsInMethodAndStateMachine(method);
-        Assert.Equal(0, boxCount);
+        Assert.NotEmpty(WriteRowGroupOverloads(extType));
+        Assert.Equal(0, CountBoxInstructionsInAllWriteRowGroupOverloads(extType));
     }
 
     [Fact]
@@ -410,14 +406,8 @@ public class ZeroBoxingSerializationTests
         );
         Assert.NotNull(extType);
 
-        MethodInfo? method = extType.GetMethod(
-            "WriteParquetRowGroupAsync",
-            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
-        );
-        Assert.NotNull(method);
-
-        int boxCount = CountBoxInstructionsInMethodAndStateMachine(method);
-        Assert.Equal(0, boxCount);
+        Assert.NotEmpty(WriteRowGroupOverloads(extType));
+        Assert.Equal(0, CountBoxInstructionsInAllWriteRowGroupOverloads(extType));
     }
 
     private static Assembly CompileSourceToAssembly(string source)

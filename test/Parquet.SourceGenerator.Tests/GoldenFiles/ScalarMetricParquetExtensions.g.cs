@@ -36,8 +36,10 @@ public static partial class ScalarMetricParquetExtensions
         global::Parquet.Schema.DataField[] fileFields,
         int index,
         global::Parquet.Schema.DataField expected,
-        ref global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? byName)
+        ref global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? byName,
+        out bool missing)
     {
+        missing = false;
         // Ordered schemas resolve on a single index check: no hashing, no delegate, no allocation.
         // Every file this generator writes lands here, as does any file whose column order matches.
         if ((uint)index < (uint)fileFields.Length
@@ -74,6 +76,9 @@ public static partial class ScalarMetricParquetExtensions
             throw new global::System.IO.InvalidDataException($"Required column '{expected.Name}' was not found in the Parquet file schema.");
         }
 
+        // Optional column absent from the file: documented schema evolution. The caller
+        // materialises nulls for it instead of asking the file for a column it does not have.
+        missing = true;
         return expected;
     }
 
@@ -194,26 +199,18 @@ public static partial class ScalarMetricParquetExtensions
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_0, i) = item.RowId;
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_1, i) = item.Flag;
                         var val_2 = item.NullableFlag;
-                        if (val_2.HasValue)
-                        {
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_2, nonNullCount_2++) = val_2.Value;
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_2, i) = 1;
-                        }
-                        else
-                        {
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_2, i) = 0;
-                        }
+                        bool has_2 = val_2.HasValue;
+                        int hv_2 = global::System.Runtime.CompilerServices.Unsafe.As<bool, byte>(ref has_2);
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_2, nonNullCount_2) = val_2.GetValueOrDefault();
+                        nonNullCount_2 += hv_2;
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_2, i) = hv_2;
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_3, i) = (int)item.StatusCode;
                         var val_4 = item.OptionalStatus;
-                        if (val_4.HasValue)
-                        {
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_4, nonNullCount_4++) = (int)val_4.Value;
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_4, i) = 1;
-                        }
-                        else
-                        {
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_4, i) = 0;
-                        }
+                        bool has_4 = val_4.HasValue;
+                        int hv_4 = global::System.Runtime.CompilerServices.Unsafe.As<bool, byte>(ref has_4);
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_4, nonNullCount_4) = (int)val_4.GetValueOrDefault();
+                        nonNullCount_4 += hv_4;
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_4, i) = hv_4;
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_5, i) = item.TinyNum;
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_6, i) = item.ShortNum;
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_7, i) = item.FloatVal;
@@ -227,26 +224,16 @@ public static partial class ScalarMetricParquetExtensions
                     buffer_0[i] = item.RowId;
                     buffer_1[i] = item.Flag;
                     var val_2 = item.NullableFlag;
-                    if (val_2.HasValue)
-                    {
-                        buffer_2[nonNullCount_2++] = val_2.Value;
-                        defLevels_2[i] = 1;
-                    }
-                    else
-                    {
-                        defLevels_2[i] = 0;
-                    }
+                    int hv_2 = val_2.HasValue ? 1 : 0;
+                    buffer_2[nonNullCount_2] = val_2.GetValueOrDefault();
+                    nonNullCount_2 += hv_2;
+                    defLevels_2[i] = hv_2;
                     buffer_3[i] = (int)item.StatusCode;
                     var val_4 = item.OptionalStatus;
-                    if (val_4.HasValue)
-                    {
-                        buffer_4[nonNullCount_4++] = (int)val_4.Value;
-                        defLevels_4[i] = 1;
-                    }
-                    else
-                    {
-                        defLevels_4[i] = 0;
-                    }
+                    int hv_4 = val_4.HasValue ? 1 : 0;
+                    buffer_4[nonNullCount_4] = (int)val_4.GetValueOrDefault();
+                    nonNullCount_4 += hv_4;
+                    defLevels_4[i] = hv_4;
                     buffer_5[i] = item.TinyNum;
                     buffer_6[i] = item.ShortNum;
                     buffer_7[i] = item.FloatVal;
@@ -275,26 +262,18 @@ public static partial class ScalarMetricParquetExtensions
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_0, i) = item.RowId;
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_1, i) = item.Flag;
                         var val_2 = item.NullableFlag;
-                        if (val_2.HasValue)
-                        {
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_2, nonNullCount_2++) = val_2.Value;
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_2, i) = 1;
-                        }
-                        else
-                        {
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_2, i) = 0;
-                        }
+                        bool has_2 = val_2.HasValue;
+                        int hv_2 = global::System.Runtime.CompilerServices.Unsafe.As<bool, byte>(ref has_2);
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_2, nonNullCount_2) = val_2.GetValueOrDefault();
+                        nonNullCount_2 += hv_2;
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_2, i) = hv_2;
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_3, i) = (int)item.StatusCode;
                         var val_4 = item.OptionalStatus;
-                        if (val_4.HasValue)
-                        {
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_4, nonNullCount_4++) = (int)val_4.Value;
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_4, i) = 1;
-                        }
-                        else
-                        {
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_4, i) = 0;
-                        }
+                        bool has_4 = val_4.HasValue;
+                        int hv_4 = global::System.Runtime.CompilerServices.Unsafe.As<bool, byte>(ref has_4);
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_4, nonNullCount_4) = (int)val_4.GetValueOrDefault();
+                        nonNullCount_4 += hv_4;
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_4, i) = hv_4;
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_5, i) = item.TinyNum;
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_6, i) = item.ShortNum;
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_7, i) = item.FloatVal;
@@ -308,26 +287,16 @@ public static partial class ScalarMetricParquetExtensions
                     buffer_0[i] = item.RowId;
                     buffer_1[i] = item.Flag;
                     var val_2 = item.NullableFlag;
-                    if (val_2.HasValue)
-                    {
-                        buffer_2[nonNullCount_2++] = val_2.Value;
-                        defLevels_2[i] = 1;
-                    }
-                    else
-                    {
-                        defLevels_2[i] = 0;
-                    }
+                    int hv_2 = val_2.HasValue ? 1 : 0;
+                    buffer_2[nonNullCount_2] = val_2.GetValueOrDefault();
+                    nonNullCount_2 += hv_2;
+                    defLevels_2[i] = hv_2;
                     buffer_3[i] = (int)item.StatusCode;
                     var val_4 = item.OptionalStatus;
-                    if (val_4.HasValue)
-                    {
-                        buffer_4[nonNullCount_4++] = (int)val_4.Value;
-                        defLevels_4[i] = 1;
-                    }
-                    else
-                    {
-                        defLevels_4[i] = 0;
-                    }
+                    int hv_4 = val_4.HasValue ? 1 : 0;
+                    buffer_4[nonNullCount_4] = (int)val_4.GetValueOrDefault();
+                    nonNullCount_4 += hv_4;
+                    defLevels_4[i] = hv_4;
                     buffer_5[i] = item.TinyNum;
                     buffer_6[i] = item.ShortNum;
                     buffer_7[i] = item.FloatVal;
@@ -342,26 +311,16 @@ public static partial class ScalarMetricParquetExtensions
                     buffer_0[idx] = item.RowId;
                     buffer_1[idx] = item.Flag;
                     var val_2 = item.NullableFlag;
-                    if (val_2.HasValue)
-                    {
-                        buffer_2[nonNullCount_2++] = val_2.Value;
-                        defLevels_2[idx] = 1;
-                    }
-                    else
-                    {
-                        defLevels_2[idx] = 0;
-                    }
+                    int hv_2 = val_2.HasValue ? 1 : 0;
+                    buffer_2[nonNullCount_2] = val_2.GetValueOrDefault();
+                    nonNullCount_2 += hv_2;
+                    defLevels_2[idx] = hv_2;
                     buffer_3[idx] = (int)item.StatusCode;
                     var val_4 = item.OptionalStatus;
-                    if (val_4.HasValue)
-                    {
-                        buffer_4[nonNullCount_4++] = (int)val_4.Value;
-                        defLevels_4[idx] = 1;
-                    }
-                    else
-                    {
-                        defLevels_4[idx] = 0;
-                    }
+                    int hv_4 = val_4.HasValue ? 1 : 0;
+                    buffer_4[nonNullCount_4] = (int)val_4.GetValueOrDefault();
+                    nonNullCount_4 += hv_4;
+                    defLevels_4[idx] = hv_4;
                     buffer_5[idx] = item.TinyNum;
                     buffer_6[idx] = item.ShortNum;
                     buffer_7[idx] = item.FloatVal;
@@ -442,6 +401,128 @@ public static partial class ScalarMetricParquetExtensions
             if (buffer_6 != null) global::System.Buffers.ArrayPool<short>.Shared.Return(buffer_6, clearArray: false);
             if (buffer_7 != null) global::System.Buffers.ArrayPool<float>.Shared.Return(buffer_7, clearArray: false);
         }
+    }
+
+    /// <summary>
+    /// Writes one row group directly from caller-owned column buffers, with no row traversal and no pooled rentals.
+    /// </summary>
+    public static async global::System.Threading.Tasks.Task WriteParquetRowGroupAsync(
+        this global::Parquet.ParquetWriter writer,
+        ScalarMetricColumnarBatch batch,
+        global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        if (writer == null) throw new global::System.ArgumentNullException(nameof(writer));
+
+        int count = batch.RowCount;
+        if (count < 0) throw new global::System.ArgumentOutOfRangeException(nameof(batch), "RowCount cannot be negative.");
+        if (count == 0) return;
+
+        if (batch.RowId.Length < count) throw new global::System.ArgumentException("Column 'RowId' supplied " + batch.RowId.Length + " values for " + count + " rows.", nameof(batch));
+        if (batch.Flag.Length < count) throw new global::System.ArgumentException("Column 'Flag' supplied " + batch.Flag.Length + " values for " + count + " rows.", nameof(batch));
+        if (batch.NullableFlagDefinitionLevels.Length < count) throw new global::System.ArgumentException("Column 'NullableFlag' supplied " + batch.NullableFlagDefinitionLevels.Length + " definition levels for " + count + " rows.", nameof(batch));
+        if (batch.StatusCode.Length < count) throw new global::System.ArgumentException("Column 'StatusCode' supplied " + batch.StatusCode.Length + " values for " + count + " rows.", nameof(batch));
+        if (batch.OptionalStatusDefinitionLevels.Length < count) throw new global::System.ArgumentException("Column 'OptionalStatus' supplied " + batch.OptionalStatusDefinitionLevels.Length + " definition levels for " + count + " rows.", nameof(batch));
+        if (batch.TinyNum.Length < count) throw new global::System.ArgumentException("Column 'TinyNum' supplied " + batch.TinyNum.Length + " values for " + count + " rows.", nameof(batch));
+        if (batch.ShortNum.Length < count) throw new global::System.ArgumentException("Column 'ShortNum' supplied " + batch.ShortNum.Length + " values for " + count + " rows.", nameof(batch));
+        if (batch.FloatVal.Length < count) throw new global::System.ArgumentException("Column 'FloatVal' supplied " + batch.FloatVal.Length + " values for " + count + " rows.", nameof(batch));
+
+        using (var groupWriter = writer.CreateRowGroup())
+        {
+            await groupWriter.WriteAsync<long>(
+                _field_0,
+                batch.RowId.Slice(0, count),
+                cancellationToken: cancellationToken);
+            await groupWriter.WriteAsync<bool>(
+                _field_1,
+                batch.Flag.Slice(0, count),
+                cancellationToken: cancellationToken);
+            await groupWriter.WriteAllPartsAsync<bool>(
+                _field_2,
+                batch.NullableFlag,
+                batch.NullableFlagDefinitionLevels.Slice(0, count),
+                null,
+                cancellationToken: cancellationToken);
+            await groupWriter.WriteAsync<int>(
+                _field_3,
+                batch.StatusCode.Slice(0, count),
+                cancellationToken: cancellationToken);
+            await groupWriter.WriteAllPartsAsync<int>(
+                _field_4,
+                batch.OptionalStatus,
+                batch.OptionalStatusDefinitionLevels.Slice(0, count),
+                null,
+                cancellationToken: cancellationToken);
+            await groupWriter.WriteAsync<byte>(
+                _field_5,
+                batch.TinyNum.Slice(0, count),
+                cancellationToken: cancellationToken);
+            await groupWriter.WriteAsync<short>(
+                _field_6,
+                batch.ShortNum.Slice(0, count),
+                cancellationToken: cancellationToken);
+            await groupWriter.WriteAsync<float>(
+                _field_7,
+                batch.FloatVal.Slice(0, count),
+                cancellationToken: cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// Positional form of the columnar hand-off: one parameter per schema column, in schema order.
+    /// Prefer the <c>ScalarMetricColumnarBatch</c> overload — it binds buffers to columns by name.
+    /// </summary>
+    public static global::System.Threading.Tasks.Task WriteParquetRowGroupColumnarAsync(
+        this global::Parquet.ParquetWriter writer,
+        int rowCount,
+        global::System.ReadOnlyMemory<long> rowId,
+        global::System.ReadOnlyMemory<bool> flag,
+        global::System.ReadOnlyMemory<bool> nullableFlag,
+        global::System.ReadOnlyMemory<int> nullableFlagDefinitionLevels,
+        global::System.ReadOnlyMemory<int> statusCode,
+        global::System.ReadOnlyMemory<int> optionalStatus,
+        global::System.ReadOnlyMemory<int> optionalStatusDefinitionLevels,
+        global::System.ReadOnlyMemory<byte> tinyNum,
+        global::System.ReadOnlyMemory<short> shortNum,
+        global::System.ReadOnlyMemory<float> floatVal,
+        global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        var batch = new ScalarMetricColumnarBatch
+        {
+            RowCount = rowCount,
+            RowId = rowId,
+            Flag = flag,
+            NullableFlag = nullableFlag,
+            NullableFlagDefinitionLevels = nullableFlagDefinitionLevels,
+            StatusCode = statusCode,
+            OptionalStatus = optionalStatus,
+            OptionalStatusDefinitionLevels = optionalStatusDefinitionLevels,
+            TinyNum = tinyNum,
+            ShortNum = shortNum,
+            FloatVal = floatVal,
+        };
+        return writer.WriteParquetRowGroupAsync(batch, cancellationToken);
+    }
+
+    /// <summary>
+    /// Writes a complete single-row-group Parquet stream from one <c>ScalarMetricColumnarBatch</c>.
+    /// </summary>
+    public static async global::System.Threading.Tasks.Task WriteParquetAsync(
+        this ScalarMetricColumnarBatch batch,
+        global::System.IO.Stream stream,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));
+        cancellationToken.ThrowIfCancellationRequested();
+
+        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
+
+        await using var writer = await global::Parquet.ParquetWriter.CreateAsync(
+            Schema,
+            stream,
+            BuildFormatOptions(options),
+            cancellationToken: cancellationToken);
+        await writer.WriteParquetRowGroupAsync(batch, cancellationToken);
     }
 
     /// <summary>
@@ -565,7 +646,8 @@ public static partial class ScalarMetricParquetExtensions
     public static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<ScalarMetric>> ReadParquetAsync(
         global::System.IO.Stream stream,
         global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
-        global::System.Threading.CancellationToken cancellationToken = default)
+        global::System.Threading.CancellationToken cancellationToken = default,
+        global::System.Func<global::SampleDomain.Models.ScalarMetricRowGroupMetadata, bool>? predicate = null)
     {
         if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));
 
@@ -575,7 +657,38 @@ public static partial class ScalarMetricParquetExtensions
             stream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
-        int totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);
+        var fileFields = reader.Schema.DataFields;
+
+        global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
+        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName, out _);
+        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName, out _);
+        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName, out bool missing_2);
+        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName, out _);
+        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName, out bool missing_4);
+        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName, out _);
+        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName, out _);
+        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName, out _);
+
+        int totalRows;
+        bool[]? selectedGroups = null;
+        if (predicate == null)
+        {
+            totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);
+        }
+        else
+        {
+            // Zone-map pre-pass: footer statistics only. Surviving groups are the only ones
+            // whose pages are ever read, and the result is sized to exactly their rows.
+            selectedGroups = new bool[reader.RowGroupCount];
+            totalRows = 0;
+            for (int r = 0; r < reader.RowGroupCount; r++)
+            {
+                using var probeReader = reader.OpenRowGroupReader(r);
+                if (!AcceptRowGroup(predicate, probeReader, r, field_0, field_5, field_6, field_7)) continue;
+                selectedGroups[r] = true;
+                totalRows += (int)probeReader.RowCount;
+            }
+        }
 #if NET8_0_OR_GREATER
         var results = new global::System.Collections.Generic.List<ScalarMetric>(totalRows);
         global::System.Runtime.InteropServices.CollectionsMarshal.SetCount(results, totalRows);
@@ -584,21 +697,10 @@ public static partial class ScalarMetricParquetExtensions
 #endif
         int currentOffset = 0;
 
-        var fileFields = reader.Schema.DataFields;
-
-        global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
-        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
-        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
-        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
-        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
-        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName);
-        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName);
-        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName);
-        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName);
-
         for (int r = 0; r < reader.RowGroupCount; r++)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (selectedGroups != null && !selectedGroups[r]) continue;
             using var groupReader = reader.OpenRowGroupReader(r);
             int rowCount = (int)groupReader.RowCount;
 
@@ -621,10 +723,11 @@ public static partial class ScalarMetricParquetExtensions
                     field_1,
                     new global::System.Memory<bool>(buffer_1, 0, rowCount),
                     cancellationToken: cancellationToken);
-                var chunkStats_2 = groupReader.GetStatistics(field_2);
-                if (chunkStats_2?.NullCount == rowCount)
+                // The column is absent from the file (optional-column schema evolution) or the chunk is
+                // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                var chunkStats_2 = missing_2 ? null : groupReader.GetStatistics(field_2);
+                if (missing_2 || chunkStats_2?.NullCount == rowCount)
                 {
-                    // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_2, 0, rowCount);
                 }
                 else
@@ -638,10 +741,11 @@ public static partial class ScalarMetricParquetExtensions
                     field_3,
                     new global::System.Memory<int>(buffer_3, 0, rowCount),
                     cancellationToken: cancellationToken);
-                var chunkStats_4 = groupReader.GetStatistics(field_4);
-                if (chunkStats_4?.NullCount == rowCount)
+                // The column is absent from the file (optional-column schema evolution) or the chunk is
+                // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                var chunkStats_4 = missing_4 ? null : groupReader.GetStatistics(field_4);
+                if (missing_4 || chunkStats_4?.NullCount == rowCount)
                 {
-                    // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_4, 0, rowCount);
                 }
                 else
@@ -725,7 +829,8 @@ public static partial class ScalarMetricParquetExtensions
     public static async global::System.Threading.Tasks.Task<ScalarMetric[]> ReadParquetArrayAsync(
         global::System.IO.Stream stream,
         global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
-        global::System.Threading.CancellationToken cancellationToken = default)
+        global::System.Threading.CancellationToken cancellationToken = default,
+        global::System.Func<global::SampleDomain.Models.ScalarMetricRowGroupMetadata, bool>? predicate = null)
     {
         if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));
 
@@ -735,25 +840,45 @@ public static partial class ScalarMetricParquetExtensions
             stream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
-        int totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);
-        var results = new ScalarMetric[totalRows];
-        int currentOffset = 0;
-
         var fileFields = reader.Schema.DataFields;
 
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
-        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
-        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
-        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
-        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
-        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName);
-        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName);
-        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName);
-        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName);
+        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName, out _);
+        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName, out _);
+        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName, out bool missing_2);
+        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName, out _);
+        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName, out bool missing_4);
+        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName, out _);
+        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName, out _);
+        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName, out _);
+
+        int totalRows;
+        bool[]? selectedGroups = null;
+        if (predicate == null)
+        {
+            totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);
+        }
+        else
+        {
+            // Zone-map pre-pass: footer statistics only. Surviving groups are the only ones
+            // whose pages are ever read, and the result is sized to exactly their rows.
+            selectedGroups = new bool[reader.RowGroupCount];
+            totalRows = 0;
+            for (int r = 0; r < reader.RowGroupCount; r++)
+            {
+                using var probeReader = reader.OpenRowGroupReader(r);
+                if (!AcceptRowGroup(predicate, probeReader, r, field_0, field_5, field_6, field_7)) continue;
+                selectedGroups[r] = true;
+                totalRows += (int)probeReader.RowCount;
+            }
+        }
+        var results = new ScalarMetric[totalRows];
+        int currentOffset = 0;
 
         for (int r = 0; r < reader.RowGroupCount; r++)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (selectedGroups != null && !selectedGroups[r]) continue;
             using var groupReader = reader.OpenRowGroupReader(r);
             int rowCount = (int)groupReader.RowCount;
 
@@ -776,10 +901,11 @@ public static partial class ScalarMetricParquetExtensions
                     field_1,
                     new global::System.Memory<bool>(buffer_1, 0, rowCount),
                     cancellationToken: cancellationToken);
-                var chunkStats_2 = groupReader.GetStatistics(field_2);
-                if (chunkStats_2?.NullCount == rowCount)
+                // The column is absent from the file (optional-column schema evolution) or the chunk is
+                // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                var chunkStats_2 = missing_2 ? null : groupReader.GetStatistics(field_2);
+                if (missing_2 || chunkStats_2?.NullCount == rowCount)
                 {
-                    // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_2, 0, rowCount);
                 }
                 else
@@ -793,10 +919,11 @@ public static partial class ScalarMetricParquetExtensions
                     field_3,
                     new global::System.Memory<int>(buffer_3, 0, rowCount),
                     cancellationToken: cancellationToken);
-                var chunkStats_4 = groupReader.GetStatistics(field_4);
-                if (chunkStats_4?.NullCount == rowCount)
+                // The column is absent from the file (optional-column schema evolution) or the chunk is
+                // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                var chunkStats_4 = missing_4 ? null : groupReader.GetStatistics(field_4);
+                if (missing_4 || chunkStats_4?.NullCount == rowCount)
                 {
-                    // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_4, 0, rowCount);
                 }
                 else
@@ -896,14 +1023,14 @@ public static partial class ScalarMetricParquetExtensions
         var fileFields = reader.Schema.DataFields;
 
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
-        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
-        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
-        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
-        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
-        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName);
-        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName);
-        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName);
-        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName);
+        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName, out _);
+        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName, out _);
+        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName, out bool missing_2);
+        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName, out _);
+        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName, out bool missing_4);
+        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName, out _);
+        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName, out _);
+        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName, out _);
 
         for (int r = 0; r < rgCount; r++)
         {
@@ -931,10 +1058,11 @@ public static partial class ScalarMetricParquetExtensions
                     field_1,
                     new global::System.Memory<bool>(buffer_1, 0, rowCount),
                     cancellationToken: cancellationToken);
-                var chunkStats_2 = groupReader.GetStatistics(field_2);
-                if (chunkStats_2?.NullCount == rowCount)
+                // The column is absent from the file (optional-column schema evolution) or the chunk is
+                // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                var chunkStats_2 = missing_2 ? null : groupReader.GetStatistics(field_2);
+                if (missing_2 || chunkStats_2?.NullCount == rowCount)
                 {
-                    // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_2, 0, rowCount);
                 }
                 else
@@ -948,10 +1076,11 @@ public static partial class ScalarMetricParquetExtensions
                     field_3,
                     new global::System.Memory<int>(buffer_3, 0, rowCount),
                     cancellationToken: cancellationToken);
-                var chunkStats_4 = groupReader.GetStatistics(field_4);
-                if (chunkStats_4?.NullCount == rowCount)
+                // The column is absent from the file (optional-column schema evolution) or the chunk is
+                // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                var chunkStats_4 = missing_4 ? null : groupReader.GetStatistics(field_4);
+                if (missing_4 || chunkStats_4?.NullCount == rowCount)
                 {
-                    // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_4, 0, rowCount);
                 }
                 else
@@ -1026,7 +1155,8 @@ public static partial class ScalarMetricParquetExtensions
     public static async global::System.Collections.Generic.IAsyncEnumerable<ScalarMetric> ReadParquetStreamAsync(
         global::System.IO.Stream stream,
         global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
-        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default)
+        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default,
+        global::System.Func<global::SampleDomain.Models.ScalarMetricRowGroupMetadata, bool>? predicate = null)
     {
         if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));
 
@@ -1039,20 +1169,21 @@ public static partial class ScalarMetricParquetExtensions
         var fileFields = reader.Schema.DataFields;
 
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
-        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
-        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
-        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
-        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
-        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName);
-        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName);
-        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName);
-        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName);
+        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName, out _);
+        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName, out _);
+        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName, out bool missing_2);
+        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName, out _);
+        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName, out bool missing_4);
+        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName, out _);
+        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName, out _);
+        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName, out _);
 
         for (int r = 0; r < reader.RowGroupCount; r++)
         {
             cancellationToken.ThrowIfCancellationRequested();
             using var groupReader = reader.OpenRowGroupReader(r);
             int rowCount = (int)groupReader.RowCount;
+            if (!AcceptRowGroup(predicate, groupReader, r, field_0, field_5, field_6, field_7)) continue;
 
             var buffer_0 = global::System.Buffers.ArrayPool<long>.Shared.Rent(rowCount);
             var buffer_1 = global::System.Buffers.ArrayPool<bool>.Shared.Rent(rowCount);
@@ -1072,10 +1203,11 @@ public static partial class ScalarMetricParquetExtensions
                     field_1,
                     new global::System.Memory<bool>(buffer_1, 0, rowCount),
                     cancellationToken: cancellationToken);
-                var chunkStats_2 = groupReader.GetStatistics(field_2);
-                if (chunkStats_2?.NullCount == rowCount)
+                // The column is absent from the file (optional-column schema evolution) or the chunk is
+                // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                var chunkStats_2 = missing_2 ? null : groupReader.GetStatistics(field_2);
+                if (missing_2 || chunkStats_2?.NullCount == rowCount)
                 {
-                    // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_2, 0, rowCount);
                 }
                 else
@@ -1089,10 +1221,11 @@ public static partial class ScalarMetricParquetExtensions
                     field_3,
                     new global::System.Memory<int>(buffer_3, 0, rowCount),
                     cancellationToken: cancellationToken);
-                var chunkStats_4 = groupReader.GetStatistics(field_4);
-                if (chunkStats_4?.NullCount == rowCount)
+                // The column is absent from the file (optional-column schema evolution) or the chunk is
+                // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                var chunkStats_4 = missing_4 ? null : groupReader.GetStatistics(field_4);
+                if (missing_4 || chunkStats_4?.NullCount == rowCount)
                 {
-                    // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_4, 0, rowCount);
                 }
                 else
@@ -1314,14 +1447,14 @@ public static partial class ScalarMetricParquetExtensions
             var fileFields = reader.Schema.DataFields;
 
             global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
-            var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
-            var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
-            var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
-            var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
-            var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName);
-            var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName);
-            var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName);
-            var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName);
+            var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName, out _);
+            var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName, out _);
+            var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName, out bool missing_2);
+            var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName, out _);
+            var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName, out bool missing_4);
+            var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName, out _);
+            var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName, out _);
+            var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName, out _);
 
             var buffer_0 = global::System.Buffers.ArrayPool<long>.Shared.Rent(maxRowGroupSize);
             var buffer_1 = global::System.Buffers.ArrayPool<bool>.Shared.Rent(maxRowGroupSize);
@@ -1352,10 +1485,11 @@ public static partial class ScalarMetricParquetExtensions
                         field_1,
                         new global::System.Memory<bool>(buffer_1, 0, rowCount),
                         cancellationToken: cancellationToken);
-                    var chunkStats_2 = groupReader.GetStatistics(field_2);
-                    if (chunkStats_2?.NullCount == rowCount)
+                    // The column is absent from the file (optional-column schema evolution) or the chunk is
+                    // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                    var chunkStats_2 = missing_2 ? null : groupReader.GetStatistics(field_2);
+                    if (missing_2 || chunkStats_2?.NullCount == rowCount)
                     {
-                        // All-null chunk: skip page reading, decompression and decoding entirely.
                         global::System.Array.Clear(buffer_2, 0, rowCount);
                     }
                     else
@@ -1369,10 +1503,11 @@ public static partial class ScalarMetricParquetExtensions
                         field_3,
                         new global::System.Memory<int>(buffer_3, 0, rowCount),
                         cancellationToken: cancellationToken);
-                    var chunkStats_4 = groupReader.GetStatistics(field_4);
-                    if (chunkStats_4?.NullCount == rowCount)
+                    // The column is absent from the file (optional-column schema evolution) or the chunk is
+                    // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                    var chunkStats_4 = missing_4 ? null : groupReader.GetStatistics(field_4);
+                    if (missing_4 || chunkStats_4?.NullCount == rowCount)
                     {
-                        // All-null chunk: skip page reading, decompression and decoding entirely.
                         global::System.Array.Clear(buffer_4, 0, rowCount);
                     }
                     else
@@ -1461,14 +1596,14 @@ public static partial class ScalarMetricParquetExtensions
         var fileFields = reader.Schema.DataFields;
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
 
-        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
-        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
-        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
-        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
-        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName);
-        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName);
-        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName);
-        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName);
+        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName, out _);
+        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName, out _);
+        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName, out bool missing_2);
+        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName, out _);
+        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName, out bool missing_4);
+        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName, out _);
+        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName, out _);
+        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName, out _);
 
         var buffer_0 = global::System.Buffers.ArrayPool<long>.Shared.Rent(maxRowCount);
         var buffer_1 = global::System.Buffers.ArrayPool<bool>.Shared.Rent(maxRowCount);
@@ -1496,10 +1631,11 @@ public static partial class ScalarMetricParquetExtensions
                     field_1,
                     new global::System.Memory<bool>(buffer_1, 0, rowCount),
                     cancellationToken: cancellationToken);
-                var chunkStats_2 = groupReader.GetStatistics(field_2);
-                if (chunkStats_2?.NullCount == rowCount)
+                // The column is absent from the file (optional-column schema evolution) or the chunk is
+                // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                var chunkStats_2 = missing_2 ? null : groupReader.GetStatistics(field_2);
+                if (missing_2 || chunkStats_2?.NullCount == rowCount)
                 {
-                    // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_2, 0, rowCount);
                 }
                 else
@@ -1513,10 +1649,11 @@ public static partial class ScalarMetricParquetExtensions
                     field_3,
                     new global::System.Memory<int>(buffer_3, 0, rowCount),
                     cancellationToken: cancellationToken);
-                var chunkStats_4 = groupReader.GetStatistics(field_4);
-                if (chunkStats_4?.NullCount == rowCount)
+                // The column is absent from the file (optional-column schema evolution) or the chunk is
+                // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                var chunkStats_4 = missing_4 ? null : groupReader.GetStatistics(field_4);
+                if (missing_4 || chunkStats_4?.NullCount == rowCount)
                 {
-                    // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_4, 0, rowCount);
                 }
                 else
@@ -1577,10 +1714,11 @@ public static partial class ScalarMetricParquetExtensions
     public static async global::System.Collections.Generic.IAsyncEnumerable<ScalarMetric> ReadParquetStreamAsync(
         global::System.ReadOnlyMemory<byte> parquetBytes,
         global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
-        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default)
+        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default,
+        global::System.Func<global::SampleDomain.Models.ScalarMetricRowGroupMetadata, bool>? predicate = null)
     {
         using var stream = CreateBufferStream(parquetBytes);
-        await foreach (var item in ReadParquetStreamAsync(stream, options, cancellationToken))
+        await foreach (var item in ReadParquetStreamAsync(stream, options, cancellationToken, predicate))
         {
             yield return item;
         }
@@ -1599,4 +1737,368 @@ public static partial class ScalarMetricParquetExtensions
             ? new global::System.IO.MemoryStream(segment.Array!, segment.Offset, segment.Count, writable: false)
             : new global::System.IO.MemoryStream(parquetBytes.ToArray(), writable: false);
     }
+
+    /// <summary>
+    /// Struct-of-arrays view over one row group of <c>ScalarMetric</c> data.
+    /// Each column is exposed as a <see cref="global::System.ReadOnlySpan{T}"/> over a pooled buffer.
+    /// </summary>
+    /// <remarks>
+    /// The buffers belong to <see cref="global::System.Buffers.ArrayPool{T}"/> and are returned when the
+    /// producing enumerator advances or is disposed. Copy anything you need to outlive the current
+    /// iteration; never store the batch itself.
+    /// </remarks>
+    public readonly struct ColumnBatch
+    {
+        private readonly long[] _buffer_0;
+        private readonly bool[] _buffer_1;
+        private readonly bool?[] _buffer_2;
+        private readonly int[] _buffer_3;
+        private readonly int?[] _buffer_4;
+        private readonly byte[] _buffer_5;
+        private readonly short[] _buffer_6;
+        private readonly float[] _buffer_7;
+
+        /// <summary>Number of rows in this row group.</summary>
+        public int RowCount { get; }
+
+        /// <summary>Zero-based index of the row group this batch came from.</summary>
+        public int RowGroupIndex { get; }
+
+        internal ColumnBatch(int rowCount, int rowGroupIndex, long[] buffer_0, bool[] buffer_1, bool?[] buffer_2, int[] buffer_3, int?[] buffer_4, byte[] buffer_5, short[] buffer_6, float[] buffer_7)
+        {
+            RowCount = rowCount;
+            RowGroupIndex = rowGroupIndex;
+            _buffer_0 = buffer_0;
+            _buffer_1 = buffer_1;
+            _buffer_2 = buffer_2;
+            _buffer_3 = buffer_3;
+            _buffer_4 = buffer_4;
+            _buffer_5 = buffer_5;
+            _buffer_6 = buffer_6;
+            _buffer_7 = buffer_7;
+        }
+
+        /// <summary>
+        /// Column <c>row_id</c> (<c>RowId</c>) for the rows in this batch.
+        /// </summary>
+        public global::System.ReadOnlySpan<long> RowIdSpan =>
+            new global::System.ReadOnlySpan<long>(_buffer_0, 0, RowCount);
+
+        /// <summary>
+        /// Column <c>is_valid</c> (<c>Flag</c>) for the rows in this batch.
+        /// </summary>
+        public global::System.ReadOnlySpan<bool> FlagSpan =>
+            new global::System.ReadOnlySpan<bool>(_buffer_1, 0, RowCount);
+
+        /// <summary>
+        /// Column <c>maybe_flag</c> (<c>NullableFlag</c>) for the rows in this batch.
+        /// </summary>
+        public global::System.ReadOnlySpan<bool?> NullableFlagSpan =>
+            new global::System.ReadOnlySpan<bool?>(_buffer_2, 0, RowCount);
+
+        /// <summary>
+        /// Column <c>status</c> (<c>StatusCode</c>) for the rows in this batch.
+        /// </summary>
+        public global::System.ReadOnlySpan<int> StatusCodeSpan =>
+            new global::System.ReadOnlySpan<int>(_buffer_3, 0, RowCount);
+
+        /// <summary>
+        /// Column <c>opt_status</c> (<c>OptionalStatus</c>) for the rows in this batch.
+        /// </summary>
+        public global::System.ReadOnlySpan<int?> OptionalStatusSpan =>
+            new global::System.ReadOnlySpan<int?>(_buffer_4, 0, RowCount);
+
+        /// <summary>
+        /// Column <c>tiny_num</c> (<c>TinyNum</c>) for the rows in this batch.
+        /// </summary>
+        public global::System.ReadOnlySpan<byte> TinyNumSpan =>
+            new global::System.ReadOnlySpan<byte>(_buffer_5, 0, RowCount);
+
+        /// <summary>
+        /// Column <c>short_num</c> (<c>ShortNum</c>) for the rows in this batch.
+        /// </summary>
+        public global::System.ReadOnlySpan<short> ShortNumSpan =>
+            new global::System.ReadOnlySpan<short>(_buffer_6, 0, RowCount);
+
+        /// <summary>
+        /// Column <c>float_val</c> (<c>FloatVal</c>) for the rows in this batch.
+        /// </summary>
+        public global::System.ReadOnlySpan<float> FloatValSpan =>
+            new global::System.ReadOnlySpan<float>(_buffer_7, 0, RowCount);
+    }
+
+    /// <summary>
+    /// Asynchronously streams <c>ScalarMetric</c> data as columnar batches — one per row group —
+    /// without materializing a single <c>ScalarMetric</c> instance.
+    /// </summary>
+    /// <remarks>
+    /// Each yielded <see cref="ColumnBatch"/> aliases pooled buffers that are returned as soon as the
+    /// enumerator advances or is disposed, so the spans must not escape the loop body.
+    /// </remarks>
+    public static async global::System.Collections.Generic.IAsyncEnumerable<ColumnBatch> ReadParquetBatchesAsync(
+        global::System.IO.Stream stream,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));
+
+        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
+
+        await using var reader = await global::Parquet.ParquetReader.CreateAsync(
+            stream,
+            BuildFormatOptions(options),
+            cancellationToken: cancellationToken);
+        var fileFields = reader.Schema.DataFields;
+
+        global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
+        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName, out _);
+        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName, out _);
+        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName, out bool missing_2);
+        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName, out _);
+        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName, out bool missing_4);
+        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName, out _);
+        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName, out _);
+        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName, out _);
+
+        for (int r = 0; r < reader.RowGroupCount; r++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using var groupReader = reader.OpenRowGroupReader(r);
+            int rowCount = (int)groupReader.RowCount;
+
+            var buffer_0 = global::System.Buffers.ArrayPool<long>.Shared.Rent(rowCount);
+            var buffer_1 = global::System.Buffers.ArrayPool<bool>.Shared.Rent(rowCount);
+            var buffer_2 = global::System.Buffers.ArrayPool<bool?>.Shared.Rent(rowCount);
+            var buffer_3 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+            var buffer_4 = global::System.Buffers.ArrayPool<int?>.Shared.Rent(rowCount);
+            var buffer_5 = global::System.Buffers.ArrayPool<byte>.Shared.Rent(rowCount);
+            var buffer_6 = global::System.Buffers.ArrayPool<short>.Shared.Rent(rowCount);
+            var buffer_7 = global::System.Buffers.ArrayPool<float>.Shared.Rent(rowCount);
+
+            try
+            {
+                await groupReader.ReadAsync<long>(
+                    field_0,
+                    new global::System.Memory<long>(buffer_0, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<bool>(
+                    field_1,
+                    new global::System.Memory<bool>(buffer_1, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                // The column is absent from the file (optional-column schema evolution) or the chunk is
+                // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                var chunkStats_2 = missing_2 ? null : groupReader.GetStatistics(field_2);
+                if (missing_2 || chunkStats_2?.NullCount == rowCount)
+                {
+                    global::System.Array.Clear(buffer_2, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync<bool>(
+                        field_2,
+                        new global::System.Memory<bool?>(buffer_2, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
+                await groupReader.ReadAsync<int>(
+                    field_3,
+                    new global::System.Memory<int>(buffer_3, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                // The column is absent from the file (optional-column schema evolution) or the chunk is
+                // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                var chunkStats_4 = missing_4 ? null : groupReader.GetStatistics(field_4);
+                if (missing_4 || chunkStats_4?.NullCount == rowCount)
+                {
+                    global::System.Array.Clear(buffer_4, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync<int>(
+                        field_4,
+                        new global::System.Memory<int?>(buffer_4, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
+                await groupReader.ReadAsync<byte>(
+                    field_5,
+                    new global::System.Memory<byte>(buffer_5, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<short>(
+                    field_6,
+                    new global::System.Memory<short>(buffer_6, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<float>(
+                    field_7,
+                    new global::System.Memory<float>(buffer_7, 0, rowCount),
+                    cancellationToken: cancellationToken);
+
+                yield return new ColumnBatch(rowCount, r, buffer_0, buffer_1, buffer_2, buffer_3, buffer_4, buffer_5, buffer_6, buffer_7);
+            }
+            finally
+            {
+                global::System.Buffers.ArrayPool<long>.Shared.Return(buffer_0, clearArray: false);
+                global::System.Buffers.ArrayPool<bool>.Shared.Return(buffer_1, clearArray: false);
+                global::System.Buffers.ArrayPool<bool?>.Shared.Return(buffer_2, clearArray: false);
+                global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_3, clearArray: false);
+                global::System.Buffers.ArrayPool<int?>.Shared.Return(buffer_4, clearArray: false);
+                global::System.Buffers.ArrayPool<byte>.Shared.Return(buffer_5, clearArray: false);
+                global::System.Buffers.ArrayPool<short>.Shared.Return(buffer_6, clearArray: false);
+                global::System.Buffers.ArrayPool<float>.Shared.Return(buffer_7, clearArray: false);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Asynchronously streams <c>ScalarMetric</c> columnar batches from an in-memory byte buffer.
+    /// </summary>
+    public static async global::System.Collections.Generic.IAsyncEnumerable<ColumnBatch> ReadParquetBatchesAsync(
+        global::System.ReadOnlyMemory<byte> parquetBytes,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        using var stream = CreateBufferStream(parquetBytes);
+        await foreach (var batch in ReadParquetBatchesAsync(stream, options, cancellationToken))
+        {
+            yield return batch;
+        }
+    }
+
+    /// <summary>
+    /// Decides whether a row group can hold a row matching <paramref name="predicate"/>, using
+    /// only the column-chunk statistics already present in the file footer.
+    /// </summary>
+    /// <remarks>
+    /// Returns <c>true</c> — read the group — whenever the answer is not certain: a null predicate,
+    /// or a chunk that recorded no usable min/max. Pruning only ever removes row groups the
+    /// statistics prove cannot match.
+    /// </remarks>
+    private static bool AcceptRowGroup(
+        global::System.Func<global::SampleDomain.Models.ScalarMetricRowGroupMetadata, bool>? predicate,
+        global::Parquet.ParquetRowGroupReader groupReader,
+        int rowGroupIndex,
+        global::Parquet.Schema.DataField field_0,
+        global::Parquet.Schema.DataField field_5,
+        global::Parquet.Schema.DataField field_6,
+        global::Parquet.Schema.DataField field_7)
+    {
+        if (predicate == null) return true;
+
+        var stats_0 = groupReader.GetStatistics(field_0);
+        var stats_5 = groupReader.GetStatistics(field_5);
+        var stats_6 = groupReader.GetStatistics(field_6);
+        var stats_7 = groupReader.GetStatistics(field_7);
+
+        bool hasStatistics =
+              stats_0 != null && stats_0.MinValue != null && stats_0.MaxValue != null
+            && stats_5 != null && stats_5.MinValue != null && stats_5.MaxValue != null
+            && stats_6 != null && stats_6.MinValue != null && stats_6.MaxValue != null
+            && stats_7 != null && stats_7.MinValue != null && stats_7.MaxValue != null;
+
+        // A chunk with no usable zone map disables pruning for the whole group rather than
+        // letting a raw Min/Max comparison against a default value skip live rows.
+        if (!hasStatistics) return true;
+
+        var metadata = new global::SampleDomain.Models.ScalarMetricRowGroupMetadata(
+            rowGroupIndex,
+            groupReader.RowCount,
+            true,
+            global::Parquet.SourceGenerator.ParquetColumnStatistics.FromRaw<long>(stats_0!.MinValue, stats_0!.MaxValue, stats_0!.NullCount, stats_0!.DistinctCount),
+            global::Parquet.SourceGenerator.ParquetColumnStatistics.FromRaw<byte>(stats_5!.MinValue, stats_5!.MaxValue, stats_5!.NullCount, stats_5!.DistinctCount),
+            global::Parquet.SourceGenerator.ParquetColumnStatistics.FromRaw<short>(stats_6!.MinValue, stats_6!.MaxValue, stats_6!.NullCount, stats_6!.DistinctCount),
+            global::Parquet.SourceGenerator.ParquetColumnStatistics.FromRaw<float>(stats_7!.MinValue, stats_7!.MaxValue, stats_7!.NullCount, stats_7!.DistinctCount));
+
+        return predicate(metadata);
+    }
+}
+
+/// <summary>
+/// Footer statistics for one row group of a <c>ScalarMetric</c> Parquet file, as seen by a
+/// row-group pruning predicate. Reading a property costs nothing beyond the footer that was
+/// already parsed when the file was opened.
+/// </summary>
+public readonly struct ScalarMetricRowGroupMetadata
+{
+    /// <summary>Creates a row-group zone map.</summary>
+    public ScalarMetricRowGroupMetadata(
+        int rowGroupIndex,
+        long rowCount,
+        bool hasStatistics,
+        global::Parquet.SourceGenerator.ParquetColumnStatistics<long> column_0,
+        global::Parquet.SourceGenerator.ParquetColumnStatistics<byte> column_5,
+        global::Parquet.SourceGenerator.ParquetColumnStatistics<short> column_6,
+        global::Parquet.SourceGenerator.ParquetColumnStatistics<float> column_7)
+    {
+        RowGroupIndex = rowGroupIndex;
+        RowCount = rowCount;
+        HasStatistics = hasStatistics;
+        RowId = column_0;
+        TinyNum = column_5;
+        ShortNum = column_6;
+        FloatVal = column_7;
+    }
+
+    /// <summary>Zero-based index of this row group in the file.</summary>
+    public int RowGroupIndex { get; }
+
+    /// <summary>Rows in this row group.</summary>
+    public long RowCount { get; }
+
+    /// <summary>Whether every projected column recorded a usable min/max. Always true inside a
+    /// pruning predicate: a group without complete statistics is read rather than tested.</summary>
+    public bool HasStatistics { get; }
+
+    /// <summary>Zone map for the <c>row_id</c> column.</summary>
+    public global::Parquet.SourceGenerator.ParquetColumnStatistics<long> RowId { get; }
+
+    /// <summary>Zone map for the <c>tiny_num</c> column.</summary>
+    public global::Parquet.SourceGenerator.ParquetColumnStatistics<byte> TinyNum { get; }
+
+    /// <summary>Zone map for the <c>short_num</c> column.</summary>
+    public global::Parquet.SourceGenerator.ParquetColumnStatistics<short> ShortNum { get; }
+
+    /// <summary>Zone map for the <c>float_val</c> column.</summary>
+    public global::Parquet.SourceGenerator.ParquetColumnStatistics<float> FloatVal { get; }
+}
+
+/// <summary>
+/// One row group of <c>ScalarMetric</c> data held as caller-owned column buffers.
+/// </summary>
+/// <remarks>
+/// Buffers are passed to Parquet.Net verbatim — nothing here is rented, copied or pooled.
+/// Members are public fields rather than <c>init</c> properties so the type needs no
+/// <c>IsExternalInit</c> polyfill on downstream targets, and object-initializer syntax keeps the
+/// column-to-buffer binding by name instead of by position.
+/// </remarks>
+public struct ScalarMetricColumnarBatch
+{
+    /// <summary>Number of rows this batch describes.</summary>
+    public int RowCount;
+
+    /// <summary>Values for column <c>RowId</c>; at least <c>RowCount</c> entries.</summary>
+    public global::System.ReadOnlyMemory<long> RowId;
+
+    /// <summary>Values for column <c>Flag</c>; at least <c>RowCount</c> entries.</summary>
+    public global::System.ReadOnlyMemory<bool> Flag;
+
+    /// <summary>Packed non-null values for nullable column <c>NullableFlag</c>; length equals the number of 1s in <c>NullableFlagDefinitionLevels</c>.</summary>
+    public global::System.ReadOnlyMemory<bool> NullableFlag;
+
+    /// <summary>Definition levels for column <c>NullableFlag</c>: one entry per row, 1 = present, 0 = null.</summary>
+    public global::System.ReadOnlyMemory<int> NullableFlagDefinitionLevels;
+
+    /// <summary>Values for column <c>StatusCode</c>; at least <c>RowCount</c> entries.</summary>
+    public global::System.ReadOnlyMemory<int> StatusCode;
+
+    /// <summary>Packed non-null values for nullable column <c>OptionalStatus</c>; length equals the number of 1s in <c>OptionalStatusDefinitionLevels</c>.</summary>
+    public global::System.ReadOnlyMemory<int> OptionalStatus;
+
+    /// <summary>Definition levels for column <c>OptionalStatus</c>: one entry per row, 1 = present, 0 = null.</summary>
+    public global::System.ReadOnlyMemory<int> OptionalStatusDefinitionLevels;
+
+    /// <summary>Values for column <c>TinyNum</c>; at least <c>RowCount</c> entries.</summary>
+    public global::System.ReadOnlyMemory<byte> TinyNum;
+
+    /// <summary>Values for column <c>ShortNum</c>; at least <c>RowCount</c> entries.</summary>
+    public global::System.ReadOnlyMemory<short> ShortNum;
+
+    /// <summary>Values for column <c>FloatVal</c>; at least <c>RowCount</c> entries.</summary>
+    public global::System.ReadOnlyMemory<float> FloatVal;
 }

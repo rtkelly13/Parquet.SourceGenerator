@@ -12,6 +12,15 @@ Changes since `0.0.1`. That version is published on nuget.org (alongside the `0.
 `0.0.1-dev.2` prereleases); this section becomes the next release entry when one is cut.
 
 ### Added
+- **Direct columnar handoff (write)**: flat `[ParquetSerializable]` models now also emit a
+  `{Type}ColumnarBatch` struct plus `WriteParquetRowGroupAsync(batch)`,
+  `WriteParquetRowGroupColumnarAsync(rowCount, ...)` and a stream-level `batch.WriteParquetAsync`.
+  A caller whose data is already in contiguous column buffers skips the row-to-column transpose and
+  its `ArrayPool` rentals entirely — buffers reach Parquet.Net verbatim. Nullable value columns take
+  packed values plus explicit definition levels. Measured at ~7% of end-to-end write time on a
+  16-column schema, identical in Workstation and Server GC, with allocation unchanged; see
+  `docs/12-BUFFER-REUSE-AND-EXTRACTION-STRATEGIES.md` §6. Models with struct, list or map members
+  are unaffected and keep the row-oriented API only.
 - **Apache Arrow `RecordBatch` ingestion (experimental, #177)**: when — and only when — the consumer
   compilation references Apache.Arrow, the generator emits an extra `{Namespace}.{Type}.Arrow.g.cs`
   per Arrow-representable `[ParquetSerializable]` type, adding
@@ -49,6 +58,28 @@ Changes since `0.0.1`. That version is published on nuget.org (alongside the `0.
   member types, unassignable members, types with no parameterless constructor, nested or generic
   target types, and member types the 4.x/5.x backend cannot represent.
 - **CI workflow** building, testing and packing the solution. Benchmarks run on demand.
+- **Sorted row-group pruning (experiment, issue #151)**: mark a column `[ParquetSortKey]` and the
+  generator emits `ReadParquetBy<Column>Async` (point lookup) and `ReadParquet<Column>RangeAsync`
+  (inclusive slice) for it. Both certify the column as sorted from the footer `[Min, Max]`
+  statistics and binary search that metadata, so only the row groups that can contain the key are
+  decompressed; overlapping or missing statistics fall back to a full scan and the answer is
+  identical either way. Pass a `ParquetPruneStatistics` to see how many row groups were skipped.
+  The marker is opt-in: a model with no `[ParquetSortKey]` emits exactly what it did before, with
+  none of the lookup API. Marking a member the rules cannot support — nullable, `string`, a
+  compound member, or a type with no Parquet statistics order — is reported as **PARQ014** with the
+  reason rather than silently emitting nothing.
+  Note the cost shape: certifying sortedness reads every row group's statistics, so the metadata
+  phase is O(N) in row groups. Only decompression is logarithmic — that is where the speedup
+  comes from, and it is why the win grows with row-group payload size rather than with row-group
+  count alone.
+- **Span-keyed string deduplication** (`DeduplicateStrings = true`): string columns are read
+  through Parquet.Net's raw `ReadOnlyMemory<char>` surface and interned against a pooled
+  open-addressed table keyed on `ReadOnlySpan<char>`, so a repeated value costs no `string`
+  allocation at all. Hash matches are always confirmed with a full ordinal comparison. On the
+  Adult Census dataset (32,561 rows, 9 categorical columns) this cuts managed read allocation
+  from 20.38 MB to 8.75 MB. The `ReadOnlySpan<byte>` variant the design originally called for is
+  not reachable — Parquet.Net 6.1.0 exposes no UTF-8 byte surface for string columns; see
+  `UPSTREAM_DEPENDENCY_LIMITATIONS.md`.
 
 ### Changed
 - **Formatting tooling consolidated on CSharpier.** `dotnet format whitespace` is removed from CI:

@@ -611,7 +611,7 @@ public static class Program
         sb.AppendLine();
 
         string[] mdFiles = Directory.GetFiles(resultsDir, "*-report-github.md");
-        Array.Sort(mdFiles);
+        Array.Sort(mdFiles, StringComparer.Ordinal);
 
         foreach (string mdFile in mdFiles)
         {

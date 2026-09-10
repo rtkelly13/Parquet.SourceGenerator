@@ -38,8 +38,10 @@ public static partial class OrderEventParquetExtensions
         global::Parquet.Schema.DataField[] fileFields,
         int index,
         global::Parquet.Schema.DataField expected,
-        ref global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? byName)
+        ref global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? byName,
+        out bool missing)
     {
+        missing = false;
         // Ordered schemas resolve on a single index check: no hashing, no delegate, no allocation.
         // Every file this generator writes lands here, as does any file whose column order matches.
         if ((uint)index < (uint)fileFields.Length
@@ -76,6 +78,9 @@ public static partial class OrderEventParquetExtensions
             throw new global::System.IO.InvalidDataException($"Required column '{expected.Name}' was not found in the Parquet file schema.");
         }
 
+        // Optional column absent from the file: documented schema evolution. The caller
+        // materialises nulls for it instead of asking the file for a column it does not have.
+        missing = true;
         return expected;
     }
 
@@ -145,11 +150,21 @@ public static partial class OrderEventParquetExtensions
     }
 
     /// <summary>
-    /// Lightweight, zero-allocation L1 string cache for deduplicating repeated string instances
-    /// across columnar reads, slashing managed heap allocations on categorical string columns.
+    /// Lightweight L1 string cache keyed directly on <see cref="global::System.ReadOnlySpan{T}"/>
+    /// of <see cref="char"/>, backed by a pooled open-addressed table.
+    /// A cache hit returns the previously materialized <see cref="string"/> instance without
+    /// allocating, so repeated (categorical) column values cost one string per distinct value
+    /// rather than one string per row.
     /// </summary>
+    /// <remarks>
+    /// Hash equality is never trusted on its own: every candidate is confirmed with a full
+    /// ordinal span comparison before it is returned, so collisions can only cost a probe,
+    /// never correctness.
+    /// </remarks>
     private struct StringDeduplicator : global::System.IDisposable
     {
+        private const int ProbeLimit = 4;
+
         private string?[]? _entries;
         private readonly int _mask;
 
@@ -170,15 +185,97 @@ public static partial class OrderEventParquetExtensions
             var entries = _entries;
             if (entries is null) return value;
 
-            int index = value.GetHashCode() & _mask;
-            string? candidate = entries[index];
-            if (candidate is not null && string.Equals(candidate, value, global::System.StringComparison.Ordinal))
+            int mask = _mask;
+            int index = (int)(HashString(value) & (uint)mask);
+            for (int probe = 0; probe < ProbeLimit; probe++)
             {
-                return candidate;
+                int slot = (index + probe) & mask;
+                string? candidate = entries[slot];
+                if (candidate is null)
+                {
+                    entries[slot] = value;
+                    return value;
+                }
+
+                // A matching hash is never trusted on its own: compare in full.
+                if (string.Equals(candidate, value, global::System.StringComparison.Ordinal))
+                {
+                    return candidate;
+                }
             }
 
+            // Probe window exhausted: evict the primary slot so hot values stay resident.
             entries[index] = value;
             return value;
+        }
+
+        /// <summary>
+        /// Returns the cached string equal to <paramref name="value"/>. A cache hit allocates
+        /// nothing at all — no string instance is created for a value already seen.
+        /// </summary>
+        public string GetOrAdd(global::System.ReadOnlySpan<char> value)
+        {
+            if (value.Length == 0) return string.Empty;
+
+            var entries = _entries;
+            if (entries is null) return value.ToString();
+
+            int mask = _mask;
+            int index = (int)(HashSpan(value) & (uint)mask);
+            for (int probe = 0; probe < ProbeLimit; probe++)
+            {
+                int slot = (index + probe) & mask;
+                string? candidate = entries[slot];
+                if (candidate is null)
+                {
+                    string inserted = value.ToString();
+                    entries[slot] = inserted;
+                    return inserted;
+                }
+
+                // A matching hash is never trusted on its own: compare byte-for-byte.
+                if (SpanEqualsOrdinal(value, candidate))
+                {
+                    return candidate;
+                }
+            }
+
+            string replacement = value.ToString();
+            entries[index] = replacement;
+            return replacement;
+        }
+
+        private static bool SpanEqualsOrdinal(global::System.ReadOnlySpan<char> value, string candidate)
+        {
+            if (value.Length != candidate.Length) return false;
+            for (int i = 0; i < value.Length; i++)
+            {
+                if (value[i] != candidate[i]) return false;
+            }
+            return true;
+        }
+
+        /// <summary>FNV-1a over UTF-16 code units; allocation free and span/string identical.</summary>
+        private static uint HashSpan(global::System.ReadOnlySpan<char> value)
+        {
+            uint hash = 2166136261u;
+            for (int i = 0; i < value.Length; i++)
+            {
+                hash ^= value[i];
+                hash *= 16777619u;
+            }
+            return hash;
+        }
+
+        private static uint HashString(string value)
+        {
+            uint hash = 2166136261u;
+            for (int i = 0; i < value.Length; i++)
+            {
+                hash ^= value[i];
+                hash *= 16777619u;
+            }
+            return hash;
         }
 
         public void Dispose()
@@ -188,6 +285,80 @@ public static partial class OrderEventParquetExtensions
             {
                 _entries = null;
                 global::System.Buffers.ArrayPool<string?>.Shared.Return(entries, clearArray: true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Reads a string column through Parquet.Net's raw <c>ReadOnlyMemory&lt;char&gt;</c> surface and
+    /// materializes it via <see cref="StringDeduplicator"/>, so only distinct values allocate.
+    /// </summary>
+    private static async global::System.Threading.Tasks.ValueTask ReadDeduplicatedStringColumnAsync(
+        global::Parquet.ParquetRowGroupReader groupReader,
+        global::Parquet.Schema.DataField field,
+        string?[] destination,
+        int rowCount,
+        StringDeduplicator deduplicator,
+        global::System.Threading.CancellationToken cancellationToken)
+    {
+        var raw = global::System.Buffers.ArrayPool<global::System.ReadOnlyMemory<char>>.Shared.Rent(rowCount);
+        int maxDefinitionLevel = field.MaxDefinitionLevel;
+        int[]? definitionLevels = maxDefinitionLevel > 0
+            ? global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount)
+            : null;
+        try
+        {
+            await groupReader.ReadRawAsync(
+                field,
+                new global::System.Memory<global::System.ReadOnlyMemory<char>>(raw, 0, rowCount),
+                definitionLevels is null
+                    ? (global::System.Memory<int>?)null
+                    : new global::System.Memory<int>(definitionLevels, 0, rowCount),
+                null,
+                cancellationToken);
+
+            MaterializeDeduplicatedStrings(raw, definitionLevels, destination, rowCount, maxDefinitionLevel, deduplicator);
+        }
+        finally
+        {
+            global::System.Buffers.ArrayPool<global::System.ReadOnlyMemory<char>>.Shared.Return(raw, clearArray: true);
+            if (definitionLevels is not null)
+            {
+                global::System.Buffers.ArrayPool<int>.Shared.Return(definitionLevels, clearArray: false);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Spreads the packed raw span lane back over the row lane, interning each value.
+    /// </summary>
+    private static void MaterializeDeduplicatedStrings(
+        global::System.ReadOnlyMemory<char>[] raw,
+        int[]? definitionLevels,
+        string?[] destination,
+        int rowCount,
+        int maxDefinitionLevel,
+        StringDeduplicator deduplicator)
+    {
+        if (definitionLevels is null)
+        {
+            for (int i = 0; i < rowCount; i++)
+            {
+                destination[i] = deduplicator.GetOrAdd(raw[i].Span);
+            }
+            return;
+        }
+
+        int packed = 0;
+        for (int i = 0; i < rowCount; i++)
+        {
+            if (definitionLevels[i] == maxDefinitionLevel)
+            {
+                destination[i] = deduplicator.GetOrAdd(raw[packed++].Span);
+            }
+            else
+            {
+                destination[i] = null;
             }
         }
     }
@@ -248,15 +419,11 @@ public static partial class OrderEventParquetExtensions
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_5, i) = checked((int)item.Duration.TotalMilliseconds);
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_6, i) = item.CorrelationId;
                         var val_7 = item.OptionalGuid;
-                        if (val_7.HasValue)
-                        {
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_7, nonNullCount_7++) = val_7.Value;
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_7, i) = 1;
-                        }
-                        else
-                        {
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_7, i) = 0;
-                        }
+                        bool has_7 = val_7.HasValue;
+                        int hv_7 = global::System.Runtime.CompilerServices.Unsafe.As<bool, byte>(ref has_7);
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_7, nonNullCount_7) = val_7.GetValueOrDefault();
+                        nonNullCount_7 += hv_7;
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_7, i) = hv_7;
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_8, i) = item.Payload is null ? (global::System.ReadOnlyMemory<byte>?)null : global::System.MemoryExtensions.AsMemory(item.Payload);
                     }
                 }
@@ -273,15 +440,10 @@ public static partial class OrderEventParquetExtensions
                     buffer_5[i] = checked((int)item.Duration.TotalMilliseconds);
                     buffer_6[i] = item.CorrelationId;
                     var val_7 = item.OptionalGuid;
-                    if (val_7.HasValue)
-                    {
-                        buffer_7[nonNullCount_7++] = val_7.Value;
-                        defLevels_7[i] = 1;
-                    }
-                    else
-                    {
-                        defLevels_7[i] = 0;
-                    }
+                    int hv_7 = val_7.HasValue ? 1 : 0;
+                    buffer_7[nonNullCount_7] = val_7.GetValueOrDefault();
+                    nonNullCount_7 += hv_7;
+                    defLevels_7[i] = hv_7;
                     buffer_8[i] = item.Payload is null ? (global::System.ReadOnlyMemory<byte>?)null : global::System.MemoryExtensions.AsMemory(item.Payload);
                 }
 #endif
@@ -313,15 +475,11 @@ public static partial class OrderEventParquetExtensions
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_5, i) = checked((int)item.Duration.TotalMilliseconds);
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_6, i) = item.CorrelationId;
                         var val_7 = item.OptionalGuid;
-                        if (val_7.HasValue)
-                        {
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_7, nonNullCount_7++) = val_7.Value;
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_7, i) = 1;
-                        }
-                        else
-                        {
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_7, i) = 0;
-                        }
+                        bool has_7 = val_7.HasValue;
+                        int hv_7 = global::System.Runtime.CompilerServices.Unsafe.As<bool, byte>(ref has_7);
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_7, nonNullCount_7) = val_7.GetValueOrDefault();
+                        nonNullCount_7 += hv_7;
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_7, i) = hv_7;
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_8, i) = item.Payload is null ? (global::System.ReadOnlyMemory<byte>?)null : global::System.MemoryExtensions.AsMemory(item.Payload);
                     }
                 }
@@ -338,15 +496,10 @@ public static partial class OrderEventParquetExtensions
                     buffer_5[i] = checked((int)item.Duration.TotalMilliseconds);
                     buffer_6[i] = item.CorrelationId;
                     var val_7 = item.OptionalGuid;
-                    if (val_7.HasValue)
-                    {
-                        buffer_7[nonNullCount_7++] = val_7.Value;
-                        defLevels_7[i] = 1;
-                    }
-                    else
-                    {
-                        defLevels_7[i] = 0;
-                    }
+                    int hv_7 = val_7.HasValue ? 1 : 0;
+                    buffer_7[nonNullCount_7] = val_7.GetValueOrDefault();
+                    nonNullCount_7 += hv_7;
+                    defLevels_7[i] = hv_7;
                     buffer_8[i] = item.Payload is null ? (global::System.ReadOnlyMemory<byte>?)null : global::System.MemoryExtensions.AsMemory(item.Payload);
                 }
 #endif
@@ -364,15 +517,10 @@ public static partial class OrderEventParquetExtensions
                     buffer_5[idx] = checked((int)item.Duration.TotalMilliseconds);
                     buffer_6[idx] = item.CorrelationId;
                     var val_7 = item.OptionalGuid;
-                    if (val_7.HasValue)
-                    {
-                        buffer_7[nonNullCount_7++] = val_7.Value;
-                        defLevels_7[idx] = 1;
-                    }
-                    else
-                    {
-                        defLevels_7[idx] = 0;
-                    }
+                    int hv_7 = val_7.HasValue ? 1 : 0;
+                    buffer_7[nonNullCount_7] = val_7.GetValueOrDefault();
+                    nonNullCount_7 += hv_7;
+                    defLevels_7[idx] = hv_7;
                     buffer_8[idx] = item.Payload is null ? (global::System.ReadOnlyMemory<byte>?)null : global::System.MemoryExtensions.AsMemory(item.Payload);
                     idx++;
                 }
@@ -453,6 +601,145 @@ public static partial class OrderEventParquetExtensions
             if (defLevels_7 != null) global::System.Buffers.ArrayPool<int>.Shared.Return(defLevels_7, clearArray: false);
             if (buffer_8 != null) global::System.Buffers.ArrayPool<global::System.ReadOnlyMemory<byte>?>.Shared.Return(buffer_8, clearArray: true);
         }
+    }
+
+    /// <summary>
+    /// Converts a string into a text column entry, preserving null.
+    /// A bare <c>cond ? null : value.AsMemory()</c> does not: the conditional's natural type is the
+    /// non-nullable memory, so the null branch stores an empty value instead.
+    /// </summary>
+    public static global::System.ReadOnlyMemory<char>? AsColumnarText(string? value)
+        => value is null ? (global::System.ReadOnlyMemory<char>?)null : global::System.MemoryExtensions.AsMemory(value);
+
+    /// <summary>
+    /// Converts a byte array into a binary column entry, preserving null.
+    /// </summary>
+    public static global::System.ReadOnlyMemory<byte>? AsColumnarBinary(byte[]? value)
+        => value is null ? (global::System.ReadOnlyMemory<byte>?)null : global::System.MemoryExtensions.AsMemory(value);
+
+    /// <summary>
+    /// Writes one row group directly from caller-owned column buffers, with no row traversal and no pooled rentals.
+    /// </summary>
+    public static async global::System.Threading.Tasks.Task WriteParquetRowGroupAsync(
+        this global::Parquet.ParquetWriter writer,
+        OrderEventColumnarBatch batch,
+        global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        if (writer == null) throw new global::System.ArgumentNullException(nameof(writer));
+
+        int count = batch.RowCount;
+        if (count < 0) throw new global::System.ArgumentOutOfRangeException(nameof(batch), "RowCount cannot be negative.");
+        if (count == 0) return;
+
+        if (batch.Id.Length < count) throw new global::System.ArgumentException("Column 'Id' supplied " + batch.Id.Length + " values for " + count + " rows.", nameof(batch));
+        if (batch.Name.Length < count) throw new global::System.ArgumentException("Column 'Name' supplied " + batch.Name.Length + " values for " + count + " rows.", nameof(batch));
+        if (batch.Score.Length < count) throw new global::System.ArgumentException("Column 'Score' supplied " + batch.Score.Length + " values for " + count + " rows.", nameof(batch));
+        if (batch.Price.Length < count) throw new global::System.ArgumentException("Column 'Price' supplied " + batch.Price.Length + " values for " + count + " rows.", nameof(batch));
+        if (batch.CreatedAt.Length < count) throw new global::System.ArgumentException("Column 'CreatedAt' supplied " + batch.CreatedAt.Length + " values for " + count + " rows.", nameof(batch));
+        if (batch.Duration.Length < count) throw new global::System.ArgumentException("Column 'Duration' supplied " + batch.Duration.Length + " values for " + count + " rows.", nameof(batch));
+        if (batch.CorrelationId.Length < count) throw new global::System.ArgumentException("Column 'CorrelationId' supplied " + batch.CorrelationId.Length + " values for " + count + " rows.", nameof(batch));
+        if (batch.OptionalGuidDefinitionLevels.Length < count) throw new global::System.ArgumentException("Column 'OptionalGuid' supplied " + batch.OptionalGuidDefinitionLevels.Length + " definition levels for " + count + " rows.", nameof(batch));
+        if (batch.Payload.Length < count) throw new global::System.ArgumentException("Column 'Payload' supplied " + batch.Payload.Length + " values for " + count + " rows.", nameof(batch));
+
+        using (var groupWriter = writer.CreateRowGroup())
+        {
+            await groupWriter.WriteAsync<int>(
+                _field_0,
+                batch.Id.Slice(0, count),
+                cancellationToken: cancellationToken);
+            await groupWriter.WriteAsync<global::System.ReadOnlyMemory<char>>(
+                _field_1,
+                batch.Name.Slice(0, count),
+                cancellationToken: cancellationToken);
+            await groupWriter.WriteAsync<double>(
+                _field_2,
+                batch.Score.Slice(0, count),
+                cancellationToken: cancellationToken);
+            await groupWriter.WriteAsync<decimal>(
+                _field_3,
+                batch.Price.Slice(0, count),
+                cancellationToken: cancellationToken);
+            await groupWriter.WriteAsync<System.DateTime>(
+                _field_4,
+                batch.CreatedAt.Slice(0, count),
+                cancellationToken: cancellationToken);
+            await groupWriter.WriteAsync<int>(
+                _field_5,
+                batch.Duration.Slice(0, count),
+                cancellationToken: cancellationToken);
+            await groupWriter.WriteAsync<global::System.Guid>(
+                _field_6,
+                batch.CorrelationId.Slice(0, count),
+                cancellationToken: cancellationToken);
+            await groupWriter.WriteAllPartsAsync<global::System.Guid>(
+                _field_7,
+                batch.OptionalGuid,
+                batch.OptionalGuidDefinitionLevels.Slice(0, count),
+                null,
+                cancellationToken: cancellationToken);
+            await groupWriter.WriteAsync<global::System.ReadOnlyMemory<byte>>(
+                _field_8,
+                batch.Payload.Slice(0, count),
+                cancellationToken: cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// Positional form of the columnar hand-off: one parameter per schema column, in schema order.
+    /// Prefer the <c>OrderEventColumnarBatch</c> overload — it binds buffers to columns by name.
+    /// </summary>
+    public static global::System.Threading.Tasks.Task WriteParquetRowGroupColumnarAsync(
+        this global::Parquet.ParquetWriter writer,
+        int rowCount,
+        global::System.ReadOnlyMemory<int> id,
+        global::System.ReadOnlyMemory<global::System.ReadOnlyMemory<char>?> name,
+        global::System.ReadOnlyMemory<double> score,
+        global::System.ReadOnlyMemory<decimal> price,
+        global::System.ReadOnlyMemory<System.DateTime> createdAt,
+        global::System.ReadOnlyMemory<int> duration,
+        global::System.ReadOnlyMemory<global::System.Guid> correlationId,
+        global::System.ReadOnlyMemory<global::System.Guid> optionalGuid,
+        global::System.ReadOnlyMemory<int> optionalGuidDefinitionLevels,
+        global::System.ReadOnlyMemory<global::System.ReadOnlyMemory<byte>?> payload,
+        global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        var batch = new OrderEventColumnarBatch
+        {
+            RowCount = rowCount,
+            Id = id,
+            Name = name,
+            Score = score,
+            Price = price,
+            CreatedAt = createdAt,
+            Duration = duration,
+            CorrelationId = correlationId,
+            OptionalGuid = optionalGuid,
+            OptionalGuidDefinitionLevels = optionalGuidDefinitionLevels,
+            Payload = payload,
+        };
+        return writer.WriteParquetRowGroupAsync(batch, cancellationToken);
+    }
+
+    /// <summary>
+    /// Writes a complete single-row-group Parquet stream from one <c>OrderEventColumnarBatch</c>.
+    /// </summary>
+    public static async global::System.Threading.Tasks.Task WriteParquetAsync(
+        this OrderEventColumnarBatch batch,
+        global::System.IO.Stream stream,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));
+        cancellationToken.ThrowIfCancellationRequested();
+
+        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
+
+        await using var writer = await global::Parquet.ParquetWriter.CreateAsync(
+            Schema,
+            stream,
+            BuildFormatOptions(options),
+            cancellationToken: cancellationToken);
+        await writer.WriteParquetRowGroupAsync(batch, cancellationToken);
     }
 
     /// <summary>
@@ -576,7 +863,8 @@ public static partial class OrderEventParquetExtensions
     public static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<OrderEvent>> ReadParquetAsync(
         global::System.IO.Stream stream,
         global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
-        global::System.Threading.CancellationToken cancellationToken = default)
+        global::System.Threading.CancellationToken cancellationToken = default,
+        global::System.Func<global::SampleDomain.Models.OrderEventRowGroupMetadata, bool>? predicate = null)
     {
         if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));
 
@@ -586,7 +874,39 @@ public static partial class OrderEventParquetExtensions
             stream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
-        int totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);
+        var fileFields = reader.Schema.DataFields;
+
+        global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
+        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName, out _);
+        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName, out bool missing_1);
+        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName, out _);
+        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName, out _);
+        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName, out _);
+        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName, out _);
+        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName, out _);
+        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName, out bool missing_7);
+        var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName, out bool missing_8);
+
+        int totalRows;
+        bool[]? selectedGroups = null;
+        if (predicate == null)
+        {
+            totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);
+        }
+        else
+        {
+            // Zone-map pre-pass: footer statistics only. Surviving groups are the only ones
+            // whose pages are ever read, and the result is sized to exactly their rows.
+            selectedGroups = new bool[reader.RowGroupCount];
+            totalRows = 0;
+            for (int r = 0; r < reader.RowGroupCount; r++)
+            {
+                using var probeReader = reader.OpenRowGroupReader(r);
+                if (!AcceptRowGroup(predicate, probeReader, r, field_0, field_1, field_2)) continue;
+                selectedGroups[r] = true;
+                totalRows += (int)probeReader.RowCount;
+            }
+        }
 #if NET8_0_OR_GREATER
         var results = new global::System.Collections.Generic.List<OrderEvent>(totalRows);
         global::System.Runtime.InteropServices.CollectionsMarshal.SetCount(results, totalRows);
@@ -595,25 +915,13 @@ public static partial class OrderEventParquetExtensions
 #endif
         int currentOffset = 0;
 
-        var fileFields = reader.Schema.DataFields;
-
-        global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
-        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
-        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
-        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
-        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
-        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName);
-        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName);
-        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName);
-        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName);
-        var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName);
-
         using var stringDeduplicator = new StringDeduplicator(512);
         bool deduplicateStrings = options.DeduplicateStrings;
 
         for (int r = 0; r < reader.RowGroupCount; r++)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (selectedGroups != null && !selectedGroups[r]) continue;
             using var groupReader = reader.OpenRowGroupReader(r);
             int rowCount = (int)groupReader.RowCount;
 
@@ -633,18 +941,32 @@ public static partial class OrderEventParquetExtensions
                     field_0,
                     new global::System.Memory<int>(buffer_0, 0, rowCount),
                     cancellationToken: cancellationToken);
-                var chunkStats_1 = groupReader.GetStatistics(field_1);
-                if (chunkStats_1?.NullCount == rowCount)
+                // The column is absent from the file (optional-column schema evolution) or the chunk is
+                // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                var chunkStats_1 = missing_1 ? null : groupReader.GetStatistics(field_1);
+                if (missing_1 || chunkStats_1?.NullCount == rowCount)
                 {
-                    // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_1, 0, rowCount);
                 }
                 else
                 {
-                    await groupReader.ReadAsync(
-                        field_1,
-                        new global::System.Memory<string?>(buffer_1, 0, rowCount),
-                        cancellationToken: cancellationToken);
+                    if (deduplicateStrings && field_1.MaxRepetitionLevel == 0)
+                    {
+                        await ReadDeduplicatedStringColumnAsync(
+                            groupReader,
+                            field_1,
+                            buffer_1,
+                            rowCount,
+                            stringDeduplicator,
+                            cancellationToken);
+                    }
+                    else
+                    {
+                        await groupReader.ReadAsync(
+                            field_1,
+                            new global::System.Memory<string?>(buffer_1, 0, rowCount),
+                            cancellationToken: cancellationToken);
+                    }
                 }
                 await groupReader.ReadAsync<double>(
                     field_2,
@@ -666,10 +988,11 @@ public static partial class OrderEventParquetExtensions
                     field_6,
                     new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount),
                     cancellationToken: cancellationToken);
-                var chunkStats_7 = groupReader.GetStatistics(field_7);
-                if (chunkStats_7?.NullCount == rowCount)
+                // The column is absent from the file (optional-column schema evolution) or the chunk is
+                // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                var chunkStats_7 = missing_7 ? null : groupReader.GetStatistics(field_7);
+                if (missing_7 || chunkStats_7?.NullCount == rowCount)
                 {
-                    // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_7, 0, rowCount);
                 }
                 else
@@ -679,10 +1002,11 @@ public static partial class OrderEventParquetExtensions
                         new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount),
                         cancellationToken: cancellationToken);
                 }
-                var chunkStats_8 = groupReader.GetStatistics(field_8);
-                if (chunkStats_8?.NullCount == rowCount)
+                // The column is absent from the file (optional-column schema evolution) or the chunk is
+                // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                var chunkStats_8 = missing_8 ? null : groupReader.GetStatistics(field_8);
+                if (missing_8 || chunkStats_8?.NullCount == rowCount)
                 {
-                    // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_8, 0, rowCount);
                 }
                 else
@@ -757,7 +1081,8 @@ public static partial class OrderEventParquetExtensions
     public static async global::System.Threading.Tasks.Task<OrderEvent[]> ReadParquetArrayAsync(
         global::System.IO.Stream stream,
         global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
-        global::System.Threading.CancellationToken cancellationToken = default)
+        global::System.Threading.CancellationToken cancellationToken = default,
+        global::System.Func<global::SampleDomain.Models.OrderEventRowGroupMetadata, bool>? predicate = null)
     {
         if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));
 
@@ -767,22 +1092,41 @@ public static partial class OrderEventParquetExtensions
             stream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
-        int totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);
-        var results = new OrderEvent[totalRows];
-        int currentOffset = 0;
-
         var fileFields = reader.Schema.DataFields;
 
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
-        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
-        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
-        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
-        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
-        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName);
-        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName);
-        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName);
-        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName);
-        var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName);
+        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName, out _);
+        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName, out bool missing_1);
+        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName, out _);
+        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName, out _);
+        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName, out _);
+        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName, out _);
+        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName, out _);
+        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName, out bool missing_7);
+        var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName, out bool missing_8);
+
+        int totalRows;
+        bool[]? selectedGroups = null;
+        if (predicate == null)
+        {
+            totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);
+        }
+        else
+        {
+            // Zone-map pre-pass: footer statistics only. Surviving groups are the only ones
+            // whose pages are ever read, and the result is sized to exactly their rows.
+            selectedGroups = new bool[reader.RowGroupCount];
+            totalRows = 0;
+            for (int r = 0; r < reader.RowGroupCount; r++)
+            {
+                using var probeReader = reader.OpenRowGroupReader(r);
+                if (!AcceptRowGroup(predicate, probeReader, r, field_0, field_1, field_2)) continue;
+                selectedGroups[r] = true;
+                totalRows += (int)probeReader.RowCount;
+            }
+        }
+        var results = new OrderEvent[totalRows];
+        int currentOffset = 0;
 
         using var stringDeduplicator = new StringDeduplicator(512);
         bool deduplicateStrings = options.DeduplicateStrings;
@@ -790,6 +1134,7 @@ public static partial class OrderEventParquetExtensions
         for (int r = 0; r < reader.RowGroupCount; r++)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (selectedGroups != null && !selectedGroups[r]) continue;
             using var groupReader = reader.OpenRowGroupReader(r);
             int rowCount = (int)groupReader.RowCount;
 
@@ -809,18 +1154,32 @@ public static partial class OrderEventParquetExtensions
                     field_0,
                     new global::System.Memory<int>(buffer_0, 0, rowCount),
                     cancellationToken: cancellationToken);
-                var chunkStats_1 = groupReader.GetStatistics(field_1);
-                if (chunkStats_1?.NullCount == rowCount)
+                // The column is absent from the file (optional-column schema evolution) or the chunk is
+                // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                var chunkStats_1 = missing_1 ? null : groupReader.GetStatistics(field_1);
+                if (missing_1 || chunkStats_1?.NullCount == rowCount)
                 {
-                    // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_1, 0, rowCount);
                 }
                 else
                 {
-                    await groupReader.ReadAsync(
-                        field_1,
-                        new global::System.Memory<string?>(buffer_1, 0, rowCount),
-                        cancellationToken: cancellationToken);
+                    if (deduplicateStrings && field_1.MaxRepetitionLevel == 0)
+                    {
+                        await ReadDeduplicatedStringColumnAsync(
+                            groupReader,
+                            field_1,
+                            buffer_1,
+                            rowCount,
+                            stringDeduplicator,
+                            cancellationToken);
+                    }
+                    else
+                    {
+                        await groupReader.ReadAsync(
+                            field_1,
+                            new global::System.Memory<string?>(buffer_1, 0, rowCount),
+                            cancellationToken: cancellationToken);
+                    }
                 }
                 await groupReader.ReadAsync<double>(
                     field_2,
@@ -842,10 +1201,11 @@ public static partial class OrderEventParquetExtensions
                     field_6,
                     new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount),
                     cancellationToken: cancellationToken);
-                var chunkStats_7 = groupReader.GetStatistics(field_7);
-                if (chunkStats_7?.NullCount == rowCount)
+                // The column is absent from the file (optional-column schema evolution) or the chunk is
+                // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                var chunkStats_7 = missing_7 ? null : groupReader.GetStatistics(field_7);
+                if (missing_7 || chunkStats_7?.NullCount == rowCount)
                 {
-                    // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_7, 0, rowCount);
                 }
                 else
@@ -855,10 +1215,11 @@ public static partial class OrderEventParquetExtensions
                         new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount),
                         cancellationToken: cancellationToken);
                 }
-                var chunkStats_8 = groupReader.GetStatistics(field_8);
-                if (chunkStats_8?.NullCount == rowCount)
+                // The column is absent from the file (optional-column schema evolution) or the chunk is
+                // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                var chunkStats_8 = missing_8 ? null : groupReader.GetStatistics(field_8);
+                if (missing_8 || chunkStats_8?.NullCount == rowCount)
                 {
-                    // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_8, 0, rowCount);
                 }
                 else
@@ -948,15 +1309,15 @@ public static partial class OrderEventParquetExtensions
         var fileFields = reader.Schema.DataFields;
 
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
-        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
-        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
-        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
-        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
-        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName);
-        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName);
-        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName);
-        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName);
-        var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName);
+        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName, out _);
+        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName, out bool missing_1);
+        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName, out _);
+        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName, out _);
+        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName, out _);
+        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName, out _);
+        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName, out _);
+        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName, out bool missing_7);
+        var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName, out bool missing_8);
 
         using var stringDeduplicator = new StringDeduplicator(512);
         bool deduplicateStrings = options.DeduplicateStrings;
@@ -984,18 +1345,32 @@ public static partial class OrderEventParquetExtensions
                     field_0,
                     new global::System.Memory<int>(buffer_0, 0, rowCount),
                     cancellationToken: cancellationToken);
-                var chunkStats_1 = groupReader.GetStatistics(field_1);
-                if (chunkStats_1?.NullCount == rowCount)
+                // The column is absent from the file (optional-column schema evolution) or the chunk is
+                // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                var chunkStats_1 = missing_1 ? null : groupReader.GetStatistics(field_1);
+                if (missing_1 || chunkStats_1?.NullCount == rowCount)
                 {
-                    // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_1, 0, rowCount);
                 }
                 else
                 {
-                    await groupReader.ReadAsync(
-                        field_1,
-                        new global::System.Memory<string?>(buffer_1, 0, rowCount),
-                        cancellationToken: cancellationToken);
+                    if (deduplicateStrings && field_1.MaxRepetitionLevel == 0)
+                    {
+                        await ReadDeduplicatedStringColumnAsync(
+                            groupReader,
+                            field_1,
+                            buffer_1,
+                            rowCount,
+                            stringDeduplicator,
+                            cancellationToken);
+                    }
+                    else
+                    {
+                        await groupReader.ReadAsync(
+                            field_1,
+                            new global::System.Memory<string?>(buffer_1, 0, rowCount),
+                            cancellationToken: cancellationToken);
+                    }
                 }
                 await groupReader.ReadAsync<double>(
                     field_2,
@@ -1017,10 +1392,11 @@ public static partial class OrderEventParquetExtensions
                     field_6,
                     new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount),
                     cancellationToken: cancellationToken);
-                var chunkStats_7 = groupReader.GetStatistics(field_7);
-                if (chunkStats_7?.NullCount == rowCount)
+                // The column is absent from the file (optional-column schema evolution) or the chunk is
+                // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                var chunkStats_7 = missing_7 ? null : groupReader.GetStatistics(field_7);
+                if (missing_7 || chunkStats_7?.NullCount == rowCount)
                 {
-                    // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_7, 0, rowCount);
                 }
                 else
@@ -1030,10 +1406,11 @@ public static partial class OrderEventParquetExtensions
                         new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount),
                         cancellationToken: cancellationToken);
                 }
-                var chunkStats_8 = groupReader.GetStatistics(field_8);
-                if (chunkStats_8?.NullCount == rowCount)
+                // The column is absent from the file (optional-column schema evolution) or the chunk is
+                // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                var chunkStats_8 = missing_8 ? null : groupReader.GetStatistics(field_8);
+                if (missing_8 || chunkStats_8?.NullCount == rowCount)
                 {
-                    // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_8, 0, rowCount);
                 }
                 else
@@ -1098,7 +1475,8 @@ public static partial class OrderEventParquetExtensions
     public static async global::System.Collections.Generic.IAsyncEnumerable<OrderEvent> ReadParquetStreamAsync(
         global::System.IO.Stream stream,
         global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
-        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default)
+        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default,
+        global::System.Func<global::SampleDomain.Models.OrderEventRowGroupMetadata, bool>? predicate = null)
     {
         if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));
 
@@ -1111,15 +1489,15 @@ public static partial class OrderEventParquetExtensions
         var fileFields = reader.Schema.DataFields;
 
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
-        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
-        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
-        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
-        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
-        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName);
-        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName);
-        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName);
-        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName);
-        var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName);
+        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName, out _);
+        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName, out bool missing_1);
+        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName, out _);
+        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName, out _);
+        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName, out _);
+        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName, out _);
+        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName, out _);
+        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName, out bool missing_7);
+        var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName, out bool missing_8);
 
         using var stringDeduplicator = new StringDeduplicator(512);
         bool deduplicateStrings = options.DeduplicateStrings;
@@ -1129,6 +1507,7 @@ public static partial class OrderEventParquetExtensions
             cancellationToken.ThrowIfCancellationRequested();
             using var groupReader = reader.OpenRowGroupReader(r);
             int rowCount = (int)groupReader.RowCount;
+            if (!AcceptRowGroup(predicate, groupReader, r, field_0, field_1, field_2)) continue;
 
             var buffer_0 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
             var buffer_1 = global::System.Buffers.ArrayPool<string?>.Shared.Rent(rowCount);
@@ -1145,18 +1524,32 @@ public static partial class OrderEventParquetExtensions
                     field_0,
                     new global::System.Memory<int>(buffer_0, 0, rowCount),
                     cancellationToken: cancellationToken);
-                var chunkStats_1 = groupReader.GetStatistics(field_1);
-                if (chunkStats_1?.NullCount == rowCount)
+                // The column is absent from the file (optional-column schema evolution) or the chunk is
+                // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                var chunkStats_1 = missing_1 ? null : groupReader.GetStatistics(field_1);
+                if (missing_1 || chunkStats_1?.NullCount == rowCount)
                 {
-                    // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_1, 0, rowCount);
                 }
                 else
                 {
-                    await groupReader.ReadAsync(
-                        field_1,
-                        new global::System.Memory<string?>(buffer_1, 0, rowCount),
-                        cancellationToken: cancellationToken);
+                    if (deduplicateStrings && field_1.MaxRepetitionLevel == 0)
+                    {
+                        await ReadDeduplicatedStringColumnAsync(
+                            groupReader,
+                            field_1,
+                            buffer_1,
+                            rowCount,
+                            stringDeduplicator,
+                            cancellationToken);
+                    }
+                    else
+                    {
+                        await groupReader.ReadAsync(
+                            field_1,
+                            new global::System.Memory<string?>(buffer_1, 0, rowCount),
+                            cancellationToken: cancellationToken);
+                    }
                 }
                 await groupReader.ReadAsync<double>(
                     field_2,
@@ -1178,10 +1571,11 @@ public static partial class OrderEventParquetExtensions
                     field_6,
                     new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount),
                     cancellationToken: cancellationToken);
-                var chunkStats_7 = groupReader.GetStatistics(field_7);
-                if (chunkStats_7?.NullCount == rowCount)
+                // The column is absent from the file (optional-column schema evolution) or the chunk is
+                // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                var chunkStats_7 = missing_7 ? null : groupReader.GetStatistics(field_7);
+                if (missing_7 || chunkStats_7?.NullCount == rowCount)
                 {
-                    // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_7, 0, rowCount);
                 }
                 else
@@ -1191,10 +1585,11 @@ public static partial class OrderEventParquetExtensions
                         new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount),
                         cancellationToken: cancellationToken);
                 }
-                var chunkStats_8 = groupReader.GetStatistics(field_8);
-                if (chunkStats_8?.NullCount == rowCount)
+                // The column is absent from the file (optional-column schema evolution) or the chunk is
+                // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                var chunkStats_8 = missing_8 ? null : groupReader.GetStatistics(field_8);
+                if (missing_8 || chunkStats_8?.NullCount == rowCount)
                 {
-                    // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_8, 0, rowCount);
                 }
                 else
@@ -1409,15 +1804,15 @@ public static partial class OrderEventParquetExtensions
             var fileFields = reader.Schema.DataFields;
 
             global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
-            var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
-            var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
-            var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
-            var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
-            var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName);
-            var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName);
-            var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName);
-            var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName);
-            var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName);
+            var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName, out _);
+            var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName, out bool missing_1);
+            var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName, out _);
+            var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName, out _);
+            var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName, out _);
+            var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName, out _);
+            var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName, out _);
+            var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName, out bool missing_7);
+            var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName, out bool missing_8);
 
             var buffer_0 = global::System.Buffers.ArrayPool<int>.Shared.Rent(maxRowGroupSize);
             var buffer_1 = global::System.Buffers.ArrayPool<string?>.Shared.Rent(maxRowGroupSize);
@@ -1447,18 +1842,32 @@ public static partial class OrderEventParquetExtensions
                         field_0,
                         new global::System.Memory<int>(buffer_0, 0, rowCount),
                         cancellationToken: cancellationToken);
-                    var chunkStats_1 = groupReader.GetStatistics(field_1);
-                    if (chunkStats_1?.NullCount == rowCount)
+                    // The column is absent from the file (optional-column schema evolution) or the chunk is
+                    // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                    var chunkStats_1 = missing_1 ? null : groupReader.GetStatistics(field_1);
+                    if (missing_1 || chunkStats_1?.NullCount == rowCount)
                     {
-                        // All-null chunk: skip page reading, decompression and decoding entirely.
                         global::System.Array.Clear(buffer_1, 0, rowCount);
                     }
                     else
                     {
-                        await groupReader.ReadAsync(
-                            field_1,
-                            new global::System.Memory<string?>(buffer_1, 0, rowCount),
-                            cancellationToken: cancellationToken);
+                        if (deduplicateStrings && field_1.MaxRepetitionLevel == 0)
+                        {
+                            await ReadDeduplicatedStringColumnAsync(
+                                groupReader,
+                                field_1,
+                                buffer_1,
+                                rowCount,
+                                stringDeduplicator,
+                                cancellationToken);
+                        }
+                        else
+                        {
+                            await groupReader.ReadAsync(
+                                field_1,
+                                new global::System.Memory<string?>(buffer_1, 0, rowCount),
+                                cancellationToken: cancellationToken);
+                        }
                     }
                     await groupReader.ReadAsync<double>(
                         field_2,
@@ -1480,10 +1889,11 @@ public static partial class OrderEventParquetExtensions
                         field_6,
                         new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount),
                         cancellationToken: cancellationToken);
-                    var chunkStats_7 = groupReader.GetStatistics(field_7);
-                    if (chunkStats_7?.NullCount == rowCount)
+                    // The column is absent from the file (optional-column schema evolution) or the chunk is
+                    // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                    var chunkStats_7 = missing_7 ? null : groupReader.GetStatistics(field_7);
+                    if (missing_7 || chunkStats_7?.NullCount == rowCount)
                     {
-                        // All-null chunk: skip page reading, decompression and decoding entirely.
                         global::System.Array.Clear(buffer_7, 0, rowCount);
                     }
                     else
@@ -1493,10 +1903,11 @@ public static partial class OrderEventParquetExtensions
                             new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount),
                             cancellationToken: cancellationToken);
                     }
-                    var chunkStats_8 = groupReader.GetStatistics(field_8);
-                    if (chunkStats_8?.NullCount == rowCount)
+                    // The column is absent from the file (optional-column schema evolution) or the chunk is
+                    // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                    var chunkStats_8 = missing_8 ? null : groupReader.GetStatistics(field_8);
+                    if (missing_8 || chunkStats_8?.NullCount == rowCount)
                     {
-                        // All-null chunk: skip page reading, decompression and decoding entirely.
                         global::System.Array.Clear(buffer_8, 0, rowCount);
                     }
                     else
@@ -1575,15 +1986,15 @@ public static partial class OrderEventParquetExtensions
         var fileFields = reader.Schema.DataFields;
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
 
-        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
-        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
-        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
-        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
-        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName);
-        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName);
-        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName);
-        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName);
-        var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName);
+        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName, out _);
+        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName, out bool missing_1);
+        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName, out _);
+        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName, out _);
+        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName, out _);
+        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName, out _);
+        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName, out _);
+        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName, out bool missing_7);
+        var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName, out bool missing_8);
 
         var buffer_0 = global::System.Buffers.ArrayPool<int>.Shared.Rent(maxRowCount);
         var buffer_1 = global::System.Buffers.ArrayPool<string?>.Shared.Rent(maxRowCount);
@@ -1611,18 +2022,32 @@ public static partial class OrderEventParquetExtensions
                     field_0,
                     new global::System.Memory<int>(buffer_0, 0, rowCount),
                     cancellationToken: cancellationToken);
-                var chunkStats_1 = groupReader.GetStatistics(field_1);
-                if (chunkStats_1?.NullCount == rowCount)
+                // The column is absent from the file (optional-column schema evolution) or the chunk is
+                // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                var chunkStats_1 = missing_1 ? null : groupReader.GetStatistics(field_1);
+                if (missing_1 || chunkStats_1?.NullCount == rowCount)
                 {
-                    // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_1, 0, rowCount);
                 }
                 else
                 {
-                    await groupReader.ReadAsync(
-                        field_1,
-                        new global::System.Memory<string?>(buffer_1, 0, rowCount),
-                        cancellationToken: cancellationToken);
+                    if (deduplicateStrings && field_1.MaxRepetitionLevel == 0)
+                    {
+                        await ReadDeduplicatedStringColumnAsync(
+                            groupReader,
+                            field_1,
+                            buffer_1,
+                            rowCount,
+                            stringDeduplicator,
+                            cancellationToken);
+                    }
+                    else
+                    {
+                        await groupReader.ReadAsync(
+                            field_1,
+                            new global::System.Memory<string?>(buffer_1, 0, rowCount),
+                            cancellationToken: cancellationToken);
+                    }
                 }
                 await groupReader.ReadAsync<double>(
                     field_2,
@@ -1644,10 +2069,11 @@ public static partial class OrderEventParquetExtensions
                     field_6,
                     new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount),
                     cancellationToken: cancellationToken);
-                var chunkStats_7 = groupReader.GetStatistics(field_7);
-                if (chunkStats_7?.NullCount == rowCount)
+                // The column is absent from the file (optional-column schema evolution) or the chunk is
+                // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                var chunkStats_7 = missing_7 ? null : groupReader.GetStatistics(field_7);
+                if (missing_7 || chunkStats_7?.NullCount == rowCount)
                 {
-                    // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_7, 0, rowCount);
                 }
                 else
@@ -1657,10 +2083,11 @@ public static partial class OrderEventParquetExtensions
                         new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount),
                         cancellationToken: cancellationToken);
                 }
-                var chunkStats_8 = groupReader.GetStatistics(field_8);
-                if (chunkStats_8?.NullCount == rowCount)
+                // The column is absent from the file (optional-column schema evolution) or the chunk is
+                // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                var chunkStats_8 = missing_8 ? null : groupReader.GetStatistics(field_8);
+                if (missing_8 || chunkStats_8?.NullCount == rowCount)
                 {
-                    // All-null chunk: skip page reading, decompression and decoding entirely.
                     global::System.Array.Clear(buffer_8, 0, rowCount);
                 }
                 else
@@ -1711,10 +2138,11 @@ public static partial class OrderEventParquetExtensions
     public static async global::System.Collections.Generic.IAsyncEnumerable<OrderEvent> ReadParquetStreamAsync(
         global::System.ReadOnlyMemory<byte> parquetBytes,
         global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
-        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default)
+        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default,
+        global::System.Func<global::SampleDomain.Models.OrderEventRowGroupMetadata, bool>? predicate = null)
     {
         using var stream = CreateBufferStream(parquetBytes);
-        await foreach (var item in ReadParquetStreamAsync(stream, options, cancellationToken))
+        await foreach (var item in ReadParquetStreamAsync(stream, options, cancellationToken, predicate))
         {
             yield return item;
         }
@@ -1733,4 +2161,406 @@ public static partial class OrderEventParquetExtensions
             ? new global::System.IO.MemoryStream(segment.Array!, segment.Offset, segment.Count, writable: false)
             : new global::System.IO.MemoryStream(parquetBytes.ToArray(), writable: false);
     }
+
+    /// <summary>
+    /// Struct-of-arrays view over one row group of <c>OrderEvent</c> data.
+    /// Each column is exposed as a <see cref="global::System.ReadOnlySpan{T}"/> over a pooled buffer.
+    /// </summary>
+    /// <remarks>
+    /// The buffers belong to <see cref="global::System.Buffers.ArrayPool{T}"/> and are returned when the
+    /// producing enumerator advances or is disposed. Copy anything you need to outlive the current
+    /// iteration; never store the batch itself.
+    /// </remarks>
+    public readonly struct ColumnBatch
+    {
+        private readonly int[] _buffer_0;
+        private readonly string?[] _buffer_1;
+        private readonly double[] _buffer_2;
+        private readonly decimal[] _buffer_3;
+        private readonly System.DateTime[] _buffer_4;
+        private readonly int[] _buffer_5;
+        private readonly global::System.Guid[] _buffer_6;
+        private readonly global::System.Guid?[] _buffer_7;
+        private readonly byte[][] _buffer_8;
+
+        /// <summary>Number of rows in this row group.</summary>
+        public int RowCount { get; }
+
+        /// <summary>Zero-based index of the row group this batch came from.</summary>
+        public int RowGroupIndex { get; }
+
+        internal ColumnBatch(int rowCount, int rowGroupIndex, int[] buffer_0, string?[] buffer_1, double[] buffer_2, decimal[] buffer_3, System.DateTime[] buffer_4, int[] buffer_5, global::System.Guid[] buffer_6, global::System.Guid?[] buffer_7, byte[][] buffer_8)
+        {
+            RowCount = rowCount;
+            RowGroupIndex = rowGroupIndex;
+            _buffer_0 = buffer_0;
+            _buffer_1 = buffer_1;
+            _buffer_2 = buffer_2;
+            _buffer_3 = buffer_3;
+            _buffer_4 = buffer_4;
+            _buffer_5 = buffer_5;
+            _buffer_6 = buffer_6;
+            _buffer_7 = buffer_7;
+            _buffer_8 = buffer_8;
+        }
+
+        /// <summary>
+        /// Column <c>id</c> (<c>Id</c>) for the rows in this batch.
+        /// </summary>
+        public global::System.ReadOnlySpan<int> IdSpan =>
+            new global::System.ReadOnlySpan<int>(_buffer_0, 0, RowCount);
+
+        /// <summary>
+        /// Column <c>name</c> (<c>Name</c>) for the rows in this batch.
+        /// </summary>
+        public global::System.ReadOnlySpan<string?> NameSpan =>
+            new global::System.ReadOnlySpan<string?>(_buffer_1, 0, RowCount);
+
+        /// <summary>
+        /// Column <c>score</c> (<c>Score</c>) for the rows in this batch.
+        /// </summary>
+        public global::System.ReadOnlySpan<double> ScoreSpan =>
+            new global::System.ReadOnlySpan<double>(_buffer_2, 0, RowCount);
+
+        /// <summary>
+        /// Column <c>price</c> (<c>Price</c>) for the rows in this batch.
+        /// </summary>
+        public global::System.ReadOnlySpan<decimal> PriceSpan =>
+            new global::System.ReadOnlySpan<decimal>(_buffer_3, 0, RowCount);
+
+        /// <summary>
+        /// Column <c>created_at</c> (<c>CreatedAt</c>) for the rows in this batch.
+        /// </summary>
+        public global::System.ReadOnlySpan<System.DateTime> CreatedAtSpan =>
+            new global::System.ReadOnlySpan<System.DateTime>(_buffer_4, 0, RowCount);
+
+        /// <summary>
+        /// Column <c>duration</c> (<c>Duration</c>) for the rows in this batch.
+        /// </summary>
+        public global::System.ReadOnlySpan<int> DurationSpan =>
+            new global::System.ReadOnlySpan<int>(_buffer_5, 0, RowCount);
+
+        /// <summary>
+        /// Column <c>correlation_id</c> (<c>CorrelationId</c>) for the rows in this batch.
+        /// </summary>
+        public global::System.ReadOnlySpan<global::System.Guid> CorrelationIdSpan =>
+            new global::System.ReadOnlySpan<global::System.Guid>(_buffer_6, 0, RowCount);
+
+        /// <summary>
+        /// Column <c>optional_guid</c> (<c>OptionalGuid</c>) for the rows in this batch.
+        /// </summary>
+        public global::System.ReadOnlySpan<global::System.Guid?> OptionalGuidSpan =>
+            new global::System.ReadOnlySpan<global::System.Guid?>(_buffer_7, 0, RowCount);
+
+        /// <summary>
+        /// Column <c>payload</c> (<c>Payload</c>) for the rows in this batch.
+        /// </summary>
+        public global::System.ReadOnlySpan<byte[]> PayloadSpan =>
+            new global::System.ReadOnlySpan<byte[]>(_buffer_8, 0, RowCount);
+    }
+
+    /// <summary>
+    /// Asynchronously streams <c>OrderEvent</c> data as columnar batches — one per row group —
+    /// without materializing a single <c>OrderEvent</c> instance.
+    /// </summary>
+    /// <remarks>
+    /// Each yielded <see cref="ColumnBatch"/> aliases pooled buffers that are returned as soon as the
+    /// enumerator advances or is disposed, so the spans must not escape the loop body.
+    /// </remarks>
+    public static async global::System.Collections.Generic.IAsyncEnumerable<ColumnBatch> ReadParquetBatchesAsync(
+        global::System.IO.Stream stream,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));
+
+        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
+
+        await using var reader = await global::Parquet.ParquetReader.CreateAsync(
+            stream,
+            BuildFormatOptions(options),
+            cancellationToken: cancellationToken);
+        var fileFields = reader.Schema.DataFields;
+
+        global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
+        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName, out _);
+        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName, out bool missing_1);
+        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName, out _);
+        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName, out _);
+        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName, out _);
+        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName, out _);
+        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName, out _);
+        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName, out bool missing_7);
+        var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName, out bool missing_8);
+        using var stringDeduplicator = new StringDeduplicator(512);
+        bool deduplicateStrings = options.DeduplicateStrings;
+
+
+        for (int r = 0; r < reader.RowGroupCount; r++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using var groupReader = reader.OpenRowGroupReader(r);
+            int rowCount = (int)groupReader.RowCount;
+
+            var buffer_0 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+            var buffer_1 = global::System.Buffers.ArrayPool<string?>.Shared.Rent(rowCount);
+            var buffer_2 = global::System.Buffers.ArrayPool<double>.Shared.Rent(rowCount);
+            var buffer_3 = global::System.Buffers.ArrayPool<decimal>.Shared.Rent(rowCount);
+            var buffer_4 = global::System.Buffers.ArrayPool<System.DateTime>.Shared.Rent(rowCount);
+            var buffer_5 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+            var buffer_6 = global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Rent(rowCount);
+            var buffer_7 = global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Rent(rowCount);
+            var buffer_8 = global::System.Buffers.ArrayPool<byte[]>.Shared.Rent(rowCount);
+
+            try
+            {
+                await groupReader.ReadAsync<int>(
+                    field_0,
+                    new global::System.Memory<int>(buffer_0, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                // The column is absent from the file (optional-column schema evolution) or the chunk is
+                // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                var chunkStats_1 = missing_1 ? null : groupReader.GetStatistics(field_1);
+                if (missing_1 || chunkStats_1?.NullCount == rowCount)
+                {
+                    global::System.Array.Clear(buffer_1, 0, rowCount);
+                }
+                else
+                {
+                    if (deduplicateStrings && field_1.MaxRepetitionLevel == 0)
+                    {
+                        await ReadDeduplicatedStringColumnAsync(
+                            groupReader,
+                            field_1,
+                            buffer_1,
+                            rowCount,
+                            stringDeduplicator,
+                            cancellationToken);
+                    }
+                    else
+                    {
+                        await groupReader.ReadAsync(
+                            field_1,
+                            new global::System.Memory<string?>(buffer_1, 0, rowCount),
+                            cancellationToken: cancellationToken);
+                    }
+                }
+                await groupReader.ReadAsync<double>(
+                    field_2,
+                    new global::System.Memory<double>(buffer_2, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<decimal>(
+                    field_3,
+                    new global::System.Memory<decimal>(buffer_3, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<System.DateTime>(
+                    field_4,
+                    new global::System.Memory<System.DateTime>(buffer_4, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<int>(
+                    field_5,
+                    new global::System.Memory<int>(buffer_5, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<global::System.Guid>(
+                    field_6,
+                    new global::System.Memory<global::System.Guid>(buffer_6, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                // The column is absent from the file (optional-column schema evolution) or the chunk is
+                // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                var chunkStats_7 = missing_7 ? null : groupReader.GetStatistics(field_7);
+                if (missing_7 || chunkStats_7?.NullCount == rowCount)
+                {
+                    global::System.Array.Clear(buffer_7, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync<global::System.Guid>(
+                        field_7,
+                        new global::System.Memory<global::System.Guid?>(buffer_7, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
+                // The column is absent from the file (optional-column schema evolution) or the chunk is
+                // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                var chunkStats_8 = missing_8 ? null : groupReader.GetStatistics(field_8);
+                if (missing_8 || chunkStats_8?.NullCount == rowCount)
+                {
+                    global::System.Array.Clear(buffer_8, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync(
+                        field_8,
+                        new global::System.Memory<byte[]?>(buffer_8, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
+
+                yield return new ColumnBatch(rowCount, r, buffer_0, buffer_1, buffer_2, buffer_3, buffer_4, buffer_5, buffer_6, buffer_7, buffer_8);
+            }
+            finally
+            {
+                global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_0, clearArray: false);
+                global::System.Buffers.ArrayPool<string?>.Shared.Return(buffer_1, clearArray: true);
+                global::System.Buffers.ArrayPool<double>.Shared.Return(buffer_2, clearArray: false);
+                global::System.Buffers.ArrayPool<decimal>.Shared.Return(buffer_3, clearArray: false);
+                global::System.Buffers.ArrayPool<System.DateTime>.Shared.Return(buffer_4, clearArray: false);
+                global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_5, clearArray: false);
+                global::System.Buffers.ArrayPool<global::System.Guid>.Shared.Return(buffer_6, clearArray: false);
+                global::System.Buffers.ArrayPool<global::System.Guid?>.Shared.Return(buffer_7, clearArray: false);
+                global::System.Buffers.ArrayPool<byte[]>.Shared.Return(buffer_8, clearArray: true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Asynchronously streams <c>OrderEvent</c> columnar batches from an in-memory byte buffer.
+    /// </summary>
+    public static async global::System.Collections.Generic.IAsyncEnumerable<ColumnBatch> ReadParquetBatchesAsync(
+        global::System.ReadOnlyMemory<byte> parquetBytes,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        using var stream = CreateBufferStream(parquetBytes);
+        await foreach (var batch in ReadParquetBatchesAsync(stream, options, cancellationToken))
+        {
+            yield return batch;
+        }
+    }
+
+    /// <summary>
+    /// Decides whether a row group can hold a row matching <paramref name="predicate"/>, using
+    /// only the column-chunk statistics already present in the file footer.
+    /// </summary>
+    /// <remarks>
+    /// Returns <c>true</c> — read the group — whenever the answer is not certain: a null predicate,
+    /// or a chunk that recorded no usable min/max. Pruning only ever removes row groups the
+    /// statistics prove cannot match.
+    /// </remarks>
+    private static bool AcceptRowGroup(
+        global::System.Func<global::SampleDomain.Models.OrderEventRowGroupMetadata, bool>? predicate,
+        global::Parquet.ParquetRowGroupReader groupReader,
+        int rowGroupIndex,
+        global::Parquet.Schema.DataField field_0,
+        global::Parquet.Schema.DataField field_1,
+        global::Parquet.Schema.DataField field_2)
+    {
+        if (predicate == null) return true;
+
+        var stats_0 = groupReader.GetStatistics(field_0);
+        var stats_1 = groupReader.GetStatistics(field_1);
+        var stats_2 = groupReader.GetStatistics(field_2);
+
+        bool hasStatistics =
+              stats_0 != null && stats_0.MinValue != null && stats_0.MaxValue != null
+            && stats_1 != null && stats_1.MinValue != null && stats_1.MaxValue != null
+            && stats_2 != null && stats_2.MinValue != null && stats_2.MaxValue != null;
+
+        // A chunk with no usable zone map disables pruning for the whole group rather than
+        // letting a raw Min/Max comparison against a default value skip live rows.
+        if (!hasStatistics) return true;
+
+        var metadata = new global::SampleDomain.Models.OrderEventRowGroupMetadata(
+            rowGroupIndex,
+            groupReader.RowCount,
+            true,
+            global::Parquet.SourceGenerator.ParquetColumnStatistics.FromRaw<int>(stats_0!.MinValue, stats_0!.MaxValue, stats_0!.NullCount, stats_0!.DistinctCount),
+            global::Parquet.SourceGenerator.ParquetColumnStatistics.FromRaw<string>(stats_1!.MinValue, stats_1!.MaxValue, stats_1!.NullCount, stats_1!.DistinctCount),
+            global::Parquet.SourceGenerator.ParquetColumnStatistics.FromRaw<double>(stats_2!.MinValue, stats_2!.MaxValue, stats_2!.NullCount, stats_2!.DistinctCount));
+
+        return predicate(metadata);
+    }
+}
+
+/// <summary>
+/// Footer statistics for one row group of a <c>OrderEvent</c> Parquet file, as seen by a
+/// row-group pruning predicate. Reading a property costs nothing beyond the footer that was
+/// already parsed when the file was opened.
+/// </summary>
+public readonly struct OrderEventRowGroupMetadata
+{
+    /// <summary>Creates a row-group zone map.</summary>
+    public OrderEventRowGroupMetadata(
+        int rowGroupIndex,
+        long rowCount,
+        bool hasStatistics,
+        global::Parquet.SourceGenerator.ParquetColumnStatistics<int> column_0,
+        global::Parquet.SourceGenerator.ParquetColumnStatistics<string> column_1,
+        global::Parquet.SourceGenerator.ParquetColumnStatistics<double> column_2)
+    {
+        RowGroupIndex = rowGroupIndex;
+        RowCount = rowCount;
+        HasStatistics = hasStatistics;
+        Id = column_0;
+        Name = column_1;
+        Score = column_2;
+    }
+
+    /// <summary>Zero-based index of this row group in the file.</summary>
+    public int RowGroupIndex { get; }
+
+    /// <summary>Rows in this row group.</summary>
+    public long RowCount { get; }
+
+    /// <summary>Whether every projected column recorded a usable min/max. Always true inside a
+    /// pruning predicate: a group without complete statistics is read rather than tested.</summary>
+    public bool HasStatistics { get; }
+
+    /// <summary>Zone map for the <c>id</c> column.</summary>
+    public global::Parquet.SourceGenerator.ParquetColumnStatistics<int> Id { get; }
+
+    /// <summary>Zone map for the <c>name</c> column.</summary>
+    public global::Parquet.SourceGenerator.ParquetColumnStatistics<string> Name { get; }
+
+    /// <summary>Zone map for the <c>score</c> column.</summary>
+    public global::Parquet.SourceGenerator.ParquetColumnStatistics<double> Score { get; }
+}
+
+/// <summary>
+/// One row group of <c>OrderEvent</c> data held as caller-owned column buffers.
+/// </summary>
+/// <remarks>
+/// Buffers are passed to Parquet.Net verbatim — nothing here is rented, copied or pooled.
+/// Members are public fields rather than <c>init</c> properties so the type needs no
+/// <c>IsExternalInit</c> polyfill on downstream targets, and object-initializer syntax keeps the
+/// column-to-buffer binding by name instead of by position.
+/// </remarks>
+public struct OrderEventColumnarBatch
+{
+    /// <summary>Number of rows this batch describes.</summary>
+    public int RowCount;
+
+    /// <summary>Values for column <c>Id</c>; at least <c>RowCount</c> entries.</summary>
+    public global::System.ReadOnlyMemory<int> Id;
+
+    /// <summary>Values for column <c>Name</c>; at least <c>RowCount</c> entries.</summary>
+    /// <remarks>Build entries with <c>AsColumnarText</c>, or cast an explicit null to
+    /// <c>global::System.ReadOnlyMemory<char>?</c>: a bare conditional binds to the non-nullable memory type and
+    /// stores an empty value where a null was meant.</remarks>
+    public global::System.ReadOnlyMemory<global::System.ReadOnlyMemory<char>?> Name;
+
+    /// <summary>Values for column <c>Score</c>; at least <c>RowCount</c> entries.</summary>
+    public global::System.ReadOnlyMemory<double> Score;
+
+    /// <summary>Values for column <c>Price</c>; at least <c>RowCount</c> entries.</summary>
+    public global::System.ReadOnlyMemory<decimal> Price;
+
+    /// <summary>Values for column <c>CreatedAt</c>; at least <c>RowCount</c> entries.</summary>
+    public global::System.ReadOnlyMemory<System.DateTime> CreatedAt;
+
+    /// <summary>Values for column <c>Duration</c>; at least <c>RowCount</c> entries.</summary>
+    public global::System.ReadOnlyMemory<int> Duration;
+
+    /// <summary>Values for column <c>CorrelationId</c>; at least <c>RowCount</c> entries.</summary>
+    public global::System.ReadOnlyMemory<global::System.Guid> CorrelationId;
+
+    /// <summary>Packed non-null values for nullable column <c>OptionalGuid</c>; length equals the number of 1s in <c>OptionalGuidDefinitionLevels</c>.</summary>
+    public global::System.ReadOnlyMemory<global::System.Guid> OptionalGuid;
+
+    /// <summary>Definition levels for column <c>OptionalGuid</c>: one entry per row, 1 = present, 0 = null.</summary>
+    public global::System.ReadOnlyMemory<int> OptionalGuidDefinitionLevels;
+
+    /// <summary>Values for column <c>Payload</c>; at least <c>RowCount</c> entries.</summary>
+    /// <remarks>Build entries with <c>AsColumnarBinary</c>, or cast an explicit null to
+    /// <c>global::System.ReadOnlyMemory<byte>?</c>: a bare conditional binds to the non-nullable memory type and
+    /// stores an empty value where a null was meant.</remarks>
+    public global::System.ReadOnlyMemory<global::System.ReadOnlyMemory<byte>?> Payload;
 }

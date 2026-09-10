@@ -185,6 +185,12 @@ internal static class Program
             ReorderedColumnsAsync
         );
         await CheckAsync("every compression codec round-trips", CompressionCodecsAsync);
+        await CheckAsync("SoA columnar batch read over row groups (#147)", ColumnBatchReadAsync);
+        await CheckAsync(
+            "span-keyed string deduplication round-trips and interns",
+            StringDeduplicationAsync
+        );
+        await CheckAsync("direct columnar hand-off round-trips (issue #137)", ColumnarHandoffAsync);
 
         Console.WriteLine("=================================================");
         if (_failures == 0)
@@ -397,6 +403,72 @@ internal static class Program
         Expect(read[2].EnumValue == AotStatus.Closed, "row 2: enum? value lost");
     }
 
+    private static async Task StringDeduplicationAsync()
+    {
+        // Exercises the raw ReadOnlyMemory<char> read path plus the span-keyed intern table
+        // under Native AOT: both the non-nullable lane and the packed nullable lane.
+        var written = new List<AotNullableRecord>();
+        for (int i = 0; i < 300; i++)
+        {
+            written.Add(
+                new AotNullableRecord
+                {
+                    Id = i,
+                    Int32Value = i,
+                    StringValue = (i % 3) switch
+                    {
+                        0 => "Alpha",
+                        1 => "Beta",
+                        _ => null,
+                    },
+                }
+            );
+        }
+
+        using var stream = new MemoryStream();
+        await written.WriteParquetAsync(stream);
+        stream.Position = 0;
+
+        var options = new ParquetSerializerOptions { DeduplicateStrings = true };
+        List<AotNullableRecord> read = await AotNullableRecordParquetExtensions.ReadParquetAsync(
+            stream,
+            options
+        );
+
+        Expect(read.Count == written.Count, $"expected {written.Count} rows, read {read.Count}");
+
+        string? alpha = null;
+        string? beta = null;
+        for (int i = 0; i < read.Count; i++)
+        {
+            Expect(read[i].StringValue == written[i].StringValue, $"row {i}: string value lost");
+
+            if (read[i].StringValue is null)
+            {
+                continue;
+            }
+
+            if (read[i].StringValue == "Alpha")
+            {
+                alpha ??= read[i].StringValue;
+                Expect(
+                    ReferenceEquals(alpha, read[i].StringValue),
+                    $"row {i}: \"Alpha\" was not interned to a single instance"
+                );
+            }
+            else
+            {
+                beta ??= read[i].StringValue;
+                Expect(
+                    ReferenceEquals(beta, read[i].StringValue),
+                    $"row {i}: \"Beta\" was not interned to a single instance"
+                );
+            }
+        }
+
+        Expect(alpha is not null && beta is not null, "expected both categorical values to appear");
+    }
+
     private static async Task IgnoredMemberAsync()
     {
         var written = new List<AotWideRecord>
@@ -456,6 +528,53 @@ internal static class Program
         Expect(read.Count == 120, $"expected 120 rows across row groups, read {read.Count}");
         ExpectWideEqual(written[0], read[0], 0);
         ExpectWideEqual(written[119], read[119], 119);
+    }
+
+    private static async Task ColumnBatchReadAsync()
+    {
+        // Generic ReadOnlySpan<T> accessors over pooled arrays, driven by an async iterator: all
+        // statically reachable, but worth pinning in the native binary so a future change that
+        // reaches for reflection here is caught by the publish, not by a consumer.
+        var written = new List<AotNarrowRecord>();
+        for (int i = 0; i < 120; i++)
+        {
+            written.Add(new AotNarrowRecord { Id = i, Label = $"row-{i}" });
+        }
+
+        using var stream = new MemoryStream();
+        await written.WriteParquetBatchedAsync(stream, rowGroupSize: 25);
+        stream.Position = 0;
+
+        long idSum = 0;
+        int rows = 0;
+        int groups = 0;
+        string? lastLabel = null;
+        await foreach (
+            AotNarrowRecordParquetExtensions.ColumnBatch batch in AotNarrowRecordParquetExtensions.ReadParquetBatchesAsync(
+                stream
+            )
+        )
+        {
+            Expect(batch.RowGroupIndex == groups, $"row group index out of order at {groups}");
+            groups++;
+            ReadOnlySpan<int> ids = batch.IdSpan;
+            ReadOnlySpan<string> labels = batch.LabelSpan;
+            Expect(
+                ids.Length == batch.RowCount && labels.Length == batch.RowCount,
+                "column spans must be RowCount long"
+            );
+            for (int i = 0; i < ids.Length; i++)
+            {
+                idSum += ids[i];
+                lastLabel = labels[i];
+            }
+            rows += batch.RowCount;
+        }
+
+        Expect(groups == 5, $"expected 5 row groups, saw {groups}");
+        Expect(rows == 120, $"expected 120 rows across batches, saw {rows}");
+        Expect(idSum == 7140, $"expected id sum 7140, got {idSum}");
+        Expect(lastLabel == "row-119", $"expected last label row-119, got {lastLabel}");
     }
 
     private static async Task ParallelReadAsync()
@@ -545,6 +664,167 @@ internal static class Program
         );
         Expect(read[0].Int64Value == written[0].Int64Value, "reordered long mismatch");
         Expect(read[0].DoubleValue == written[0].DoubleValue, "reordered double mismatch");
+    }
+
+    /// <summary>
+    /// Issue #137's columnar hand-off. The generated batch struct and its writer are ordinary
+    /// generated code, but they are the only path that hands caller-owned <c>ReadOnlyMemory</c>
+    /// straight to Parquet.Net's generic <c>WriteAllPartsAsync&lt;T&gt;</c> — worth proving under
+    /// AOT rather than assuming, since generic instantiation over value types is exactly where an
+    /// AOT-unfriendly path would surface.
+    /// </summary>
+    private static async Task ColumnarHandoffAsync()
+    {
+        const int rows = 8;
+        var id = new int[rows];
+        var int32Values = new int[rows];
+        var int32Defs = new int[rows];
+        var int64Values = new long[rows];
+        var int64Defs = new int[rows];
+        var doubleValues = new double[rows];
+        var doubleDefs = new int[rows];
+        var boolValues = new bool[rows];
+        var boolDefs = new int[rows];
+        var stringValues = new ReadOnlyMemory<char>?[rows];
+        var dateTimeValues = new DateTime[rows];
+        var dateTimeDefs = new int[rows];
+        var timeSpanValues = new int[rows];
+        var timeSpanDefs = new int[rows];
+        var guidValues = new Guid[rows];
+        var guidDefs = new int[rows];
+        var enumValues = new int[rows];
+        var enumDefs = new int[rows];
+
+        var baseTime = new DateTime(2024, 6, 1, 12, 0, 0, DateTimeKind.Utc);
+        int packed = 0;
+        for (int i = 0; i < rows; i++)
+        {
+            id[i] = i;
+            // Every third row is null in every nullable column, so the packed lane and the
+            // definition-level lane disagree in length — the shape the API exists to express.
+            bool present = i % 3 != 0;
+            int flag = present ? 1 : 0;
+            int32Defs[i] = flag;
+            int64Defs[i] = flag;
+            doubleDefs[i] = flag;
+            boolDefs[i] = flag;
+            dateTimeDefs[i] = flag;
+            timeSpanDefs[i] = flag;
+            guidDefs[i] = flag;
+            enumDefs[i] = flag;
+            // AsColumnarText, not a bare conditional: the conditional's natural type is the
+            // non-nullable memory, which would store "" instead of NULL.
+            stringValues[i] = AotNullableRecordParquetExtensions.AsColumnarText(
+                present
+                    ? "row-" + i.ToString(global::System.Globalization.CultureInfo.InvariantCulture)
+                    : null
+            );
+
+            if (present)
+            {
+                int32Values[packed] = i;
+                int64Values[packed] = i * 1_000L;
+                doubleValues[packed] = i + 0.5;
+                boolValues[packed] = i % 2 == 0;
+                dateTimeValues[packed] = baseTime.AddMinutes(i);
+                timeSpanValues[packed] = (int)TimeSpan.FromMinutes(i).TotalMilliseconds;
+                guidValues[packed] = new Guid(i, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+                enumValues[packed] = (int)AotStatus.Active;
+                packed++;
+            }
+        }
+
+        var batch = new AotNullableRecordColumnarBatch
+        {
+            RowCount = rows,
+            Id = id,
+            Int32Value = int32Values.AsMemory(0, packed),
+            Int32ValueDefinitionLevels = int32Defs,
+            Int64Value = int64Values.AsMemory(0, packed),
+            Int64ValueDefinitionLevels = int64Defs,
+            DoubleValue = doubleValues.AsMemory(0, packed),
+            DoubleValueDefinitionLevels = doubleDefs,
+            BoolValue = boolValues.AsMemory(0, packed),
+            BoolValueDefinitionLevels = boolDefs,
+            StringValue = stringValues,
+            DateTimeValue = dateTimeValues.AsMemory(0, packed),
+            DateTimeValueDefinitionLevels = dateTimeDefs,
+            TimeSpanValue = timeSpanValues.AsMemory(0, packed),
+            TimeSpanValueDefinitionLevels = timeSpanDefs,
+            GuidValue = guidValues.AsMemory(0, packed),
+            GuidValueDefinitionLevels = guidDefs,
+            EnumValue = enumValues.AsMemory(0, packed),
+            EnumValueDefinitionLevels = enumDefs,
+        };
+
+        using var stream = new MemoryStream();
+        await batch.WriteParquetAsync(stream);
+        Expect(stream.Length > 0, "columnar hand-off produced an empty stream");
+
+        stream.Position = 0;
+        List<AotNullableRecord> read = await AotNullableRecordParquetExtensions.ReadParquetAsync(
+            stream
+        );
+
+        Expect(read.Count == rows, $"columnar hand-off: expected {rows} rows, read {read.Count}");
+        for (int i = 0; i < rows; i++)
+        {
+            bool present = i % 3 != 0;
+            Expect(read[i].Id == i, $"columnar hand-off: row {i} id mismatch");
+            if (present)
+            {
+                Expect(read[i].Int32Value == i, $"columnar hand-off: row {i} int mismatch");
+                Expect(
+                    read[i].Int64Value == i * 1_000L,
+                    $"columnar hand-off: row {i} long mismatch"
+                );
+                Expect(
+                    read[i].DoubleValue == i + 0.5,
+                    $"columnar hand-off: row {i} double mismatch"
+                );
+                Expect(
+                    read[i].StringValue
+                        == "row-"
+                            + i.ToString(global::System.Globalization.CultureInfo.InvariantCulture),
+                    $"columnar hand-off: row {i} string mismatch"
+                );
+                Expect(
+                    read[i].GuidValue == new Guid(i, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+                    $"columnar hand-off: row {i} guid mismatch"
+                );
+                Expect(
+                    read[i].EnumValue == AotStatus.Active,
+                    $"columnar hand-off: row {i} enum mismatch"
+                );
+                Expect(
+                    read[i].DateTimeValue == baseTime.AddMinutes(i),
+                    $"columnar hand-off: row {i} datetime mismatch"
+                );
+                Expect(
+                    read[i].TimeSpanValue == TimeSpan.FromMinutes(i),
+                    $"columnar hand-off: row {i} timespan mismatch"
+                );
+            }
+            else
+            {
+                Expect(
+                    read[i].Int32Value is null,
+                    $"columnar hand-off: row {i} int should be null"
+                );
+                Expect(
+                    read[i].StringValue is null,
+                    $"columnar hand-off: row {i} string should be null"
+                );
+                Expect(
+                    read[i].GuidValue is null,
+                    $"columnar hand-off: row {i} guid should be null"
+                );
+                Expect(
+                    read[i].EnumValue is null,
+                    $"columnar hand-off: row {i} enum should be null"
+                );
+            }
+        }
     }
 
     private static async Task CompressionCodecsAsync()

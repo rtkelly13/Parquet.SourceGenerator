@@ -29,4 +29,12 @@
         <PackageReference Include="Parquet.SourceGenerator" Version="$(GeneratorPackageVersion)" />
         <PackageReference Include="Parquet.Net" Version="6.1.0" />
     </ItemGroup>
+
+    <ItemGroup>
+        <!--
+      Shared with test/PackageConsumptionLegacy so both packages describe the same columns; that is
+      what makes a file written by one readable by the other in CI's cross-version interop step.
+    -->
+        <Compile Include="..\CrossVersionInterop\InteropModels.cs" Link="InteropModels.cs" />
+    </ItemGroup>
 </Project>

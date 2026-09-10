@@ -1,0 +1,85 @@
+name: Broad Property-Based Fuzz Run
+
+# The per-push CI job already runs the property suite on its fixed default seed set, which is what
+# keeps that signal deterministic. This workflow is the other half: a scheduled and manually
+# dispatchable job that walks seeds CI has never tried. New bugs come from here; the per-push gate
+# stays reproducible.
+on:
+  schedule:
+    # Every Monday at 03:00 UTC, offset from the benchmark job so the two never contend.
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: 'Base seed (blank uses a fresh seed derived from the run number)'
+        required: false
+        default: ''
+      cases:
+        description: 'Cases per property'
+        required: false
+        default: '250'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  fuzz:
+    name: broad-fuzz
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Resolve Seed
+        id: seed
+        env:
+          INPUT_SEED: ${{ github.event.inputs.seed }}
+          INPUT_CASES: ${{ github.event.inputs.cases }}
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          seed="$INPUT_SEED"
+          if [ -z "$seed" ]; then
+            # Derived from the run number rather than $RANDOM so that the run's own logs are enough
+            # to replay it, and re-running the same workflow run reproduces the same seed.
+            seed=$(( 1690000001 + RUN_NUMBER * 7919 ))
+          fi
+          cases="${INPUT_CASES:-250}"
+          echo "seed=$seed" >> "$GITHUB_OUTPUT"
+          echo "cases=$cases" >> "$GITHUB_OUTPUT"
+          echo "::notice::Fuzzing with PARQUET_FUZZ_SEED=$seed PARQUET_FUZZ_CASES=$cases"
+
+      - name: Restore
+        run: dotnet restore Parquet.SourceGenertor.sln
+
+      - name: Run Property-Based Suite On Broad Seeds
+        env:
+          PARQUET_FUZZ_SEED: ${{ steps.seed.outputs.seed }}
+          PARQUET_FUZZ_CASES: ${{ steps.seed.outputs.cases }}
+        run: |
+          dotnet test test/Parquet.SourceGenerator.Tests/Parquet.SourceGenerator.Tests.csproj \
+            --configuration Release \
+            --filter "FullyQualifiedName~PropertyBased" \
+            --logger "trx;LogFileName=fuzz.trx"
+
+      - name: Upload Minimised Failing Cases
+        # Every failure writes a minimised, replayable fixture; publishing them is what turns a red
+        # scheduled run into a pull request someone can open with a one-line copy.
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: fuzz-failures-${{ steps.seed.outputs.seed }}
+          path: temp/fuzz-failures/
+          if-no-files-found: warn
