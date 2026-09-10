@@ -116,6 +116,10 @@ Welcome to the **Parquet.SourceGenerator** documentation repository. This folder
 
 ---
 
+19. **[20 - Unified Pushdown & the Generated/Shipped Boundary](./20-UNIFIED-PUSHDOWN-API.md)**
+     - One inspectable filter replacing four pushdown mechanisms; capability declared by attribute, not at the call site.
+     - What stays generated, what ships, and the measurements that decide it.
+
 ## ⚡ Quick Summary of Intent
 
 `Parquet.SourceGenerator` is designed to eliminate the reliance on runtime reflection when serializing and deserializing C# domain models (classes, records, structs) to and from Apache Parquet files using `Parquet.Net`. 
