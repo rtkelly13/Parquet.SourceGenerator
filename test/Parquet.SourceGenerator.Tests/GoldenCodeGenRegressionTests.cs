@@ -34,14 +34,17 @@ public sealed class GoldenCodeGenRegressionTests
         "GoldenFiles"
     );
 
-    private static void AssertGoldenMatch(string fileName, string emittedSource)
-    {
-        string filePath = IOPath.Combine(GoldenFilesDir, fileName);
-        bool updateGolden = string.Equals(
+    private static bool UpdateGolden =>
+        string.Equals(
             Environment.GetEnvironmentVariable("UPDATE_GOLDEN_FILES"),
             "true",
             StringComparison.OrdinalIgnoreCase
         );
+
+    private static void AssertGoldenMatch(string fileName, string emittedSource)
+    {
+        string filePath = IOPath.Combine(GoldenFilesDir, fileName);
+        bool updateGolden = UpdateGolden;
         string normalizedEmitted = emittedSource.Replace("\r\n", "\n").TrimEnd();
 
         if (updateGolden || !IOFile.Exists(filePath))
@@ -61,7 +64,124 @@ public sealed class GoldenCodeGenRegressionTests
             .GetDiagnostics()
             .Where(d => d.Severity == DiagnosticSeverity.Error);
         Assert.Empty(syntaxDiagnostics);
+
+        // 3. Signature-only public API baseline, from the same emitted string as the golden file
+        //    above, so the two physically cannot drift (issue #215).
+        AssertApiBaselineMatch(fileName, emittedSource, updateGolden);
     }
+
+    /// <summary>
+    /// Asserts the signature-only baseline that sits next to each golden file. Format and its
+    /// rationale are documented on <see cref="GeneratedApiBaseline"/> and in
+    /// <c>docs/17-GENERATED-API-BASELINES.md</c>.
+    /// </summary>
+    private static void AssertApiBaselineMatch(
+        string goldenFileName,
+        string emittedSource,
+        bool updateGolden
+    )
+    {
+        string baselineFileName = BaselineFileNameFor(goldenFileName);
+        string baselinePath = IOPath.Combine(GoldenFilesDir, baselineFileName);
+        string actual = GeneratedApiBaseline.Create(emittedSource);
+
+        if (updateGolden || !IOFile.Exists(baselinePath))
+        {
+            IODirectory.CreateDirectory(GoldenFilesDir);
+            IOFile.WriteAllText(baselinePath, actual);
+        }
+
+        string expected = IOFile.ReadAllText(baselinePath).Replace("\r\n", "\n");
+
+        if (!string.Equals(expected, actual, StringComparison.Ordinal))
+        {
+            Assert.Fail(DescribeBaselineDrift(baselineFileName, expected, actual));
+        }
+    }
+
+    /// <summary>Maps <c>Name.g.cs</c> to its baseline companion <c>Name.api.txt</c>.</summary>
+    private static string BaselineFileNameFor(string goldenFileName)
+    {
+        const string GeneratedSuffix = ".g.cs";
+        string stem = goldenFileName.EndsWith(GeneratedSuffix, StringComparison.Ordinal)
+            ? goldenFileName.Substring(0, goldenFileName.Length - GeneratedSuffix.Length)
+            : IOPath.GetFileNameWithoutExtension(goldenFileName);
+        return stem + ".api.txt";
+    }
+
+    /// <summary>
+    /// Builds a failure message that names the baseline file and the exact members that appeared or
+    /// disappeared, rather than dumping two multi-thousand-character strings at the reader.
+    /// </summary>
+    private static string DescribeBaselineDrift(
+        string baselineFileName,
+        string expected,
+        string actual
+    )
+    {
+        string[] expectedLines = SplitBaseline(expected);
+        string[] actualLines = SplitBaseline(actual);
+
+        List<string> removed = expectedLines.Except(actualLines, StringComparer.Ordinal).ToList();
+        List<string> added = actualLines.Except(expectedLines, StringComparer.Ordinal).ToList();
+
+        var message = new System.Text.StringBuilder();
+        message
+            .Append("Generated public API baseline drifted: GoldenFiles/")
+            .Append(baselineFileName)
+            .Append('\n');
+        message.Append(
+            "The emitted public surface no longer matches the checked-in baseline. If the change is "
+        );
+        message.Append(
+            "intended, refresh it with UPDATE_GOLDEN_FILES=true (or comment /update-golden on the PR) "
+        );
+        message.Append("and commit the result.\n");
+
+        foreach (string line in removed)
+        {
+            message.Append("  - removed: ").Append(line).Append('\n');
+        }
+
+        foreach (string line in added)
+        {
+            message.Append("  + added:   ").Append(line).Append('\n');
+        }
+
+        if (removed.Count == 0 && added.Count == 0)
+        {
+            message.Append(
+                "  (no member differences; the file differs only in ordering or whitespace — "
+            );
+            message.Append("regenerate it rather than hand-editing.)\n");
+        }
+        else
+        {
+            message
+                .Append("  ")
+                .Append(removed.Count)
+                .Append(" removed, ")
+                .Append(added.Count)
+                .Append(" added, ")
+                .Append(actualLines.Length)
+                .Append(" public members emitted in total.\n");
+        }
+
+        return message.ToString();
+    }
+
+    private static string[] SplitBaseline(string baseline) =>
+        baseline
+            .Split('\n')
+            .Where(line =>
+                line.Length > 0
+                && !string.Equals(
+                    line,
+                    GeneratedApiBaseline.NullableHeader,
+                    StringComparison.Ordinal
+                )
+            )
+            .ToArray();
 
     [Fact]
     public void GoldenMasterComprehensiveModernV6Model()
