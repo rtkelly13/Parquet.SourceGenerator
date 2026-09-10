@@ -632,6 +632,22 @@ public static class TargetParser
                 if (classifiedCompound && !IsCompoundKindEmittable(compoundKind, compoundKinds))
                     classifiedCompound = false;
 
+                // M3a emission scope: the v6 pipeline dial (Struct|List, no Map) means
+                // specifically row-level lists with leaf elements — lists of POCOs and
+                // lists nested in structs reject with PARQ006 until M3b. The full-capability
+                // dial (maps present ⇒ every model the parser can build) stays unfiltered,
+                // which keeps parser tests and M3b+ emitters able to see whole trees.
+                bool pipelineScopedDial =
+                    (compoundKinds & (CompoundKinds.List | CompoundKinds.Map))
+                    == CompoundKinds.List;
+                if (
+                    classifiedCompound
+                    && compoundKind == PropertyKind.List
+                    && pipelineScopedDial
+                    && (compoundDepth > 0 || !ListElementIsLeaf(underlyingType))
+                )
+                    classifiedCompound = false;
+
                 if (classifiedCompound)
                 {
                     PropertyModel? compoundModel = BuildCompoundModel(
@@ -782,6 +798,20 @@ public static class TargetParser
     /// Whether the consuming emitter can currently express this compound kind
     /// (the <see cref="CompoundKinds"/> milestone dial, #176).
     /// </summary>
+    private static bool ListElementIsLeaf(ITypeSymbol listType)
+    {
+        ITypeSymbol element = listType is IArrayTypeSymbol array
+            ? array.ElementType
+            : ((INamedTypeSymbol)listType).TypeArguments[0];
+        ITypeSymbol probe = element;
+        if (
+            element is INamedTypeSymbol { IsGenericType: true } ng
+            && ng.ConstructedFrom.SpecialType == SpecialType.System_Nullable_T
+        )
+            probe = ng.TypeArguments[0];
+        return TryClassifyKind(probe, element, out _);
+    }
+
     private static bool IsCompoundKindEmittable(PropertyKind kind, CompoundKinds allowed) =>
         kind switch
         {

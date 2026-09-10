@@ -452,6 +452,35 @@ public sealed class GoldenCodeGenRegressionTests
         AssertGoldenMatch("NestedOrderParquetExtensions.g.cs", generated);
     }
 
+    [Fact]
+    public void GoldenMasterRowLevelListsModel()
+    {
+        // M3a (#176): row-level lists/arrays with leaf elements through the real pipeline.
+        string source = """
+            using Parquet.SourceGenerator;
+            using System;
+            using System.Collections.Generic;
+
+            namespace SampleDomain.Models;
+
+            [ParquetSerializable]
+            public partial record ListOrder
+            {
+                public int Id { get; init; }
+                public List<string?>? Tags { get; init; }
+                public List<int> Scores { get; init; } = new();
+                public Guid[]? Keys { get; init; }
+            }
+            """;
+
+        var (diagnostics, outputTrees) = RunGenerator(source);
+        Assert.DoesNotContain(diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+        string generated = outputTrees[outputTrees.Count - 1].ToString();
+        Assert.Contains("ListField(", generated);
+        Assert.Contains("repLevels_", generated);
+        AssertGoldenMatch("ListOrderParquetExtensions.g.cs", generated);
+    }
+
     private static (
         IReadOnlyList<Diagnostic> Diagnostics,
         IReadOnlyList<SyntaxTree> OutputTrees

@@ -274,6 +274,18 @@ public static class CodeEmitter
         string indent = "                "
     )
     {
+        if (col.IsListLeaf)
+        {
+            // List lane: values + def + rep arrays sized by written entries (docs/15 §1.2).
+            string packedL = col.PackedType;
+            return $"{indent}await groupWriter.WriteAllPartsAsync<{packedL}>(\n"
+                + $"{indent}    {fieldAccess},\n"
+                + $"{indent}    new global::System.ReadOnlyMemory<{packedL}>({bufName}, 0, nonNullCount_{col.Slot}),\n"
+                + $"{indent}    new global::System.ReadOnlyMemory<int>(defLevels_{col.Slot}, 0, posCount_{col.Slot}),\n"
+                + $"{indent}    new global::System.ReadOnlyMemory<int>(repLevels_{col.Slot}, 0, posCount_{col.Slot}),\n"
+                + $"{indent}    cancellationToken: cancellationToken);";
+        }
+
         if (col.IsCompound)
         {
             // Compound-path leaf: packed values plus a definition ladder; the group's own
@@ -367,6 +379,54 @@ public static class CodeEmitter
         string indent = "                "
     )
     {
+        if (col.IsListLeaf)
+        {
+            // Entries run ahead of rowCount for multi-element lists: size from the column
+            // metadata and re-rent on growth (docs/15 §2.3 — values buffer must cover
+            // NumValues, the packed lane follows inside it).
+            string packedL = col.PackedType;
+            builder.AppendLine(
+                $"{indent}var entries_{col.Slot} = checked((int)groupReader.GetMetadata({fieldAccess}).MetaData.NumValues);"
+            );
+            builder.AppendLine($"{indent}if (entries_{col.Slot} > defLevels_{col.Slot}.Length)");
+            builder.AppendLine($"{indent}{{");
+            builder.AppendLine(
+                $"{indent}    var ndL_{col.Slot} = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_{col.Slot});"
+            );
+            builder.AppendLine(
+                $"{indent}    global::System.Buffers.ArrayPool<int>.Shared.Return(defLevels_{col.Slot}, clearArray: false);"
+            );
+            builder.AppendLine($"{indent}    defLevels_{col.Slot} = ndL_{col.Slot};");
+            builder.AppendLine(
+                $"{indent}    var nrL_{col.Slot} = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_{col.Slot});"
+            );
+            builder.AppendLine(
+                $"{indent}    global::System.Buffers.ArrayPool<int>.Shared.Return(repLevels_{col.Slot}, clearArray: false);"
+            );
+            builder.AppendLine($"{indent}    repLevels_{col.Slot} = nrL_{col.Slot};");
+            builder.AppendLine(
+                $"{indent}    var nvL_{col.Slot} = global::System.Buffers.ArrayPool<{packedL}>.Shared.Rent(entries_{col.Slot});"
+            );
+            builder.AppendLine(
+                $"{indent}    global::System.Buffers.ArrayPool<{packedL}>.Shared.Return(buffer_{col.Slot}, clearArray: true);"
+            );
+            builder.AppendLine($"{indent}    buffer_{col.Slot} = nvL_{col.Slot};");
+            builder.AppendLine($"{indent}}}");
+            builder.AppendLine($"{indent}await groupReader.ReadRawAsync<{packedL}>(");
+            builder.AppendLine($"{indent}    {fieldAccess},");
+            builder.AppendLine(
+                $"{indent}    new global::System.Memory<{packedL}>({bufName}, 0, entries_{col.Slot}),"
+            );
+            builder.AppendLine(
+                $"{indent}    new global::System.Memory<int>(defLevels_{col.Slot}, 0, entries_{col.Slot}),"
+            );
+            builder.AppendLine(
+                $"{indent}    new global::System.Memory<int>(repLevels_{col.Slot}, 0, entries_{col.Slot}),"
+            );
+            builder.AppendLine($"{indent}    cancellationToken);");
+            return;
+        }
+
         if (col.IsCompound)
         {
             // Struct-path leaves always carry a definition ladder — read raw with levels.
@@ -649,7 +709,7 @@ public static class CodeEmitter
         {
             string fieldAccess = $"_field_{col.Slot}";
             builder.AppendLine(GetWritePrimitiveCall(col, fieldAccess, $"buffer_{col.Slot}"));
-            if (col.IsCompound)
+            if (col.IsCompound || col.IsListLeaf)
             {
                 CompoundBuffers.EmitSingleWriteReturn(
                     builder,
@@ -1954,8 +2014,8 @@ public static class CodeEmitter
 
         foreach (LeafColumn col in EmissionPlan.For(model).Columns)
         {
-            if (col.IsCompound)
-                continue; // compound leaves use plain array indexing (branchy ladder anyway)
+            if (col.IsCompound || col.IsListLeaf)
+                continue; // compound/list leaves use plain array indexing (branchy ladder anyway)
             int i = col.Slot;
             PropertyModel prop = col.Leaf;
             builder.AppendLine(
@@ -1988,6 +2048,11 @@ public static class CodeEmitter
         {
             int i = col.Slot;
             PropertyModel prop = col.Leaf;
+            if (col.IsListLeaf)
+            {
+                CompoundMapping.EmitListExtraction(builder, col, "item", prefix);
+                continue;
+            }
             if (col.IsCompound)
             {
                 CompoundMapping.EmitCompoundExtraction(builder, col, "item", "i", prefix);
@@ -2043,6 +2108,11 @@ public static class CodeEmitter
         {
             int i = col.Slot;
             PropertyModel prop = col.Leaf;
+            if (col.IsListLeaf)
+            {
+                CompoundMapping.EmitListExtraction(builder, col, "item", prefix);
+                continue;
+            }
             if (col.IsCompound)
             {
                 CompoundMapping.EmitCompoundExtraction(builder, col, "item", "i", prefix);
@@ -2092,6 +2162,11 @@ public static class CodeEmitter
         {
             int i = col.Slot;
             PropertyModel prop = col.Leaf;
+            if (col.IsListLeaf)
+            {
+                CompoundMapping.EmitListExtraction(builder, col, "item", prefix);
+                continue;
+            }
             if (col.IsCompound)
             {
                 CompoundMapping.EmitCompoundExtraction(builder, col, "item", "idx", prefix);
