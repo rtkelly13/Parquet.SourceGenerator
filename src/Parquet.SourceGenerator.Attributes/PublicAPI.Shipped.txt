@@ -31,8 +31,6 @@ Parquet.SourceGenerator.ParquetSerializerOptions.CompressionLevel.get -> Parquet
 Parquet.SourceGenerator.ParquetSerializerOptions.CompressionLevel.set -> void
 Parquet.SourceGenerator.ParquetSerializerOptions.CompressionMethod.get -> Parquet.SourceGenerator.ParquetCompressionMethod
 Parquet.SourceGenerator.ParquetSerializerOptions.CompressionMethod.set -> void
-Parquet.SourceGenerator.ParquetSerializerOptions.MaxDegreeOfParallelism.get -> int
-Parquet.SourceGenerator.ParquetSerializerOptions.MaxDegreeOfParallelism.set -> void
 Parquet.SourceGenerator.ParquetSerializerOptions.ParquetSerializerOptions() -> void
 Parquet.SourceGenerator.ParquetSerializerOptions.RowGroupSize.get -> int
 Parquet.SourceGenerator.ParquetSerializerOptions.RowGroupSize.set -> void

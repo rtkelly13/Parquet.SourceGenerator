@@ -286,8 +286,11 @@ public sealed class GeneratedTypeMatrixTests
         using var stream = new MemoryStream();
         await ((IEnumerable<GeneratedTypeMatrixRecord>)rows).WriteParquetBatchedAsync(
             stream,
-            rowGroupSize,
-            new ParquetSerializerOptions { CompressionMethod = compressionMethod }
+            new ParquetSerializerOptions
+            {
+                RowGroupSize = rowGroupSize,
+                CompressionMethod = compressionMethod,
+            }
         );
         return stream.ToArray();
     }
@@ -301,8 +304,11 @@ public sealed class GeneratedTypeMatrixTests
         using var stream = new MemoryStream();
         await ((IEnumerable<NullableGeneratedTypeMatrixRecord>)rows).WriteParquetBatchedAsync(
             stream,
-            rowGroupSize,
-            new ParquetSerializerOptions { CompressionMethod = compressionMethod }
+            new ParquetSerializerOptions
+            {
+                RowGroupSize = rowGroupSize,
+                CompressionMethod = compressionMethod,
+            }
         );
         return stream.ToArray();
     }

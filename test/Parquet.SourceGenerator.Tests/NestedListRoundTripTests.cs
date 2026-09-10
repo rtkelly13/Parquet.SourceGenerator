@@ -114,7 +114,7 @@ public sealed class NestedListRoundTripTests
             .ToList();
 
         var ms = new MemoryStream();
-        await rows.WriteParquetBatchedAsync(ms, rowGroupSize: 7);
+        await rows.WriteParquetBatchedAsync(ms, new ParquetSerializerOptions { RowGroupSize = 7 });
         ms.Position = 0;
         var back = await ListRowParquetExtensions.ReadParquetParallelArrayAsync(ms);
 

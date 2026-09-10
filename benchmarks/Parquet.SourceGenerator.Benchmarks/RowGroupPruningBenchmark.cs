@@ -70,7 +70,12 @@ public class RowGroupPruningBenchmark
             .ToList();
 
         using var stream = new MemoryStream();
-        rows.WriteParquetBatchedAsync(stream, RowGroupSize).GetAwaiter().GetResult();
+        rows.WriteParquetBatchedAsync(
+                stream,
+                new ParquetSerializerOptions { RowGroupSize = RowGroupSize }
+            )
+            .GetAwaiter()
+            .GetResult();
         _parquet = stream.ToArray();
 
         // Keep the tail `Selectivity`% of row groups; everything before it is prunable.

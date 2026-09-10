@@ -188,7 +188,10 @@ internal static class Program
             .ToList();
 
         using var stream = new MemoryStream();
-        await rows.WriteParquetBatchedAsync(stream, rowGroupSize: 100);
+        await rows.WriteParquetBatchedAsync(
+            stream,
+            new ParquetSerializerOptions { RowGroupSize = 100 }
+        );
         stream.Position = 0;
 
         List<Measurement> read = await MeasurementParquetLegacyExtensions.ReadParquetAsync(stream);

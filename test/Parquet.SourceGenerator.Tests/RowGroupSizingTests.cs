@@ -15,9 +15,15 @@ public partial record SizingModel
 }
 
 /// <summary>
-/// Covers how a row group size is chosen. The previous resolution treated the default value 50,000
-/// as a sentinel meaning "unset", so an explicit 50,000 was ignored and options silently overrode
-/// the more specific method argument.
+/// Covers how a row group size is chosen.
+/// <para>
+/// Issue #218 gave the knob a single home. It used to exist twice — a <c>rowGroupSize</c> argument
+/// on the batched write members and <see cref="ParquetSerializerOptions.RowGroupSize"/> — which
+/// needed a precedence rule that was invisible from the signature, and which had already produced
+/// one bug: the default 50,000 doubled as an "unset" sentinel, so asking for it explicitly was
+/// silently overridden by options. With one home there is no precedence left to get wrong, and the
+/// tests that pinned it down are gone with it.
+/// </para>
 /// </summary>
 public sealed class RowGroupSizingTests
 {
@@ -25,13 +31,12 @@ public sealed class RowGroupSizingTests
         Enumerable.Range(1, count).Select(i => new SizingModel { Id = i }).ToList();
 
     private static async Task<int> RowGroupCountAsync(
-        int? rowGroupSize,
         ParquetSerializerOptions? options,
         int rowCount
     )
     {
         using var stream = new MemoryStream();
-        await Rows(rowCount).WriteParquetBatchedAsync(stream, rowGroupSize, options);
+        await Rows(rowCount).WriteParquetBatchedAsync(stream, options);
         stream.Position = 0;
 
         // Parquet.Net v6's ParquetReader exposes DisposeAsync only — there is no sync Dispose.
@@ -40,13 +45,10 @@ public sealed class RowGroupSizingTests
     }
 
     [Fact]
-    public async Task ExplicitArgumentWinsOverOptions()
+    public async Task OptionsRowGroupSizeIsHonoured()
     {
-        // The explicit argument is the more specific instruction, so it takes precedence. Under the
-        // old sentinel logic options won whenever it held anything other than 50,000.
         int groups = await RowGroupCountAsync(
-            rowGroupSize: 2,
-            options: new ParquetSerializerOptions { RowGroupSize = 10 },
+            new ParquetSerializerOptions { RowGroupSize = 2 },
             rowCount: 6
         );
 
@@ -54,25 +56,20 @@ public sealed class RowGroupSizingTests
     }
 
     [Fact]
-    public async Task OptionsApplyWhenNoExplicitArgumentIsGiven()
+    public async Task DefaultRowGroupSizeAppliesWhenOptionsAreOmitted()
     {
-        int groups = await RowGroupCountAsync(
-            rowGroupSize: null,
-            options: new ParquetSerializerOptions { RowGroupSize = 2 },
-            rowCount: 6
-        );
+        int groups = await RowGroupCountAsync(options: null, rowCount: 6);
 
-        Assert.Equal(3, groups);
+        Assert.Equal(1, groups);
     }
 
     [Fact]
     public async Task ExplicitDefaultSizedRowGroupIsHonouredRatherThanTreatedAsUnset()
     {
-        // 50,000 used to double as the "unset" sentinel, so asking for it explicitly while options
-        // carried a different value quietly produced the options value instead.
+        // 50,000 used to double as an "unset" sentinel. It is now an ordinary value like any other,
+        // but the case is worth keeping: it is the one that exposed the sentinel bug.
         int groups = await RowGroupCountAsync(
-            rowGroupSize: 50_000,
-            options: new ParquetSerializerOptions { RowGroupSize = 2 },
+            new ParquetSerializerOptions { RowGroupSize = 50_000 },
             rowCount: 6
         );
 
@@ -80,22 +77,19 @@ public sealed class RowGroupSizingTests
     }
 
     [Fact]
-    public async Task NonPositiveRowGroupSizeIsRejectedFromEitherSource()
+    public async Task NonPositiveRowGroupSizeIsRejected()
     {
         using var stream = new MemoryStream();
 
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
-            Rows(2).WriteParquetBatchedAsync(stream, rowGroupSize: 0)
-        );
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
-            Rows(2).WriteParquetBatchedAsync(stream, rowGroupSize: -10)
+            Rows(2)
+                .WriteParquetBatchedAsync(stream, new ParquetSerializerOptions { RowGroupSize = 0 })
         );
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
             Rows(2)
                 .WriteParquetBatchedAsync(
                     stream,
-                    null,
-                    new ParquetSerializerOptions { RowGroupSize = 0 }
+                    new ParquetSerializerOptions { RowGroupSize = -10 }
                 )
         );
     }

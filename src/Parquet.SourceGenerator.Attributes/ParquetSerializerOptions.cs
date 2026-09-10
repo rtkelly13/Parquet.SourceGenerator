@@ -99,18 +99,18 @@ public sealed class ParquetSerializerOptions
     /// </summary>
     public int RowGroupSize { get; set; } = 50_000;
 
-    /// <summary>
-    /// Gets or sets the maximum degree of parallelism for parallel row group reading (default is -1,
-    /// using <c>Environment.ProcessorCount</c>).
-    /// </summary>
-    /// <remarks>
-    /// Applies to <c>ReadParquetParallelAsync</c> over a <c>ReadOnlyMemory&lt;byte&gt;</c>, where
-    /// each worker gets its own reader over its own view of the buffer. The <c>Stream</c> overload
-    /// reads sequentially and ignores this: a stream cannot be shared between readers. An explicit
-    /// <c>maxDegreeOfParallelism</c> argument takes precedence over this value, and the effective
-    /// worker count is capped at the file's row-group count.
-    /// </remarks>
-    public int MaxDegreeOfParallelism { get; set; } = -1;
+    // Issue #218 — where a new option belongs:
+    //
+    //   * Options carries what shapes the output file or the codec: row group size, compression,
+    //     encoding hints. These apply to every write path, including the ones that take no
+    //     positional arguments, so options is the only place they can live.
+    //
+    //   * A parameter carries what selects an execution strategy at the call site, and belongs on
+    //     the member that offers that strategy — `maxDegreeOfParallelism` on the parallel readers,
+    //     not here. An option that only one member reads is a duplicate of that member's argument.
+    //
+    // Before this rule, RowGroupSize and MaxDegreeOfParallelism each existed in both places, with
+    // the precedence invisible from the signature.
 
     /// <summary>
     /// Gets or sets the compression method to apply when creating Parquet files (default is Snappy).

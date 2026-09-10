@@ -80,3 +80,5 @@ override Parquet.SourceGenerator.ParquetColumnStatistics<T>.GetHashCode() -> int
 static Parquet.SourceGenerator.ParquetColumnStatistics.FromRaw<T>(object? min, object? max, long? nullCount, long? distinctCount) -> Parquet.SourceGenerator.ParquetColumnStatistics<T>
 static Parquet.SourceGenerator.ParquetColumnStatistics<T>.operator !=(Parquet.SourceGenerator.ParquetColumnStatistics<T> left, Parquet.SourceGenerator.ParquetColumnStatistics<T> right) -> bool
 static Parquet.SourceGenerator.ParquetColumnStatistics<T>.operator ==(Parquet.SourceGenerator.ParquetColumnStatistics<T> left, Parquet.SourceGenerator.ParquetColumnStatistics<T> right) -> bool
+*REMOVED*Parquet.SourceGenerator.ParquetSerializerOptions.MaxDegreeOfParallelism.get -> int
+*REMOVED*Parquet.SourceGenerator.ParquetSerializerOptions.MaxDegreeOfParallelism.set -> void

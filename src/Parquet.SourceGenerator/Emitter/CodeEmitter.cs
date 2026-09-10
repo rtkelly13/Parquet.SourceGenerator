@@ -881,7 +881,6 @@ public static class CodeEmitter
             $"        this global::System.Collections.Generic.IEnumerable<{model.ClassName}> items,"
         );
         builder.AppendLine($"        global::System.IO.Stream stream,");
-        builder.AppendLine($"        int? rowGroupSize = null,");
         builder.AppendLine(
             $"        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,"
         );
@@ -957,7 +956,6 @@ public static class CodeEmitter
             $"        this global::System.Collections.Generic.IAsyncEnumerable<{model.ClassName}> items,"
         );
         builder.AppendLine($"        global::System.IO.Stream stream,");
-        builder.AppendLine($"        int? rowGroupSize = null,");
         builder.AppendLine(
             $"        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,"
         );
@@ -2013,10 +2011,13 @@ public static class CodeEmitter
         builder.AppendLine("        var workerToken = linkedCts.Token;");
         builder.AppendLine("        var cursor = new int[1];");
         builder.AppendLine();
-        builder.AppendLine("        int requested = maxDegreeOfParallelism > 0");
-        builder.AppendLine("            ? maxDegreeOfParallelism");
+        // Issue #218: resolved from the parameter alone. `ParquetSerializerOptions` used to carry a
+        // duplicate `MaxDegreeOfParallelism`, so the same knob had two homes and the precedence was
+        // invisible from the signature. Parallelism selects an execution strategy on a
+        // parallel-specific member, so the parameter is the home that survives; options carries
+        // what shapes the output file.
         builder.AppendLine(
-            "            : (options.MaxDegreeOfParallelism > 0 ? options.MaxDegreeOfParallelism : global::System.Environment.ProcessorCount);"
+            "        int requested = maxDegreeOfParallelism > 0 ? maxDegreeOfParallelism : global::System.Environment.ProcessorCount;"
         );
         builder.AppendLine(
             "        int workerCount = global::System.Math.Max(1, global::System.Math.Min(requested, rowGroupCount));"

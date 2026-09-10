@@ -87,7 +87,10 @@ public sealed class ColumnBatchReadTests
     )
     {
         var stream = new MemoryStream();
-        await rows.WriteParquetBatchedAsync(stream, rowGroupSize: rowGroupSize);
+        await rows.WriteParquetBatchedAsync(
+            stream,
+            new ParquetSerializerOptions { RowGroupSize = rowGroupSize }
+        );
         stream.Position = 0;
         return stream;
     }
@@ -307,7 +310,11 @@ public sealed class ColumnBatchReadTests
     public async Task BatchReaderAllocatesFarLessThanPocoReader()
     {
         using var writeStream = new MemoryStream();
-        await SampleMetrics(20_000).WriteParquetBatchedAsync(writeStream, rowGroupSize: 5_000);
+        await SampleMetrics(20_000)
+            .WriteParquetBatchedAsync(
+                writeStream,
+                new ParquetSerializerOptions { RowGroupSize = 5_000 }
+            );
         byte[] bytes = writeStream.ToArray();
 
         // Warm the ArrayPool and every lazily-initialised path so the measurement below sees the
@@ -416,9 +423,17 @@ public sealed class ColumnBatchReadTests
         // possible, so this instead proves the far cheaper thing the return buys — steady
         // allocation regardless of how many row groups are traversed.
         using var fewStream = new MemoryStream();
-        await SampleMetrics(200).WriteParquetBatchedAsync(fewStream, rowGroupSize: 100);
+        await SampleMetrics(200)
+            .WriteParquetBatchedAsync(
+                fewStream,
+                new ParquetSerializerOptions { RowGroupSize = 100 }
+            );
         using var manyStream = new MemoryStream();
-        await SampleMetrics(2_000).WriteParquetBatchedAsync(manyStream, rowGroupSize: 100);
+        await SampleMetrics(2_000)
+            .WriteParquetBatchedAsync(
+                manyStream,
+                new ParquetSerializerOptions { RowGroupSize = 100 }
+            );
         byte[] fewBytes = fewStream.ToArray();
         byte[] manyBytes = manyStream.ToArray();
 

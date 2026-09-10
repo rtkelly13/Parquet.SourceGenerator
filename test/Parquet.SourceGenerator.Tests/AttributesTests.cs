@@ -12,7 +12,6 @@ public sealed class AttributesTests
 
         Assert.NotNull(options);
         Assert.Equal(50_000, options.RowGroupSize);
-        Assert.Equal(-1, options.MaxDegreeOfParallelism);
         Assert.Equal(ParquetCompressionMethod.Snappy, options.CompressionMethod);
         Assert.Null(options.CompressionLevel);
         Assert.False(options.DeduplicateStrings);
@@ -32,7 +31,6 @@ public sealed class AttributesTests
         var options = new ParquetSerializerOptions
         {
             RowGroupSize = 10_000,
-            MaxDegreeOfParallelism = 4,
             CompressionMethod = ParquetCompressionMethod.Zstd,
             CompressionLevel = ParquetCompressionLevel.SmallestSize,
             DeduplicateStrings = true,
@@ -42,7 +40,6 @@ public sealed class AttributesTests
         };
 
         Assert.Equal(10_000, options.RowGroupSize);
-        Assert.Equal(4, options.MaxDegreeOfParallelism);
         Assert.Equal(ParquetCompressionMethod.Zstd, options.CompressionMethod);
         Assert.Equal(ParquetCompressionLevel.SmallestSize, options.CompressionLevel);
         Assert.True(options.DeduplicateStrings);

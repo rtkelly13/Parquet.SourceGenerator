@@ -50,7 +50,10 @@ public sealed class ParallelReadTests
             .ToList();
 
         using var stream = new MemoryStream();
-        await rows.WriteParquetBatchedAsync(stream, rowGroupSize);
+        await rows.WriteParquetBatchedAsync(
+            stream,
+            new ParquetSerializerOptions { RowGroupSize = rowGroupSize }
+        );
         return stream.ToArray();
     }
 
@@ -126,14 +129,17 @@ public sealed class ParallelReadTests
     }
 
     [Fact]
-    public async Task OptionsSupplyTheParallelismWhenTheArgumentIsUnset()
+    public async Task ParallelismArgumentIsHonoured()
     {
+        // Issue #218: parallelism used to be settable from both the argument and
+        // ParquetSerializerOptions, and this test pinned down which won. The option is gone —
+        // it selects an execution strategy, so it belongs on the member offering that strategy —
+        // leaving nothing to disambiguate.
         byte[] bytes = await WriteAsync(rowCount: 300, rowGroupSize: 50);
 
         List<ParallelRow> read = await ParallelRowParquetExtensions.ReadParquetParallelAsync(
             new ReadOnlyMemory<byte>(bytes),
-            maxDegreeOfParallelism: -1,
-            new ParquetSerializerOptions { MaxDegreeOfParallelism = 2 }
+            maxDegreeOfParallelism: 2
         );
 
         Assert.Equal(300, read.Count);

@@ -198,7 +198,10 @@ internal static class Program
             .ToList();
 
         using var mem = new MemoryStream();
-        await data.WriteParquetBatchedAsync(mem, rowGroupSize: rowGroupSize);
+        await data.WriteParquetBatchedAsync(
+            mem,
+            new ParquetSerializerOptions { RowGroupSize = rowGroupSize }
+        );
         byte[] bytes = mem.ToArray();
 
         // 1. Sequential buffer read

@@ -28,7 +28,10 @@ public sealed class ReadStreamTests
         };
 
         using var stream = new MemoryStream();
-        await written.WriteParquetBatchedAsync(stream, rowGroupSize: 2);
+        await written.WriteParquetBatchedAsync(
+            stream,
+            new ParquetSerializerOptions { RowGroupSize = 2 }
+        );
         stream.Position = 0;
 
         var readItems = new List<StreamTestModel>();

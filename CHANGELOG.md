@@ -82,6 +82,19 @@ Changes since `0.0.1`. That version is published on nuget.org (alongside the `0.
   `UPSTREAM_DEPENDENCY_LIMITATIONS.md`.
 
 ### Changed
+
+- **Every configuration option now has one home (#218, pre-1.0 break)**: `rowGroupSize` and
+  parallelism were each settable from two places — a positional argument on the generated members
+  and a property on `ParquetSerializerOptions` — with the precedence invisible from the signature.
+  That duplication had already produced one bug: the default `RowGroupSize` of 50,000 doubled as an
+  "unset" sentinel, so requesting it explicitly was silently overridden by options. The rule is now
+  that **options carries what shapes the output file or codec** (row group size, compression,
+  encoding hints — these apply to write paths that take no positional arguments, so options is the
+  only place they can live), while **a parameter carries what selects an execution strategy** and
+  belongs on the member offering it. Accordingly the `rowGroupSize` parameter is removed from
+  `WriteParquetAsync`/`WriteParquetBatchedAsync` (use `ParquetSerializerOptions.RowGroupSize`), and
+  `ParquetSerializerOptions.MaxDegreeOfParallelism` is removed (use the `maxDegreeOfParallelism`
+  argument on the parallel readers, which is the only member that ever read it).
 - **Formatting tooling consolidated on CSharpier.** `dotnet format whitespace` is removed from CI:
   its Roslyn formatter disagrees with CSharpier on layout (case-body and pattern-arm indentation),
   and it policed nothing beyond `.cs` files anyway. `.editorconfig` now carries CSharpier's

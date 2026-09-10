@@ -521,7 +521,10 @@ internal static class Program
         }
 
         using var stream = new MemoryStream();
-        await written.WriteParquetBatchedAsync(stream, rowGroupSize: 25);
+        await written.WriteParquetBatchedAsync(
+            stream,
+            new ParquetSerializerOptions { RowGroupSize = 25 }
+        );
         stream.Position = 0;
         List<AotWideRecord> read = await AotWideRecordParquetExtensions.ReadParquetAsync(stream);
 
@@ -542,7 +545,10 @@ internal static class Program
         }
 
         using var stream = new MemoryStream();
-        await written.WriteParquetBatchedAsync(stream, rowGroupSize: 25);
+        await written.WriteParquetBatchedAsync(
+            stream,
+            new ParquetSerializerOptions { RowGroupSize = 25 }
+        );
         stream.Position = 0;
 
         long idSum = 0;
@@ -586,7 +592,10 @@ internal static class Program
         }
 
         using var stream = new MemoryStream();
-        await written.WriteParquetBatchedAsync(stream, rowGroupSize: 20);
+        await written.WriteParquetBatchedAsync(
+            stream,
+            new ParquetSerializerOptions { RowGroupSize = 20 }
+        );
         stream.Position = 0;
 
         // Exercises the threaded path as well as the converters, since row groups decode
@@ -631,7 +640,8 @@ internal static class Program
     private static async Task AsyncEnumerableWriteAsync()
     {
         using var stream = new MemoryStream();
-        await StreamRecordsAsync(60).WriteParquetAsync(stream, rowGroupSize: 16);
+        await StreamRecordsAsync(60)
+            .WriteParquetAsync(stream, new ParquetSerializerOptions { RowGroupSize = 16 });
         stream.Position = 0;
 
         List<AotNarrowRecord> read = await AotNarrowRecordParquetExtensions.ReadParquetAsync(

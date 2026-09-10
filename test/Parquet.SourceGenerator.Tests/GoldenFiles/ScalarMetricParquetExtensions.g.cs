@@ -554,17 +554,13 @@ public static partial class ScalarMetricParquetExtensions
     public static async global::System.Threading.Tasks.Task WriteParquetBatchedAsync(
         this global::System.Collections.Generic.IEnumerable<ScalarMetric> items,
         global::System.IO.Stream stream,
-        int? rowGroupSize = null,
         global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
         global::System.Threading.CancellationToken cancellationToken = default)
     {
         if (items == null) throw new global::System.ArgumentNullException(nameof(items));
         if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));
-        if (rowGroupSize.HasValue && rowGroupSize.Value <= 0)
-            throw new global::System.ArgumentOutOfRangeException(nameof(rowGroupSize));
-
         options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
-        int targetChunkSize = rowGroupSize ?? options.RowGroupSize;
+        int targetChunkSize = options.RowGroupSize;
         if (targetChunkSize <= 0)
             throw new global::System.ArgumentOutOfRangeException(nameof(options), "ParquetSerializerOptions.RowGroupSize must be greater than zero.");
 
@@ -605,17 +601,13 @@ public static partial class ScalarMetricParquetExtensions
     public static async global::System.Threading.Tasks.Task WriteParquetAsync(
         this global::System.Collections.Generic.IAsyncEnumerable<ScalarMetric> items,
         global::System.IO.Stream stream,
-        int? rowGroupSize = null,
         global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
         global::System.Threading.CancellationToken cancellationToken = default)
     {
         if (items == null) throw new global::System.ArgumentNullException(nameof(items));
         if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));
-        if (rowGroupSize.HasValue && rowGroupSize.Value <= 0)
-            throw new global::System.ArgumentOutOfRangeException(nameof(rowGroupSize));
-
         options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
-        int targetChunkSize = rowGroupSize ?? options.RowGroupSize;
+        int targetChunkSize = options.RowGroupSize;
         if (targetChunkSize <= 0)
             throw new global::System.ArgumentOutOfRangeException(nameof(options), "ParquetSerializerOptions.RowGroupSize must be greater than zero.");
 
@@ -1354,9 +1346,7 @@ public static partial class ScalarMetricParquetExtensions
         var workerToken = linkedCts.Token;
         var cursor = new int[1];
 
-        int requested = maxDegreeOfParallelism > 0
-            ? maxDegreeOfParallelism
-            : (options.MaxDegreeOfParallelism > 0 ? options.MaxDegreeOfParallelism : global::System.Environment.ProcessorCount);
+        int requested = maxDegreeOfParallelism > 0 ? maxDegreeOfParallelism : global::System.Environment.ProcessorCount;
         int workerCount = global::System.Math.Max(1, global::System.Math.Min(requested, rowGroupCount));
 
         if (workerCount == 1)
