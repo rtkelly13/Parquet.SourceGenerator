@@ -397,7 +397,7 @@ public static class CodeEmitter
     /// Emits the one-line schema resolution for a column. Columns that can go missing capture the
     /// absence flag; the rest discard it, because for them resolution either succeeds or throws.
     /// </summary>
-    private static string EmitResolveFieldLine(LeafColumn col, string indent)
+    internal static string EmitResolveFieldLine(LeafColumn col, string indent)
     {
         string missingArg = SupportsMissingColumn(col) ? $"out bool missing_{col.Slot}" : "out _";
         return $"{indent}var field_{col.Slot} = ResolveSchemaField(fileFields, {col.Slot}, _field_{col.Slot}, ref fieldsByName, {missingArg});";

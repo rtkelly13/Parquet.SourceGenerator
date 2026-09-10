@@ -216,9 +216,9 @@ internal static class ColumnBatchComponent
         );
         foreach (LeafColumn col in plan.Columns)
         {
-            builder.AppendLine(
-                $"        var field_{col.Slot} = ResolveSchemaField(fileFields, {col.Slot}, _field_{col.Slot}, ref fieldsByName);"
-            );
+            // Shared with the POCO read path so the absent-optional-column flag (#168) stays in
+            // step: columns that can go missing capture it, the rest discard it.
+            builder.AppendLine(CodeEmitter.EmitResolveFieldLine(col, "        "));
         }
         builder.AppendLine();
         builder.AppendLine("        for (int r = 0; r < reader.RowGroupCount; r++)");
