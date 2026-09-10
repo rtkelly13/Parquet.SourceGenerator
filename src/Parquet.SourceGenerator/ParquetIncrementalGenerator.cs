@@ -23,7 +23,15 @@ public sealed class ParquetIncrementalGenerator : IIncrementalGenerator
         IncrementalValuesProvider<TargetParserResult> targets =
             context.SyntaxProvider.CreateSyntaxProvider(
                 predicate: static (s, _) => IsTargetSyntax(s),
-                transform: static (ctx, _) => TargetParser.GetTargetModel(ctx)
+                // Compound dial (#176): the v6 emitter expresses nested POCOs (M2) and
+                // root-level lists/arrays of primitives (M3a). Maps (M4), lists of POCOs,
+                // and lists nested in structs (M3b) still fall to PARQ006.
+                transform: static (ctx, _) =>
+                    TargetParser.GetTargetModel(
+                        ctx,
+                        ParquetApiLevel.V6,
+                        compoundKinds: Parser.CompoundKinds.Struct | Parser.CompoundKinds.List
+                    )
             );
 
         // 2. Register source output emission & diagnostic reporting

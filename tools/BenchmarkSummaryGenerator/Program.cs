@@ -13,6 +13,10 @@ public static class Program
     private const string StartMarker = "<!-- BENCHMARK_TABLE_START -->";
     private const string EndMarker = "<!-- BENCHMARK_TABLE_END -->";
 
+    // Encoding.UTF8 emits a preamble; the README files on main are BOM-less and the headline
+    // PR must touch only the marker-delimited table (#195).
+    private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
+
     public static int Main(string[] args)
     {
         string resultsDir =
@@ -54,7 +58,7 @@ public static class Program
         if (!string.IsNullOrEmpty(outputPath))
         {
             string fullReport = BuildFullReport(resultsDir, headlineTable);
-            File.WriteAllText(outputPath, fullReport, Encoding.UTF8);
+            File.WriteAllText(outputPath, fullReport, Utf8NoBom);
             Console.WriteLine($"Benchmark summary written to {outputPath}");
         }
         else if (!updateReadme)
@@ -607,7 +611,7 @@ public static class Program
         sb.AppendLine();
 
         string[] mdFiles = Directory.GetFiles(resultsDir, "*-report-github.md");
-        Array.Sort(mdFiles);
+        Array.Sort(mdFiles, StringComparer.Ordinal);
 
         foreach (string mdFile in mdFiles)
         {
@@ -624,7 +628,11 @@ public static class Program
         return sb.ToString();
     }
 
-    private static void UpdateReadmeFile(string filepath, string tableMd)
+    /// <summary>
+    /// Replaces the content between the table markers in a README file, leaving everything
+    /// outside the markers — and the file's existing absence of a BOM — untouched.
+    /// </summary>
+    public static void UpdateReadmeFile(string filepath, string tableMd)
     {
         if (!File.Exists(filepath))
             return;
@@ -641,7 +649,7 @@ public static class Program
         if (regex.IsMatch(content))
         {
             string updated = regex.Replace(content, replacement);
-            File.WriteAllText(filepath, updated, Encoding.UTF8);
+            File.WriteAllText(filepath, updated, Utf8NoBom);
             Console.WriteLine($"Updated headline benchmark table in {filepath}");
         }
     }

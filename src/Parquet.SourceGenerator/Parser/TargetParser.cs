@@ -48,28 +48,117 @@ public static class TargetParser
     public static TargetParserResult GetTargetModel(
         GeneratorSyntaxContext context,
         ParquetApiLevel apiLevel
+    ) => GetTargetModel(context, apiLevel, compoundKinds: CompoundKinds.None);
+
+    /// <summary>
+    /// Parses a Roslyn syntax context with a specific set of emittable compound kinds. This is
+    /// the overload the generators call; the dial says how far the consuming emitter has got
+    /// (see <see cref="CompoundKinds"/>).
+    /// </summary>
+    public static TargetParserResult GetTargetModel(
+        GeneratorSyntaxContext context,
+        ParquetApiLevel apiLevel,
+        CompoundKinds compoundKinds
     )
     {
         SyntaxNode node = context.Node;
         if (node is not TypeDeclarationSyntax typeDeclaration)
-            return new TargetParserResult(null, EquatableArray<DiagnosticInfo>.Empty);
+            return new TargetParserResult(Model: null, EquatableArray<DiagnosticInfo>.Empty);
 
         ISymbol? symbol = context.SemanticModel.GetDeclaredSymbol(typeDeclaration);
         if (symbol is not INamedTypeSymbol typeSymbol)
-            return new TargetParserResult(null, EquatableArray<DiagnosticInfo>.Empty);
+            return new TargetParserResult(Model: null, EquatableArray<DiagnosticInfo>.Empty);
 
+        return GetTargetModelCore(typeSymbol, typeDeclaration, apiLevel, compoundKinds);
+    }
+
+    /// <summary>
+    /// Parses a Roslyn syntax context, optionally permitting compound members.
+    /// </summary>
+    /// <param name="context">The syntax context to parse.</param>
+    /// <param name="apiLevel">Which backend will consume the model.</param>
+    /// <param name="allowCompoundTypes">
+    /// When true, struct/list/map members are parsed into recursive <see cref="PropertyModel"/>
+    /// trees. The shipping pipeline passes false while the compound emitters land (issue #176);
+    /// the flag flips to true with the milestone that first consumes a compound model.
+    /// </param>
+    public static TargetParserResult GetTargetModel(
+        GeneratorSyntaxContext context,
+        ParquetApiLevel apiLevel,
+        bool allowCompoundTypes
+    ) =>
+        GetTargetModel(
+            context,
+            apiLevel,
+            allowCompoundTypes
+                ? CompoundKinds.Struct | CompoundKinds.List | CompoundKinds.Map
+                : CompoundKinds.None
+        );
+
+    /// <summary>
+    /// Parses a symbol directly, resolving its declaring syntax when one is available.
+    /// </summary>
+    /// <remarks>
+    /// Test seam for the compound pipeline (#176): the syntax-context overload is the one wired
+    /// into the incremental pipeline, but recursion through it needs a driver run per shape. The
+    /// tests build a compilation once and call this directly with <c>allowCompoundTypes</c> set.
+    /// </remarks>
+    public static TargetParserResult GetTargetModel(
+        INamedTypeSymbol typeSymbol,
+        ParquetApiLevel apiLevel,
+        bool allowCompoundTypes
+    ) =>
+        GetTargetModel(
+            typeSymbol,
+            apiLevel,
+            allowCompoundTypes
+                ? CompoundKinds.Struct | CompoundKinds.List | CompoundKinds.Map
+                : CompoundKinds.None
+        );
+
+    /// <summary>
+    /// Parses a symbol directly with an explicit set of emittable compound kinds.
+    /// </summary>
+    public static TargetParserResult GetTargetModel(
+        INamedTypeSymbol typeSymbol,
+        ParquetApiLevel apiLevel,
+        CompoundKinds compoundKinds
+    )
+    {
+        TypeDeclarationSyntax? syntax = null;
+        foreach (SyntaxReference reference in typeSymbol.DeclaringSyntaxReferences)
+        {
+            if (reference.GetSyntax() is TypeDeclarationSyntax typeDeclaration)
+            {
+                syntax = typeDeclaration;
+                break;
+            }
+        }
+
+        return GetTargetModelCore(typeSymbol, syntax, apiLevel, compoundKinds);
+    }
+
+    private static TargetParserResult GetTargetModelCore(
+        INamedTypeSymbol typeSymbol,
+        TypeDeclarationSyntax? typeDeclaration,
+        ParquetApiLevel apiLevel,
+        CompoundKinds compoundKinds
+    )
+    {
         AttributeData? serializableAttr = typeSymbol
             .GetAttributes()
             .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == AttributeFullName);
 
         if (serializableAttr is null)
-            return new TargetParserResult(null, EquatableArray<DiagnosticInfo>.Empty);
+            return new TargetParserResult(Model: null, EquatableArray<DiagnosticInfo>.Empty);
 
         var diagnostics = new List<DiagnosticInfo>();
 
         // Rule PARQ001: Target type must be declared as partial
-        bool isPartial = typeDeclaration.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword));
-        if (!isPartial)
+        bool isPartial =
+            typeDeclaration is null
+            || typeDeclaration.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword));
+        if (!isPartial && typeDeclaration is not null)
         {
             diagnostics.Add(
                 new DiagnosticInfo(
@@ -80,17 +169,26 @@ public static class TargetParser
             );
         }
 
-        // Rules PARQ009 / PARQ010: shapes the emitter cannot express. Both previously produced code
-        // that did not compile — a bare unqualified name for a nested type, and a name stripped of
-        // its type parameters for a generic one.
+        // Rule PARQ009 (reversed by #176): nested [ParquetSerializable] declarations are legal
+        // targets — the emitted extension class names the target through its containing-type
+        // path ("Outer.Inner") and the identifier flattens it ("OuterInnerParquetExtensions").
+        // What stays rejected is a declaration the namespace-scope extension class cannot name:
+        // a private nested type.
         bool isNested = typeSymbol.ContainingType is not null;
-        if (isNested)
+        bool nestedUnreachable =
+            isNested && !IsReachableFromGeneratedCode(typeSymbol.DeclaredAccessibility);
+        if (nestedUnreachable)
         {
             diagnostics.Add(
                 new DiagnosticInfo(
                     DiagnosticDescriptors.NestedTypeNotSupported,
-                    typeDeclaration.Identifier.GetLocation(),
-                    new[] { typeSymbol.Name, typeSymbol.ContainingType!.Name }
+                    typeDeclaration?.Identifier.GetLocation() ?? Location.None,
+                    new[]
+                    {
+                        typeSymbol.Name,
+                        GetNestedQualifiedTypeName(typeSymbol.ContainingType!),
+                        typeSymbol.DeclaredAccessibility.ToString(),
+                    }
                 )
             );
         }
@@ -101,7 +199,7 @@ public static class TargetParser
             diagnostics.Add(
                 new DiagnosticInfo(
                     DiagnosticDescriptors.GenericTypeNotSupported,
-                    typeDeclaration.Identifier.GetLocation(),
+                    typeDeclaration?.Identifier.GetLocation() ?? Location.None,
                     new[] { typeSymbol.Name }
                 )
             );
@@ -111,12 +209,164 @@ public static class TargetParser
             ? string.Empty
             : typeSymbol.ContainingNamespace.ToDisplayString();
 
-        string className = typeSymbol.Name;
+        // Dotted for nested targets ("Outer.Inner") so every type reference the emitter writes
+        // resolves at namespace scope; identical to Name for the top-level case, which keeps
+        // existing emitted output byte-for-byte unchanged.
+        string className = GetNestedQualifiedTypeName(typeSymbol);
+
+        Location fallbackLocation =
+            typeDeclaration?.Identifier.GetLocation()
+            ?? typeSymbol.Locations.FirstOrDefault()
+            ?? Location.None;
 
         var propertyModels = new List<PropertyModel>();
         var seenColumnNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         bool rejectedAnyMember = false;
-        IEnumerable<ISymbol> members = GetSerializableMembers(typeSymbol);
+
+        var containmentPath = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default)
+        {
+            typeSymbol,
+        };
+
+        CollectMembers(
+            typeSymbol,
+            className,
+            fallbackLocation,
+            apiLevel,
+            compoundKinds,
+            diagnostics,
+            seenColumnNames,
+            propertyModels,
+            ref rejectedAnyMember,
+            containmentPath,
+            compoundDepth: 0
+        );
+
+        // Rule PARQ003: Warning if no public serializable properties found. Suppressed when a
+        // member was rejected above — "this type has no serializable members" is misleading when the
+        // real answer is "its members were rejected", and PARQ006/PARQ007 already say why.
+        if (propertyModels.Count == 0 && !rejectedAnyMember)
+        {
+            diagnostics.Add(
+                new DiagnosticInfo(
+                    DiagnosticDescriptors.NoPropertiesFound,
+                    fallbackLocation,
+                    new[] { className }
+                )
+            );
+        }
+
+        // Rule PARQ008: the read path constructs through an object initializer, which needs an
+        // accessible parameterless constructor. Value types always have one; a positional record or
+        // a class whose only constructors take arguments does not, and previously failed with CS7036
+        // reported against generated source.
+        bool hasParameterlessConstructor =
+            typeSymbol.IsValueType
+            || typeSymbol.InstanceConstructors.Any(ctor =>
+                ctor.Parameters.Length == 0
+                && IsReachableFromGeneratedCode(ctor.DeclaredAccessibility)
+            );
+
+        if (!hasParameterlessConstructor)
+        {
+            diagnostics.Add(
+                new DiagnosticInfo(
+                    DiagnosticDescriptors.NoParameterlessConstructor,
+                    fallbackLocation,
+                    new[] { className }
+                )
+            );
+        }
+
+        List<PropertyModel> orderedProperties = propertyModels
+            .OrderBy(p => p.Order >= 0 ? p.Order : int.MaxValue)
+            .ToList();
+
+        // Emission is suppressed whenever a fatal diagnostic already explains the problem. Emitting
+        // anyway buries that message under cascading errors from the generated file.
+        bool canEmit =
+            isPartial
+            && hasParameterlessConstructor
+            && !rejectedAnyMember
+            && !nestedUnreachable
+            && !isGeneric;
+
+        bool hasSingleInstanceField = false;
+        if (typeSymbol.IsValueType && typeSymbol.IsUnmanagedType)
+        {
+            var instanceFields = typeSymbol
+                .GetMembers()
+                .OfType<IFieldSymbol>()
+                .Where(f => !f.IsStatic)
+                .ToList();
+
+            // StructLayout check: Explicit layout or custom Size > 0 alters memory layout
+            bool hasExplicitOrCustomSizeLayout = typeSymbol
+                .GetAttributes()
+                .Any(a =>
+                {
+                    if (
+                        a.AttributeClass?.ToDisplayString()
+                        != "System.Runtime.InteropServices.StructLayoutAttribute"
+                    )
+                        return false;
+                    if (
+                        a.ConstructorArguments.Length > 0
+                        && a.ConstructorArguments[0].Value is int layoutKind
+                        && layoutKind == 2 /* LayoutKind.Explicit */
+                    )
+                        return true;
+                    return a.NamedArguments.Any(na =>
+                        na.Key == "Size" && na.Value.Value is int size && size > 0
+                    );
+                });
+
+            hasSingleInstanceField = instanceFields.Count == 1 && !hasExplicitOrCustomSizeLayout;
+        }
+
+        TargetClassModel? model = canEmit
+            ? new TargetClassModel(
+                Namespace: namespaceName,
+                ClassName: className,
+                Properties: new EquatableArray<PropertyModel>(orderedProperties.ToArray()),
+                IsValueType: typeSymbol.IsValueType,
+                IsUnmanaged: typeSymbol.IsUnmanagedType,
+                HasSingleInstanceField: hasSingleInstanceField
+            )
+            : null;
+
+        return new TargetParserResult(
+            model,
+            new EquatableArray<DiagnosticInfo>(diagnostics.ToArray())
+        );
+    }
+
+    /// <summary>
+    /// Parses every serializable member of <paramref name="declaringType"/> into property models,
+    /// recursing through compound members whose kind is in <paramref name="compoundKinds"/>.
+    /// </summary>
+    /// <remarks>
+    /// One method serves both the top-level type and any nested <c>[ParquetSerializable]</c>
+    /// member's children, so attribute handling, ordering, and the PARQ002/PARQ004/PARQ005/PARQ007
+    /// rules apply uniformly down the tree. Per-type state (<c>seenColumnNames</c>, the containment
+    /// path, the depth counter) is carried by the caller's locals, which is exactly the scoping
+    /// duplicate-name and cycle rules need: names collide per group, cycles are path-relative.
+    /// </remarks>
+    private static void CollectMembers(
+        INamedTypeSymbol declaringType,
+        string className,
+        Location fallbackLocation,
+        ParquetApiLevel apiLevel,
+        CompoundKinds compoundKinds,
+        List<DiagnosticInfo> diagnostics,
+        HashSet<string> seenColumnNames,
+        List<PropertyModel> propertyModels,
+        ref bool rejectedAnyMember,
+        HashSet<INamedTypeSymbol> containmentPath,
+        int compoundDepth
+    )
+    {
+        IEnumerable<ISymbol> members = GetSerializableMembers(declaringType);
 
         foreach (ISymbol member in members)
         {
@@ -146,9 +396,7 @@ public static class TargetParser
 
                 if (hasColAttr)
                 {
-                    Location loc =
-                        member.Locations.FirstOrDefault()
-                        ?? typeDeclaration.Identifier.GetLocation();
+                    Location loc = member.Locations.FirstOrDefault() ?? fallbackLocation;
                     diagnostics.Add(
                         new DiagnosticInfo(
                             DiagnosticDescriptors.NonPublicPropertyIgnored,
@@ -279,8 +527,7 @@ public static class TargetParser
             // Rule PARQ002: Duplicate column name check
             if (!seenColumnNames.Add(columnName))
             {
-                Location loc =
-                    member.Locations.FirstOrDefault() ?? typeDeclaration.Identifier.GetLocation();
+                Location loc = member.Locations.FirstOrDefault() ?? fallbackLocation;
                 diagnostics.Add(
                     new DiagnosticInfo(
                         DiagnosticDescriptors.DuplicateColumnName,
@@ -316,9 +563,7 @@ public static class TargetParser
                     // Rule PARQ005: Decimal precision/scale validation
                     if (p < s || p > 38 || p <= 0 || s < 0)
                     {
-                        Location loc =
-                            member.Locations.FirstOrDefault()
-                            ?? typeDeclaration.Identifier.GetLocation();
+                        Location loc = member.Locations.FirstOrDefault() ?? fallbackLocation;
                         diagnostics.Add(
                             new DiagnosticInfo(
                                 DiagnosticDescriptors.InvalidDecimalPrecisionScale,
@@ -369,14 +614,76 @@ public static class TargetParser
             if (memberType.TypeKind == TypeKind.Error || underlyingType.TypeKind == TypeKind.Error)
                 continue;
 
-            // Rule PARQ006: the type must have a Parquet column representation. Rejected members are
-            // left out of the model — the diagnostic is an error, so the build stops either way, and
-            // emitting a column for a type with no representation only buries the real message under
-            // cascading errors inside generated code.
+            // Rule PARQ006: the type must have a Parquet column representation — leaf or, when
+            // the kind is compound and the consuming emitter supports it (#176), a struct/list/map
+            // the parser can expand. Rejected members are left out of the model — the diagnostic
+            // is an error, so the build stops either way, and emitting a column for a type with no
+            // representation only buries the real message under cascading errors in generated code.
             if (!TryClassifyKind(underlyingType, memberType, out PropertyKind kind))
             {
-                Location typeLoc =
-                    member.Locations.FirstOrDefault() ?? typeDeclaration.Identifier.GetLocation();
+                bool classifiedCompound = TryClassifyCompound(
+                    underlyingType,
+                    out PropertyKind compoundKind
+                );
+
+                // A compound shape the backend cannot emit yet is rejected exactly like an
+                // unsupported type: the milestone dial (CompoundKinds) says how far the emitter
+                // has got, and until then the member must fail the build where it is declared.
+                if (classifiedCompound && !IsCompoundKindEmittable(compoundKind, compoundKinds))
+                    classifiedCompound = false;
+
+                // M3a emission scope: the v6 pipeline dial (Struct|List, no Map) means
+                // specifically row-level lists with leaf elements — lists of POCOs and
+                // lists nested in structs reject with PARQ006 until M3b. The full-capability
+                // dial (maps present ⇒ every model the parser can build) stays unfiltered,
+                // which keeps parser tests and M3b+ emitters able to see whole trees.
+                bool pipelineScopedDial =
+                    (compoundKinds & (CompoundKinds.List | CompoundKinds.Map))
+                    == CompoundKinds.List;
+                if (
+                    classifiedCompound
+                    && compoundKind == PropertyKind.List
+                    && pipelineScopedDial
+                    && (compoundDepth > 0 || !ListElementIsLeaf(underlyingType))
+                )
+                    classifiedCompound = false;
+
+                if (classifiedCompound)
+                {
+                    PropertyModel? compoundModel = BuildCompoundModel(
+                        compoundKind,
+                        underlyingType,
+                        member.Name,
+                        memberType,
+                        columnName,
+                        order,
+                        isNullable,
+                        apiLevel,
+                        className,
+                        member.Locations.FirstOrDefault() ?? fallbackLocation,
+                        diagnostics,
+                        containmentPath,
+                        compoundDepth,
+                        compoundKinds,
+                        out bool compoundRejected
+                    );
+                    if (compoundRejected)
+                    {
+                        // The builder already reported why (cycle, depth, a child-level rule).
+                        rejectedAnyMember = true;
+                        continue;
+                    }
+                    if (compoundModel is not null)
+                    {
+                        propertyModels.Add(compoundModel);
+                        continue;
+                    }
+                    // Classified as compound but declined (e.g. a non-string map key): fall
+                    // through to the standard PARQ006 rejection so the member's name and type
+                    // appear in the message.
+                }
+
+                Location typeLoc = member.Locations.FirstOrDefault() ?? fallbackLocation;
                 diagnostics.Add(
                     new DiagnosticInfo(
                         DiagnosticDescriptors.UnsupportedPropertyType,
@@ -394,8 +701,7 @@ public static class TargetParser
             // the type.
             if (apiLevel == ParquetApiLevel.V4 && !IsSupportedOnClassicApi(underlyingType))
             {
-                Location classicLoc =
-                    member.Locations.FirstOrDefault() ?? typeDeclaration.Identifier.GetLocation();
+                Location classicLoc = member.Locations.FirstOrDefault() ?? fallbackLocation;
                 diagnostics.Add(
                     new DiagnosticInfo(
                         DiagnosticDescriptors.TypeUnsupportedOnClassicApi,
@@ -412,8 +718,7 @@ public static class TargetParser
             // against generated source, with nothing pointing at the declaration responsible.
             if (!IsAssignable(member))
             {
-                Location setLoc =
-                    member.Locations.FirstOrDefault() ?? typeDeclaration.Identifier.GetLocation();
+                Location setLoc = member.Locations.FirstOrDefault() ?? fallbackLocation;
                 diagnostics.Add(
                     new DiagnosticInfo(
                         DiagnosticDescriptors.MemberNotAssignable,
@@ -451,104 +756,560 @@ public static class TargetParser
                 )
             );
         }
+    }
 
-        // Rule PARQ003: Warning if no public serializable properties found. Suppressed when a
-        // member was rejected above — "this type has no serializable members" is misleading when the
-        // real answer is "its members were rejected", and PARQ006/PARQ007 already say why.
-        if (propertyModels.Count == 0 && !rejectedAnyMember)
+    /// <summary>
+    /// Maximum compound nesting depth the parser will expand (issue #176, PARQ013).
+    /// </summary>
+    /// <remarks>
+    /// Record-shredding is unrolled per leaf at generation time, so emitted-code size grows with
+    /// depth. Six levels covers any realistic domain model while bounding pathological recursion.
+    /// </remarks>
+    public const int MaxCompoundDepth = 6;
+
+    /// <summary>
+    /// Generic definitions accepted as <see cref="PropertyKind.List"/> members. Value types
+    /// (<c>Nullable&lt;T&gt;</c>) are unwrapped before this check, so a <c>List&lt;int?&gt;</c>
+    /// reaches it as the collection itself with a nullable element inside.
+    /// </summary>
+    private static readonly string[] SupportedCollectionDefinitions =
+    [
+        "System.Collections.Generic.List",
+        "System.Collections.Generic.IList",
+        "System.Collections.Generic.ICollection",
+        "System.Collections.Generic.IReadOnlyCollection",
+        "System.Collections.Generic.IReadOnlyList",
+        "System.Collections.Generic.IEnumerable",
+    ];
+
+    /// <summary>
+    /// Generic definitions accepted as <see cref="PropertyKind.Map"/> members. The key must be
+    /// <c>string</c>: the Parquet MAP key is REQUIRED, so any key type whose values could be null
+    /// would produce files no reader is obliged to accept.
+    /// </summary>
+    private static readonly string[] SupportedDictionaryDefinitions =
+    [
+        "System.Collections.Generic.Dictionary",
+        "System.Collections.Generic.IDictionary",
+        "System.Collections.Generic.IReadOnlyDictionary",
+    ];
+
+    /// <summary>
+    /// Whether the consuming emitter can currently express this compound kind
+    /// (the <see cref="CompoundKinds"/> milestone dial, #176).
+    /// </summary>
+    private static bool ListElementIsLeaf(ITypeSymbol listType)
+    {
+        ITypeSymbol element = listType is IArrayTypeSymbol array
+            ? array.ElementType
+            : ((INamedTypeSymbol)listType).TypeArguments[0];
+        ITypeSymbol probe = element;
+        if (
+            element is INamedTypeSymbol { IsGenericType: true } ng
+            && ng.ConstructedFrom.SpecialType == SpecialType.System_Nullable_T
+        )
+            probe = ng.TypeArguments[0];
+        return TryClassifyKind(probe, element, out _);
+    }
+
+    private static bool IsCompoundKindEmittable(PropertyKind kind, CompoundKinds allowed) =>
+        kind switch
+        {
+            PropertyKind.Struct => allowed.HasFlag(CompoundKinds.Struct),
+            PropertyKind.List => allowed.HasFlag(CompoundKinds.List),
+            PropertyKind.Map => allowed.HasFlag(CompoundKinds.Map),
+            _ => true,
+        };
+
+    /// <summary>
+    /// Classifies a type that failed <see cref="TryClassifyKind"/> as a compound member kind.
+    /// Returns false for anything with no compound representation (a POCO without the attribute,
+    /// <c>Dictionary&lt;int, string&gt;</c> — whose key type is only checked when building the
+    /// model, so the rejection surfaces as a member-level PARQ006 with the member's own name).
+    /// </summary>
+    private static bool TryClassifyCompound(ITypeSymbol underlyingType, out PropertyKind kind)
+    {
+        // byte[] reached PropertyKind.ByteArray as a leaf before this point; any other array is
+        // a list of its element type.
+        if (underlyingType is IArrayTypeSymbol)
+        {
+            kind = PropertyKind.List;
+            return true;
+        }
+
+        if (underlyingType is INamedTypeSymbol { IsGenericType: true } generic)
+        {
+            string definition = generic.ConstructedFrom.ToDisplayString().Split('<')[0];
+
+            if (Array.IndexOf(SupportedCollectionDefinitions, definition) >= 0)
+            {
+                kind = PropertyKind.List;
+                return true;
+            }
+
+            if (Array.IndexOf(SupportedDictionaryDefinitions, definition) >= 0)
+            {
+                kind = PropertyKind.Map;
+                return true;
+            }
+        }
+
+        // Nested POCO: must opt in with [ParquetSerializable] (issue #176's contract — the
+        // parent inlines the child's schema, so no other declaration is accepted). Generic
+        // children reach BuildCompoundModel, which rejects them with PARQ010 — more precise
+        // than the generic PARQ006 wording.
+        if (
+            underlyingType is INamedTypeSymbol pojo
+            && (pojo.TypeKind == TypeKind.Class || pojo.TypeKind == TypeKind.Struct)
+            && pojo.GetAttributes()
+                .Any(a => a.AttributeClass?.ToDisplayString() == AttributeFullName)
+        )
+        {
+            kind = PropertyKind.Struct;
+            return true;
+        }
+
+        kind = default;
+        return false;
+    }
+
+    /// <summary>
+    /// Expands a compound member into a recursive <see cref="PropertyModel"/> subtree, reporting
+    /// compound-specific diagnostics (PARQ012 cycles, PARQ013 depth, and the per-type rules that
+    /// the child type itself violates) on the shared diagnostics list.
+    /// </summary>
+    /// <returns>
+    /// The subtree, or null when the member is not actually buildable. <paramref name="rejected"/>
+    /// distinguishes "a diagnostic already explains it" (true) from "fall through to PARQ006"
+    /// (false — currently only the non-string map key).
+    /// </returns>
+    private static PropertyModel? BuildCompoundModel(
+        PropertyKind kind,
+        ITypeSymbol underlyingType,
+        string memberName,
+        ITypeSymbol declaredType,
+        string columnName,
+        int order,
+        bool isNullable,
+        ParquetApiLevel apiLevel,
+        string declaringTypeName,
+        Location location,
+        List<DiagnosticInfo> diagnostics,
+        HashSet<INamedTypeSymbol> containmentPath,
+        int compoundDepth,
+        CompoundKinds compoundKinds,
+        out bool rejected
+    )
+    {
+        rejected = false;
+
+        if (compoundDepth + 1 > MaxCompoundDepth)
         {
             diagnostics.Add(
                 new DiagnosticInfo(
-                    DiagnosticDescriptors.NoPropertiesFound,
-                    typeDeclaration.Identifier.GetLocation(),
-                    new[] { className }
+                    DiagnosticDescriptors.NestedTypeTooDeep,
+                    location,
+                    [
+                        memberName,
+                        declaringTypeName,
+                        (compoundDepth + 1).ToString(CultureInfo.InvariantCulture),
+                        MaxCompoundDepth.ToString(CultureInfo.InvariantCulture),
+                    ]
                 )
             );
+            rejected = true;
+            return null;
         }
 
-        // Rule PARQ008: the read path constructs through an object initializer, which needs an
-        // accessible parameterless constructor. Value types always have one; a positional record or
-        // a class whose only constructors take arguments does not, and previously failed with CS7036
-        // reported against generated source.
-        bool hasParameterlessConstructor =
-            typeSymbol.IsValueType
-            || typeSymbol.InstanceConstructors.Any(ctor =>
-                ctor.Parameters.Length == 0
-                && IsReachableFromGeneratedCode(ctor.DeclaredAccessibility)
-            );
+        string typeName = declaredType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
-        if (!hasParameterlessConstructor)
+        switch (kind)
         {
-            diagnostics.Add(
-                new DiagnosticInfo(
-                    DiagnosticDescriptors.NoParameterlessConstructor,
-                    typeDeclaration.Identifier.GetLocation(),
-                    new[] { className }
-                )
-            );
-        }
+            case PropertyKind.Struct:
+                var childSymbol = (INamedTypeSymbol)underlyingType;
+                string childName = GetNestedQualifiedTypeName(childSymbol);
 
-        List<PropertyModel> orderedProperties = propertyModels
-            .OrderBy(p => p.Order >= 0 ? p.Order : int.MaxValue)
-            .ToList();
-
-        // Emission is suppressed whenever a fatal diagnostic already explains the problem. Emitting
-        // anyway buries that message under cascading errors from the generated file.
-        bool canEmit =
-            isPartial
-            && hasParameterlessConstructor
-            && !rejectedAnyMember
-            && !isNested
-            && !isGeneric;
-
-        bool hasSingleInstanceField = false;
-        if (typeSymbol.IsValueType && typeSymbol.IsUnmanagedType)
-        {
-            var instanceFields = typeSymbol
-                .GetMembers()
-                .OfType<IFieldSymbol>()
-                .Where(f => !f.IsStatic)
-                .ToList();
-
-            // StructLayout check: Explicit layout or custom Size > 0 alters memory layout
-            bool hasExplicitOrCustomSizeLayout = typeSymbol
-                .GetAttributes()
-                .Any(a =>
+                if (childSymbol.TypeParameters.Length > 0)
                 {
-                    if (
-                        a.AttributeClass?.ToDisplayString()
-                        != "System.Runtime.InteropServices.StructLayoutAttribute"
-                    )
-                        return false;
-                    if (
-                        a.ConstructorArguments.Length > 0
-                        && a.ConstructorArguments[0].Value is int layoutKind
-                        && layoutKind == 2 /* LayoutKind.Explicit */
-                    )
-                        return true;
-                    return a.NamedArguments.Any(na =>
-                        na.Key == "Size" && na.Value.Value is int size && size > 0
+                    diagnostics.Add(
+                        new DiagnosticInfo(
+                            DiagnosticDescriptors.GenericTypeNotSupported,
+                            location,
+                            [childSymbol.Name]
+                        )
                     );
-                });
+                    rejected = true;
+                    return null;
+                }
 
-            hasSingleInstanceField = instanceFields.Count == 1 && !hasExplicitOrCustomSizeLayout;
+                if (!IsReachableFromGeneratedCode(childSymbol.DeclaredAccessibility))
+                {
+                    string containingName = childSymbol.ContainingType is null
+                        ? childSymbol.Name
+                        : GetNestedQualifiedTypeName(childSymbol.ContainingType);
+                    diagnostics.Add(
+                        new DiagnosticInfo(
+                            DiagnosticDescriptors.NestedTypeNotSupported,
+                            location,
+                            [
+                                childSymbol.Name,
+                                containingName,
+                                childSymbol.DeclaredAccessibility.ToString(),
+                            ]
+                        )
+                    );
+                    rejected = true;
+                    return null;
+                }
+
+                // Cycle: the type is already being expanded further up this path. Parquet
+                // schemas are trees; there is no finite column layout past this point.
+                if (!containmentPath.Add(childSymbol))
+                {
+                    diagnostics.Add(
+                        new DiagnosticInfo(
+                            DiagnosticDescriptors.NestedTypeCycleDetected,
+                            location,
+                            [memberName, declaringTypeName, childName]
+                        )
+                    );
+                    rejected = true;
+                    return null;
+                }
+
+                bool childHasParameterlessConstructor =
+                    childSymbol.IsValueType
+                    || childSymbol.InstanceConstructors.Any(ctor =>
+                        ctor.Parameters.Length == 0
+                        && IsReachableFromGeneratedCode(ctor.DeclaredAccessibility)
+                    );
+                if (!childHasParameterlessConstructor)
+                {
+                    containmentPath.Remove(childSymbol);
+                    diagnostics.Add(
+                        new DiagnosticInfo(
+                            DiagnosticDescriptors.NoParameterlessConstructor,
+                            location,
+                            [childName]
+                        )
+                    );
+                    rejected = true;
+                    return null;
+                }
+
+                var children = new List<PropertyModel>();
+                bool childRejected = false;
+                var childSeenColumnNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                Location childFallback = childSymbol.Locations.FirstOrDefault() ?? location;
+
+                CollectMembers(
+                    childSymbol,
+                    childName,
+                    childFallback,
+                    apiLevel,
+                    compoundKinds,
+                    diagnostics,
+                    childSeenColumnNames,
+                    children,
+                    ref childRejected,
+                    containmentPath,
+                    compoundDepth + 1
+                );
+                containmentPath.Remove(childSymbol);
+
+                if (childRejected)
+                {
+                    rejected = true;
+                    return null;
+                }
+
+                if (children.Count == 0)
+                {
+                    // An empty group serializes to nothing — the member would silently
+                    // disappear from the file. Same reasoning as PARQ003 at top level.
+                    diagnostics.Add(
+                        new DiagnosticInfo(
+                            DiagnosticDescriptors.NoPropertiesFound,
+                            location,
+                            [childName]
+                        )
+                    );
+                    rejected = true;
+                    return null;
+                }
+
+                children = children.OrderBy(p => p.Order >= 0 ? p.Order : int.MaxValue).ToList();
+
+                return new PropertyModel(
+                    memberName,
+                    columnName,
+                    typeName,
+                    TimestampUnit: null,
+                    null,
+                    order,
+                    DecimalPrecision: null,
+                    DecimalScale: null,
+                    PropertyKind.Struct,
+                    isNullable,
+                    Deduplicate: false,
+                    ColumnEncoding.Default
+                )
+                {
+                    Children = new EquatableArray<PropertyModel>(children.ToArray()),
+                    CompoundIsValueType = childSymbol.IsValueType,
+                };
+
+            case PropertyKind.List:
+                ITypeSymbol elementType = underlyingType is IArrayTypeSymbol array
+                    ? array.ElementType
+                    : ((INamedTypeSymbol)underlyingType).TypeArguments[0];
+
+                PropertyModel? element = BuildNestedElementModel(
+                    elementType,
+                    "element",
+                    apiLevel,
+                    memberName,
+                    declaringTypeName,
+                    location,
+                    diagnostics,
+                    containmentPath,
+                    compoundDepth + 1,
+                    compoundKinds,
+                    out bool elementRejected
+                );
+                if (elementRejected || element is null)
+                {
+                    rejected = elementRejected;
+                    return null;
+                }
+
+                return new PropertyModel(
+                    memberName,
+                    columnName,
+                    typeName,
+                    TimestampUnit: null,
+                    null,
+                    order,
+                    DecimalPrecision: null,
+                    DecimalScale: null,
+                    PropertyKind.List,
+                    isNullable,
+                    Deduplicate: false,
+                    ColumnEncoding.Default
+                )
+                {
+                    Element = element,
+                };
+
+            case PropertyKind.Map:
+                var mapSymbol = (INamedTypeSymbol)underlyingType;
+                string keyFqn = mapSymbol
+                    .TypeArguments[0]
+                    .WithNullableAnnotation(NullableAnnotation.None)
+                    .ToDisplayString();
+                if (keyFqn != "string")
+                {
+                    // Deliberately *not* rejected here: the caller's PARQ006 message names the
+                    // member and shows its declared type, which beats a synthetic "key" error.
+                    return null;
+                }
+
+                PropertyModel? value = BuildNestedElementModel(
+                    mapSymbol.TypeArguments[1],
+                    "value",
+                    apiLevel,
+                    memberName,
+                    declaringTypeName,
+                    location,
+                    diagnostics,
+                    containmentPath,
+                    compoundDepth + 1,
+                    compoundKinds,
+                    out bool valueRejected
+                );
+                if (valueRejected || value is null)
+                {
+                    rejected = valueRejected;
+                    return null;
+                }
+
+                var key = new PropertyModel(
+                    "key",
+                    "key",
+                    "string",
+                    TimestampUnit: null,
+                    EnumUnderlyingTypeName: null,
+                    Order: -1,
+                    DecimalPrecision: null,
+                    DecimalScale: null,
+                    Kind: PropertyKind.Primitive,
+                    IsNullable: false
+                );
+
+                return new PropertyModel(
+                    memberName,
+                    columnName,
+                    typeName,
+                    TimestampUnit: null,
+                    null,
+                    order,
+                    DecimalPrecision: null,
+                    DecimalScale: null,
+                    PropertyKind.Map,
+                    isNullable,
+                    Deduplicate: false,
+                    ColumnEncoding.Default
+                )
+                {
+                    Children = new EquatableArray<PropertyModel>([key]),
+                    MapValue = value,
+                };
         }
 
-        TargetClassModel? model = canEmit
-            ? new TargetClassModel(
-                Namespace: namespaceName,
-                ClassName: className,
-                Properties: new EquatableArray<PropertyModel>(orderedProperties.ToArray()),
-                IsValueType: typeSymbol.IsValueType,
-                IsUnmanaged: typeSymbol.IsUnmanagedType,
-                HasSingleInstanceField: hasSingleInstanceField
-            )
-            : null;
+        return null;
+    }
 
-        return new TargetParserResult(
-            model,
-            new EquatableArray<DiagnosticInfo>(diagnostics.ToArray())
+    /// <summary>
+    /// Builds the model for a list element or map value: leaf types go straight through the same
+    /// classifier a declared member uses (including the v4 API check, since a <c>List&lt;
+    /// System.ReadOnlyMemory&lt;byte&gt;&gt;</c> is unsupported by 4.x exactly like the bare type);
+    /// compound types recurse through <see cref="BuildCompoundModel"/>.
+    /// </summary>
+    /// <param name="declaredType"></param>
+    /// <param name="elementName">Schema segment name — "element" or "value".</param>
+    /// <param name="apiLevel"></param>
+    /// <param name="memberName">The enclosing member's name, for diagnostic messages.</param>
+    /// <param name="declaringTypeName"></param>
+    /// <param name="location"></param>
+    /// <param name="diagnostics"></param>
+    /// <param name="containmentPath"></param>
+    /// <param name="compoundDepth"></param>
+    /// <param name="compoundKinds">The milestone dial, threaded through to nested builders.</param>
+    /// <param name="rejected"></param>
+    private static PropertyModel? BuildNestedElementModel(
+        ITypeSymbol declaredType,
+        string elementName,
+        ParquetApiLevel apiLevel,
+        string memberName,
+        string declaringTypeName,
+        Location location,
+        List<DiagnosticInfo> diagnostics,
+        HashSet<INamedTypeSymbol> containmentPath,
+        int compoundDepth,
+        CompoundKinds compoundKinds,
+        out bool rejected
+    )
+    {
+        rejected = false;
+
+        ITypeSymbol underlying = declaredType;
+        bool nullable = IsNullableColumn(declaredType);
+        if (
+            declaredType is INamedTypeSymbol { IsGenericType: true } generic
+            && generic.ConstructedFrom.SpecialType == SpecialType.System_Nullable_T
+        )
+        {
+            nullable = true;
+            underlying = generic.TypeArguments[0];
+        }
+
+        if (underlying.TypeKind == TypeKind.Error)
+        {
+            rejected = true; // compilation already reports it
+            return null;
+        }
+
+        string display = memberName + " " + elementName;
+
+        if (TryClassifyKind(underlying, declaredType, out PropertyKind leafKind))
+        {
+            if (apiLevel == ParquetApiLevel.V4 && !IsSupportedOnClassicApi(underlying))
+            {
+                diagnostics.Add(
+                    new DiagnosticInfo(
+                        DiagnosticDescriptors.TypeUnsupportedOnClassicApi,
+                        location,
+                        [display, declaredType.ToDisplayString(), declaringTypeName]
+                    )
+                );
+                rejected = true;
+                return null;
+            }
+
+            string? enumUnderlyingTypeName = null;
+            if (leafKind == PropertyKind.Enum && underlying is INamedTypeSymbol enumSymbol)
+            {
+                enumUnderlyingTypeName = enumSymbol.EnumUnderlyingType?.ToDisplayString(
+                    SymbolDisplayFormat.FullyQualifiedFormat
+                );
+            }
+
+            return new PropertyModel(
+                elementName,
+                elementName,
+                declaredType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                TimestampUnit: null,
+                enumUnderlyingTypeName,
+                -1,
+                DecimalPrecision: null,
+                DecimalScale: null,
+                leafKind,
+                nullable
+            );
+        }
+
+        if (TryClassifyCompound(underlying, out PropertyKind compoundKind))
+        {
+            PropertyModel? nested = BuildCompoundModel(
+                compoundKind,
+                underlying,
+                elementName,
+                declaredType,
+                elementName,
+                -1,
+                nullable,
+                apiLevel,
+                declaringTypeName,
+                location,
+                diagnostics,
+                containmentPath,
+                compoundDepth,
+                compoundKinds,
+                out rejected
+            );
+            return nested;
+        }
+
+        diagnostics.Add(
+            new DiagnosticInfo(
+                DiagnosticDescriptors.UnsupportedPropertyType,
+                location,
+                [display, declaredType.ToDisplayString(), declaringTypeName]
+            )
         );
+        rejected = true;
+        return null;
+    }
+
+    /// <summary>
+    /// The type name as generated code must spell it from namespace scope: dotted through any
+    /// containing types ("Outer.Inner"), identical to <c>Name</c> for a top-level type.
+    /// </summary>
+    private static string GetNestedQualifiedTypeName(ITypeSymbol typeSymbol)
+    {
+        if (typeSymbol.ContainingType is null)
+            return typeSymbol.Name;
+
+        var parts = new List<string>();
+        for (
+            ITypeSymbol? current = typeSymbol;
+            current is not null;
+            current = current.ContainingType
+        )
+            parts.Add(current.Name);
+
+        parts.Reverse();
+        return string.Join(".", parts);
     }
 
     /// <summary>
@@ -561,7 +1322,7 @@ public static class TargetParser
     /// Two deliberate choices. The walk stops at the first base type not declared in source, so a
     /// model deriving from a framework type does not drag in <c>Exception.Data</c> and friends as
     /// columns. And members are collected base-first, with a derived declaration replacing a
-    /// shadowed base one *in the base's position* — so adding an <c>override</c> or <c>new</c>
+    /// shadowed base one *in the base's position* — so adding an <see langword="override"/> or <c>new</c>
     /// member changes which declaration is used without reordering the schema.
     /// </para>
     /// </remarks>

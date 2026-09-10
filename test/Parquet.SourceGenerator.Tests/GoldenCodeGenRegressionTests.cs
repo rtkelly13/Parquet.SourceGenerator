@@ -409,6 +409,78 @@ public sealed class GoldenCodeGenRegressionTests
         Assert.Contains("ReadParquetParallelAsync", emittedCode);
     }
 
+    [Fact]
+    public void GoldenMasterNestedStructModel()
+    {
+        // Compound members through the REAL pipeline (issue #176 M2): driver-generated
+        // source is golden-matched and must compile clean against Parquet.Net. Covers the
+        // value-type-struct ladder branches no reference-type round-trip exercises.
+        string source = """
+            using Parquet.SourceGenerator;
+
+            namespace SampleDomain.Models;
+
+            [ParquetSerializable]
+            public partial record Address
+            {
+                public string? City { get; init; }
+                public int? Zip { get; init; }
+            }
+
+            [ParquetSerializable]
+            public partial struct Point
+            {
+                public int X { get; init; }
+                public int Y { get; init; }
+            }
+
+            [ParquetSerializable]
+            public partial record NestedOrder
+            {
+                public int Id { get; init; }
+                public Address? Ship { get; init; }
+                public Address Bill { get; init; } = new();
+                public Point Origin { get; init; }
+                public Point? Start { get; init; }
+            }
+            """;
+
+        var (diagnostics, outputTrees) = RunGenerator(source);
+        Assert.DoesNotContain(diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+
+        string generated = outputTrees[outputTrees.Count - 1].ToString();
+        AssertGoldenMatch("NestedOrderParquetExtensions.g.cs", generated);
+    }
+
+    [Fact]
+    public void GoldenMasterRowLevelListsModel()
+    {
+        // M3a (#176): row-level lists/arrays with leaf elements through the real pipeline.
+        string source = """
+            using Parquet.SourceGenerator;
+            using System;
+            using System.Collections.Generic;
+
+            namespace SampleDomain.Models;
+
+            [ParquetSerializable]
+            public partial record ListOrder
+            {
+                public int Id { get; init; }
+                public List<string?>? Tags { get; init; }
+                public List<int> Scores { get; init; } = new();
+                public Guid[]? Keys { get; init; }
+            }
+            """;
+
+        var (diagnostics, outputTrees) = RunGenerator(source);
+        Assert.DoesNotContain(diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+        string generated = outputTrees[outputTrees.Count - 1].ToString();
+        Assert.Contains("ListField(", generated);
+        Assert.Contains("repLevels_", generated);
+        AssertGoldenMatch("ListOrderParquetExtensions.g.cs", generated);
+    }
+
     private static (
         IReadOnlyList<Diagnostic> Diagnostics,
         IReadOnlyList<SyntaxTree> OutputTrees

@@ -1,6 +1,7 @@
 using System;
 using System.Text;
 using Parquet.SourceGenerator.Emitter.Components;
+using Parquet.SourceGenerator.Emitter.Compound;
 using Parquet.SourceGenerator.Models;
 
 namespace Parquet.SourceGenerator.Emitter;
@@ -34,7 +35,10 @@ public static class CodeEmitter
             builder.AppendLine();
         }
 
-        string extensionsClassName = $"{model.ClassName}ParquetExtensions";
+        // For a nested target ("Outer.Inner") the dotted ClassName resolves in type positions but
+        // cannot seed an identifier; the flattened form keeps sibling-nested types apart.
+        string extensionsClassName =
+            $"{model.ClassName.Replace(".", string.Empty)}ParquetExtensions";
 
         builder.AppendLine($"public static partial class {extensionsClassName}");
         builder.AppendLine("{");
@@ -47,7 +51,7 @@ public static class CodeEmitter
 
         if (model.Properties.Length > 0)
         {
-            EmitResolveSchemaField(builder);
+            EmitResolveSchemaField(builder, usePath: EmissionPlan.For(model).HasCompound);
             builder.AppendLine();
         }
 
@@ -106,17 +110,27 @@ public static class CodeEmitter
 
     private static void EmitSchema(StringBuilder builder, TargetClassModel model)
     {
+        if (EmissionPlan.For(model).HasCompound)
+        {
+            CompoundSchema.EmitSchema(builder, model);
+            return;
+        }
         SchemaComponent.EmitSchema(builder, model);
     }
 
     private static void EmitStaticFields(StringBuilder builder, TargetClassModel model)
     {
+        if (EmissionPlan.For(model).HasCompound)
+        {
+            CompoundSchema.EmitStaticFields(builder, model);
+            return;
+        }
         SchemaComponent.EmitStaticFields(builder, model);
     }
 
-    private static void EmitResolveSchemaField(StringBuilder builder)
+    private static void EmitResolveSchemaField(StringBuilder builder, bool usePath = false)
     {
-        SchemaComponent.EmitResolveSchemaField(builder, usePath: false);
+        SchemaComponent.EmitResolveSchemaField(builder, usePath: usePath);
     }
 
     // ──────────────────────────────────────────────────────────
@@ -254,13 +268,39 @@ public static class CodeEmitter
     }
 
     private static string GetWritePrimitiveCall(
-        PropertyModel prop,
+        LeafColumn col,
         string fieldAccess,
         string bufName,
-        int propIndex,
         string indent = "                "
     )
     {
+        if (col.IsListLeaf)
+        {
+            // List lane: values + def + rep arrays sized by written entries (docs/15 §1.2).
+            string packedL = col.PackedType;
+            return $"{indent}await groupWriter.WriteAllPartsAsync<{packedL}>(\n"
+                + $"{indent}    {fieldAccess},\n"
+                + $"{indent}    new global::System.ReadOnlyMemory<{packedL}>({bufName}, 0, nonNullCount_{col.Slot}),\n"
+                + $"{indent}    new global::System.ReadOnlyMemory<int>(defLevels_{col.Slot}, 0, posCount_{col.Slot}),\n"
+                + $"{indent}    new global::System.ReadOnlyMemory<int>(repLevels_{col.Slot}, 0, posCount_{col.Slot}),\n"
+                + $"{indent}    cancellationToken: cancellationToken);";
+        }
+
+        if (col.IsCompound)
+        {
+            // Compound-path leaf: packed values plus a definition ladder; the group's own
+            // optionality means even a non-nullable leaf needs levels (docs/15 §1).
+            string packed = col.PackedType;
+            return $"{indent}await groupWriter.WriteAllPartsAsync<{packed}>(\n"
+                + $"{indent}    {fieldAccess},\n"
+                + $"{indent}    new global::System.ReadOnlyMemory<{packed}>({bufName}, 0, nonNullCount_{col.Slot}),\n"
+                + $"{indent}    new global::System.ReadOnlyMemory<int>(defLevels_{col.Slot}, 0, count),\n"
+                + $"{indent}    null,\n"
+                + $"{indent}    cancellationToken: cancellationToken);";
+        }
+
+        PropertyModel prop = col.Leaf;
+        int propIndex = col.Slot;
         bool isString = prop.Kind == PropertyKind.Primitive && prop.TypeName.Contains("string");
         bool isByteArray = prop.Kind == PropertyKind.ByteArray;
 
@@ -333,13 +373,80 @@ public static class CodeEmitter
     /// </summary>
     private static void EmitReadWithNullBypass(
         StringBuilder builder,
-        PropertyModel prop,
+        LeafColumn col,
         string fieldAccess,
         string bufName,
-        int propIndex,
         string indent = "                "
     )
     {
+        if (col.IsListLeaf)
+        {
+            // Entries run ahead of rowCount for multi-element lists: size from the column
+            // metadata and re-rent on growth (docs/15 §2.3 — values buffer must cover
+            // NumValues, the packed lane follows inside it).
+            string packedL = col.PackedType;
+            builder.AppendLine(
+                $"{indent}var entries_{col.Slot} = checked((int)groupReader.GetMetadata({fieldAccess}).MetaData.NumValues);"
+            );
+            builder.AppendLine($"{indent}if (entries_{col.Slot} > defLevels_{col.Slot}.Length)");
+            builder.AppendLine($"{indent}{{");
+            builder.AppendLine(
+                $"{indent}    var ndL_{col.Slot} = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_{col.Slot});"
+            );
+            builder.AppendLine(
+                $"{indent}    global::System.Buffers.ArrayPool<int>.Shared.Return(defLevels_{col.Slot}, clearArray: false);"
+            );
+            builder.AppendLine($"{indent}    defLevels_{col.Slot} = ndL_{col.Slot};");
+            builder.AppendLine(
+                $"{indent}    var nrL_{col.Slot} = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_{col.Slot});"
+            );
+            builder.AppendLine(
+                $"{indent}    global::System.Buffers.ArrayPool<int>.Shared.Return(repLevels_{col.Slot}, clearArray: false);"
+            );
+            builder.AppendLine($"{indent}    repLevels_{col.Slot} = nrL_{col.Slot};");
+            builder.AppendLine(
+                $"{indent}    var nvL_{col.Slot} = global::System.Buffers.ArrayPool<{packedL}>.Shared.Rent(entries_{col.Slot});"
+            );
+            builder.AppendLine(
+                $"{indent}    global::System.Buffers.ArrayPool<{packedL}>.Shared.Return(buffer_{col.Slot}, clearArray: true);"
+            );
+            builder.AppendLine($"{indent}    buffer_{col.Slot} = nvL_{col.Slot};");
+            builder.AppendLine($"{indent}}}");
+            builder.AppendLine($"{indent}await groupReader.ReadRawAsync<{packedL}>(");
+            builder.AppendLine($"{indent}    {fieldAccess},");
+            builder.AppendLine(
+                $"{indent}    new global::System.Memory<{packedL}>({bufName}, 0, entries_{col.Slot}),"
+            );
+            builder.AppendLine(
+                $"{indent}    new global::System.Memory<int>(defLevels_{col.Slot}, 0, entries_{col.Slot}),"
+            );
+            builder.AppendLine(
+                $"{indent}    new global::System.Memory<int>(repLevels_{col.Slot}, 0, entries_{col.Slot}),"
+            );
+            builder.AppendLine($"{indent}    cancellationToken);");
+            return;
+        }
+
+        if (col.IsCompound)
+        {
+            // Struct-path leaves always carry a definition ladder — read raw with levels.
+            // Entries == rowCount for structs (maxRep 0), so rowCount sizes everything.
+            string packed = col.PackedType;
+            builder.AppendLine($"{indent}await groupReader.ReadRawAsync<{packed}>(");
+            builder.AppendLine($"{indent}    {fieldAccess},");
+            builder.AppendLine(
+                $"{indent}    new global::System.Memory<{packed}>({bufName}, 0, rowCount),"
+            );
+            builder.AppendLine(
+                $"{indent}    new global::System.Memory<int>(defLevels_{col.Slot}, 0, rowCount),"
+            );
+            builder.AppendLine($"{indent}    null,");
+            builder.AppendLine($"{indent}    cancellationToken);");
+            return;
+        }
+
+        PropertyModel prop = col.Leaf;
+        int propIndex = col.Slot;
         if (!prop.IsNullable)
         {
             builder.AppendLine(GetReadPrimitiveCall(prop, fieldAccess, bufName, indent));
@@ -449,7 +556,7 @@ public static class CodeEmitter
         builder.AppendLine("        if (count == 0) return;");
         builder.AppendLine();
 
-        BufferPoolComponent.EmitWriteRentals(builder, model, "count");
+        EmitWriteRentalsFor(builder, model, "count");
 
         builder.AppendLine();
         builder.AppendLine("        try");
@@ -597,18 +704,29 @@ public static class CodeEmitter
         builder.AppendLine("            using (var groupWriter = writer.CreateRowGroup())");
         builder.AppendLine("            {");
 
-        for (int i = 0; i < model.Properties.Length; i++)
+        LeafColumn[] writeColumns = EmissionPlan.For(model).Columns;
+        foreach (LeafColumn col in writeColumns)
         {
-            PropertyModel prop = model.Properties[i];
-            string fieldAccess = $"_field_{i}";
-            builder.AppendLine(GetWritePrimitiveCall(prop, fieldAccess, $"buffer_{i}", i));
-            BufferPoolComponent.EmitSingleWriteReturn(
-                builder,
-                prop,
-                i,
-                "buffer_",
-                indent: "                "
-            );
+            string fieldAccess = $"_field_{col.Slot}";
+            builder.AppendLine(GetWritePrimitiveCall(col, fieldAccess, $"buffer_{col.Slot}"));
+            if (col.IsCompound || col.IsListLeaf)
+            {
+                CompoundBuffers.EmitSingleWriteReturn(
+                    builder,
+                    col,
+                    varPrefix: "buffer_",
+                    indent: "                "
+                );
+            }
+            else
+            {
+                BufferPoolComponent.EmitSingleWriteReturn(
+                    builder,
+                    col.Leaf,
+                    col.Slot,
+                    indent: "                "
+                );
+            }
         }
 
         builder.AppendLine("            }");
@@ -616,7 +734,7 @@ public static class CodeEmitter
         builder.AppendLine("        finally");
         builder.AppendLine("        {");
 
-        BufferPoolComponent.EmitWriteReturns(builder, model);
+        EmitWriteReturnsFor(builder, model);
 
         builder.AppendLine("        }");
         builder.AppendLine("    }");
@@ -872,12 +990,13 @@ public static class CodeEmitter
             builder.AppendLine(
                 "        global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;"
             );
-            for (int i = 0; i < model.Properties.Length; i++)
+            foreach (LeafColumn col in EmissionPlan.For(model).Columns)
             {
                 builder.AppendLine(
-                    $"        var field_{i} = ResolveSchemaField(fileFields, {i}, _field_{i}, ref fieldsByName);"
+                    $"        var field_{col.Slot} = ResolveSchemaField(fileFields, {col.Slot}, _field_{col.Slot}, ref fieldsByName);"
                 );
             }
+
             builder.AppendLine();
         }
 
@@ -890,17 +1009,15 @@ public static class CodeEmitter
         builder.AppendLine("            int rowCount = (int)groupReader.RowCount;");
         builder.AppendLine();
 
-        BufferPoolComponent.EmitRentals(builder, model, "rowCount", indent: "            ");
+        EmitRentalsFor(builder, model, "rowCount", indent: "            ");
 
         builder.AppendLine();
         builder.AppendLine("            try");
         builder.AppendLine("            {");
 
-        for (int i = 0; i < model.Properties.Length; i++)
+        foreach (LeafColumn col in EmissionPlan.For(model).Columns)
         {
-            PropertyModel prop = model.Properties[i];
-            string fieldAccess = $"field_{i}";
-            EmitReadWithNullBypass(builder, prop, fieldAccess, $"buffer_{i}", i);
+            EmitReadWithNullBypass(builder, col, $"field_{col.Slot}", $"buffer_{col.Slot}");
         }
 
         builder.AppendLine();
@@ -945,6 +1062,13 @@ public static class CodeEmitter
         }
         else
         {
+            if (EmissionPlan.For(model).HasCompound)
+                CompoundMapping.EmitCompoundReconstruction(
+                    builder,
+                    model,
+                    "rowCount",
+                    "                "
+                );
             builder.AppendLine("#if NET8_0_OR_GREATER");
             builder.AppendLine("                void PopulateSpan()");
             builder.AppendLine("                {");
@@ -958,12 +1082,12 @@ public static class CodeEmitter
             );
             builder.AppendLine("                        {");
 
-            for (int i = 0; i < model.Properties.Length; i++)
-            {
-                PropertyModel prop = model.Properties[i];
-                string readExpr = GetReadExpression(prop, $"buffer_{i}[i]");
-                builder.AppendLine($"                            {prop.Name} = {readExpr},");
-            }
+            CompoundMapping.EmitRootMemberAssignments(
+                builder,
+                model,
+                "i",
+                "                            "
+            );
 
             builder.AppendLine("                        };");
             builder.AppendLine("                    }");
@@ -975,12 +1099,12 @@ public static class CodeEmitter
             builder.AppendLine($"                    results.Add(new {model.ClassName}");
             builder.AppendLine("                    {");
 
-            for (int i = 0; i < model.Properties.Length; i++)
-            {
-                PropertyModel prop = model.Properties[i];
-                string readExpr = GetReadExpression(prop, $"buffer_{i}[i]");
-                builder.AppendLine($"                        {prop.Name} = {readExpr},");
-            }
+            CompoundMapping.EmitRootMemberAssignments(
+                builder,
+                model,
+                "i",
+                "                        "
+            );
 
             builder.AppendLine("                    });");
             builder.AppendLine("                }");
@@ -991,7 +1115,7 @@ public static class CodeEmitter
         builder.AppendLine("            finally");
         builder.AppendLine("            {");
 
-        BufferPoolComponent.EmitReturns(builder, model, indent: "                ");
+        EmitReturnsFor(builder, model, indent: "                ");
 
         builder.AppendLine("            }");
         builder.AppendLine("        }");
@@ -1049,12 +1173,13 @@ public static class CodeEmitter
             builder.AppendLine(
                 "        global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;"
             );
-            for (int i = 0; i < model.Properties.Length; i++)
+            foreach (LeafColumn col in EmissionPlan.For(model).Columns)
             {
                 builder.AppendLine(
-                    $"        var field_{i} = ResolveSchemaField(fileFields, {i}, _field_{i}, ref fieldsByName);"
+                    $"        var field_{col.Slot} = ResolveSchemaField(fileFields, {col.Slot}, _field_{col.Slot}, ref fieldsByName);"
                 );
             }
+
             builder.AppendLine();
         }
 
@@ -1067,21 +1192,19 @@ public static class CodeEmitter
         builder.AppendLine("            int rowCount = (int)groupReader.RowCount;");
         builder.AppendLine();
 
-        BufferPoolComponent.EmitRentals(builder, model, "rowCount", indent: "            ");
+        EmitRentalsFor(builder, model, "rowCount", indent: "            ");
 
         builder.AppendLine();
         builder.AppendLine("            try");
         builder.AppendLine("            {");
 
-        for (int i = 0; i < model.Properties.Length; i++)
+        foreach (LeafColumn col in EmissionPlan.For(model).Columns)
         {
-            PropertyModel prop = model.Properties[i];
-            string fieldAccess = $"field_{i}";
-            EmitReadWithNullBypass(builder, prop, fieldAccess, $"buffer_{i}", i);
+            EmitReadWithNullBypass(builder, col, $"field_{col.Slot}", $"buffer_{col.Slot}");
         }
 
         builder.AppendLine();
-        PropertyMappingComponent.EmitArrayMaterialization(
+        EmitArrayMaterializationFor(
             builder,
             model,
             "results",
@@ -1093,7 +1216,7 @@ public static class CodeEmitter
         builder.AppendLine("            finally");
         builder.AppendLine("            {");
 
-        BufferPoolComponent.EmitReturns(builder, model, indent: "                ");
+        EmitReturnsFor(builder, model, indent: "                ");
 
         builder.AppendLine("            }");
         builder.AppendLine("        }");
@@ -1145,12 +1268,13 @@ public static class CodeEmitter
             builder.AppendLine(
                 "        global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;"
             );
-            for (int i = 0; i < model.Properties.Length; i++)
+            foreach (LeafColumn col in EmissionPlan.For(model).Columns)
             {
                 builder.AppendLine(
-                    $"        var field_{i} = ResolveSchemaField(fileFields, {i}, _field_{i}, ref fieldsByName);"
+                    $"        var field_{col.Slot} = ResolveSchemaField(fileFields, {col.Slot}, _field_{col.Slot}, ref fieldsByName);"
                 );
             }
+
             builder.AppendLine();
         }
 
@@ -1163,30 +1287,30 @@ public static class CodeEmitter
         builder.AppendLine("            int rowCount = (int)groupReader.RowCount;");
         builder.AppendLine();
 
-        BufferPoolComponent.EmitRentals(builder, model, "rowCount", indent: "            ");
+        EmitRentalsFor(builder, model, "rowCount", indent: "            ");
 
         builder.AppendLine("            try");
         builder.AppendLine("            {");
 
-        for (int i = 0; i < model.Properties.Length; i++)
+        foreach (LeafColumn col in EmissionPlan.For(model).Columns)
         {
-            PropertyModel prop = model.Properties[i];
-            string fieldAccess = $"field_{i}";
-            EmitReadWithNullBypass(builder, prop, fieldAccess, $"buffer_{i}", i);
+            EmitReadWithNullBypass(builder, col, $"field_{col.Slot}", $"buffer_{col.Slot}");
         }
 
         builder.AppendLine();
+        if (EmissionPlan.For(model).HasCompound)
+            CompoundMapping.EmitCompoundReconstruction(
+                builder,
+                model,
+                "rowCount",
+                "                    "
+            );
         builder.AppendLine("                for (int i = 0; i < rowCount; i++)");
         builder.AppendLine("                {");
         builder.AppendLine($"                    yield return new {model.ClassName}");
         builder.AppendLine("                    {");
 
-        for (int i = 0; i < model.Properties.Length; i++)
-        {
-            PropertyModel prop = model.Properties[i];
-            string readExpr = GetReadExpression(prop, $"buffer_{i}[i]");
-            builder.AppendLine($"                        {prop.Name} = {readExpr},");
-        }
+        CompoundMapping.EmitRootMemberAssignments(builder, model, "i", "                        ");
 
         builder.AppendLine("                    };");
         builder.AppendLine("                }");
@@ -1194,7 +1318,7 @@ public static class CodeEmitter
         builder.AppendLine("            finally");
         builder.AppendLine("            {");
 
-        BufferPoolComponent.EmitReturns(builder, model, indent: "                ");
+        EmitReturnsFor(builder, model, indent: "                ");
 
         builder.AppendLine("            }");
         builder.AppendLine("        }");
@@ -1363,16 +1487,15 @@ public static class CodeEmitter
             "        global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;"
         );
         builder.AppendLine();
-
-        for (int i = 0; i < model.Properties.Length; i++)
+        foreach (LeafColumn col in EmissionPlan.For(model).Columns)
         {
             builder.AppendLine(
-                $"        var field_{i} = ResolveSchemaField(fileFields, {i}, _field_{i}, ref fieldsByName);"
+                $"        var field_{col.Slot} = ResolveSchemaField(fileFields, {col.Slot}, _field_{col.Slot}, ref fieldsByName);"
             );
         }
 
         builder.AppendLine();
-        BufferPoolComponent.EmitRentals(builder, model, "maxRowCount");
+        EmitRentalsFor(builder, model, "maxRowCount");
         builder.AppendLine();
 
         StringDeduplicatorComponent.EmitDeduplicatorDeclaration(builder, model);
@@ -1387,14 +1510,13 @@ public static class CodeEmitter
         builder.AppendLine("                if (rowCount == 0) continue;");
         builder.AppendLine();
 
-        for (int i = 0; i < model.Properties.Length; i++)
+        foreach (LeafColumn col in EmissionPlan.For(model).Columns)
         {
-            PropertyModel prop = model.Properties[i];
-            EmitReadWithNullBypass(builder, prop, $"field_{i}", $"buffer_{i}", i);
+            EmitReadWithNullBypass(builder, col, $"field_{col.Slot}", $"buffer_{col.Slot}");
         }
 
         builder.AppendLine();
-        PropertyMappingComponent.EmitArrayMaterialization(
+        EmitArrayMaterializationFor(
             builder,
             model,
             "results",
@@ -1407,7 +1529,7 @@ public static class CodeEmitter
         builder.AppendLine("        finally");
         builder.AppendLine("        {");
 
-        BufferPoolComponent.EmitReturns(builder, model);
+        EmitReturnsFor(builder, model);
 
         builder.AppendLine("        }");
         builder.AppendLine();
@@ -1498,12 +1620,13 @@ public static class CodeEmitter
             builder.AppendLine(
                 "        global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;"
             );
-            for (int i = 0; i < model.Properties.Length; i++)
+            foreach (LeafColumn col in EmissionPlan.For(model).Columns)
             {
                 builder.AppendLine(
-                    $"        var field_{i} = ResolveSchemaField(fileFields, {i}, _field_{i}, ref fieldsByName);"
+                    $"        var field_{col.Slot} = ResolveSchemaField(fileFields, {col.Slot}, _field_{col.Slot}, ref fieldsByName);"
                 );
             }
+
             builder.AppendLine();
         }
 
@@ -1516,18 +1639,16 @@ public static class CodeEmitter
         builder.AppendLine("            int rowCount = (int)groupReader.RowCount;");
         builder.AppendLine("            int startIdx = rowOffsets[r];");
         builder.AppendLine();
-        BufferPoolComponent.EmitRentals(builder, model, "rowCount", indent: "            ");
+        EmitRentalsFor(builder, model, "rowCount", indent: "            ");
         builder.AppendLine();
         builder.AppendLine("            try");
         builder.AppendLine("            {");
-        for (int i = 0; i < model.Properties.Length; i++)
+        foreach (LeafColumn col in EmissionPlan.For(model).Columns)
         {
-            PropertyModel prop = model.Properties[i];
-            string fieldAccess = $"field_{i}";
-            EmitReadWithNullBypass(builder, prop, fieldAccess, $"buffer_{i}", i);
+            EmitReadWithNullBypass(builder, col, $"field_{col.Slot}", $"buffer_{col.Slot}");
         }
         builder.AppendLine();
-        PropertyMappingComponent.EmitArrayMaterialization(
+        EmitArrayMaterializationFor(
             builder,
             model,
             "resultArray",
@@ -1537,7 +1658,7 @@ public static class CodeEmitter
         builder.AppendLine("            }");
         builder.AppendLine("            finally");
         builder.AppendLine("            {");
-        BufferPoolComponent.EmitReturns(builder, model, indent: "                ");
+        EmitReturnsFor(builder, model, indent: "                ");
         builder.AppendLine("            }");
         builder.AppendLine("        }");
         builder.AppendLine();
@@ -1802,16 +1923,16 @@ public static class CodeEmitter
             builder.AppendLine(
                 "            global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;"
             );
-            for (int i = 0; i < model.Properties.Length; i++)
+            foreach (LeafColumn col in EmissionPlan.For(model).Columns)
             {
                 builder.AppendLine(
-                    $"            var field_{i} = ResolveSchemaField(fileFields, {i}, _field_{i}, ref fieldsByName);"
+                    $"            var field_{col.Slot} = ResolveSchemaField(fileFields, {col.Slot}, _field_{col.Slot}, ref fieldsByName);"
                 );
             }
             builder.AppendLine();
         }
 
-        BufferPoolComponent.EmitRentals(builder, model, "maxRowGroupSize", indent: "            ");
+        EmitRentalsFor(builder, model, "maxRowGroupSize", indent: "            ");
         builder.AppendLine();
         builder.AppendLine("            try");
         builder.AppendLine("            {");
@@ -1836,20 +1957,18 @@ public static class CodeEmitter
         builder.AppendLine("                    int rowCount = (int)groupReader.RowCount;");
         builder.AppendLine("                    int startIdx = rowOffsets[r];");
         builder.AppendLine();
-        for (int i = 0; i < model.Properties.Length; i++)
+        foreach (LeafColumn col in EmissionPlan.For(model).Columns)
         {
-            PropertyModel prop = model.Properties[i];
             EmitReadWithNullBypass(
                 builder,
-                prop,
-                $"field_{i}",
-                $"buffer_{i}",
-                i,
+                col,
+                $"field_{col.Slot}",
+                $"buffer_{col.Slot}",
                 indent: "                    "
             );
         }
         builder.AppendLine();
-        PropertyMappingComponent.EmitArrayMaterialization(
+        EmitArrayMaterializationFor(
             builder,
             model,
             "target",
@@ -1860,7 +1979,7 @@ public static class CodeEmitter
         builder.AppendLine("            }");
         builder.AppendLine("            finally");
         builder.AppendLine("            {");
-        BufferPoolComponent.EmitReturns(builder, model, indent: "                ");
+        EmitReturnsFor(builder, model, indent: "                ");
         builder.AppendLine("            }");
         builder.AppendLine("        }");
         builder.AppendLine("        catch");
@@ -1893,9 +2012,12 @@ public static class CodeEmitter
             : $"ref var srcRef_ = ref global::System.Runtime.InteropServices.MemoryMarshal.GetReference({sourceExpr});";
         builder.AppendLine($"{indent}{srcRefDecl}");
 
-        for (int i = 0; i < model.Properties.Length; i++)
+        foreach (LeafColumn col in EmissionPlan.For(model).Columns)
         {
-            PropertyModel prop = model.Properties[i];
+            if (col.IsCompound || col.IsListLeaf)
+                continue; // compound/list leaves use plain array indexing (branchy ladder anyway)
+            int i = col.Slot;
+            PropertyModel prop = col.Leaf;
             builder.AppendLine(
                 $"{indent}ref var dstRef_{i} = ref global::System.Runtime.InteropServices.MemoryMarshal.GetArrayDataReference(buffer_{i});"
             );
@@ -1922,9 +2044,20 @@ public static class CodeEmitter
         string prefix
     )
     {
-        for (int i = 0; i < model.Properties.Length; i++)
+        foreach (LeafColumn col in EmissionPlan.For(model).Columns)
         {
-            PropertyModel prop = model.Properties[i];
+            int i = col.Slot;
+            PropertyModel prop = col.Leaf;
+            if (col.IsListLeaf)
+            {
+                CompoundMapping.EmitListExtraction(builder, col, "item", prefix);
+                continue;
+            }
+            if (col.IsCompound)
+            {
+                CompoundMapping.EmitCompoundExtraction(builder, col, "item", "i", prefix);
+                continue;
+            }
             if (BufferPoolComponent.UsesWriteAllParts(prop))
             {
                 string valVar = $"val_{i}";
@@ -1971,9 +2104,20 @@ public static class CodeEmitter
         string prefix
     )
     {
-        for (int i = 0; i < model.Properties.Length; i++)
+        foreach (LeafColumn col in EmissionPlan.For(model).Columns)
         {
-            PropertyModel prop = model.Properties[i];
+            int i = col.Slot;
+            PropertyModel prop = col.Leaf;
+            if (col.IsListLeaf)
+            {
+                CompoundMapping.EmitListExtraction(builder, col, "item", prefix);
+                continue;
+            }
+            if (col.IsCompound)
+            {
+                CompoundMapping.EmitCompoundExtraction(builder, col, "item", "i", prefix);
+                continue;
+            }
             if (BufferPoolComponent.UsesWriteAllParts(prop))
             {
                 string valVar = $"val_{i}";
@@ -2014,9 +2158,20 @@ public static class CodeEmitter
         string prefix
     )
     {
-        for (int i = 0; i < model.Properties.Length; i++)
+        foreach (LeafColumn col in EmissionPlan.For(model).Columns)
         {
-            PropertyModel prop = model.Properties[i];
+            int i = col.Slot;
+            PropertyModel prop = col.Leaf;
+            if (col.IsListLeaf)
+            {
+                CompoundMapping.EmitListExtraction(builder, col, "item", prefix);
+                continue;
+            }
+            if (col.IsCompound)
+            {
+                CompoundMapping.EmitCompoundExtraction(builder, col, "item", "idx", prefix);
+                continue;
+            }
             if (BufferPoolComponent.UsesWriteAllParts(prop))
             {
                 string valVar = $"val_{i}";
@@ -2048,6 +2203,110 @@ public static class CodeEmitter
                 builder.AppendLine($"{prefix}{bufPrefix}{i}[idx] = {writeExpr};");
             }
         }
+    }
+
+    // ── compound routing shims (#176 M2): flat models take the original shared components
+    //    byte-for-byte unchanged; any model with a compound member takes the v6-only
+    //    Compound/ implementations (the classic backend links the shared components only).
+    private static void EmitRentalsFor(
+        StringBuilder builder,
+        TargetClassModel model,
+        string sizeExpr,
+        string varPrefix = "buffer_",
+        string indent = "        ",
+        bool isWrite = false
+    )
+    {
+        if (EmissionPlan.For(model).HasCompound)
+        {
+            CompoundBuffers.EmitRentals(builder, model, sizeExpr, varPrefix, indent);
+            return;
+        }
+        BufferPoolComponent.EmitRentals(builder, model, sizeExpr, varPrefix, indent, isWrite);
+    }
+
+    private static void EmitReturnsFor(
+        StringBuilder builder,
+        TargetClassModel model,
+        string varPrefix = "buffer_",
+        string indent = "            ",
+        bool isWrite = false
+    )
+    {
+        if (EmissionPlan.For(model).HasCompound)
+        {
+            CompoundBuffers.EmitReturns(builder, model, varPrefix, indent);
+            return;
+        }
+        BufferPoolComponent.EmitReturns(builder, model, varPrefix, indent, isWrite);
+    }
+
+    private static void EmitWriteRentalsFor(
+        StringBuilder builder,
+        TargetClassModel model,
+        string sizeExpr,
+        string varPrefix = "buffer_",
+        string indent = "        "
+    )
+    {
+        if (EmissionPlan.For(model).HasCompound)
+        {
+            CompoundBuffers.EmitWriteRentals(builder, model, sizeExpr, varPrefix, indent);
+            return;
+        }
+        BufferPoolComponent.EmitWriteRentals(builder, model, sizeExpr, varPrefix, indent);
+    }
+
+    private static void EmitWriteReturnsFor(
+        StringBuilder builder,
+        TargetClassModel model,
+        string varPrefix = "buffer_",
+        string indent = "            "
+    )
+    {
+        if (EmissionPlan.For(model).HasCompound)
+        {
+            CompoundBuffers.EmitWriteReturns(builder, model, varPrefix, indent);
+            return;
+        }
+        BufferPoolComponent.EmitWriteReturns(builder, model, varPrefix, indent);
+    }
+
+    private static void EmitArrayMaterializationFor(
+        StringBuilder builder,
+        TargetClassModel model,
+        string targetArrayVar,
+        string startOffsetVar,
+        string rowCountVar = "rowCount",
+        string indexVar = "i",
+        string bufferPrefix = "buffer_",
+        string indent = "                "
+    )
+    {
+        if (EmissionPlan.For(model).HasCompound)
+        {
+            CompoundMapping.EmitArrayMaterialization(
+                builder,
+                model,
+                targetArrayVar,
+                startOffsetVar,
+                rowCountVar,
+                indexVar,
+                bufferPrefix,
+                indent
+            );
+            return;
+        }
+        PropertyMappingComponent.EmitArrayMaterialization(
+            builder,
+            model,
+            targetArrayVar,
+            startOffsetVar,
+            rowCountVar,
+            indexVar,
+            bufferPrefix,
+            indent
+        );
     }
 
     private static string GetBufferElementType(PropertyModel prop) =>

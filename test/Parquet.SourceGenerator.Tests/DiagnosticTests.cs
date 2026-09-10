@@ -120,8 +120,8 @@ public sealed class DiagnosticTests
     [Theory]
     [InlineData("char", "Initial")]
     [InlineData("System.DateTimeOffset", "OccurredAt")]
-    [InlineData("System.Collections.Generic.List<int>", "Tags")]
-    [InlineData("int[]", "Values")]
+    // List<int> and int[] moved to the supported theory with M3a (#176): row-level
+    // lists/arrays of leaf elements now emit. Non-leaf element shapes stay PARQ006.
     [InlineData("System.Numerics.BigInteger", "BigValue")]
     public void UnsupportedMemberTypeTriggersPARQ006(string typeName, string memberName)
     {
@@ -175,6 +175,8 @@ public sealed class DiagnosticTests
     [InlineData("byte[]?")]
     [InlineData("System.Guid?")]
     [InlineData("System.DateTime?")]
+    [InlineData("System.Collections.Generic.List<int>")]
+    [InlineData("int[]")]
     public void SupportedMemberTypeDoesNotTriggerPARQ006(string typeName)
     {
         // The whole point of aligning the allowlist with Parquet.Net's own SupportedTypes: PARQ006
@@ -367,10 +369,12 @@ public sealed class DiagnosticTests
     }
 
     [Fact]
-    public void NestedTypeTriggersPARQ009()
+    public void NestedTypeNowGeneratesQualifiedExtensions()
     {
-        // The extension class is emitted at namespace scope and referred to the target by its bare
-        // name, which does not resolve from there.
+        // #176 reversed PARQ009's blanket rejection: a nested [ParquetSerializable] declaration
+        // is a legal target. The extension class name flattens the containing-type path
+        // ("ContainerNestedRowParquetExtensions") while type references stay dotted, and the
+        // hint name carries the namespace qualification that keeps sibling nested types apart.
         string source = """
             using Parquet.SourceGenerator;
 
@@ -378,6 +382,36 @@ public sealed class DiagnosticTests
             {
                 [ParquetSerializable]
                 public partial class NestedRow
+                {
+                    [ParquetColumn("id")]
+                    public int Id { get; init; }
+                }
+            }
+            """;
+
+        var (diagnostics, outputTrees) = RunGenerator(source);
+
+        Assert.DoesNotContain(
+            diagnostics,
+            d => d.Id == DiagnosticDescriptors.NestedTypeNotSupported.Id
+        );
+        Assert.True(outputTrees.Count > 1, "expected generated source for the nested target");
+        string generated = outputTrees[^1].ToString();
+        Assert.Contains("ContainerNestedRowParquetExtensions", generated);
+        Assert.Contains("new Container.NestedRow", generated);
+    }
+
+    [Fact]
+    public void PrivateNestedTypeStillTriggersPARQ009()
+    {
+        // What the reversal keeps: a declaration the namespace-scope extension class cannot name.
+        string source = """
+            using Parquet.SourceGenerator;
+
+            public static partial class Container
+            {
+                [ParquetSerializable]
+                private partial class NestedRow
                 {
                     [ParquetColumn("id")]
                     public int Id { get; init; }

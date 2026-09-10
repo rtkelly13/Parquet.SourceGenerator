@@ -64,6 +64,31 @@ Comparing write throughput across standard columnar compression formats using th
 
 ---
 
+## 📏 Re-baseline (2026-09-08, dev host)
+
+First read-suite measurement since the `List<T>.Capacity` fix (docs/07 §2.2) and the real parallel reader (§2.1), closing the audit's "reasoned rather than measured" note.
+
+**Host:** Apple M1, .NET 9.0.17 (net8 target, roll-forwarded), InProcess, BenchmarkDotNet v0.14.0, Release. Absolute times on this host run **2–3× above the CI baseline** — the reflection baseline included — so this section records *within-run ratios* only. The tables above remain the source of truth for absolute throughput, which CI regenerates.
+
+The gap between bulk `ReadParquetAsync` and streaming `ReadParquetStreamAsync` isolates the row materialization + list growth a batched AoS API (see #147) could remove:
+
+| Dataset | Bulk | Streamed | Materialization share |
+|:---|---:|---:|---:|
+| ScaleEvent 1M (4 primitive cols) | 131.1 ms | 101.0 ms | ~23% |
+| Diamonds 54k | 51.3 ms | 34.3 ms | ~33% |
+| TPC-H LineItem 60k | 113.7 ms | 103.7 ms | ~9% |
+| Adult Census 33k (dict strings) | 210.6 ms | 109.9 ms | ~48% (Gen2-stressed outlier) |
+
+**Conclusions:**
+
+1. Decode + string handling dominates read time (~60–90%) even on the most struct-friendly schema. The AoS batch-overload idea caps at ~10–30% on bulk reads and stays a parked sub-issue of #147.
+2. Parallel buffer read was the outright fastest Census reader (83.5 ms vs 210.6 bulk / 109.9 streamed) and matched the sequential readers on TPC-H and Diamonds — consistent with decode-bound workloads.
+3. Read-perf roadmap re-sequenced: #143 (null-bypass paths) and #146 (row-group prefetching) attack the measured hot spot and land ahead of #147's AoS sibling.
+
+Artifacts: `BenchmarkDotNet.Artifacts/results/*-report-github.md` (2026-09-08 run); discussion in [issue #147](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/147).
+
+---
+
 ## 🛠️ Running Benchmarks Locally
 
 You can execute the full BenchmarkDotNet suite locally using the .NET CLI:

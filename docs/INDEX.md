@@ -85,6 +85,10 @@ Welcome to the **Parquet.SourceGenerator** documentation repository. This folder
      - Modern and classic Parquet.Net product boundaries.
      - Backward, forward, schema-evolution, and semantic compatibility definitions.
 
+16. **[15 - Nested Types: M0 Spike Findings](./15-NESTED-TYPES-SPIKE-FINDINGS.md)**
+     - Empirically verified def/rep level conventions for structs, lists, and maps.
+     - Parquet.Net 6.1.0 and 4.25.0 nested API traps that shape the #176 emitter design.
+
 
 ---
 
