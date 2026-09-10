@@ -119,9 +119,11 @@ internal static class SchemaComponent
         builder.AppendLine("        int index,");
         builder.AppendLine("        global::Parquet.Schema.DataField expected,");
         builder.AppendLine(
-            "        ref global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? byName)"
+            "        ref global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? byName,"
         );
+        builder.AppendLine("        out bool missing)");
         builder.AppendLine("    {");
+        builder.AppendLine("        missing = false;");
 
         if (usePath)
         {
@@ -178,6 +180,13 @@ internal static class SchemaComponent
             );
             builder.AppendLine("        }");
             builder.AppendLine();
+            builder.AppendLine(
+                "        // Optional column absent from the file: documented schema evolution. The caller"
+            );
+            builder.AppendLine(
+                "        // materialises nulls for it instead of asking the file for a column it does not have."
+            );
+            builder.AppendLine("        missing = true;");
             builder.AppendLine("        return expected;");
             builder.AppendLine("    }");
         }
@@ -241,6 +250,13 @@ internal static class SchemaComponent
             );
             builder.AppendLine("        }");
             builder.AppendLine();
+            builder.AppendLine(
+                "        // Optional column absent from the file: documented schema evolution. The caller"
+            );
+            builder.AppendLine(
+                "        // materialises nulls for it instead of asking the file for a column it does not have."
+            );
+            builder.AppendLine("        missing = true;");
             builder.AppendLine("        return expected;");
             builder.AppendLine("    }");
         }

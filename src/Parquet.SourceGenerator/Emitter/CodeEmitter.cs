@@ -99,6 +99,26 @@ public static class CodeEmitter
         // Zero-copy ReadOnlyMemory overloads
         EmitReadMemoryOverloads(builder, model);
 
+        // Struct-of-arrays columnar batch API (#147) — flat models only
+        if (ColumnBatchComponent.Supports(model))
+        {
+            builder.AppendLine();
+            ColumnBatchComponent.EmitBatchStruct(builder, model);
+            builder.AppendLine();
+            ColumnBatchComponent.EmitReadBatchesAsync(
+                builder,
+                model,
+                static (b, col, field, buf) => EmitReadWithNullBypass(b, col, field, buf)
+            );
+        }
+
+        // Row-group predicate pushdown (#149) — the zone-map guard the read loops call.
+        if (RowGroupPruningComponent.IsEnabled(model))
+        {
+            builder.AppendLine();
+            RowGroupPruningComponent.EmitAcceptRowGroup(builder, model);
+        }
+
         // Sorted row-group pruning: binary search over footer [Min, Max] statistics (issue #151)
         var sortableColumns = SortedRowGroupPruningComponent.SortableColumns(model);
         if (sortableColumns.Count > 0)
@@ -111,6 +131,8 @@ public static class CodeEmitter
         }
 
         builder.AppendLine("}");
+
+        RowGroupPruningComponent.EmitMetadataStruct(builder, model);
 
         return builder.ToString();
     }
@@ -382,7 +404,26 @@ public static class CodeEmitter
     /// the rented buffer is zeroed instead, skipping I/O, decompression and decoding.
     /// Columns without statistics (or partial nulls) fall through to the standard read.
     /// </summary>
-    private static void EmitReadWithNullBypass(
+    /// <summary>
+    /// True when this column may legitimately be absent from a file the generated reader is asked
+    /// to read: an optional flat column, which schema evolution allows a producer to drop.
+    /// Required columns cannot be missing (resolution throws) and nested leaves are outside the
+    /// documented compatibility envelope.
+    /// </summary>
+    private static bool SupportsMissingColumn(LeafColumn col) =>
+        !col.IsCompound && !col.IsListLeaf && col.Leaf.IsNullable;
+
+    /// <summary>
+    /// Emits the one-line schema resolution for a column. Columns that can go missing capture the
+    /// absence flag; the rest discard it, because for them resolution either succeeds or throws.
+    /// </summary>
+    internal static string EmitResolveFieldLine(LeafColumn col, string indent)
+    {
+        string missingArg = SupportsMissingColumn(col) ? $"out bool missing_{col.Slot}" : "out _";
+        return $"{indent}var field_{col.Slot} = ResolveSchemaField(fileFields, {col.Slot}, _field_{col.Slot}, ref fieldsByName, {missingArg});";
+    }
+
+    internal static void EmitReadWithNullBypass(
         StringBuilder builder,
         LeafColumn col,
         string fieldAccess,
@@ -465,13 +506,18 @@ public static class CodeEmitter
         }
 
         builder.AppendLine(
-            $"{indent}var chunkStats_{propIndex} = groupReader.GetStatistics({fieldAccess});"
+            $"{indent}// The column is absent from the file (optional-column schema evolution) or the chunk is"
         );
-        builder.AppendLine($"{indent}if (chunkStats_{propIndex}?.NullCount == rowCount)");
-        builder.AppendLine($"{indent}{{");
         builder.AppendLine(
-            $"{indent}    // All-null chunk: skip page reading, decompression and decoding entirely."
+            $"{indent}// entirely null: either way the answer is nulls, with no page read, decompression or decoding."
         );
+        builder.AppendLine(
+            $"{indent}var chunkStats_{propIndex} = missing_{propIndex} ? null : groupReader.GetStatistics({fieldAccess});"
+        );
+        builder.AppendLine(
+            $"{indent}if (missing_{propIndex} || chunkStats_{propIndex}?.NullCount == rowCount)"
+        );
+        builder.AppendLine($"{indent}{{");
         builder.AppendLine($"{indent}    global::System.Array.Clear({bufName}, 0, rowCount);");
         builder.AppendLine($"{indent}}}");
         builder.AppendLine($"{indent}else");
@@ -959,7 +1005,7 @@ public static class CodeEmitter
             $"        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,"
         );
         builder.AppendLine(
-            $"        global::System.Threading.CancellationToken cancellationToken = default)"
+            $"        global::System.Threading.CancellationToken cancellationToken = default{RowGroupPruningComponent.SignatureSuffix(model)}"
         );
         builder.AppendLine("    {");
         builder.AppendLine(
@@ -976,9 +1022,22 @@ public static class CodeEmitter
         builder.AppendLine("            stream,");
         builder.AppendLine("            BuildFormatOptions(options),");
         builder.AppendLine("            cancellationToken: cancellationToken);");
-        builder.AppendLine(
-            "        int totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);"
-        );
+        builder.AppendLine("        var fileFields = reader.Schema.DataFields;");
+        builder.AppendLine();
+
+        if (model.Properties.Length > 0)
+        {
+            builder.AppendLine(
+                "        global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;"
+            );
+            foreach (LeafColumn col in EmissionPlan.For(model).Columns)
+            {
+                builder.AppendLine(EmitResolveFieldLine(col, "        "));
+            }
+
+            builder.AppendLine();
+        }
+        RowGroupPruningComponent.EmitSelectionPass(builder, model, "totalRows");
         builder.AppendLine("#if NET8_0_OR_GREATER");
         builder.AppendLine(
             $"        var results = new global::System.Collections.Generic.List<{model.ClassName}>(totalRows);"
@@ -993,29 +1052,13 @@ public static class CodeEmitter
         builder.AppendLine("#endif");
         builder.AppendLine("        int currentOffset = 0;");
         builder.AppendLine();
-        builder.AppendLine("        var fileFields = reader.Schema.DataFields;");
-        builder.AppendLine();
-
-        if (model.Properties.Length > 0)
-        {
-            builder.AppendLine(
-                "        global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;"
-            );
-            foreach (LeafColumn col in EmissionPlan.For(model).Columns)
-            {
-                builder.AppendLine(
-                    $"        var field_{col.Slot} = ResolveSchemaField(fileFields, {col.Slot}, _field_{col.Slot}, ref fieldsByName);"
-                );
-            }
-
-            builder.AppendLine();
-        }
 
         StringDeduplicatorComponent.EmitDeduplicatorDeclaration(builder, model);
 
         builder.AppendLine("        for (int r = 0; r < reader.RowGroupCount; r++)");
         builder.AppendLine("        {");
         builder.AppendLine("            cancellationToken.ThrowIfCancellationRequested();");
+        RowGroupPruningComponent.EmitSelectionCheck(builder, model, "            ");
         builder.AppendLine("            using var groupReader = reader.OpenRowGroupReader(r);");
         builder.AppendLine("            int rowCount = (int)groupReader.RowCount;");
         builder.AppendLine();
@@ -1153,7 +1196,7 @@ public static class CodeEmitter
             $"        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,"
         );
         builder.AppendLine(
-            $"        global::System.Threading.CancellationToken cancellationToken = default)"
+            $"        global::System.Threading.CancellationToken cancellationToken = default{RowGroupPruningComponent.SignatureSuffix(model)}"
         );
         builder.AppendLine("    {");
         builder.AppendLine(
@@ -1170,12 +1213,6 @@ public static class CodeEmitter
         builder.AppendLine("            stream,");
         builder.AppendLine("            BuildFormatOptions(options),");
         builder.AppendLine("            cancellationToken: cancellationToken);");
-        builder.AppendLine(
-            "        int totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);"
-        );
-        builder.AppendLine($"        var results = new {model.ClassName}[totalRows];");
-        builder.AppendLine("        int currentOffset = 0;");
-        builder.AppendLine();
         builder.AppendLine("        var fileFields = reader.Schema.DataFields;");
         builder.AppendLine();
 
@@ -1186,19 +1223,22 @@ public static class CodeEmitter
             );
             foreach (LeafColumn col in EmissionPlan.For(model).Columns)
             {
-                builder.AppendLine(
-                    $"        var field_{col.Slot} = ResolveSchemaField(fileFields, {col.Slot}, _field_{col.Slot}, ref fieldsByName);"
-                );
+                builder.AppendLine(EmitResolveFieldLine(col, "        "));
             }
 
             builder.AppendLine();
         }
+        RowGroupPruningComponent.EmitSelectionPass(builder, model, "totalRows");
+        builder.AppendLine($"        var results = new {model.ClassName}[totalRows];");
+        builder.AppendLine("        int currentOffset = 0;");
+        builder.AppendLine();
 
         StringDeduplicatorComponent.EmitDeduplicatorDeclaration(builder, model);
 
         builder.AppendLine("        for (int r = 0; r < reader.RowGroupCount; r++)");
         builder.AppendLine("        {");
         builder.AppendLine("            cancellationToken.ThrowIfCancellationRequested();");
+        RowGroupPruningComponent.EmitSelectionCheck(builder, model, "            ");
         builder.AppendLine("            using var groupReader = reader.OpenRowGroupReader(r);");
         builder.AppendLine("            int rowCount = (int)groupReader.RowCount;");
         builder.AppendLine();
@@ -1254,7 +1294,7 @@ public static class CodeEmitter
             $"        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,"
         );
         builder.AppendLine(
-            $"        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default)"
+            $"        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default{RowGroupPruningComponent.SignatureSuffix(model)}"
         );
         builder.AppendLine("    {");
         builder.AppendLine(
@@ -1281,9 +1321,7 @@ public static class CodeEmitter
             );
             foreach (LeafColumn col in EmissionPlan.For(model).Columns)
             {
-                builder.AppendLine(
-                    $"        var field_{col.Slot} = ResolveSchemaField(fileFields, {col.Slot}, _field_{col.Slot}, ref fieldsByName);"
-                );
+                builder.AppendLine(EmitResolveFieldLine(col, "        "));
             }
 
             builder.AppendLine();
@@ -1296,6 +1334,7 @@ public static class CodeEmitter
         builder.AppendLine("            cancellationToken.ThrowIfCancellationRequested();");
         builder.AppendLine("            using var groupReader = reader.OpenRowGroupReader(r);");
         builder.AppendLine("            int rowCount = (int)groupReader.RowCount;");
+        RowGroupPruningComponent.EmitLoopGuard(builder, model, "            ");
         builder.AppendLine();
 
         EmitRentalsFor(builder, model, "rowCount", indent: "            ");
@@ -1404,12 +1443,12 @@ public static class CodeEmitter
             $"        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,"
         );
         builder.AppendLine(
-            $"        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default)"
+            $"        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default{RowGroupPruningComponent.SignatureSuffix(model)}"
         );
         builder.AppendLine("    {");
         builder.AppendLine("        using var stream = CreateBufferStream(parquetBytes);");
         builder.AppendLine(
-            "        await foreach (var item in ReadParquetStreamAsync(stream, options, cancellationToken))"
+            $"        await foreach (var item in ReadParquetStreamAsync(stream, options, cancellationToken{RowGroupPruningComponent.ForwardArgument(model)}))"
         );
         builder.AppendLine("        {");
         builder.AppendLine("            yield return item;");
@@ -1667,9 +1706,7 @@ public static class CodeEmitter
         builder.AppendLine();
         foreach (LeafColumn col in EmissionPlan.For(model).Columns)
         {
-            builder.AppendLine(
-                $"        var field_{col.Slot} = ResolveSchemaField(fileFields, {col.Slot}, _field_{col.Slot}, ref fieldsByName);"
-            );
+            builder.AppendLine(EmitResolveFieldLine(col, "        "));
         }
 
         builder.AppendLine();
@@ -1800,9 +1837,7 @@ public static class CodeEmitter
             );
             foreach (LeafColumn col in EmissionPlan.For(model).Columns)
             {
-                builder.AppendLine(
-                    $"        var field_{col.Slot} = ResolveSchemaField(fileFields, {col.Slot}, _field_{col.Slot}, ref fieldsByName);"
-                );
+                builder.AppendLine(EmitResolveFieldLine(col, "        "));
             }
 
             builder.AppendLine();
@@ -2103,9 +2138,7 @@ public static class CodeEmitter
             );
             foreach (LeafColumn col in EmissionPlan.For(model).Columns)
             {
-                builder.AppendLine(
-                    $"            var field_{col.Slot} = ResolveSchemaField(fileFields, {col.Slot}, _field_{col.Slot}, ref fieldsByName);"
-                );
+                builder.AppendLine(EmitResolveFieldLine(col, "            "));
             }
             builder.AppendLine();
         }
@@ -2238,32 +2271,27 @@ public static class CodeEmitter
             }
             if (BufferPoolComponent.UsesWriteAllParts(prop))
             {
+                // Branchless definition-level extraction and value compaction (issue #145):
+                // the presence flag is read as a byte with no conditional jump, the payload is
+                // stored unconditionally at the current compaction cursor (a null's write is
+                // overwritten by the next non-null, and the cursor never leaves the buffer
+                // because nonNullCount <= i < count <= buffer.Length), and the cursor advances
+                // by the flag. No unpredictable branch remains in the hot loop.
                 string valVar = $"val_{i}";
+                string hasVar = $"has_{i}";
+                string flagVar = $"hv_{i}";
                 builder.AppendLine($"{prefix}var {valVar} = item.{prop.Name};");
-                builder.AppendLine($"{prefix}if ({valVar}.HasValue)");
-                builder.AppendLine($"{prefix}{{");
-                string nonNullExpr = prop.Kind switch
-                {
-                    PropertyKind.Enum => $"({prop.EnumUnderlyingTypeName ?? "int"}){valVar}.Value",
-                    PropertyKind.TimeSpan => $"checked((int){valVar}.Value.TotalMilliseconds)",
-                    PropertyKind.TimeOnly => $"{valVar}.Value.Ticks / 10L",
-                    PropertyKind.DateOnly =>
-                        $"{valVar}.Value.ToDateTime(global::System.TimeOnly.MinValue)",
-                    _ => $"{valVar}.Value",
-                };
+                builder.AppendLine($"{prefix}bool {hasVar} = {valVar}.HasValue;");
                 builder.AppendLine(
-                    $"{prefix}    global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_{i}, nonNullCount_{i}++) = {nonNullExpr};"
+                    $"{prefix}int {flagVar} = global::System.Runtime.CompilerServices.Unsafe.As<bool, byte>(ref {hasVar});"
                 );
                 builder.AppendLine(
-                    $"{prefix}    global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_{i}, i) = 1;"
+                    $"{prefix}global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_{i}, nonNullCount_{i}) = {GetBranchlessNonNullExpression(prop, valVar)};"
                 );
-                builder.AppendLine($"{prefix}}}");
-                builder.AppendLine($"{prefix}else");
-                builder.AppendLine($"{prefix}{{");
+                builder.AppendLine($"{prefix}nonNullCount_{i} += {flagVar};");
                 builder.AppendLine(
-                    $"{prefix}    global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_{i}, i) = 0;"
+                    $"{prefix}global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_{i}, i) = {flagVar};"
                 );
-                builder.AppendLine($"{prefix}}}");
             }
             else
             {
@@ -2299,27 +2327,14 @@ public static class CodeEmitter
             if (BufferPoolComponent.UsesWriteAllParts(prop))
             {
                 string valVar = $"val_{i}";
+                string flagVar = $"hv_{i}";
                 builder.AppendLine($"{prefix}var {valVar} = item.{prop.Name};");
-                builder.AppendLine($"{prefix}if ({valVar}.HasValue)");
-                builder.AppendLine($"{prefix}{{");
-                string nonNullExpr = prop.Kind switch
-                {
-                    PropertyKind.Enum => $"({prop.EnumUnderlyingTypeName ?? "int"}){valVar}.Value",
-                    PropertyKind.TimeSpan => $"checked((int){valVar}.Value.TotalMilliseconds)",
-                    PropertyKind.TimeOnly => $"{valVar}.Value.Ticks / 10L",
-                    PropertyKind.DateOnly =>
-                        $"{valVar}.Value.ToDateTime(global::System.TimeOnly.MinValue)",
-                    _ => $"{valVar}.Value",
-                };
+                builder.AppendLine($"{prefix}int {flagVar} = {valVar}.HasValue ? 1 : 0;");
                 builder.AppendLine(
-                    $"{prefix}    {bufPrefix}{i}[nonNullCount_{i}++] = {nonNullExpr};"
+                    $"{prefix}{bufPrefix}{i}[nonNullCount_{i}] = {GetBranchlessNonNullExpression(prop, valVar)};"
                 );
-                builder.AppendLine($"{prefix}    defLevels_{i}[i] = 1;");
-                builder.AppendLine($"{prefix}}}");
-                builder.AppendLine($"{prefix}else");
-                builder.AppendLine($"{prefix}{{");
-                builder.AppendLine($"{prefix}    defLevels_{i}[i] = 0;");
-                builder.AppendLine($"{prefix}}}");
+                builder.AppendLine($"{prefix}nonNullCount_{i} += {flagVar};");
+                builder.AppendLine($"{prefix}defLevels_{i}[i] = {flagVar};");
             }
             else
             {
@@ -2353,27 +2368,14 @@ public static class CodeEmitter
             if (BufferPoolComponent.UsesWriteAllParts(prop))
             {
                 string valVar = $"val_{i}";
+                string flagVar = $"hv_{i}";
                 builder.AppendLine($"{prefix}var {valVar} = item.{prop.Name};");
-                builder.AppendLine($"{prefix}if ({valVar}.HasValue)");
-                builder.AppendLine($"{prefix}{{");
-                string nonNullExpr = prop.Kind switch
-                {
-                    PropertyKind.Enum => $"({prop.EnumUnderlyingTypeName ?? "int"}){valVar}.Value",
-                    PropertyKind.TimeSpan => $"checked((int){valVar}.Value.TotalMilliseconds)",
-                    PropertyKind.TimeOnly => $"{valVar}.Value.Ticks / 10L",
-                    PropertyKind.DateOnly =>
-                        $"{valVar}.Value.ToDateTime(global::System.TimeOnly.MinValue)",
-                    _ => $"{valVar}.Value",
-                };
+                builder.AppendLine($"{prefix}int {flagVar} = {valVar}.HasValue ? 1 : 0;");
                 builder.AppendLine(
-                    $"{prefix}    {bufPrefix}{i}[nonNullCount_{i}++] = {nonNullExpr};"
+                    $"{prefix}{bufPrefix}{i}[nonNullCount_{i}] = {GetBranchlessNonNullExpression(prop, valVar)};"
                 );
-                builder.AppendLine($"{prefix}    defLevels_{i}[idx] = 1;");
-                builder.AppendLine($"{prefix}}}");
-                builder.AppendLine($"{prefix}else");
-                builder.AppendLine($"{prefix}{{");
-                builder.AppendLine($"{prefix}    defLevels_{i}[idx] = 0;");
-                builder.AppendLine($"{prefix}}}");
+                builder.AppendLine($"{prefix}nonNullCount_{i} += {flagVar};");
+                builder.AppendLine($"{prefix}defLevels_{i}[idx] = {flagVar};");
             }
             else
             {
@@ -2486,6 +2488,25 @@ public static class CodeEmitter
             indent
         );
     }
+
+    /// <summary>
+    /// The unconditional (branch-free) payload conversion for a nullable value column: reads the
+    /// underlying value with <c>GetValueOrDefault()</c> so it is legal to evaluate even when the
+    /// slot is null. Every conversion here is total over <c>default(T)</c>, so a null row simply
+    /// stores a discardable default at the compaction cursor.
+    /// </summary>
+    internal static string GetBranchlessNonNullExpression(PropertyModel prop, string valVar) =>
+        prop.Kind switch
+        {
+            PropertyKind.Enum =>
+                $"({prop.EnumUnderlyingTypeName ?? "int"}){valVar}.GetValueOrDefault()",
+            PropertyKind.TimeSpan =>
+                $"checked((int){valVar}.GetValueOrDefault().TotalMilliseconds)",
+            PropertyKind.TimeOnly => $"{valVar}.GetValueOrDefault().Ticks / 10L",
+            PropertyKind.DateOnly =>
+                $"{valVar}.GetValueOrDefault().ToDateTime(global::System.TimeOnly.MinValue)",
+            _ => $"{valVar}.GetValueOrDefault()",
+        };
 
     private static string GetBufferElementType(PropertyModel prop) =>
         BufferPoolComponent.GetBufferElementType(prop);

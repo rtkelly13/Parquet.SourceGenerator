@@ -28,8 +28,10 @@ public static partial class ListOrderParquetExtensions
         global::Parquet.Schema.DataField[] fileFields,
         int index,
         global::Parquet.Schema.DataField expected,
-        ref global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? byName)
+        ref global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? byName,
+        out bool missing)
     {
+        missing = false;
         string expectedPath = expected.Path.ToString();
 
         // Ordered schemas resolve on a single index check. Every file this generator writes lands
@@ -67,6 +69,9 @@ public static partial class ListOrderParquetExtensions
             throw new global::System.IO.InvalidDataException($"Required column '{expectedPath}' was not found in the Parquet file schema.");
         }
 
+        // Optional column absent from the file: documented schema evolution. The caller
+        // materialises nulls for it instead of asking the file for a column it does not have.
+        missing = true;
         return expected;
     }
 
@@ -1405,7 +1410,8 @@ public static partial class ListOrderParquetExtensions
     public static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<ListOrder>> ReadParquetAsync(
         global::System.IO.Stream stream,
         global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
-        global::System.Threading.CancellationToken cancellationToken = default)
+        global::System.Threading.CancellationToken cancellationToken = default,
+        global::System.Func<global::SampleDomain.Models.ListOrderRowGroupMetadata, bool>? predicate = null)
     {
         if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));
 
@@ -1415,7 +1421,34 @@ public static partial class ListOrderParquetExtensions
             stream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
-        int totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);
+        var fileFields = reader.Schema.DataFields;
+
+        global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
+        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName, out _);
+        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName, out _);
+        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName, out _);
+        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName, out _);
+
+        int totalRows;
+        bool[]? selectedGroups = null;
+        if (predicate == null)
+        {
+            totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);
+        }
+        else
+        {
+            // Zone-map pre-pass: footer statistics only. Surviving groups are the only ones
+            // whose pages are ever read, and the result is sized to exactly their rows.
+            selectedGroups = new bool[reader.RowGroupCount];
+            totalRows = 0;
+            for (int r = 0; r < reader.RowGroupCount; r++)
+            {
+                using var probeReader = reader.OpenRowGroupReader(r);
+                if (!AcceptRowGroup(predicate, probeReader, r, field_0)) continue;
+                selectedGroups[r] = true;
+                totalRows += (int)probeReader.RowCount;
+            }
+        }
 #if NET8_0_OR_GREATER
         var results = new global::System.Collections.Generic.List<ListOrder>(totalRows);
         global::System.Runtime.InteropServices.CollectionsMarshal.SetCount(results, totalRows);
@@ -1424,17 +1457,10 @@ public static partial class ListOrderParquetExtensions
 #endif
         int currentOffset = 0;
 
-        var fileFields = reader.Schema.DataFields;
-
-        global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
-        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
-        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
-        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
-        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
-
         for (int r = 0; r < reader.RowGroupCount; r++)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (selectedGroups != null && !selectedGroups[r]) continue;
             using var groupReader = reader.OpenRowGroupReader(r);
             int rowCount = (int)groupReader.RowCount;
 
@@ -1611,7 +1637,8 @@ public static partial class ListOrderParquetExtensions
     public static async global::System.Threading.Tasks.Task<ListOrder[]> ReadParquetArrayAsync(
         global::System.IO.Stream stream,
         global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
-        global::System.Threading.CancellationToken cancellationToken = default)
+        global::System.Threading.CancellationToken cancellationToken = default,
+        global::System.Func<global::SampleDomain.Models.ListOrderRowGroupMetadata, bool>? predicate = null)
     {
         if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));
 
@@ -1621,21 +1648,41 @@ public static partial class ListOrderParquetExtensions
             stream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
-        int totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);
-        var results = new ListOrder[totalRows];
-        int currentOffset = 0;
-
         var fileFields = reader.Schema.DataFields;
 
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
-        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
-        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
-        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
-        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
+        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName, out _);
+        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName, out _);
+        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName, out _);
+        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName, out _);
+
+        int totalRows;
+        bool[]? selectedGroups = null;
+        if (predicate == null)
+        {
+            totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);
+        }
+        else
+        {
+            // Zone-map pre-pass: footer statistics only. Surviving groups are the only ones
+            // whose pages are ever read, and the result is sized to exactly their rows.
+            selectedGroups = new bool[reader.RowGroupCount];
+            totalRows = 0;
+            for (int r = 0; r < reader.RowGroupCount; r++)
+            {
+                using var probeReader = reader.OpenRowGroupReader(r);
+                if (!AcceptRowGroup(predicate, probeReader, r, field_0)) continue;
+                selectedGroups[r] = true;
+                totalRows += (int)probeReader.RowCount;
+            }
+        }
+        var results = new ListOrder[totalRows];
+        int currentOffset = 0;
 
         for (int r = 0; r < reader.RowGroupCount; r++)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (selectedGroups != null && !selectedGroups[r]) continue;
             using var groupReader = reader.OpenRowGroupReader(r);
             int rowCount = (int)groupReader.RowCount;
 
@@ -1832,10 +1879,10 @@ public static partial class ListOrderParquetExtensions
         var fileFields = reader.Schema.DataFields;
 
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
-        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
-        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
-        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
-        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
+        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName, out _);
+        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName, out _);
+        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName, out _);
+        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName, out _);
 
         for (int r = 0; r < rgCount; r++)
         {
@@ -2012,7 +2059,8 @@ public static partial class ListOrderParquetExtensions
     public static async global::System.Collections.Generic.IAsyncEnumerable<ListOrder> ReadParquetStreamAsync(
         global::System.IO.Stream stream,
         global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
-        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default)
+        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default,
+        global::System.Func<global::SampleDomain.Models.ListOrderRowGroupMetadata, bool>? predicate = null)
     {
         if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));
 
@@ -2025,16 +2073,17 @@ public static partial class ListOrderParquetExtensions
         var fileFields = reader.Schema.DataFields;
 
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
-        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
-        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
-        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
-        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
+        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName, out _);
+        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName, out _);
+        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName, out _);
+        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName, out _);
 
         for (int r = 0; r < reader.RowGroupCount; r++)
         {
             cancellationToken.ThrowIfCancellationRequested();
             using var groupReader = reader.OpenRowGroupReader(r);
             int rowCount = (int)groupReader.RowCount;
+            if (!AcceptRowGroup(predicate, groupReader, r, field_0)) continue;
 
             var buffer_0 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
             var buffer_1 = global::System.Buffers.ArrayPool<global::System.ReadOnlyMemory<char>>.Shared.Rent(rowCount);
@@ -2350,10 +2399,10 @@ public static partial class ListOrderParquetExtensions
             var fileFields = reader.Schema.DataFields;
 
             global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
-            var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
-            var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
-            var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
-            var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
+            var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName, out _);
+            var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName, out _);
+            var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName, out _);
+            var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName, out _);
 
             var buffer_0 = global::System.Buffers.ArrayPool<int>.Shared.Rent(maxRowGroupSize);
             var buffer_1 = global::System.Buffers.ArrayPool<global::System.ReadOnlyMemory<char>>.Shared.Rent(maxRowGroupSize);
@@ -2547,10 +2596,10 @@ public static partial class ListOrderParquetExtensions
         var fileFields = reader.Schema.DataFields;
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
 
-        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
-        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
-        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
-        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
+        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName, out _);
+        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName, out _);
+        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName, out _);
+        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName, out _);
 
         var buffer_0 = global::System.Buffers.ArrayPool<int>.Shared.Rent(maxRowCount);
         var buffer_1 = global::System.Buffers.ArrayPool<global::System.ReadOnlyMemory<char>>.Shared.Rent(maxRowCount);
@@ -2713,10 +2762,11 @@ public static partial class ListOrderParquetExtensions
     public static async global::System.Collections.Generic.IAsyncEnumerable<ListOrder> ReadParquetStreamAsync(
         global::System.ReadOnlyMemory<byte> parquetBytes,
         global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
-        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default)
+        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default,
+        global::System.Func<global::SampleDomain.Models.ListOrderRowGroupMetadata, bool>? predicate = null)
     {
         using var stream = CreateBufferStream(parquetBytes);
-        await foreach (var item in ReadParquetStreamAsync(stream, options, cancellationToken))
+        await foreach (var item in ReadParquetStreamAsync(stream, options, cancellationToken, predicate))
         {
             yield return item;
         }
@@ -2735,4 +2785,73 @@ public static partial class ListOrderParquetExtensions
             ? new global::System.IO.MemoryStream(segment.Array!, segment.Offset, segment.Count, writable: false)
             : new global::System.IO.MemoryStream(parquetBytes.ToArray(), writable: false);
     }
+
+    /// <summary>
+    /// Decides whether a row group can hold a row matching <paramref name="predicate"/>, using
+    /// only the column-chunk statistics already present in the file footer.
+    /// </summary>
+    /// <remarks>
+    /// Returns <c>true</c> — read the group — whenever the answer is not certain: a null predicate,
+    /// or a chunk that recorded no usable min/max. Pruning only ever removes row groups the
+    /// statistics prove cannot match.
+    /// </remarks>
+    private static bool AcceptRowGroup(
+        global::System.Func<global::SampleDomain.Models.ListOrderRowGroupMetadata, bool>? predicate,
+        global::Parquet.ParquetRowGroupReader groupReader,
+        int rowGroupIndex,
+        global::Parquet.Schema.DataField field_0)
+    {
+        if (predicate == null) return true;
+
+        var stats_0 = groupReader.GetStatistics(field_0);
+
+        bool hasStatistics =
+              stats_0 != null && stats_0.MinValue != null && stats_0.MaxValue != null;
+
+        // A chunk with no usable zone map disables pruning for the whole group rather than
+        // letting a raw Min/Max comparison against a default value skip live rows.
+        if (!hasStatistics) return true;
+
+        var metadata = new global::SampleDomain.Models.ListOrderRowGroupMetadata(
+            rowGroupIndex,
+            groupReader.RowCount,
+            true,
+            global::Parquet.SourceGenerator.ParquetColumnStatistics.FromRaw<int>(stats_0!.MinValue, stats_0!.MaxValue, stats_0!.NullCount, stats_0!.DistinctCount));
+
+        return predicate(metadata);
+    }
+}
+
+/// <summary>
+/// Footer statistics for one row group of a <c>ListOrder</c> Parquet file, as seen by a
+/// row-group pruning predicate. Reading a property costs nothing beyond the footer that was
+/// already parsed when the file was opened.
+/// </summary>
+public readonly struct ListOrderRowGroupMetadata
+{
+    /// <summary>Creates a row-group zone map.</summary>
+    public ListOrderRowGroupMetadata(
+        int rowGroupIndex,
+        long rowCount,
+        bool hasStatistics,
+        global::Parquet.SourceGenerator.ParquetColumnStatistics<int> column_0)
+    {
+        RowGroupIndex = rowGroupIndex;
+        RowCount = rowCount;
+        HasStatistics = hasStatistics;
+        Id = column_0;
+    }
+
+    /// <summary>Zero-based index of this row group in the file.</summary>
+    public int RowGroupIndex { get; }
+
+    /// <summary>Rows in this row group.</summary>
+    public long RowCount { get; }
+
+    /// <summary>Whether every projected column recorded a usable min/max. Always true inside a
+    /// pruning predicate: a group without complete statistics is read rather than tested.</summary>
+    public bool HasStatistics { get; }
+
+    /// <summary>Zone map for the <c>Id</c> column.</summary>
+    public global::Parquet.SourceGenerator.ParquetColumnStatistics<int> Id { get; }
 }

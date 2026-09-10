@@ -42,4 +42,12 @@
             PrivateAssets="all"
         />
     </ItemGroup>
+
+    <ItemGroup>
+        <!--
+      Shared with test/PackageConsumption so both packages describe the same columns; that is
+      what makes a file written by one readable by the other in CI's cross-version interop step.
+    -->
+        <Compile Include="..\CrossVersionInterop\InteropModels.cs" Link="InteropModels.cs" />
+    </ItemGroup>
 </Project>
