@@ -219,24 +219,17 @@ public sealed class SupportedSchemaPropertyTests
     }
 
     /// <summary>
-    /// Documents a gap the fuzzer found: a valid Parquet file that simply omits an optional column
-    /// is rejected outright.
+    /// A valid Parquet file that omits an optional column reads back with that column as nulls.
     /// </summary>
     /// <remarks>
-    /// The generated reader's own <c>ResolveSchemaField</c> is written to handle exactly this — it
-    /// falls back to the compile-time field and comments that a missing optional column is fine —
-    /// but the read path then calls <c>GetStatistics</c> and <c>ReadAsync</c> with that field, and
-    /// Parquet.Net throws because the column is not in the file. Omitting a nullable column is
-    /// legal Parquet and other producers do it, so the reader should fill defaults instead.
-    /// <para>
-    /// The test pins today's behaviour rather than the desired behaviour, so the suite stays green
-    /// while the gap is open. When the reader is fixed this test flips to asserting defaults, and
-    /// <see cref="FuzzRunner.EngineFileColumns"/> can start dropping optional columns, which turns
-    /// the one-off into a property.
-    /// </para>
+    /// The fuzzer originally found this as a gap — the reader rejected such files outright — and
+    /// this test pinned that behaviour so the suite stayed green while it was open. #168 fixed it:
+    /// a column the file does not carry is now materialised as all-null instead of being handed to
+    /// Parquet.Net as a lookup for a field that is not there. The test is inverted accordingly and
+    /// now asserts the defaults, per its own original instructions.
     /// </remarks>
     [Fact]
-    public async Task AbsentNullableColumnIsRejectedToday()
+    public async Task AbsentNullableColumnMaterialisesAsNulls()
     {
         FuzzCase fuzzCase = FuzzCase.FromSeed(2_468) with
         {
@@ -254,12 +247,13 @@ public sealed class SupportedSchemaPropertyTests
         );
 
         using var stream = new MemoryStream(bytes, writable: false);
-        Exception exception = await Record.ExceptionAsync(async () =>
-            await FuzzWideRecordParquetExtensions.ReadParquetAsync(stream)
-        );
+        List<FuzzWideRecord> read = await FuzzWideRecordParquetExtensions.ReadParquetAsync(stream);
 
-        Assert.NotNull(exception);
-        Assert.Contains("opt_text", exception.Message, StringComparison.Ordinal);
+        Assert.Equal(rows.Count, read.Count);
+        Assert.All(read, r => Assert.Null(r.OptText));
+
+        // The columns the file does carry must be unaffected by the absent one.
+        Assert.Equal(rows.Select(r => r.I64).ToList(), read.Select(r => r.I64).ToList());
     }
 
     [Fact]

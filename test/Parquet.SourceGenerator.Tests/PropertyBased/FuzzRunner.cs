@@ -215,10 +215,10 @@ public static class FuzzRunner
     /// </summary>
     /// <remarks>
     /// Every column, always — the ordering is what varies. Omitting an optional column is a valid
-    /// Parquet file the generated reader is meant to tolerate, but today it does not (see
-    /// <c>SupportedSchemaPropertyTests.AbsentNullableColumnIsRejectedToday</c>), so the fuzz
-    /// envelope stops at reordering until that gap is closed. Widening this method to drop columns
-    /// is the one-line change that turns the fix into a property.
+    /// Parquet file the generated reader tolerates as of #168 (see
+    /// <c>SupportedSchemaPropertyTests.AbsentNullableColumnMaterialisesAsNulls</c>). Widening this
+    /// method to drop optional columns is the one-line change that turns that one-off into a
+    /// property, and is deliberately left as a follow-up rather than bundled into this PR.
     /// </remarks>
     public static IReadOnlyList<FuzzColumn> EngineFileColumns(FuzzCase fuzzCase)
     {
