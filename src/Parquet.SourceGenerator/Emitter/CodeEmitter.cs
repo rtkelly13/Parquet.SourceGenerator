@@ -1550,12 +1550,12 @@ public static class CodeEmitter
         );
         foreach (LeafColumn col in EmissionPlan.For(model).Columns)
         {
-            builder.AppendLine(
-                $"        var field_{col.Slot} = ResolveSchemaField(fileFields, {col.Slot}, _field_{col.Slot}, ref fieldsByName);"
-            );
+            // Shared with the POCO and batch read paths so the absent-optional-column flag
+            // (#168) stays in step across every emitted reader.
+            builder.AppendLine(EmitResolveFieldLine(col, "        "));
         }
         builder.AppendLine(
-            "        var keyField = ResolveSchemaField(fileFields, keySlot, keyFieldTemplate, ref fieldsByName);"
+            "        var keyField = ResolveSchemaField(fileFields, keySlot, keyFieldTemplate, ref fieldsByName, out _);"
         );
         builder.AppendLine();
         builder.AppendLine("        int rowGroupCount = reader.RowGroupCount;");
