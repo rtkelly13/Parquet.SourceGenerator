@@ -11,7 +11,7 @@ internal static class BatchValidationComponent
     /// Emits runtime resolution of the row group batch size from options.
     /// <para>
     /// Issue #218: this used to reconcile a <c>rowGroupSize</c> parameter against
-    /// <see cref="P:Parquet.SourceGenerator.ParquetSerializerOptions.RowGroupSize"/>, so the same
+    /// <c>ParquetSerializerOptions.RowGroupSize</c>, so the same
     /// knob had two homes and a caller who set both could not tell from the signature which won.
     /// Options is now the single home.
     /// </para>
