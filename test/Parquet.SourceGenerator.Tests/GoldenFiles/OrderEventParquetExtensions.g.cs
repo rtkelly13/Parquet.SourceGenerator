@@ -2153,6 +2153,9 @@ public static partial class OrderEventParquetExtensions
         var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName, out _);
         var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName, out bool missing_7);
         var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName, out bool missing_8);
+        using var stringDeduplicator = new StringDeduplicator(512);
+        bool deduplicateStrings = options.DeduplicateStrings;
+
 
         for (int r = 0; r < reader.RowGroupCount; r++)
         {
@@ -2185,10 +2188,23 @@ public static partial class OrderEventParquetExtensions
                 }
                 else
                 {
-                    await groupReader.ReadAsync(
-                        field_1,
-                        new global::System.Memory<string?>(buffer_1, 0, rowCount),
-                        cancellationToken: cancellationToken);
+                    if (deduplicateStrings && field_1.MaxRepetitionLevel == 0)
+                    {
+                        await ReadDeduplicatedStringColumnAsync(
+                            groupReader,
+                            field_1,
+                            buffer_1,
+                            rowCount,
+                            stringDeduplicator,
+                            cancellationToken);
+                    }
+                    else
+                    {
+                        await groupReader.ReadAsync(
+                            field_1,
+                            new global::System.Memory<string?>(buffer_1, 0, rowCount),
+                            cancellationToken: cancellationToken);
+                    }
                 }
                 await groupReader.ReadAsync<double>(
                     field_2,

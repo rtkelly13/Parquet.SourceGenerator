@@ -6,19 +6,6 @@
 
 Track the limitation and future upstream fixes in [issue #150](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/150). Scan Parquet.Net for a safe non-nullable read path or an API that permits omitting definition-level output before revisiting the optimization.
 
-<<<<<<< HEAD
-## Parquet.Net 6.1.0 Column Decode Always Allocates
-
-`ParquetRowGroupReader.ReadAsync` and `ReadRawAsync<T>` both decode a column chunk into an
-internally allocated array and then copy into the caller's `Memory<T>`. Measured on a single
-`double` column, 20,000 rows, Apple M1 / .NET 9: ~7.8 bytes per row allocated on both entry
-points, i.e. one array the size of the decoded data per column per row group — identical with and
-without a definition-levels buffer supplied.
-
-The consequence for the struct-of-arrays batch API ([issue #147](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/147))
-is that "zero allocation" can only mean zero *domain object* allocation. Genuinely allocation-free
-reads need an upstream decode-into-caller-buffer entry point.
-=======
 ## Parquet.Net 6.1.0 Page Checksums Are Not Verified
 
 Parquet's `PageHeader.crc` is optional, and Parquet.Net neither writes nor verifies it. A single
@@ -32,14 +19,15 @@ damage (truncation, bad magic, bad footer length) is still required to be reject
 Nothing in the generated code can close this gap: detection has to happen where the page is decoded.
 Revisit if Parquet.Net gains CRC emission and verification.
 
-## Absent Optional Columns Are Rejected By The Generated Reader
+## Absent Optional Columns Are Rejected By The Generated Reader — FIXED
 
-Not an upstream limitation, but found while writing the above and recorded here so it is not lost: a
-valid Parquet file that simply omits an optional column is rejected with
-`ParquetException: '<column>' does not exist in this file`. The generated `ResolveSchemaField`
-already handles the case and falls back to the compile-time field, but the read path then calls
-`GetStatistics`/`ReadAsync` with a field the file does not contain. Pinned by
-`SupportedSchemaPropertyTests.AbsentNullableColumnIsRejectedToday`.
+Recorded here for history; this was never an upstream limitation and is no longer true. A valid
+Parquet file omitting an optional column used to be rejected with
+`ParquetException: '<column>' does not exist in this file`, because `ResolveSchemaField` handled
+the fallback but the read path still called `GetStatistics`/`ReadAsync` with a field the file did
+not contain. Fixed in #168: a missing optional column now materialises as all-null on every
+emitted read path. Covered by
+`SupportedSchemaPropertyTests.AbsentNullableColumnMaterialisesAsNulls`.
 ## Parquet.Net 6.1.0 Has No UTF-8 Byte Surface For String Columns
 
 Issue [#143](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/143) proposed keying the
@@ -78,4 +66,14 @@ pooled page buffer. `Utf8StringDeduplicator` in
 `test/Parquet.SourceGenerator.Tests/Utf8StringDeduplicatorPrototypeTests.cs` is a tested prototype
 of the byte-keyed table that would sit behind it; it is deliberately not wired into the generated
 reader, because feeding it would require round-tripping through `string` and defeat the purpose.
->>>>>>> origin/main
+## Parquet.Net 6.1.0 Column Decode Always Allocates
+
+`ParquetRowGroupReader.ReadAsync` and `ReadRawAsync<T>` both decode a column chunk into an
+internally allocated array and then copy into the caller's `Memory<T>`. Measured on a single
+`double` column, 20,000 rows, Apple M1 / .NET 9: ~7.8 bytes per row allocated on both entry
+points, i.e. one array the size of the decoded data per column per row group — identical with and
+without a definition-levels buffer supplied.
+
+The consequence for the struct-of-arrays batch API ([issue #147](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/147))
+is that "zero allocation" can only mean zero *domain object* allocation. Genuinely allocation-free
+reads need an upstream decode-into-caller-buffer entry point.

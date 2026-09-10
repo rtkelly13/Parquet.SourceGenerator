@@ -220,6 +220,9 @@ internal static class ColumnBatchComponent
             // step: columns that can go missing capture it, the rest discard it.
             builder.AppendLine(CodeEmitter.EmitResolveFieldLine(col, "        "));
         }
+        // String columns in a batch decode through the same shared read emitter as the POCO
+        // path, which references the deduplicator locals — declare them here too (#143).
+        StringDeduplicatorComponent.EmitDeduplicatorDeclaration(builder, model);
         builder.AppendLine();
         builder.AppendLine("        for (int r = 0; r < reader.RowGroupCount; r++)");
         builder.AppendLine("        {");
