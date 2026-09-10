@@ -174,11 +174,14 @@ public sealed class VersionAndSchemaEvolutionMatrixTests
         Environment.GetEnvironmentVariable("PARQUET_TEST_DATA_ROOT")
         ?? Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "data"));
 
-    private static readonly string TestDataCSharpRoot =
-        Environment.GetEnvironmentVariable("PARQUET_TEST_DATA_CSHARP_ROOT")
-        ?? Path.GetFullPath(
-            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "data_csharp")
-        );
+    // Deliberately NOT PARQUET_TEST_DATA_CSHARP_ROOT. CI regenerates test/data_csharp on every run
+    // with the solution's currently pinned Parquet.Net, so a fixture read through that variable is
+    // produced by the current writer no matter what the directory is called. The older-producer
+    // cells need files a 6.0.3 writer really wrote, so they read from a committed directory that
+    // nothing regenerates. See tools/ParquetNetLegacyFixtures.
+    private static readonly string TestDataProducersRoot = Path.GetFullPath(
+        Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "data_producers")
+    );
 
     private static readonly string BenchmarkDataRoot = Path.GetFullPath(
         Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "benchmarks", "data")
@@ -391,7 +394,7 @@ public sealed class VersionAndSchemaEvolutionMatrixTests
                         ParallelReader
                     )
             ),
-            // ── Older Parquet.Net producer (6.0.3 committed fixtures) ─────────────────────────
+            // ── Older Parquet.Net producer (6.0.3, committed under test/data_producers) ───────
             new(
                 "parquet-net-6.0.3/identical/sequential",
                 "Parquet.Net",
@@ -399,7 +402,7 @@ public sealed class VersionAndSchemaEvolutionMatrixTests
                 SequentialReader,
                 "identical",
                 CompatibilityOutcome.Compatible,
-                () => FixtureIdenticalAsync(V3("01_small_flat_primitives.parquet"), 100)
+                () => FixtureIdenticalAsync(ParquetNet603("01_small_flat_primitives.parquet"), 100)
             ),
             new(
                 "parquet-net-6.0.3/missing-optional/sequential",
@@ -410,7 +413,7 @@ public sealed class VersionAndSchemaEvolutionMatrixTests
                 CompatibilityOutcome.CompatibleWithNulls,
                 () =>
                     FixtureMissingOptionalAsync(
-                        V3("01_small_flat_primitives.parquet"),
+                        ParquetNet603("01_small_flat_primitives.parquet"),
                         100,
                         SequentialReader
                     )
@@ -422,7 +425,11 @@ public sealed class VersionAndSchemaEvolutionMatrixTests
                 StreamingReader,
                 "extra-unknown-columns",
                 CompatibilityOutcome.Compatible,
-                () => FixtureExtraColumnsStreamingAsync(V3("01_small_flat_primitives.parquet"), 100)
+                () =>
+                    FixtureExtraColumnsStreamingAsync(
+                        ParquetNet603("01_small_flat_primitives.parquet"),
+                        100
+                    )
             ),
             // ── DuckDB ────────────────────────────────────────────────────────────────────────
             new(
@@ -824,7 +831,8 @@ public sealed class VersionAndSchemaEvolutionMatrixTests
 
     private static string V2(string name) => Path.Combine(TestDataRoot, "v2", name);
 
-    private static string V3(string name) => Path.Combine(TestDataCSharpRoot, "v3", name);
+    private static string ParquetNet603(string name) =>
+        Path.Combine(TestDataProducersRoot, "parquet-net-6.0.3", name);
 
     private static async Task<MatrixObservation> FixtureIdenticalAsync(
         string path,

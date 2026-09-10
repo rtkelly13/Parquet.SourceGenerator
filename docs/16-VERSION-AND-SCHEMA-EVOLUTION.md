@@ -46,7 +46,7 @@ cell.
 | Producer | Version | How it is exercised |
 |:---|:---|:---|
 | Generated writer (modern backend) | Parquet.Net 6.1.0 | Written in-process during the test run |
-| Parquet.Net (older) | 6.0.3 | Committed fixtures under `test/data_csharp/v3` |
+| Parquet.Net (older) | 6.0.3 | Committed fixtures under `test/data_producers/parquet-net-6.0.3` |
 | PyArrow, format 1.0 | 25.0.0 | Committed fixtures under `test/data/v1` |
 | PyArrow, format 2.6 | 25.0.0 | Committed fixtures under `test/data/v2` (parquet-format v2 footer) |
 | DuckDB | 1.5.4 | `benchmarks/data/tpch_lineitem_sf001.parquet` |
