@@ -89,6 +89,11 @@ Welcome to the **Parquet.SourceGenerator** documentation repository. This folder
      - Empirically verified def/rep level conventions for structs, lists, and maps.
      - Parquet.Net 6.1.0 and 4.25.0 nested API traps that shape the #176 emitter design.
 
+17. **[16 - Version And Schema-Evolution Matrix](./16-VERSION-AND-SCHEMA-EVOLUTION.md)**
+     - Schema-evolution contract: reordering, extra columns, absent optional and required columns.
+     - Producer/consumer/version matrix across Parquet.Net, PyArrow and DuckDB, and the recorded report.
+     - Cross-version interoperability between the modern and classic packages.
+
 
 ---
 

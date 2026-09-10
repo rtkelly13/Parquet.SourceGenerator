@@ -185,6 +185,11 @@ internal static class Program
             ReorderedColumnsAsync
         );
         await CheckAsync("every compression codec round-trips", CompressionCodecsAsync);
+        await CheckAsync("SoA columnar batch read over row groups (#147)", ColumnBatchReadAsync);
+        await CheckAsync(
+            "span-keyed string deduplication round-trips and interns",
+            StringDeduplicationAsync
+        );
         await CheckAsync("direct columnar hand-off round-trips (issue #137)", ColumnarHandoffAsync);
 
         Console.WriteLine("=================================================");
@@ -398,6 +403,72 @@ internal static class Program
         Expect(read[2].EnumValue == AotStatus.Closed, "row 2: enum? value lost");
     }
 
+    private static async Task StringDeduplicationAsync()
+    {
+        // Exercises the raw ReadOnlyMemory<char> read path plus the span-keyed intern table
+        // under Native AOT: both the non-nullable lane and the packed nullable lane.
+        var written = new List<AotNullableRecord>();
+        for (int i = 0; i < 300; i++)
+        {
+            written.Add(
+                new AotNullableRecord
+                {
+                    Id = i,
+                    Int32Value = i,
+                    StringValue = (i % 3) switch
+                    {
+                        0 => "Alpha",
+                        1 => "Beta",
+                        _ => null,
+                    },
+                }
+            );
+        }
+
+        using var stream = new MemoryStream();
+        await written.WriteParquetAsync(stream);
+        stream.Position = 0;
+
+        var options = new ParquetSerializerOptions { DeduplicateStrings = true };
+        List<AotNullableRecord> read = await AotNullableRecordParquetExtensions.ReadParquetAsync(
+            stream,
+            options
+        );
+
+        Expect(read.Count == written.Count, $"expected {written.Count} rows, read {read.Count}");
+
+        string? alpha = null;
+        string? beta = null;
+        for (int i = 0; i < read.Count; i++)
+        {
+            Expect(read[i].StringValue == written[i].StringValue, $"row {i}: string value lost");
+
+            if (read[i].StringValue is null)
+            {
+                continue;
+            }
+
+            if (read[i].StringValue == "Alpha")
+            {
+                alpha ??= read[i].StringValue;
+                Expect(
+                    ReferenceEquals(alpha, read[i].StringValue),
+                    $"row {i}: \"Alpha\" was not interned to a single instance"
+                );
+            }
+            else
+            {
+                beta ??= read[i].StringValue;
+                Expect(
+                    ReferenceEquals(beta, read[i].StringValue),
+                    $"row {i}: \"Beta\" was not interned to a single instance"
+                );
+            }
+        }
+
+        Expect(alpha is not null && beta is not null, "expected both categorical values to appear");
+    }
+
     private static async Task IgnoredMemberAsync()
     {
         var written = new List<AotWideRecord>
@@ -457,6 +528,53 @@ internal static class Program
         Expect(read.Count == 120, $"expected 120 rows across row groups, read {read.Count}");
         ExpectWideEqual(written[0], read[0], 0);
         ExpectWideEqual(written[119], read[119], 119);
+    }
+
+    private static async Task ColumnBatchReadAsync()
+    {
+        // Generic ReadOnlySpan<T> accessors over pooled arrays, driven by an async iterator: all
+        // statically reachable, but worth pinning in the native binary so a future change that
+        // reaches for reflection here is caught by the publish, not by a consumer.
+        var written = new List<AotNarrowRecord>();
+        for (int i = 0; i < 120; i++)
+        {
+            written.Add(new AotNarrowRecord { Id = i, Label = $"row-{i}" });
+        }
+
+        using var stream = new MemoryStream();
+        await written.WriteParquetBatchedAsync(stream, rowGroupSize: 25);
+        stream.Position = 0;
+
+        long idSum = 0;
+        int rows = 0;
+        int groups = 0;
+        string? lastLabel = null;
+        await foreach (
+            AotNarrowRecordParquetExtensions.ColumnBatch batch in AotNarrowRecordParquetExtensions.ReadParquetBatchesAsync(
+                stream
+            )
+        )
+        {
+            Expect(batch.RowGroupIndex == groups, $"row group index out of order at {groups}");
+            groups++;
+            ReadOnlySpan<int> ids = batch.IdSpan;
+            ReadOnlySpan<string> labels = batch.LabelSpan;
+            Expect(
+                ids.Length == batch.RowCount && labels.Length == batch.RowCount,
+                "column spans must be RowCount long"
+            );
+            for (int i = 0; i < ids.Length; i++)
+            {
+                idSum += ids[i];
+                lastLabel = labels[i];
+            }
+            rows += batch.RowCount;
+        }
+
+        Expect(groups == 5, $"expected 5 row groups, saw {groups}");
+        Expect(rows == 120, $"expected 120 rows across batches, saw {rows}");
+        Expect(idSum == 7140, $"expected id sum 7140, got {idSum}");
+        Expect(lastLabel == "row-119", $"expected last label row-119, got {lastLabel}");
     }
 
     private static async Task ParallelReadAsync()

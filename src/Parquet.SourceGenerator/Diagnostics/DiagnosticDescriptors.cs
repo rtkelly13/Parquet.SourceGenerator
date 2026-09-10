@@ -206,4 +206,23 @@ public static class DiagnosticDescriptors
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true
     );
+
+    /// <summary>
+    /// PARQ014: A member marked <c>[ParquetSortKey]</c> cannot drive row-group pruning.
+    /// </summary>
+    /// <remarks>
+    /// Pruning binary searches the footer <c>[Min, Max]</c> statistics, which only works for a
+    /// flat, non-nullable root column whose Parquet statistics order agrees with
+    /// <c>Comparer&lt;T&gt;.Default</c>. Silently emitting nothing for an ineligible marker would
+    /// leave the author expecting a lookup method that never appeared, so the marker is reported
+    /// with the reason instead.
+    /// </remarks>
+    public static readonly DiagnosticDescriptor SortKeyNotEligible = new(
+        id: "PARQ014",
+        title: "Member cannot be a Parquet sort key",
+        messageFormat: "The member '{0}' on type '{1}' is marked [ParquetSortKey] but cannot drive row-group pruning: {2}",
+        category: "ParquetSourceGenerator",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true
+    );
 }
