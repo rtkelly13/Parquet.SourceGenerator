@@ -13,8 +13,10 @@ The current dataset producers are:
    - `test/data/v1/`: PyArrow `version="1.0"` output.
    - `test/data/v2/`: PyArrow `version="2.6"` output.
 2. **C# Engine (`Parquet.Net` via `dotnet run`)**:
-   - `test/data_csharp/v3/`: Committed files created by Parquet.Net 6.0.3; `v3` is a historical fixture-directory name, not the library version. The current generator references Parquet.Net 6.1.0 for CI regeneration.
+   - `test/data_csharp/v3/`: Committed files created by Parquet.Net 6.0.3; `v3` is a historical fixture-directory name, not the library version. The current generator references Parquet.Net 6.1.0 for CI regeneration, so in CI this directory is rewritten by the pinned current writer.
    - There is currently no generated `test/data_csharp/v4/` directory.
+3. **Pinned older-producer fixtures (`tools/ParquetNetLegacyFixtures`)**:
+   - `test/data_producers/parquet-net-6.0.3/`: written by a manually-run tool that pins Parquet.Net 6.0.3 explicitly. Nothing regenerates this directory, so its files stay genuinely 6.0.3-produced and the version matrix can assert on the footer they carry. Regenerate with `dotnet run --project tools/ParquetNetLegacyFixtures/ParquetNetLegacyFixtures.csproj`; the tool prints the footer `CreatedBy` and SHA-256 of what it wrote.
 
 Because row generation uses strict deterministic mathematical formulas based on the zero-indexed row index $i$, the fixtures provide reproducible value checks for the producers listed above. Exact producer metadata, dimensions, support classification, and hashes are recorded in [`test/data/fixture-manifest.json`](../test/data/fixture-manifest.json). They do not by themselves prove compatibility with every Parquet implementation.
 
@@ -153,5 +155,5 @@ To guarantee that Parquet files produced by `Parquet.SourceGenerator` are strict
    - Validates generated binary output against immutable golden SHA-256 hashes for canonical scalar models (`TestUserRecord` Snappy and Uncompressed, `TestNullableRecord`, `BenchmarkGuidModel`) and real-world analytical datasets (TPC-H LineItem, Adult Census, Diamonds).
    - Any unintentional alteration to column ordering, definition level flags, Thrift metadata encoding, or block layouts fails the test with a distinct cryptographic diff.
 3. **Checked-in Dataset Integrity**:
-   - Continuously validates the cryptographic integrity and hydration of all 14 tracked Parquet files across `test/data/v1/`, `test/data/v2/`, and `test/data_csharp/v3/`, as well as the 3 Git LFS public benchmark datasets in `benchmarks/data/`.
+   - Continuously validates the cryptographic integrity and hydration of all 15 tracked Parquet files across `test/data/v1/`, `test/data/v2/`, `test/data_csharp/v3/`, and `test/data_producers/parquet-net-6.0.3/`, as well as the 3 Git LFS public benchmark datasets in `benchmarks/data/`.
     - These tests are trait-gated (`Category=DatasetIntegrity`) and run in CI **before** compatibility datasets are generated into a temporary directory. The manifest hashes always describe the checked-in files. The main post-generation suite run filters this category out and instead exercises round-trip compatibility against the temporary generated files (see `TestDataIntegrationTests`).

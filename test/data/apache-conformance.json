@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "tool": {
+    "coordinates": "org.apache.parquet:parquet-cli:1.18.1",
+    "mainClass": "org.apache.parquet.cli.Main",
+    "homepage": "https://github.com/apache/parquet-java/tree/apache-parquet-1.18.1",
+    "notes": "parquet-cli is the successor of the archived parquet-tools 1.11.x line. The -runtime.jar is a shaded build of the tool plus its compile-scope dependencies; hadoop, guava, and the logging bindings are provided-scope and pinned separately below."
+  },
+  "java": {
+    "distribution": "Temurin",
+    "featureVersion": 17,
+    "notes": "Hadoop's UserGroupInformation calls Subject.getSubject, which JDKs newer than 21 refuse outright; 17 is the current LTS that runs the tool without security-manager workaround flags."
+  },
+  "repository": "https://repo1.maven.org/maven2",
+  "artifacts": [
+    {
+      "file": "parquet-cli-1.18.1-runtime.jar",
+      "path": "org/apache/parquet/parquet-cli/1.18.1/parquet-cli-1.18.1-runtime.jar",
+      "sha256": "c22f12d9c0676916e43018745f9d1230e56de65203b347428ca54a9eaccbe6ca"
+    },
+    {
+      "file": "hadoop-client-api-3.4.2.jar",
+      "path": "org/apache/hadoop/hadoop-client-api/3.4.2/hadoop-client-api-3.4.2.jar",
+      "sha256": "607c0299f4df33013bd0a0f37c8cf255c635bbaddd247b8fec68c210cc17d19f"
+    },
+    {
+      "file": "hadoop-client-runtime-3.4.2.jar",
+      "path": "org/apache/hadoop/hadoop-client-runtime/3.4.2/hadoop-client-runtime-3.4.2.jar",
+      "sha256": "18d071c7f72f8a946677b398a57af9c7afa2dd41a81023c310f99373fec200b3"
+    },
+    {
+      "file": "guava-33.6.0-jre.jar",
+      "path": "com/google/guava/guava/33.6.0-jre/guava-33.6.0-jre.jar",
+      "sha256": "dc573e1fca4fd5454f4a5fd3d7da2df03002876a4175bafc14a95980dd7713b3"
+    },
+    {
+      "file": "reload4j-1.2.26.jar",
+      "path": "ch/qos/reload4j/reload4j/1.2.26/reload4j-1.2.26.jar",
+      "sha256": "a7e86ae144541d04d24d1b7123d7425415477d50f387bb868e5c955aeaedd96f"
+    },
+    {
+      "file": "commons-logging-1.3.5.jar",
+      "path": "commons-logging/commons-logging/1.3.5/commons-logging-1.3.5.jar",
+      "sha256": "6d7a744e4027649fbb50895df9497d109f98c766a637062fe8d2eabbb3140ba4"
+    },
+    {
+      "file": "slf4j-reload4j-1.7.36.jar",
+      "path": "org/slf4j/slf4j-reload4j/1.7.36/slf4j-reload4j-1.7.36.jar",
+      "sha256": "ae6fdd5c9547896114d5ec7fa7503733b7d2890573d3886fb548b3119c4d3f67"
+    }
+  ]
+}

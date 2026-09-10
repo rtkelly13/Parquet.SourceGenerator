@@ -16,7 +16,8 @@ namespace Parquet.SourceGenerator.Tests;
 ///    strictly bit-for-bit deterministic output across repeated executions.
 /// 2. Serialized output for canonical models matches pinned golden SHA-256 hashes, catching any
 ///    unintended codec, dictionary, schema, or structural binary changes.
-/// 3. All tracked repository Parquet datasets (PyArrow v1/v2, C# v3, and LFS benchmarks) maintain
+/// 3. All tracked repository Parquet datasets (PyArrow v1/v2, C# v3, the pinned older-producer
+///    fixtures under test/data_producers, and LFS benchmarks) maintain
 ///    cryptographic SHA-256 hash integrity.
 /// </summary>
 public sealed class ParquetHashRegressionTests
@@ -30,6 +31,11 @@ public sealed class ParquetHashRegressionTests
         SolutionRoot,
         "test",
         "data_csharp"
+    );
+    private static readonly string TestDataProducersRoot = Path.Combine(
+        SolutionRoot,
+        "test",
+        "data_producers"
     );
     private static readonly string BenchmarkDataRoot = Path.Combine(
         SolutionRoot,
@@ -488,7 +494,15 @@ public sealed class ParquetHashRegressionTests
 
     private static IEnumerable<string> EnumerateDatasetPaths()
     {
-        foreach (string root in new[] { TestDataRoot, TestDataCSharpRoot, BenchmarkDataRoot })
+        foreach (
+            string root in new[]
+            {
+                TestDataRoot,
+                TestDataCSharpRoot,
+                TestDataProducersRoot,
+                BenchmarkDataRoot,
+            }
+        )
         {
             foreach (
                 string path in Directory.EnumerateFiles(

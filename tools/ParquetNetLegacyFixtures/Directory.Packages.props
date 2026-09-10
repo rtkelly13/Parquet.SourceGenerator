@@ -1,0 +1,9 @@
+<Project>
+    <!--
+    Central Package Management is disabled here so this tool can reference Parquet.Net 6.0.3
+    explicitly without colliding with the solution's pinned Parquet.Net version.
+  -->
+    <PropertyGroup>
+        <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    </PropertyGroup>
+</Project>
