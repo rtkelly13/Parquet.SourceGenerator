@@ -1,4 +1,5 @@
 #nullable enable
+Parquet.SourceGenerator.NullableColumnExtractor
 Parquet.SourceGenerator.ParquetColumnAttribute.Deduplicate.get -> bool
 Parquet.SourceGenerator.ParquetColumnAttribute.Deduplicate.set -> void
 Parquet.SourceGenerator.ParquetColumnAttribute.Encoding.get -> Parquet.SourceGenerator.ParquetColumnEncoding
@@ -16,6 +17,11 @@ Parquet.SourceGenerator.ParquetSerializerOptions.DictionaryEncodingSampleSize.se
 Parquet.SourceGenerator.ParquetSerializerOptions.DictionaryEncodingThreshold.get -> double?
 Parquet.SourceGenerator.ParquetSerializerOptions.DictionaryEncodingThreshold.set -> void
 Parquet.SourceGenerator.VectorizedColumnTransforms
+static Parquet.SourceGenerator.NullableColumnExtractor.CompactInPlace<T>(System.Span<T> values, System.ReadOnlySpan<byte> presence) -> int
+static Parquet.SourceGenerator.NullableColumnExtractor.CountPresent(System.ReadOnlySpan<byte> presence) -> int
+static Parquet.SourceGenerator.NullableColumnExtractor.ExpandPresenceToDefinitionLevels(System.ReadOnlySpan<byte> presence, System.Span<int> definitionLevels) -> void
+static Parquet.SourceGenerator.NullableColumnExtractor.ExtractBranchless<T>(System.ReadOnlySpan<T?> source, System.Span<int> definitionLevels, System.Span<T> values) -> int
+static Parquet.SourceGenerator.NullableColumnExtractor.ExtractTwoPass<T>(System.ReadOnlySpan<T?> source, System.Span<byte> presence, System.Span<int> definitionLevels, System.Span<T> values) -> int
 static Parquet.SourceGenerator.VectorizedColumnTransforms.ConvertDateTimeToEpochMilliseconds(System.ReadOnlySpan<System.DateTime> source, System.Span<long> destination) -> void
 static Parquet.SourceGenerator.VectorizedColumnTransforms.ConvertDateTimeToEpochMicroseconds(System.ReadOnlySpan<System.DateTime> source, System.Span<long> destination) -> void
 static Parquet.SourceGenerator.VectorizedColumnTransforms.ConvertEpochMillisecondsToDateTime(System.ReadOnlySpan<long> source, System.Span<System.DateTime> destination) -> void

@@ -212,6 +212,21 @@
       "sha256": "2f3639c2db21ea55ccf3c174fa70a9b4a0b44901416e186e9017490db27d3aee"
     },
     {
+      "path": "test/data_producers/parquet-net-6.0.3/01_small_flat_primitives.parquet",
+      "category": "synthetic-flat",
+      "producer": "Parquet.Net",
+      "producerVersion": "6.0.3",
+      "createdBy": "Parquet.Net version 6.0.3 (build e2a1c4da7f10d668233746f3b32d64e117693487)",
+      "generationScript": "tools/ParquetNetLegacyFixtures/Program.cs",
+      "formatVersion": "writer-default",
+      "compression": "snappy",
+      "rowCount": 100,
+      "rowGroupCount": 1,
+      "columnCount": 5,
+      "support": "supported-flat",
+      "sha256": "dd431ffeb66018b4d85524cb6757508a26cd19f45c6d32fbd7502f944402aa4a"
+    },
+    {
       "path": "benchmarks/data/tpch_lineitem_sf001.parquet",
       "category": "public-benchmark",
       "producer": "DuckDB",

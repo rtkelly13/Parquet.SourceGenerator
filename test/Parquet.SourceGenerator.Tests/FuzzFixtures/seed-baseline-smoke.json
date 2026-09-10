@@ -1,0 +1,22 @@
+{
+  "note": "Baseline pin: the default CI seed at its smallest useful shape. Not a past failure - it exists so the fixture-replay path is itself exercised on every run.",
+  "seed": 1690000001,
+  "rowCount": 3,
+  "columns": [
+    "row_index",
+    "text",
+    "opt_text",
+    "blob",
+    "money",
+    "ts_micros",
+    "duration",
+    "guid",
+    "opt_status"
+  ],
+  "compression": "Snappy",
+  "rowGroupSize": 2,
+  "deduplicateStrings": true,
+  "encodingHints": {
+    "text": "Dictionary"
+  }
+}

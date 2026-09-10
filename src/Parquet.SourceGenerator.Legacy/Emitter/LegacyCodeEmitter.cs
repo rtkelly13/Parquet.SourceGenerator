@@ -624,8 +624,9 @@ public static class LegacyCodeEmitter
 
         for (int i = 0; i < model.Properties.Length; i++)
         {
+            string missingArg = model.Properties[i].IsNullable ? $"out bool missing_{i}" : "out _";
             builder.AppendLine(
-                $"            var field_{i} = ResolveSchemaField(fileFields, {i}, _field_{i}, ref fieldsByName);"
+                $"            var field_{i} = ResolveSchemaField(fileFields, {i}, _field_{i}, ref fieldsByName, {missingArg});"
             );
         }
 
@@ -648,12 +649,27 @@ public static class LegacyCodeEmitter
         {
             PropertyModel prop = model.Properties[i];
             string elementType = GetColumnElementType(prop);
-            builder.AppendLine(
-                $"                    var col_{i} = await rgReader.ReadColumnAsync(field_{i}, cancellationToken).ConfigureAwait(false);"
-            );
-            builder.AppendLine(
-                $"                    var data_{i} = ({elementType}[])col_{i}.Data;"
-            );
+            if (prop.IsNullable)
+            {
+                // An optional column the file does not carry reads as all-nulls rather than as a
+                // failed column lookup: the documented schema-evolution behaviour.
+                builder.AppendLine($"                    var data_{i} = missing_{i}");
+                builder.AppendLine(
+                    $"                        ? {GetArrayCreationExpression(prop, "groupRows")}"
+                );
+                builder.AppendLine(
+                    $"                        : ({elementType}[])(await rgReader.ReadColumnAsync(field_{i}, cancellationToken).ConfigureAwait(false)).Data;"
+                );
+            }
+            else
+            {
+                builder.AppendLine(
+                    $"                    var col_{i} = await rgReader.ReadColumnAsync(field_{i}, cancellationToken).ConfigureAwait(false);"
+                );
+                builder.AppendLine(
+                    $"                    var data_{i} = ({elementType}[])col_{i}.Data;"
+                );
+            }
         }
 
         builder.AppendLine();

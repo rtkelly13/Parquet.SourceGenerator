@@ -50,8 +50,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
         global::Parquet.Schema.DataField[] fileFields,
         int index,
         global::Parquet.Schema.DataField expected,
-        ref global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? byName)
+        ref global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? byName,
+        out bool missing)
     {
+        missing = false;
         string expectedPath = expected.Path.ToString();
 
         // Ordered schemas resolve on a single index check. Every file this generator writes lands
@@ -89,6 +91,9 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
             throw new global::System.IO.InvalidDataException($"Required column '{expectedPath}' was not found in the Parquet file schema.");
         }
 
+        // Optional column absent from the file: documented schema evolution. The caller
+        // materialises nulls for it instead of asking the file for a column it does not have.
+        missing = true;
         return expected;
     }
 
@@ -901,15 +906,15 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
         var fileFields = reader.Schema.DataFields;
 
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
-        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
-        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
-        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
-        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
-        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName);
-        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName);
-        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName);
-        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName);
-        var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName);
+        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName, out _);
+        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName, out _);
+        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName, out _);
+        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName, out _);
+        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName, out _);
+        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName, out _);
+        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName, out _);
+        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName, out _);
+        var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName, out _);
 
         int totalRows;
         bool[]? selectedGroups = null;
@@ -1157,15 +1162,15 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
         var fileFields = reader.Schema.DataFields;
 
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
-        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
-        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
-        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
-        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
-        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName);
-        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName);
-        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName);
-        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName);
-        var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName);
+        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName, out _);
+        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName, out _);
+        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName, out _);
+        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName, out _);
+        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName, out _);
+        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName, out _);
+        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName, out _);
+        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName, out _);
+        var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName, out _);
 
         int totalRows;
         bool[]? selectedGroups = null;
@@ -1413,15 +1418,15 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
         var fileFields = reader.Schema.DataFields;
 
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
-        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
-        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
-        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
-        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
-        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName);
-        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName);
-        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName);
-        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName);
-        var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName);
+        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName, out _);
+        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName, out _);
+        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName, out _);
+        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName, out _);
+        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName, out _);
+        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName, out _);
+        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName, out _);
+        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName, out _);
+        var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName, out _);
 
         for (int r = 0; r < rgCount; r++)
         {
@@ -1635,15 +1640,15 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
         var fileFields = reader.Schema.DataFields;
 
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
-        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
-        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
-        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
-        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
-        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName);
-        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName);
-        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName);
-        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName);
-        var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName);
+        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName, out _);
+        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName, out _);
+        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName, out _);
+        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName, out _);
+        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName, out _);
+        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName, out _);
+        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName, out _);
+        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName, out _);
+        var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName, out _);
 
         for (int r = 0; r < reader.RowGroupCount; r++)
         {
@@ -1989,15 +1994,15 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
             var fileFields = reader.Schema.DataFields;
 
             global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
-            var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
-            var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
-            var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
-            var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
-            var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName);
-            var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName);
-            var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName);
-            var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName);
-            var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName);
+            var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName, out _);
+            var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName, out _);
+            var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName, out _);
+            var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName, out _);
+            var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName, out _);
+            var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName, out _);
+            var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName, out _);
+            var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName, out _);
+            var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName, out _);
 
             var buffer_0 = global::System.Buffers.ArrayPool<int>.Shared.Rent(maxRowGroupSize);
             var buffer_1 = global::System.Buffers.ArrayPool<global::System.ReadOnlyMemory<char>>.Shared.Rent(maxRowGroupSize);
@@ -2214,15 +2219,15 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
         var fileFields = reader.Schema.DataFields;
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
 
-        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
-        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
-        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
-        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
-        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName);
-        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName);
-        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName);
-        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName);
-        var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName);
+        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName, out _);
+        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName, out _);
+        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName, out _);
+        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName, out _);
+        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName, out _);
+        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName, out _);
+        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName, out _);
+        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName, out _);
+        var field_8 = ResolveSchemaField(fileFields, 8, _field_8, ref fieldsByName, out _);
 
         var buffer_0 = global::System.Buffers.ArrayPool<int>.Shared.Rent(maxRowCount);
         var buffer_1 = global::System.Buffers.ArrayPool<global::System.ReadOnlyMemory<char>>.Shared.Rent(maxRowCount);
