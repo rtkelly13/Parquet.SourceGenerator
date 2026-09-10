@@ -16,6 +16,29 @@ The rule, the three surfaces and the author process are in
 
 <!-- Add new entries directly below this line, newest first. -->
 
+### 2026-09-10 — Read entry point and builder (#217)
+
+- **Surface:** emitted
+- **Semver:** generated-shape
+- **Issue:** [#217](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/217),
+  [#216](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/216)
+- **Rationale:** Adds **104** emitted members across the five catalogued models: a `{T}Parquet`
+  entry point and four builder structs per model. Reads previously encoded source, shape and
+  execution into method names — twelve members for a four-axis grid, heading for forty-five once
+  #146, #148 and #178 land. Each axis becomes a member instead, so a new axis adds members linearly
+  rather than multiplying names. The full argument is in
+  [docs/19](../19-PUBLIC-API-SURFACE.md) decision D2.
+
+  Purely additive: no existing member changes or is removed. The flat `Read*` methods remain and are
+  what the builders delegate to for one release, per docs/19 decision D3, which is when this
+  addition is repaid — the twelve flat read members are removed at the `0.1.0` freeze.
+
+  The structs are type-state rather than one builder validating at runtime, so the grid's four empty
+  cells are absent members rather than members that throw: no `Parallel()` on a stream source, no
+  `Where()`/`Parallel()` on each other's results, no streaming or batch shape after `Parallel()`.
+  `Parallel()` deliberately takes no degree argument — `MaxDegreeOfParallelism` is an option after
+  #239, and an argument here would give the knob two homes again. #241 decides where it settles.
+
 ### 2026-09-10 — `ReadParquetParallelAsync(...)` / `ReadParquetParallelArrayAsync(...)`: `maxDegreeOfParallelism` parameter removed
 
 - **Surface:** emitted

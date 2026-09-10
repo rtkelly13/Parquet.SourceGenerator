@@ -2492,3 +2492,191 @@ public readonly struct NestedOrderRowGroupMetadata
     /// <summary>Zone map for the <c>Id</c> column.</summary>
     public global::Parquet.SourceGenerator.ParquetColumnStatistics<int> Id { get; }
 }
+
+/// <summary>
+/// Entry point for reading <c>NestedOrder</c> values from Parquet (issue #217).
+/// </summary>
+public static partial class NestedOrderParquet
+{
+    /// <summary>Reads from a <see cref="System.IO.Stream"/>.</summary>
+    public static NestedOrderParquetStreamSource From(global::System.IO.Stream stream)
+        => new NestedOrderParquetStreamSource(stream ?? throw new global::System.ArgumentNullException(nameof(stream)), null);
+
+    /// <summary>Reads from an in-memory buffer.</summary>
+    public static NestedOrderParquetMemorySource From(global::System.ReadOnlyMemory<byte> parquetBytes)
+        => new NestedOrderParquetMemorySource(parquetBytes, null);
+}
+
+/// <summary>
+/// A pending read of <c>NestedOrder</c> from a stream.
+/// </summary>
+/// <remarks>
+/// There is deliberately no <c>Parallel</c> member. A single <c>ParquetReader</c> seeks
+/// within its stream, so concurrent row-group reads would corrupt one another, and an
+/// arbitrary stream cannot be handed to more than one reader. Buffer the file and use
+/// <c>From(ReadOnlyMemory&lt;byte&gt;)</c> for genuine decode parallelism.
+/// </remarks>
+public readonly struct NestedOrderParquetStreamSource
+{
+    private readonly global::System.IO.Stream _stream;
+    private readonly global::Parquet.SourceGenerator.ParquetSerializerOptions? _options;
+
+    internal NestedOrderParquetStreamSource(global::System.IO.Stream stream, global::Parquet.SourceGenerator.ParquetSerializerOptions? options)
+    {
+        _stream = stream;
+        _options = options;
+    }
+
+    /// <summary>Replaces the serializer options.</summary>
+    public NestedOrderParquetStreamSource WithOptions(global::Parquet.SourceGenerator.ParquetSerializerOptions options)
+        => new NestedOrderParquetStreamSource(_stream, options ?? throw new global::System.ArgumentNullException(nameof(options)));
+
+    /// <summary>Skips row groups whose footer statistics cannot satisfy the predicate.</summary>
+    public NestedOrderParquetFilteredSource Where(global::System.Func<global::SampleDomain.Models.NestedOrderRowGroupMetadata, bool> predicate)
+        => new NestedOrderParquetFilteredSource(_stream, default, _options, predicate ?? throw new global::System.ArgumentNullException(nameof(predicate)));
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<NestedOrder>> ToListAsync(global::System.Threading.CancellationToken cancellationToken = default)
+        => NestedOrderParquetExtensions.ReadParquetAsync(_stream, _options, cancellationToken);
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Threading.Tasks.Task<NestedOrder[]> ToArrayAsync(global::System.Threading.CancellationToken cancellationToken = default)
+        => NestedOrderParquetExtensions.ReadParquetArrayAsync(_stream, _options, cancellationToken);
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Collections.Generic.IAsyncEnumerable<NestedOrder> AsAsyncEnumerable(global::System.Threading.CancellationToken cancellationToken = default)
+        => NestedOrderParquetExtensions.ReadParquetStreamAsync(_stream, _options, cancellationToken);
+
+}
+
+/// <summary>
+/// A pending read of <c>NestedOrder</c> from an in-memory buffer.
+/// </summary>
+public readonly struct NestedOrderParquetMemorySource
+{
+    private readonly global::System.ReadOnlyMemory<byte> _bytes;
+    private readonly global::Parquet.SourceGenerator.ParquetSerializerOptions? _options;
+
+    internal NestedOrderParquetMemorySource(global::System.ReadOnlyMemory<byte> bytes, global::Parquet.SourceGenerator.ParquetSerializerOptions? options)
+    {
+        _bytes = bytes;
+        _options = options;
+    }
+
+    /// <summary>Replaces the serializer options.</summary>
+    public NestedOrderParquetMemorySource WithOptions(global::Parquet.SourceGenerator.ParquetSerializerOptions options)
+        => new NestedOrderParquetMemorySource(_bytes, options ?? throw new global::System.ArgumentNullException(nameof(options)));
+
+    /// <summary>Decodes row groups concurrently, each worker over its own view of the buffer.</summary>
+    /// <remarks>
+    /// Takes no degree argument. #239 made <c>ParquetSerializerOptions</c> the single home for
+    /// configuration, and an argument here would give the knob two homes again — the condition
+    /// #218 existed to remove. Set <c>MaxDegreeOfParallelism</c> on the options; #241 decides
+    /// whether it moves here now this builder exists.
+    /// </remarks>
+    public NestedOrderParquetParallelSource Parallel()
+        => new NestedOrderParquetParallelSource(_bytes, _options);
+
+    /// <summary>Skips row groups whose footer statistics cannot satisfy the predicate.</summary>
+    public NestedOrderParquetFilteredSource Where(global::System.Func<global::SampleDomain.Models.NestedOrderRowGroupMetadata, bool> predicate)
+        => new NestedOrderParquetFilteredSource(null, _bytes, _options, predicate ?? throw new global::System.ArgumentNullException(nameof(predicate)));
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<NestedOrder>> ToListAsync(global::System.Threading.CancellationToken cancellationToken = default)
+        => NestedOrderParquetExtensions.ReadParquetAsync(_bytes, _options, cancellationToken);
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Threading.Tasks.Task<NestedOrder[]> ToArrayAsync(global::System.Threading.CancellationToken cancellationToken = default)
+        => NestedOrderParquetExtensions.ReadParquetArrayAsync(_bytes, _options, cancellationToken);
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Collections.Generic.IAsyncEnumerable<NestedOrder> AsAsyncEnumerable(global::System.Threading.CancellationToken cancellationToken = default)
+        => NestedOrderParquetExtensions.ReadParquetStreamAsync(_bytes, _options, cancellationToken);
+
+}
+
+/// <summary>
+/// A pending read of <c>NestedOrder</c> with a row-group predicate applied.
+/// </summary>
+/// <remarks>
+/// There is deliberately no <c>Parallel</c> member: no parallel reader accepts a
+/// predicate yet (issue #222). When one does, this type gains the member.
+/// </remarks>
+public readonly struct NestedOrderParquetFilteredSource
+{
+    private readonly global::System.IO.Stream? _stream;
+    private readonly global::System.ReadOnlyMemory<byte> _bytes;
+    private readonly global::Parquet.SourceGenerator.ParquetSerializerOptions? _options;
+    private readonly global::System.Func<global::SampleDomain.Models.NestedOrderRowGroupMetadata, bool> _predicate;
+
+    internal NestedOrderParquetFilteredSource(global::System.IO.Stream? stream, global::System.ReadOnlyMemory<byte> bytes, global::Parquet.SourceGenerator.ParquetSerializerOptions? options, global::System.Func<global::SampleDomain.Models.NestedOrderRowGroupMetadata, bool> predicate)
+    {
+        _stream = stream;
+        _bytes = bytes;
+        _options = options;
+        _predicate = predicate;
+    }
+
+    /// <summary>Replaces the serializer options.</summary>
+    public NestedOrderParquetFilteredSource WithOptions(global::Parquet.SourceGenerator.ParquetSerializerOptions options)
+        => new NestedOrderParquetFilteredSource(_stream, _bytes, options ?? throw new global::System.ArgumentNullException(nameof(options)), _predicate);
+
+    /// <summary>Materializes the surviving rows into a list.</summary>
+    public async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<NestedOrder>> ToListAsync(global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        if (_stream is not null)
+            return await NestedOrderParquetExtensions.ReadParquetAsync(_stream, _options, cancellationToken, _predicate).ConfigureAwait(false);
+
+        var results = new global::System.Collections.Generic.List<NestedOrder>();
+        await foreach (var item in NestedOrderParquetExtensions.ReadParquetStreamAsync(_bytes, _options, cancellationToken, _predicate))
+            results.Add(item);
+        return results;
+    }
+
+    /// <summary>Materializes the surviving rows into an array.</summary>
+    public async global::System.Threading.Tasks.Task<NestedOrder[]> ToArrayAsync(global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        if (_stream is not null)
+            return await NestedOrderParquetExtensions.ReadParquetArrayAsync(_stream, _options, cancellationToken, _predicate).ConfigureAwait(false);
+
+        return (await ToListAsync(cancellationToken).ConfigureAwait(false)).ToArray();
+    }
+
+    /// <summary>Streams the surviving rows without materializing them all.</summary>
+    public global::System.Collections.Generic.IAsyncEnumerable<NestedOrder> AsAsyncEnumerable(global::System.Threading.CancellationToken cancellationToken = default)
+        => _stream is not null
+            ? NestedOrderParquetExtensions.ReadParquetStreamAsync(_stream, _options, cancellationToken, _predicate)
+            : NestedOrderParquetExtensions.ReadParquetStreamAsync(_bytes, _options, cancellationToken, _predicate);
+}
+
+/// <summary>
+/// A pending parallel read of <c>NestedOrder</c> from an in-memory buffer.
+/// </summary>
+/// <remarks>
+/// Only the materializing shapes are offered: there is no parallel streaming or
+/// columnar-batch reader to delegate to, so offering the member would mean throwing.
+/// </remarks>
+public readonly struct NestedOrderParquetParallelSource
+{
+    private readonly global::System.ReadOnlyMemory<byte> _bytes;
+    private readonly global::Parquet.SourceGenerator.ParquetSerializerOptions? _options;
+
+    internal NestedOrderParquetParallelSource(global::System.ReadOnlyMemory<byte> bytes, global::Parquet.SourceGenerator.ParquetSerializerOptions? options)
+    {
+        _bytes = bytes;
+        _options = options;
+    }
+
+    /// <summary>Replaces the serializer options.</summary>
+    public NestedOrderParquetParallelSource WithOptions(global::Parquet.SourceGenerator.ParquetSerializerOptions options)
+        => new NestedOrderParquetParallelSource(_bytes, options ?? throw new global::System.ArgumentNullException(nameof(options)));
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<NestedOrder>> ToListAsync(global::System.Threading.CancellationToken cancellationToken = default)
+        => NestedOrderParquetExtensions.ReadParquetParallelAsync(_bytes, _options, cancellationToken);
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Threading.Tasks.Task<NestedOrder[]> ToArrayAsync(global::System.Threading.CancellationToken cancellationToken = default)
+        => NestedOrderParquetExtensions.ReadParquetParallelArrayAsync(_bytes, _options, cancellationToken);
+
+}
