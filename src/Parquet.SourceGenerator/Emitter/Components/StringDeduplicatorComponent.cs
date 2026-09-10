@@ -111,6 +111,9 @@ internal static class StringDeduplicatorComponent
             "        /// nothing at all — no string instance is created for a value already seen."
         );
         builder.AppendLine("        /// </summary>");
+        // Materialise via span.ToString(), never `new string(span)`: the ReadOnlySpan<char>
+        // string constructor does not exist on netstandard2.0/net472, where the call binds to
+        // `new string(char*)` instead and fails to compile in the consumer's build.
         builder.AppendLine(
             "        public string GetOrAdd(global::System.ReadOnlySpan<char> value)"
         );
@@ -118,7 +121,7 @@ internal static class StringDeduplicatorComponent
         builder.AppendLine("            if (value.Length == 0) return string.Empty;");
         builder.AppendLine();
         builder.AppendLine("            var entries = _entries;");
-        builder.AppendLine("            if (entries is null) return new string(value);");
+        builder.AppendLine("            if (entries is null) return value.ToString();");
         builder.AppendLine();
         builder.AppendLine("            int mask = _mask;");
         builder.AppendLine("            int index = (int)(HashSpan(value) & (uint)mask);");
@@ -128,7 +131,7 @@ internal static class StringDeduplicatorComponent
         builder.AppendLine("                string? candidate = entries[slot];");
         builder.AppendLine("                if (candidate is null)");
         builder.AppendLine("                {");
-        builder.AppendLine("                    string inserted = new string(value);");
+        builder.AppendLine("                    string inserted = value.ToString();");
         builder.AppendLine("                    entries[slot] = inserted;");
         builder.AppendLine("                    return inserted;");
         builder.AppendLine("                }");
@@ -142,7 +145,7 @@ internal static class StringDeduplicatorComponent
         builder.AppendLine("                }");
         builder.AppendLine("            }");
         builder.AppendLine();
-        builder.AppendLine("            string replacement = new string(value);");
+        builder.AppendLine("            string replacement = value.ToString();");
         builder.AppendLine("            entries[index] = replacement;");
         builder.AppendLine("            return replacement;");
         builder.AppendLine("        }");

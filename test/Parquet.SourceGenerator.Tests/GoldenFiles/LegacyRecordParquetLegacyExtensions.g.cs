@@ -153,7 +153,7 @@ public static partial class LegacyRecordParquetLegacyExtensions
             if (value.Length == 0) return string.Empty;
 
             var entries = _entries;
-            if (entries is null) return new string(value);
+            if (entries is null) return value.ToString();
 
             int mask = _mask;
             int index = (int)(HashSpan(value) & (uint)mask);
@@ -163,7 +163,7 @@ public static partial class LegacyRecordParquetLegacyExtensions
                 string? candidate = entries[slot];
                 if (candidate is null)
                 {
-                    string inserted = new string(value);
+                    string inserted = value.ToString();
                     entries[slot] = inserted;
                     return inserted;
                 }
@@ -175,7 +175,7 @@ public static partial class LegacyRecordParquetLegacyExtensions
                 }
             }
 
-            string replacement = new string(value);
+            string replacement = value.ToString();
             entries[index] = replacement;
             return replacement;
         }
