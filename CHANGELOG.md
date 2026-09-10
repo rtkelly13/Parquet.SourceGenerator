@@ -40,6 +40,14 @@ Changes since `0.0.1`. That version is published on nuget.org (alongside the `0.
   target types, and member types the 4.x/5.x backend cannot represent.
 - **CI workflow** building, testing and packing the solution. Benchmarks run on demand.
 
+### Changed
+- **Formatting tooling consolidated on CSharpier.** `dotnet format whitespace` is removed from CI:
+  its Roslyn formatter disagrees with CSharpier on layout (case-body and pattern-arm indentation),
+  and it policed nothing beyond `.cs` files anyway. `.editorconfig` now carries CSharpier's
+  configuration (`max_line_length`, its non-configurable behaviors) and disables `IDE0055`, so no
+  Roslyn-based formatter — build, IDE or CLI — competes with CSharpier over C# layout. `.gitattributes`
+  pins `eol=lf` on checkout, replacing the whitespace formatter's line-ending role for non-C# files.
+
 ### Fixed before release
 - `CompressionMethod` was accepted and discarded — no compression setting ever reached the writer.
 - `[ParquetTimestamp(Microseconds)]` mapped to `DateTimeFormat.DateAndTime`, which Parquet.Net
