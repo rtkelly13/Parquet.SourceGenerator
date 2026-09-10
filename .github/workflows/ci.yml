@@ -3,8 +3,11 @@ name: CI & PR E2E Checks
 on:
   push:
     branches: [ main ]
+  # Deliberately unfiltered by base branch. `branches: [ main ]` here means a pull request based on
+  # anything other than main never runs this workflow — so every stacked pull request reported green
+  # off `pr-title` alone, having never been built or tested. The repository's own workflow policy
+  # (AGENTS.md) expects stacked, rebased branches, so the filter and the workflow were in conflict.
   pull_request:
-    branches: [ main ]
 
 permissions:
   contents: read
