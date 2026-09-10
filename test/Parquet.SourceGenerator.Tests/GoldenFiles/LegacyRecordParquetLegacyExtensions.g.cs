@@ -28,8 +28,10 @@ public static partial class LegacyRecordParquetLegacyExtensions
         global::Parquet.Schema.DataField[] fileFields,
         int index,
         global::Parquet.Schema.DataField expected,
-        ref global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? byName)
+        ref global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? byName,
+        out bool missing)
     {
+        missing = false;
         string expectedPath = expected.Path.ToString();
 
         // Ordered schemas resolve on a single index check. Every file this generator writes lands
@@ -67,6 +69,9 @@ public static partial class LegacyRecordParquetLegacyExtensions
             throw new global::System.IO.InvalidDataException($"Required column '{expectedPath}' was not found in the Parquet file schema.");
         }
 
+        // Optional column absent from the file: documented schema evolution. The caller
+        // materialises nulls for it instead of asking the file for a column it does not have.
+        missing = true;
         return expected;
     }
 
@@ -347,10 +352,10 @@ public static partial class LegacyRecordParquetLegacyExtensions
 
             var fileFields = reader.Schema.GetDataFields();
             global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
-            var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName);
-            var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName);
-            var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName);
-            var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName);
+            var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName, out _);
+            var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName, out bool missing_1);
+            var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName, out bool missing_2);
+            var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName, out _);
 
             using var stringDeduplicator = new StringDeduplicator(512);
             bool deduplicateStrings = options.DeduplicateStrings;
@@ -365,10 +370,12 @@ public static partial class LegacyRecordParquetLegacyExtensions
 
                     var col_0 = await rgReader.ReadColumnAsync(field_0, cancellationToken).ConfigureAwait(false);
                     var data_0 = (int[])col_0.Data;
-                    var col_1 = await rgReader.ReadColumnAsync(field_1, cancellationToken).ConfigureAwait(false);
-                    var data_1 = (string[])col_1.Data;
-                    var col_2 = await rgReader.ReadColumnAsync(field_2, cancellationToken).ConfigureAwait(false);
-                    var data_2 = (byte[][])col_2.Data;
+                    var data_1 = missing_1
+                        ? new string[groupRows]
+                        : (string[])(await rgReader.ReadColumnAsync(field_1, cancellationToken).ConfigureAwait(false)).Data;
+                    var data_2 = missing_2
+                        ? new byte[groupRows][]
+                        : (byte[][])(await rgReader.ReadColumnAsync(field_2, cancellationToken).ConfigureAwait(false)).Data;
                     var col_3 = await rgReader.ReadColumnAsync(field_3, cancellationToken).ConfigureAwait(false);
                     var data_3 = (int[])col_3.Data;
 
