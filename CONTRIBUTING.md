@@ -85,7 +85,9 @@ If you publish numbers anywhere, include the machine and runtime they came from.
 ## 📥 Submitting Pull Requests
 
 1. **Create a Feature Branch**: `git checkout -b feat/your-feature-name`
-2. **Code Style**: Ensure code adheres to `.editorconfig` rules (`dotnet format --verify-no-changes`).
+2. **Code Style**: CSharpier is the only C# formatter (`dotnet csharpier format .`, checked in CI
+   via `dotnet csharpier check .`). Do not run `dotnet format` on C# — its Roslyn formatter
+   conflicts with CSharpier and `IDE0055` is disabled in `.editorconfig` by design.
 3. **Tests**: The suite must pass cleanly (`dotnet test`).
 4. **PR Title**: Must follow Conventional Commits — CI validates it (`feat:`, `fix:`, `perf:`,
    `docs:`, `style:`, `refactor:`, `test:`, `chore:`, `ci:`, `build:`).
