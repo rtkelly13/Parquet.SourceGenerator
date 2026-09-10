@@ -6,6 +6,19 @@
 
 Track the limitation and future upstream fixes in [issue #150](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/150). Scan Parquet.Net for a safe non-nullable read path or an API that permits omitting definition-level output before revisiting the optimization.
 
+<<<<<<< HEAD
+## Parquet.Net 6.1.0 Column Decode Always Allocates
+
+`ParquetRowGroupReader.ReadAsync` and `ReadRawAsync<T>` both decode a column chunk into an
+internally allocated array and then copy into the caller's `Memory<T>`. Measured on a single
+`double` column, 20,000 rows, Apple M1 / .NET 9: ~7.8 bytes per row allocated on both entry
+points, i.e. one array the size of the decoded data per column per row group — identical with and
+without a definition-levels buffer supplied.
+
+The consequence for the struct-of-arrays batch API ([issue #147](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/147))
+is that "zero allocation" can only mean zero *domain object* allocation. Genuinely allocation-free
+reads need an upstream decode-into-caller-buffer entry point.
+=======
 ## Parquet.Net 6.1.0 Page Checksums Are Not Verified
 
 Parquet's `PageHeader.crc` is optional, and Parquet.Net neither writes nor verifies it. A single
@@ -27,3 +40,4 @@ valid Parquet file that simply omits an optional column is rejected with
 already handles the case and falls back to the compile-time field, but the read path then calls
 `GetStatistics`/`ReadAsync` with a field the file does not contain. Pinned by
 `SupportedSchemaPropertyTests.AbsentNullableColumnIsRejectedToday`.
+>>>>>>> origin/main

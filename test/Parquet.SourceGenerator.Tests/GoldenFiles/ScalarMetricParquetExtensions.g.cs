@@ -1570,4 +1570,227 @@ public static partial class ScalarMetricParquetExtensions
             ? new global::System.IO.MemoryStream(segment.Array!, segment.Offset, segment.Count, writable: false)
             : new global::System.IO.MemoryStream(parquetBytes.ToArray(), writable: false);
     }
+
+    /// <summary>
+    /// Struct-of-arrays view over one row group of <c>ScalarMetric</c> data.
+    /// Each column is exposed as a <see cref="global::System.ReadOnlySpan{T}"/> over a pooled buffer.
+    /// </summary>
+    /// <remarks>
+    /// The buffers belong to <see cref="global::System.Buffers.ArrayPool{T}"/> and are returned when the
+    /// producing enumerator advances or is disposed. Copy anything you need to outlive the current
+    /// iteration; never store the batch itself.
+    /// </remarks>
+    public readonly struct ColumnBatch
+    {
+        private readonly long[] _buffer_0;
+        private readonly bool[] _buffer_1;
+        private readonly bool?[] _buffer_2;
+        private readonly int[] _buffer_3;
+        private readonly int?[] _buffer_4;
+        private readonly byte[] _buffer_5;
+        private readonly short[] _buffer_6;
+        private readonly float[] _buffer_7;
+
+        /// <summary>Number of rows in this row group.</summary>
+        public int RowCount { get; }
+
+        /// <summary>Zero-based index of the row group this batch came from.</summary>
+        public int RowGroupIndex { get; }
+
+        internal ColumnBatch(int rowCount, int rowGroupIndex, long[] buffer_0, bool[] buffer_1, bool?[] buffer_2, int[] buffer_3, int?[] buffer_4, byte[] buffer_5, short[] buffer_6, float[] buffer_7)
+        {
+            RowCount = rowCount;
+            RowGroupIndex = rowGroupIndex;
+            _buffer_0 = buffer_0;
+            _buffer_1 = buffer_1;
+            _buffer_2 = buffer_2;
+            _buffer_3 = buffer_3;
+            _buffer_4 = buffer_4;
+            _buffer_5 = buffer_5;
+            _buffer_6 = buffer_6;
+            _buffer_7 = buffer_7;
+        }
+
+        /// <summary>
+        /// Column <c>row_id</c> (<c>RowId</c>) for the rows in this batch.
+        /// </summary>
+        public global::System.ReadOnlySpan<long> RowIdSpan =>
+            new global::System.ReadOnlySpan<long>(_buffer_0, 0, RowCount);
+
+        /// <summary>
+        /// Column <c>is_valid</c> (<c>Flag</c>) for the rows in this batch.
+        /// </summary>
+        public global::System.ReadOnlySpan<bool> FlagSpan =>
+            new global::System.ReadOnlySpan<bool>(_buffer_1, 0, RowCount);
+
+        /// <summary>
+        /// Column <c>maybe_flag</c> (<c>NullableFlag</c>) for the rows in this batch.
+        /// </summary>
+        public global::System.ReadOnlySpan<bool?> NullableFlagSpan =>
+            new global::System.ReadOnlySpan<bool?>(_buffer_2, 0, RowCount);
+
+        /// <summary>
+        /// Column <c>status</c> (<c>StatusCode</c>) for the rows in this batch.
+        /// </summary>
+        public global::System.ReadOnlySpan<int> StatusCodeSpan =>
+            new global::System.ReadOnlySpan<int>(_buffer_3, 0, RowCount);
+
+        /// <summary>
+        /// Column <c>opt_status</c> (<c>OptionalStatus</c>) for the rows in this batch.
+        /// </summary>
+        public global::System.ReadOnlySpan<int?> OptionalStatusSpan =>
+            new global::System.ReadOnlySpan<int?>(_buffer_4, 0, RowCount);
+
+        /// <summary>
+        /// Column <c>tiny_num</c> (<c>TinyNum</c>) for the rows in this batch.
+        /// </summary>
+        public global::System.ReadOnlySpan<byte> TinyNumSpan =>
+            new global::System.ReadOnlySpan<byte>(_buffer_5, 0, RowCount);
+
+        /// <summary>
+        /// Column <c>short_num</c> (<c>ShortNum</c>) for the rows in this batch.
+        /// </summary>
+        public global::System.ReadOnlySpan<short> ShortNumSpan =>
+            new global::System.ReadOnlySpan<short>(_buffer_6, 0, RowCount);
+
+        /// <summary>
+        /// Column <c>float_val</c> (<c>FloatVal</c>) for the rows in this batch.
+        /// </summary>
+        public global::System.ReadOnlySpan<float> FloatValSpan =>
+            new global::System.ReadOnlySpan<float>(_buffer_7, 0, RowCount);
+    }
+
+    /// <summary>
+    /// Asynchronously streams <c>ScalarMetric</c> data as columnar batches — one per row group —
+    /// without materializing a single <c>ScalarMetric</c> instance.
+    /// </summary>
+    /// <remarks>
+    /// Each yielded <see cref="ColumnBatch"/> aliases pooled buffers that are returned as soon as the
+    /// enumerator advances or is disposed, so the spans must not escape the loop body.
+    /// </remarks>
+    public static async global::System.Collections.Generic.IAsyncEnumerable<ColumnBatch> ReadParquetBatchesAsync(
+        global::System.IO.Stream stream,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));
+
+        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
+
+        await using var reader = await global::Parquet.ParquetReader.CreateAsync(
+            stream,
+            BuildFormatOptions(options),
+            cancellationToken: cancellationToken);
+        var fileFields = reader.Schema.DataFields;
+
+        global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
+        var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName, out _);
+        var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName, out _);
+        var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName, out bool missing_2);
+        var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName, out _);
+        var field_4 = ResolveSchemaField(fileFields, 4, _field_4, ref fieldsByName, out bool missing_4);
+        var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName, out _);
+        var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName, out _);
+        var field_7 = ResolveSchemaField(fileFields, 7, _field_7, ref fieldsByName, out _);
+
+        for (int r = 0; r < reader.RowGroupCount; r++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using var groupReader = reader.OpenRowGroupReader(r);
+            int rowCount = (int)groupReader.RowCount;
+
+            var buffer_0 = global::System.Buffers.ArrayPool<long>.Shared.Rent(rowCount);
+            var buffer_1 = global::System.Buffers.ArrayPool<bool>.Shared.Rent(rowCount);
+            var buffer_2 = global::System.Buffers.ArrayPool<bool?>.Shared.Rent(rowCount);
+            var buffer_3 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
+            var buffer_4 = global::System.Buffers.ArrayPool<int?>.Shared.Rent(rowCount);
+            var buffer_5 = global::System.Buffers.ArrayPool<byte>.Shared.Rent(rowCount);
+            var buffer_6 = global::System.Buffers.ArrayPool<short>.Shared.Rent(rowCount);
+            var buffer_7 = global::System.Buffers.ArrayPool<float>.Shared.Rent(rowCount);
+
+            try
+            {
+                await groupReader.ReadAsync<long>(
+                    field_0,
+                    new global::System.Memory<long>(buffer_0, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<bool>(
+                    field_1,
+                    new global::System.Memory<bool>(buffer_1, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                // The column is absent from the file (optional-column schema evolution) or the chunk is
+                // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                var chunkStats_2 = missing_2 ? null : groupReader.GetStatistics(field_2);
+                if (missing_2 || chunkStats_2?.NullCount == rowCount)
+                {
+                    global::System.Array.Clear(buffer_2, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync<bool>(
+                        field_2,
+                        new global::System.Memory<bool?>(buffer_2, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
+                await groupReader.ReadAsync<int>(
+                    field_3,
+                    new global::System.Memory<int>(buffer_3, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                // The column is absent from the file (optional-column schema evolution) or the chunk is
+                // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
+                var chunkStats_4 = missing_4 ? null : groupReader.GetStatistics(field_4);
+                if (missing_4 || chunkStats_4?.NullCount == rowCount)
+                {
+                    global::System.Array.Clear(buffer_4, 0, rowCount);
+                }
+                else
+                {
+                    await groupReader.ReadAsync<int>(
+                        field_4,
+                        new global::System.Memory<int?>(buffer_4, 0, rowCount),
+                        cancellationToken: cancellationToken);
+                }
+                await groupReader.ReadAsync<byte>(
+                    field_5,
+                    new global::System.Memory<byte>(buffer_5, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<short>(
+                    field_6,
+                    new global::System.Memory<short>(buffer_6, 0, rowCount),
+                    cancellationToken: cancellationToken);
+                await groupReader.ReadAsync<float>(
+                    field_7,
+                    new global::System.Memory<float>(buffer_7, 0, rowCount),
+                    cancellationToken: cancellationToken);
+
+                yield return new ColumnBatch(rowCount, r, buffer_0, buffer_1, buffer_2, buffer_3, buffer_4, buffer_5, buffer_6, buffer_7);
+            }
+            finally
+            {
+                global::System.Buffers.ArrayPool<long>.Shared.Return(buffer_0, clearArray: false);
+                global::System.Buffers.ArrayPool<bool>.Shared.Return(buffer_1, clearArray: false);
+                global::System.Buffers.ArrayPool<bool?>.Shared.Return(buffer_2, clearArray: false);
+                global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_3, clearArray: false);
+                global::System.Buffers.ArrayPool<int?>.Shared.Return(buffer_4, clearArray: false);
+                global::System.Buffers.ArrayPool<byte>.Shared.Return(buffer_5, clearArray: false);
+                global::System.Buffers.ArrayPool<short>.Shared.Return(buffer_6, clearArray: false);
+                global::System.Buffers.ArrayPool<float>.Shared.Return(buffer_7, clearArray: false);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Asynchronously streams <c>ScalarMetric</c> columnar batches from an in-memory byte buffer.
+    /// </summary>
+    public static async global::System.Collections.Generic.IAsyncEnumerable<ColumnBatch> ReadParquetBatchesAsync(
+        global::System.ReadOnlyMemory<byte> parquetBytes,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,
+        [global::System.Runtime.CompilerServices.EnumeratorCancellation] global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        using var stream = CreateBufferStream(parquetBytes);
+        await foreach (var batch in ReadParquetBatchesAsync(stream, options, cancellationToken))
+        {
+            yield return batch;
+        }
+    }
 }

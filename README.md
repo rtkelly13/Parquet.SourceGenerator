@@ -137,7 +137,19 @@ await foreach (var e in UserEventParquetExtensions.ReadParquetStreamAsync(buffer
 {
     // Process item by item with O(1) memory
 }
+
+// Columnar (struct-of-arrays) batches — one per row group, no UserEvent ever constructed
+await foreach (var batch in UserEventParquetExtensions.ReadParquetBatchesAsync(buffer))
+{
+    ReadOnlySpan<long> ids = batch.UserIdSpan;
+    ReadOnlySpan<double> amounts = batch.AmountSpan;
+    // SIMD-friendly: the spans alias pooled buffers, valid until the next iteration
+}
 ```
+
+`ReadParquetBatchesAsync` is emitted for flat models only (no nested structs, lists or maps) and
+allocates no domain objects; the pooled column buffers are returned when the enumerator advances
+or is disposed, so nothing in a batch may outlive the loop body.
 
 ### 5. Custom Configuration (`ParquetSerializerOptions`)
 
