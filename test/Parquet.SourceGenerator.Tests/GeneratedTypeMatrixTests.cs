@@ -195,12 +195,12 @@ public sealed class GeneratedTypeMatrixTests
         List<GeneratedTypeMatrixRecord> parallel =
             await GeneratedTypeMatrixRecordParquetExtensions.ReadParquetParallelAsync(
                 bytes,
-                maxDegreeOfParallelism: 2
+                new ParquetSerializerOptions { MaxDegreeOfParallelism = 2 }
             );
         GeneratedTypeMatrixRecord[] parallelArray =
             await GeneratedTypeMatrixRecordParquetExtensions.ReadParquetParallelArrayAsync(
                 bytes,
-                maxDegreeOfParallelism: 2
+                new ParquetSerializerOptions { MaxDegreeOfParallelism = 2 }
             );
 
         var streamed = new List<GeneratedTypeMatrixRecord>();
@@ -267,7 +267,7 @@ public sealed class GeneratedTypeMatrixTests
         List<NullableGeneratedTypeMatrixRecord> parallel =
             await NullableGeneratedTypeMatrixRecordParquetExtensions.ReadParquetParallelAsync(
                 bytes,
-                maxDegreeOfParallelism: 3
+                new ParquetSerializerOptions { MaxDegreeOfParallelism = 3 }
             );
 
         AssertEquivalent(expected, actual);
@@ -286,8 +286,11 @@ public sealed class GeneratedTypeMatrixTests
         using var stream = new MemoryStream();
         await ((IEnumerable<GeneratedTypeMatrixRecord>)rows).WriteParquetBatchedAsync(
             stream,
-            rowGroupSize,
-            new ParquetSerializerOptions { CompressionMethod = compressionMethod }
+            new ParquetSerializerOptions
+            {
+                CompressionMethod = compressionMethod,
+                RowGroupSize = rowGroupSize,
+            }
         );
         return stream.ToArray();
     }
@@ -301,8 +304,11 @@ public sealed class GeneratedTypeMatrixTests
         using var stream = new MemoryStream();
         await ((IEnumerable<NullableGeneratedTypeMatrixRecord>)rows).WriteParquetBatchedAsync(
             stream,
-            rowGroupSize,
-            new ParquetSerializerOptions { CompressionMethod = compressionMethod }
+            new ParquetSerializerOptions
+            {
+                CompressionMethod = compressionMethod,
+                RowGroupSize = rowGroupSize,
+            }
         );
         return stream.ToArray();
     }

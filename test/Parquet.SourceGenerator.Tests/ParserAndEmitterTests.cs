@@ -309,10 +309,16 @@ public sealed class ParserAndEmitterTests
         var items = new List<TypeCoverageRecord> { new() };
         var stream = new MemoryStream();
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
-            items.WriteParquetBatchedAsync(stream, rowGroupSize: 0)
+            items.WriteParquetBatchedAsync(
+                stream,
+                new ParquetSerializerOptions { RowGroupSize = 0 }
+            )
         );
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
-            items.WriteParquetBatchedAsync(stream, rowGroupSize: -10)
+            items.WriteParquetBatchedAsync(
+                stream,
+                new ParquetSerializerOptions { RowGroupSize = -10 }
+            )
         );
     }
 

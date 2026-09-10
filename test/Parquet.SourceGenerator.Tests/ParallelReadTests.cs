@@ -50,7 +50,10 @@ public sealed class ParallelReadTests
             .ToList();
 
         using var stream = new MemoryStream();
-        await rows.WriteParquetBatchedAsync(stream, rowGroupSize);
+        await rows.WriteParquetBatchedAsync(
+            stream,
+            new ParquetSerializerOptions { RowGroupSize = rowGroupSize }
+        );
         return stream.ToArray();
     }
 
@@ -100,7 +103,7 @@ public sealed class ParallelReadTests
 
         List<ParallelRow> read = await ParallelRowParquetExtensions.ReadParquetParallelAsync(
             new ReadOnlyMemory<byte>(bytes),
-            maxDegreeOfParallelism
+            new ParquetSerializerOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism }
         );
 
         Assert.Equal(500, read.Count);
@@ -118,7 +121,7 @@ public sealed class ParallelReadTests
 
         List<ParallelRow> read = await ParallelRowParquetExtensions.ReadParquetParallelAsync(
             new ReadOnlyMemory<byte>(bytes),
-            maxDegreeOfParallelism: 16
+            new ParquetSerializerOptions { MaxDegreeOfParallelism = 16 }
         );
 
         Assert.Equal(25, read.Count);
@@ -126,13 +129,12 @@ public sealed class ParallelReadTests
     }
 
     [Fact]
-    public async Task OptionsSupplyTheParallelismWhenTheArgumentIsUnset()
+    public async Task OptionsSupplyTheParallelism()
     {
         byte[] bytes = await WriteAsync(rowCount: 300, rowGroupSize: 50);
 
         List<ParallelRow> read = await ParallelRowParquetExtensions.ReadParquetParallelAsync(
             new ReadOnlyMemory<byte>(bytes),
-            maxDegreeOfParallelism: -1,
             new ParquetSerializerOptions { MaxDegreeOfParallelism = 2 }
         );
 
@@ -151,8 +153,7 @@ public sealed class ParallelReadTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
             ParallelRowParquetExtensions.ReadParquetParallelAsync(
                 new ReadOnlyMemory<byte>(bytes),
-                maxDegreeOfParallelism: 4,
-                options: null,
+                new ParquetSerializerOptions { MaxDegreeOfParallelism = 4 },
                 cancellationToken: cts.Token
             )
         );
@@ -201,7 +202,7 @@ public sealed class ParallelReadTests
 
         List<ParallelRow> read = await ParallelRowParquetExtensions.ReadParquetParallelAsync(
             memory,
-            maxDegreeOfParallelism: 4
+            new ParquetSerializerOptions { MaxDegreeOfParallelism = 4 }
         );
 
         Assert.Equal(400, read.Count);
@@ -306,7 +307,7 @@ public sealed class ParallelReadTests
                     .Select(_ =>
                         ParallelRowParquetExtensions.ReadParquetParallelAsync(
                             new ReadOnlyMemory<byte>(bytes),
-                            maxDegreeOfParallelism: 4
+                            new ParquetSerializerOptions { MaxDegreeOfParallelism = 4 }
                         )
                     )
             );
@@ -352,7 +353,7 @@ public sealed class ParallelReadTests
 
         ParallelRow[] fromBuffer = await ParallelRowParquetExtensions.ReadParquetParallelArrayAsync(
             new ReadOnlyMemory<byte>(bytes),
-            maxDegreeOfParallelism: 4
+            new ParquetSerializerOptions { MaxDegreeOfParallelism = 4 }
         );
         Assert.Equal(100, fromBuffer.Length);
         Assert.Equal(1, fromBuffer[0].Id);

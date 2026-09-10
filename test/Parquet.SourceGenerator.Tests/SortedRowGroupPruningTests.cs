@@ -83,7 +83,10 @@ public sealed class SortedRowGroupPruningTests
     private static async Task<byte[]> WriteAsync(List<SortedEvent> rows, int rowGroupSize)
     {
         using var stream = new MemoryStream();
-        await rows.WriteParquetBatchedAsync(stream, rowGroupSize);
+        await rows.WriteParquetBatchedAsync(
+            stream,
+            new ParquetSerializerOptions { RowGroupSize = rowGroupSize }
+        );
         return stream.ToArray();
     }
 

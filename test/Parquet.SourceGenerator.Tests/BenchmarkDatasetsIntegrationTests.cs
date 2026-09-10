@@ -291,12 +291,15 @@ public sealed class BenchmarkDatasetsIntegrationTests
         var original = await AdultCensusRecordParquetExtensions.ReadParquetAsync(stream);
 
         using var outputStream = new MemoryStream();
-        await original.WriteParquetBatchedAsync(outputStream, rowGroupSize: 5_000);
+        await original.WriteParquetBatchedAsync(
+            outputStream,
+            new ParquetSerializerOptions { RowGroupSize = 5_000 }
+        );
         byte[] bytes = outputStream.ToArray();
 
         var roundtripped = await AdultCensusRecordParquetExtensions.ReadParquetParallelAsync(
             new ReadOnlyMemory<byte>(bytes),
-            maxDegreeOfParallelism: 4
+            new ParquetSerializerOptions { MaxDegreeOfParallelism = 4 }
         );
 
         Assert.Equal(original.Count, roundtripped.Count);

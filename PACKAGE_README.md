@@ -45,11 +45,15 @@ using var stream = File.Create("events.parquet");
 await events.WriteParquetAsync(stream);
 
 // Chunked row-group streaming write
-await events.WriteParquetBatchedAsync(stream, rowGroupSize: 10_000);
+await events.WriteParquetBatchedAsync(
+    stream,
+    new ParquetSerializerOptions { RowGroupSize = 10_000 });
 
 // Stream directly from IAsyncEnumerable<T>
 IAsyncEnumerable<UserEvent> eventStream = GetAsyncEventStream();
-await eventStream.WriteParquetAsync(stream, rowGroupSize: 10_000);
+await eventStream.WriteParquetAsync(
+    stream,
+    new ParquetSerializerOptions { RowGroupSize = 10_000 });
 ```
 
 ### Reading Parquet Files (Sequential & Parallel)
@@ -61,7 +65,9 @@ using var stream = File.OpenRead("events.parquet");
 List<UserEvent> events = await UserEventParquetExtensions.ReadParquetAsync(stream);
 
 // Multi-core parallel read across row groups
-List<UserEvent> parallelEvents = await UserEventParquetExtensions.ReadParquetParallelAsync(stream, maxDegreeOfParallelism: 4);
+List<UserEvent> parallelEvents = await UserEventParquetExtensions.ReadParquetParallelAsync(
+    stream,
+    new ParquetSerializerOptions { MaxDegreeOfParallelism = 4 });
 
 // Read from in-memory byte buffer
 ReadOnlyMemory<byte> buffer = File.ReadAllBytes("events.parquet");

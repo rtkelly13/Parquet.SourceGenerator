@@ -458,7 +458,6 @@ public static class LegacyCodeEmitter
             $"        this global::System.Collections.Generic.IEnumerable<{model.ClassName}> items,"
         );
         builder.AppendLine("        global::System.IO.Stream stream,");
-        builder.AppendLine("        int? rowGroupSize = null,");
         builder.AppendLine(
             "        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,"
         );

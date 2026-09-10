@@ -174,7 +174,7 @@ public sealed class NestedStructRoundTripTests
         var ms = new MemoryStream();
         await System
             .Linq.Enumerable.AsEnumerable(rows)
-            .WriteParquetBatchedAsync(ms, rowGroupSize: 2);
+            .WriteParquetBatchedAsync(ms, new ParquetSerializerOptions { RowGroupSize = 2 });
         ms.Position = 0;
 
         // stream read

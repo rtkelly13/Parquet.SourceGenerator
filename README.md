@@ -113,11 +113,15 @@ using var stream = File.Create("events.parquet");
 await events.WriteParquetAsync(stream);
 
 // Chunked streaming write in fixed 10,000 row-group chunks
-await events.WriteParquetBatchedAsync(stream, rowGroupSize: 10_000);
+await events.WriteParquetBatchedAsync(
+    stream,
+    new ParquetSerializerOptions { RowGroupSize = 10_000 });
 
 // Stream directly from IAsyncEnumerable<T>
 IAsyncEnumerable<UserEvent> eventStream = GetAsyncEventStream();
-await eventStream.WriteParquetAsync(stream, rowGroupSize: 10_000);
+await eventStream.WriteParquetAsync(
+    stream,
+    new ParquetSerializerOptions { RowGroupSize = 10_000 });
 ```
 
 #### Writing from data that is already columnar
@@ -158,7 +162,9 @@ List<UserEvent> events = await UserEventParquetExtensions.ReadParquetAsync(strea
 
 // Multi-core parallel read over an in-memory byte buffer
 ReadOnlyMemory<byte> buffer = File.ReadAllBytes("events.parquet");
-List<UserEvent> fast = await UserEventParquetExtensions.ReadParquetParallelAsync(buffer, maxDegreeOfParallelism: 8);
+List<UserEvent> fast = await UserEventParquetExtensions.ReadParquetParallelAsync(
+    buffer,
+    new ParquetSerializerOptions { MaxDegreeOfParallelism = 8 });
 
 // Low-memory streaming reader
 await foreach (var e in UserEventParquetExtensions.ReadParquetStreamAsync(buffer))

@@ -97,6 +97,11 @@ public sealed class ParquetSerializerOptions
     /// <summary>
     /// Gets or sets the target row group size for batched writing operations (default is 50,000 rows).
     /// </summary>
+    /// <remarks>
+    /// This is the only place the row group size can be set. <c>WriteParquetBatchedAsync</c> and the
+    /// <c>IAsyncEnumerable</c> overload of <c>WriteParquetAsync</c> carried a duplicate
+    /// <c>rowGroupSize</c> parameter until <c>0.0.x</c>; it was removed so the setting has one home.
+    /// </remarks>
     public int RowGroupSize { get; set; } = 50_000;
 
     /// <summary>
@@ -104,11 +109,17 @@ public sealed class ParquetSerializerOptions
     /// using <c>Environment.ProcessorCount</c>).
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Applies to <c>ReadParquetParallelAsync</c> over a <c>ReadOnlyMemory&lt;byte&gt;</c>, where
     /// each worker gets its own reader over its own view of the buffer. The <c>Stream</c> overload
-    /// reads sequentially and ignores this: a stream cannot be shared between readers. An explicit
-    /// <c>maxDegreeOfParallelism</c> argument takes precedence over this value, and the effective
+    /// reads sequentially and ignores this: a stream cannot be shared between readers. The effective
     /// worker count is capped at the file's row-group count.
+    /// </para>
+    /// <para>
+    /// This is the only place the degree of parallelism can be set. The parallel read methods carried
+    /// a duplicate <c>maxDegreeOfParallelism</c> parameter until <c>0.0.x</c>; it was removed so the
+    /// setting has one home.
+    /// </para>
     /// </remarks>
     public int MaxDegreeOfParallelism { get; set; } = -1;
 

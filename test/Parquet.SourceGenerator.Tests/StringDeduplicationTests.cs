@@ -199,11 +199,14 @@ public sealed class StringDeduplicationTests
     {
         byte[] bytes = await CreateCategoricalParquetBytesAsync(100);
 
-        var options = new ParquetSerializerOptions { DeduplicateStrings = true };
+        var options = new ParquetSerializerOptions
+        {
+            DeduplicateStrings = true,
+            MaxDegreeOfParallelism = 2,
+        };
         var results = await CategoricalRecordParquetExtensions.ReadParquetParallelArrayAsync(
             bytes,
-            maxDegreeOfParallelism: 2,
-            options: options
+            options
         );
 
         Assert.Equal(100, results.Length);

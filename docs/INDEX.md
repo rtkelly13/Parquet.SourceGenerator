@@ -106,6 +106,13 @@ Welcome to the **Parquet.SourceGenerator** documentation repository. This folder
      - Semver buckets, the pre-1.0 stance, the `**Unapproved-by-design:**` escape hatch, and the
        four-step author process.
 
+20. **[19 - Public API Surface](./19-PUBLIC-API-SURFACE.md)**
+     - The options-vs-parameters rule: `ParquetSerializerOptions` is the single home for
+       configuration.
+     - What the rule selected for `maxDegreeOfParallelism` and `rowGroupSize`, and why deletion beat
+       a documented precedence rule pre-1.0.
+     - Stub pending #216, which expands it into the full surface audit and naming grammar.
+
 
 ---
 
