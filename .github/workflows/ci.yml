@@ -75,7 +75,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install uv
-        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
 
       - name: Restore solution dependencies
         run: dotnet restore Parquet.SourceGenertor.sln
@@ -89,16 +89,18 @@ jobs:
             exit 1
           fi
 
-      # `whitespace` only, deliberately. Plain `dotnet format` also runs its style and analyzer
-      # phases, which build a Roslyn workspace via MSBuildWorkspace — and MSBuildWorkspace does not
-      # execute source generators. It logs "Found project reference without a matching metadata
-      # reference" for the generator project and then reports CS1503 against every call into the
-      # generated *ParquetExtensions API, because in its view that API does not exist. Those errors
-      # are artifacts of the tool, not defects in the code.
+      # CSharpier is the ONLY C# layout formatter in this repo. `dotnet format whitespace` was
+      # retired from CI: its Roslyn formatter disagrees with CSharpier on layout (case-body and
+      # pattern-arm indentation, per dotnet/format#2262) and in workspace mode it policed nothing
+      # beyond .cs anyway. IDE0055 is disabled in .editorconfig so no Roslyn-based formatter —
+      # build, IDE, or CLI — fights CSharpier over .cs layout. Line endings for non-C# files are
+      # guaranteed by .gitattributes (eol=lf) plus the [*] hygiene keys in .editorconfig.
       #
-      # Style and analyzer rules are enforced instead by the build below, via
-      # EnforceCodeStyleInBuild plus -warnaserror, which uses the real compilation where generators
-      # do run.
+      # Do not reintroduce plain `dotnet format` either: its style/analyzer phases build a Roslyn
+      # workspace via MSBuildWorkspace, which does not execute source generators — it reports
+      # bogus CS1503 against every call into the generated *ParquetExtensions API. Non-layout
+      # style rules are enforced by the build below, via EnforceCodeStyleInBuild plus
+      # -warnaserror, which uses the real compilation where generators do run.
       - name: Restore local tools
         run: |
           # Workaround for dotnet/sdk #53783: cold tool-resolver cache can misattribute package commands on initial restore
@@ -106,9 +108,6 @@ jobs:
 
       - name: Verify C# Code Formatting (CSharpier)
         run: dotnet csharpier check .
-
-      - name: Verify C# Code Formatting (Whitespace)
-        run: dotnet format whitespace --verify-no-changes --verbosity diagnostic
 
       - name: Build solution (Release)
         run: dotnet build Parquet.SourceGenertor.sln --configuration Release --no-restore -warnaserror
@@ -160,6 +159,34 @@ jobs:
             --generated "$RUNNER_TEMP/parquet-source-generator/generated-csharp.parquet" \
             --output "$RUNNER_TEMP/parquet-source-generator/generated-duckdb.parquet"
 
+      # Apache conformance (#167): independent file-format validation of every generated and
+      # checked-in fixture with the pinned parquet-cli in test/data/apache-conformance.json.
+      # Temurin 17 is part of the pin: the tool rides on Hadoop's UserGroupInformation, which
+      # newer JDKs refuse. Every SHA-256 is re-verified from the manifest before use, and all
+      # tool dumps plus the source and corrupt files are uploaded when this gate fails.
+      - name: Setup Java (Apache Parquet conformance tooling)
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Restore Apache Parquet Conformance Tooling
+        run: dotnet run scripts/VerifyApacheConformance.cs -- --restore "$RUNNER_TEMP/apache-parquet-tools"
+
+      - name: Verify Apache Parquet Conformance
+        run: |
+          dotnet run scripts/VerifyApacheConformance.cs -- \
+            --tools-dir "$RUNNER_TEMP/apache-parquet-tools" \
+            --generated "$RUNNER_TEMP/parquet-source-generator/generated-csharp.parquet" \
+            --output-dir "$RUNNER_TEMP/apache-conformance"
+
+      - name: Upload Apache Conformance Evidence
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: apache-conformance-evidence
+          path: ${{ runner.temp }}/apache-conformance/
+
       - name: Interrogate IL & Verify Zero Boxing Regression Gate
         run: dotnet run scripts/InterrogateIL.cs --assembly test/Parquet.SourceGenerator.CLI/bin/Release/net8.0/Parquet.SourceGenerator.CLI.dll --check
 
@@ -167,6 +194,9 @@ jobs:
         env:
           PARQUET_TEST_DATA_ROOT: ${{ runner.temp }}/parquet-source-generator/data
           PARQUET_TEST_DATA_CSHARP_ROOT: ${{ runner.temp }}/parquet-source-generator/data_csharp
+          # The version/schema-evolution matrix writes its per-cell record here so the run leaves
+          # behind a compatibility report, not just a pass/fail.
+          PARQUET_COMPAT_MATRIX_OUTPUT: ${{ runner.temp }}/parquet-source-generator/compatibility-matrix
         run: dotnet test Parquet.SourceGenertor.sln --configuration Release --no-build --filter "Category!=DatasetIntegrity&Category!=ExternalInterop" --verbosity normal --collect:"XPlat Code Coverage" --settings coverlet.runsettings
 
       - name: Verify Generated Reader With PyArrow Fixture
@@ -311,6 +341,40 @@ jobs:
             -p:GeneratorPackageVersion="$version" \
             -p:RestorePackagesPath="$RUNNER_TEMP/consumption-packages-legacy-net9"
 
+      # Neither in-solution tests nor the two steps above can cover the version axis of the
+      # compatibility matrix: a test assembly references exactly one Parquet.Net, so nothing inside
+      # it can prove that a file written against 6.x is readable by a consumer pinned to 4.25. These
+      # two projects each reference a different Parquet.Net and compile the same shared model
+      # (test/CrossVersionInterop/InteropModels.cs), so handing a file from one to the other is the
+      # only place that leg gets exercised. The reader model is deliberately one version ahead of
+      # the writer's — reordered columns plus two optional columns the file cannot contain — so the
+      # handshake tests schema evolution across the version boundary rather than a bare round-trip.
+      - name: Verify Cross-Version Interoperability (modern ⇄ legacy packages)
+        run: |
+          set -euo pipefail
+          version=$(ls artifacts/Parquet.SourceGenerator.[0-9]*.nupkg \
+            | sed -E 's/.*Parquet\.SourceGenerator\.([0-9][^/]*)\.nupkg/\1/')
+          interop="$RUNNER_TEMP/parquet-source-generator/cross-version"
+          matrix="$RUNNER_TEMP/parquet-source-generator/compatibility-matrix/cross-version.jsonl"
+          mkdir -p "$interop" "$(dirname "$matrix")"
+
+          modern=(dotnet run --project test/PackageConsumption/PackageConsumption.csproj
+            --framework net8.0 --configuration Release
+            -p:GeneratorPackageVersion="$version"
+            -p:RestorePackagesPath="$RUNNER_TEMP/consumption-packages-net8")
+          legacy=(dotnet run --project test/PackageConsumptionLegacy/PackageConsumptionLegacy.csproj
+            --framework net8.0 --configuration Release
+            -p:GeneratorPackageVersion="$version"
+            -p:RestorePackagesPath="$RUNNER_TEMP/consumption-packages-legacy-net8")
+
+          "${modern[@]}" -- --write-interop "$interop/modern.parquet"
+          "${legacy[@]}" -- --read-interop "$interop/modern.parquet" modern/Parquet.Net-6.x "$matrix"
+
+          "${legacy[@]}" -- --write-interop "$interop/legacy.parquet"
+          "${modern[@]}" -- --read-interop "$interop/legacy.parquet" classic/Parquet.Net-4.25 "$matrix"
+
+          echo "::group::cross-version matrix rows"; cat "$matrix"; echo "::endgroup::"
+
       # .NET Framework support is the entire reason the Legacy package exists, and until now nothing in
       # CI compiled it — the project declared net472 but every step above pins --framework to a
       # modern TFM, so the target was never built. Compiling is as far as a Linux runner can go
@@ -327,6 +391,14 @@ jobs:
             --configuration Release \
             -p:GeneratorPackageVersion="$version" \
             -p:RestorePackagesPath="$RUNNER_TEMP/consumption-packages-legacy-net472"
+
+      - name: Upload Compatibility Matrix Report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: compatibility-matrix
+          path: ${{ runner.temp }}/parquet-source-generator/compatibility-matrix
+          if-no-files-found: warn
 
       - name: Upload Test Coverage Artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7

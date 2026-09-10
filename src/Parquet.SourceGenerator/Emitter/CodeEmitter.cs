@@ -371,6 +371,25 @@ public static class CodeEmitter
     /// the rented buffer is zeroed instead, skipping I/O, decompression and decoding.
     /// Columns without statistics (or partial nulls) fall through to the standard read.
     /// </summary>
+    /// <summary>
+    /// True when this column may legitimately be absent from a file the generated reader is asked
+    /// to read: an optional flat column, which schema evolution allows a producer to drop.
+    /// Required columns cannot be missing (resolution throws) and nested leaves are outside the
+    /// documented compatibility envelope.
+    /// </summary>
+    private static bool SupportsMissingColumn(LeafColumn col) =>
+        !col.IsCompound && !col.IsListLeaf && col.Leaf.IsNullable;
+
+    /// <summary>
+    /// Emits the one-line schema resolution for a column. Columns that can go missing capture the
+    /// absence flag; the rest discard it, because for them resolution either succeeds or throws.
+    /// </summary>
+    private static string EmitResolveFieldLine(LeafColumn col, string indent)
+    {
+        string missingArg = SupportsMissingColumn(col) ? $"out bool missing_{col.Slot}" : "out _";
+        return $"{indent}var field_{col.Slot} = ResolveSchemaField(fileFields, {col.Slot}, _field_{col.Slot}, ref fieldsByName, {missingArg});";
+    }
+
     private static void EmitReadWithNullBypass(
         StringBuilder builder,
         LeafColumn col,
@@ -454,13 +473,18 @@ public static class CodeEmitter
         }
 
         builder.AppendLine(
-            $"{indent}var chunkStats_{propIndex} = groupReader.GetStatistics({fieldAccess});"
+            $"{indent}// The column is absent from the file (optional-column schema evolution) or the chunk is"
         );
-        builder.AppendLine($"{indent}if (chunkStats_{propIndex}?.NullCount == rowCount)");
-        builder.AppendLine($"{indent}{{");
         builder.AppendLine(
-            $"{indent}    // All-null chunk: skip page reading, decompression and decoding entirely."
+            $"{indent}// entirely null: either way the answer is nulls, with no page read, decompression or decoding."
         );
+        builder.AppendLine(
+            $"{indent}var chunkStats_{propIndex} = missing_{propIndex} ? null : groupReader.GetStatistics({fieldAccess});"
+        );
+        builder.AppendLine(
+            $"{indent}if (missing_{propIndex} || chunkStats_{propIndex}?.NullCount == rowCount)"
+        );
+        builder.AppendLine($"{indent}{{");
         builder.AppendLine($"{indent}    global::System.Array.Clear({bufName}, 0, rowCount);");
         builder.AppendLine($"{indent}}}");
         builder.AppendLine($"{indent}else");
@@ -992,9 +1016,7 @@ public static class CodeEmitter
             );
             foreach (LeafColumn col in EmissionPlan.For(model).Columns)
             {
-                builder.AppendLine(
-                    $"        var field_{col.Slot} = ResolveSchemaField(fileFields, {col.Slot}, _field_{col.Slot}, ref fieldsByName);"
-                );
+                builder.AppendLine(EmitResolveFieldLine(col, "        "));
             }
 
             builder.AppendLine();
@@ -1175,9 +1197,7 @@ public static class CodeEmitter
             );
             foreach (LeafColumn col in EmissionPlan.For(model).Columns)
             {
-                builder.AppendLine(
-                    $"        var field_{col.Slot} = ResolveSchemaField(fileFields, {col.Slot}, _field_{col.Slot}, ref fieldsByName);"
-                );
+                builder.AppendLine(EmitResolveFieldLine(col, "        "));
             }
 
             builder.AppendLine();
@@ -1270,9 +1290,7 @@ public static class CodeEmitter
             );
             foreach (LeafColumn col in EmissionPlan.For(model).Columns)
             {
-                builder.AppendLine(
-                    $"        var field_{col.Slot} = ResolveSchemaField(fileFields, {col.Slot}, _field_{col.Slot}, ref fieldsByName);"
-                );
+                builder.AppendLine(EmitResolveFieldLine(col, "        "));
             }
 
             builder.AppendLine();
@@ -1489,9 +1507,7 @@ public static class CodeEmitter
         builder.AppendLine();
         foreach (LeafColumn col in EmissionPlan.For(model).Columns)
         {
-            builder.AppendLine(
-                $"        var field_{col.Slot} = ResolveSchemaField(fileFields, {col.Slot}, _field_{col.Slot}, ref fieldsByName);"
-            );
+            builder.AppendLine(EmitResolveFieldLine(col, "        "));
         }
 
         builder.AppendLine();
@@ -1622,9 +1638,7 @@ public static class CodeEmitter
             );
             foreach (LeafColumn col in EmissionPlan.For(model).Columns)
             {
-                builder.AppendLine(
-                    $"        var field_{col.Slot} = ResolveSchemaField(fileFields, {col.Slot}, _field_{col.Slot}, ref fieldsByName);"
-                );
+                builder.AppendLine(EmitResolveFieldLine(col, "        "));
             }
 
             builder.AppendLine();
@@ -1925,9 +1939,7 @@ public static class CodeEmitter
             );
             foreach (LeafColumn col in EmissionPlan.For(model).Columns)
             {
-                builder.AppendLine(
-                    $"            var field_{col.Slot} = ResolveSchemaField(fileFields, {col.Slot}, _field_{col.Slot}, ref fieldsByName);"
-                );
+                builder.AppendLine(EmitResolveFieldLine(col, "            "));
             }
             builder.AppendLine();
         }
