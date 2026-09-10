@@ -23,14 +23,14 @@ Zero-reflection C# source generation vs **`ParquetSerializer` v6** reflection ba
 
 | Operation | Scale | Reflection Baseline | Source Generator | Speedup | Memory Reduction |
 |:--- |:---:|:---:|:---:|:---:|:---:|
-| **File Serialization (Write)** | 100,000 items | 7.05 ms (11.00 MB) | **2.91 ms** (**5.74 MB**) | ⚡ **2.4x faster** | 📉 **48% less memory** |
-| **Streaming Batched Write** | 100,000 items | 7.05 ms (11.00 MB) | **3.50 ms** (**5.03 MB**) | ⚡ **2.0x faster** | 📉 **54% less memory** |
-| **File Deserialization (Read)** | 100,000 items | 9.81 ms (12.30 MB) | **5.57 ms** (**8.99 MB**) | ⚡ **1.8x faster** | 📉 **27% less memory** |
-| **Parallel Deserialization (Read)** | 100,000 items | 9.81 ms (12.30 MB) | **5.68 ms** (**9.86 MB**) | ⚡ **1.7x faster** | 📉 **20% less memory** |
-| **Streaming Read (IAsyncEnumerable)** | 100,000 items | 9.81 ms (12.30 MB) | **4.13 ms** (**8.22 MB**) | ⚡ **2.4x faster** | 📉 **33% less memory** |
-| **Guid Serialization** | 100,000 items | 8.97 ms (17.70 MB) | **6.82 ms** (**10.70 MB**) | ⚡ **1.3x faster** | 📉 **40% less memory** |
+| **File Serialization (Write)** | 100,000 items | 7.82 ms (11.01 MB) | **3.10 ms** (**5.74 MB**) | ⚡ **2.5x faster** | 📉 **48% less memory** |
+| **Streaming Batched Write** | 100,000 items | 7.82 ms (11.01 MB) | **3.81 ms** (**5.03 MB**) | ⚡ **2.0x faster** | 📉 **54% less memory** |
+| **File Deserialization (Read)** | 100,000 items | 12.85 ms (12.30 MB) | **6.05 ms** (**8.99 MB**) | ⚡ **2.1x faster** | 📉 **27% less memory** |
+| **Parallel Deserialization (Read)** | 100,000 items | 12.85 ms (12.30 MB) | **6.78 ms** (**9.86 MB**) | ⚡ **1.9x faster** | 📉 **20% less memory** |
+| **Streaming Read (IAsyncEnumerable)** | 100,000 items | 12.85 ms (12.30 MB) | **5.70 ms** (**8.23 MB**) | ⚡ **2.3x faster** | 📉 **33% less memory** |
+| **Guid Serialization** | 100,000 items | 14.47 ms (17.71 MB) | **11.33 ms** (**10.70 MB**) | ⚡ **1.3x faster** | 📉 **40% less memory** |
 
-> 📌 **Note**: BenchmarkDotNet results captured on macOS (Apple M1, .NET 9.0). Detailed multi-scale reports (1K, 10K, 100K, 1M rows) are in [docs/BENCHMARKS.md](https://github.com/rtkelly13/Parquet.SourceGenerator/blob/main/docs/BENCHMARKS.md).
+> 📌 **Note**: BenchmarkDotNet results captured on GitHub Actions. Detailed multi-scale reports (1K, 10K, 100K, 1M rows) are in [docs/BENCHMARKS.md](https://github.com/rtkelly13/Parquet.SourceGenerator/blob/main/docs/BENCHMARKS.md).
 
 
 ## 🌐 Real-World Provenanced Dataset Benchmarks
@@ -42,24 +42,24 @@ Fixed public datasets tracked under Git LFS with full cryptographic SHA-256 data
 
 | Operation | Scale | Reflection Baseline | Source Generator | Speedup | Memory Reduction |
 |:--- |:---:|:---:|:---:|:---:|:---:|
-| **TPC-H LineItem Deserialization** | 60,175 rows | 85.46 ms (55.11 MB) | **55.29 ms** (**38.59 MB**) | ⚡ **1.5x faster** | 📉 **30% less memory** |
-| **TPC-H LineItem Parallel Deserialization** | 60,175 rows | 85.46 ms (55.11 MB) | **58.27 ms** (**39.07 MB**) | ⚡ **1.4x faster** | 📉 **29% less memory** |
-| **TPC-H LineItem Streaming Deserialization** | 60,175 rows | 85.46 ms (55.11 MB) | **44.44 ms** (**38.13 MB**) | ⚡ **1.9x faster** | 📉 **31% less memory** |
-| **Adult Census Deserialization (Dictionaries)** | 32,561 rows | 37.94 ms (29.25 MB) | **28.74 ms** (**20.24 MB**) | ⚡ **1.3x faster** | 📉 **31% less memory** |
-| **Adult Census Parallel Deserialization** | 32,561 rows | 37.94 ms (29.25 MB) | **30.07 ms** (**22.90 MB**) | ⚡ **1.3x faster** | 📉 **22% less memory** |
-| **Adult Census Streaming Deserialization** | 32,561 rows | 37.94 ms (29.25 MB) | **11.49 ms** (**19.99 MB**) | ⚡ **3.3x faster** | 📉 **32% less memory** |
-| **Diamonds Deserialization** | 53,940 rows | 22.09 ms (19.78 MB) | **11.92 ms** (**12.52 MB**) | ⚡ **1.9x faster** | 📉 **37% less memory** |
-| **Diamonds Parallel Deserialization** | 53,940 rows | 22.09 ms (19.78 MB) | **13.63 ms** (**15.65 MB**) | ⚡ **1.6x faster** | 📉 **21% less memory** |
-| **Diamonds Streaming Deserialization** | 53,940 rows | 22.09 ms (19.78 MB) | **7.52 ms** (**12.11 MB**) | ⚡ **2.9x faster** | 📉 **39% less memory** |
+| **TPC-H LineItem Deserialization** | 60,175 rows | 93.55 ms (55.11 MB) | **59.79 ms** (**38.59 MB**) | ⚡ **1.6x faster** | 📉 **30% less memory** |
+| **TPC-H LineItem Parallel Deserialization** | 60,175 rows | 93.55 ms (55.11 MB) | **57.39 ms** (**39.08 MB**) | ⚡ **1.6x faster** | 📉 **29% less memory** |
+| **TPC-H LineItem Streaming Deserialization** | 60,175 rows | 93.55 ms (55.11 MB) | **47.97 ms** (**38.13 MB**) | ⚡ **2.0x faster** | 📉 **31% less memory** |
+| **Adult Census Deserialization (Dictionaries)** | 32,561 rows | 46.67 ms (29.20 MB) | **32.52 ms** (**20.38 MB**) | ⚡ **1.4x faster** | 📉 **30% less memory** |
+| **Adult Census Parallel Deserialization** | 32,561 rows | 46.67 ms (29.20 MB) | **34.21 ms** (**23.04 MB**) | ⚡ **1.4x faster** | 📉 **21% less memory** |
+| **Adult Census Streaming Deserialization** | 32,561 rows | 46.67 ms (29.20 MB) | **13.56 ms** (**20.13 MB**) | ⚡ **3.4x faster** | 📉 **31% less memory** |
+| **Diamonds Deserialization** | 53,940 rows | 28.22 ms (19.73 MB) | **13.08 ms** (**12.66 MB**) | ⚡ **2.2x faster** | 📉 **36% less memory** |
+| **Diamonds Parallel Deserialization** | 53,940 rows | 28.22 ms (19.73 MB) | **13.52 ms** (**15.79 MB**) | ⚡ **2.1x faster** | 📉 **20% less memory** |
+| **Diamonds Streaming Deserialization** | 53,940 rows | 28.22 ms (19.73 MB) | **7.87 ms** (**12.25 MB**) | ⚡ **3.6x faster** | 📉 **38% less memory** |
 
 ### 🗜️ TPC-H LineItem Multi-Codec Serialization Throughput (60,175 rows)
 
 | Codec | Compression Profile | Serialization Time | Allocated Memory |
 |:--- |:---:|:---:|:---:|
-| **Snappy** | Generator Built-in | **37.85 ms** | **14.89 MB** |
-| **Zstandard (Fastest)** | Generator Built-in | **48.32 ms** | **22.40 MB** |
-| **Zstandard (Optimal)** | Generator Built-in | **49.94 ms** | **23.06 MB** |
-| **Uncompressed** | Generator Built-in | **30.77 ms** | **38.18 MB** |
+| **Snappy** | Generator Built-in | **20.72 ms** | **10.96 MB** |
+| **Zstandard (Fastest)** | Generator Built-in | **62.09 ms** | **22.40 MB** |
+| **Zstandard (Optimal)** | Generator Built-in | **70.51 ms** | **23.06 MB** |
+| **Uncompressed** | Generator Built-in | **40.44 ms** | **38.18 MB** |
 <!-- BENCHMARK_TABLE_END -->
 
 ---

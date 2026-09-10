@@ -172,3 +172,98 @@ Following implementation of Mechanism A in `BufferPoolComponent.cs`, `PropertyMa
 - **Golden File Parity**: Updated and validated in `OrderEventParquetExtensions.g.cs`.
 - **Native AOT Compliance**: Passed full 11-step matrix under native binary compilation with zero trimming regressions.
 
+
+---
+
+## ⚡ 6. Branchless Null Bitmap Construction (Issue #145)
+
+### 6.1 What Changed
+
+Generated nullable-value-column extraction used to test `Nullable<T>.HasValue` per row and take one
+of two arms. That conditional is data-dependent and, on a semi-sparse column, unpredictable — the
+worst possible input for a branch predictor. It is now branch-free in all three emitted extraction
+shapes (the `List<T>` span loop, the `T[]` span loop, and the `IEnumerable` fallback):
+
+```csharp
+var val_2 = item.NullableFlag;
+bool has_2 = val_2.HasValue;
+int hv_2 = Unsafe.As<bool, byte>(ref has_2);
+Unsafe.Add(ref dstRef_2, nonNullCount_2) = val_2.GetValueOrDefault();
+nonNullCount_2 += hv_2;
+Unsafe.Add(ref defRef_2, i) = hv_2;
+```
+
+The payload store is unconditional. A null row writes a discardable `default(T)` at the compaction
+cursor, which the next non-null row overwrites, and the cursor never leaves the buffer because
+`nonNullCount <= i < count <= buffer.Length` (buffers are rented at `count`). Every payload
+conversion was restated in a total form over `default(T)` so evaluating it for a null slot is legal.
+
+The netstandard2.0 fallback loops use `val.HasValue ? 1 : 0` instead of `Unsafe.As`, since
+`System.Runtime.CompilerServices.Unsafe` is not guaranteed to be referenced by a consumer project
+targeting netstandard2.0. RyuJIT lowers both to a flag-materialising `cset`.
+
+### 6.2 Verification of Branch Elimination
+
+`BranchlessDefinitionLevelIlTests` walks the IL of the generated `ExtractSpan`/`ExtractArray` local
+functions and counts opcodes with `FlowControl.Cond_Branch`. A model with six nullable columns
+contains **exactly one** conditional branch — the `for` loop's own control edge — and the count is
+identical to a model with a single nullable column, so no column contributes a branch of its own.
+
+### 6.3 Measured Results
+
+Apple M1 (8 cores), macOS 15.7.7, .NET SDK 9.0.315, host .NET 9.0.17 Arm64 RyuJIT AdvSIMD,
+BenchmarkDotNet 0.14.0.
+
+**Extraction microbenchmark** — 100,000 rows, one nullable `int` column, definition levels plus
+packed values, no Parquet I/O, allocation-free. `Aos_*` is the array-of-structures loop the
+generator emits; `Columnar_*` is the same work over a contiguous `int?[]`.
+
+| Null % | Aos_Branchy (before) | Aos_Branchless (after) | Speedup | Columnar_TwoPassSimd |
+| ---: | ---: | ---: | ---: | ---: |
+| 0 | 70.63 µs | 69.85 µs | 1.01× | 79.16 µs |
+| 10 | 132.62 µs | 69.01 µs | **1.92×** | 137.30 µs |
+| 20 | 207.81 µs | 69.36 µs | **3.00×** | 136.00 µs |
+| 50 | 437.07 µs | 68.26 µs | **6.40×** | 136.05 µs |
+| 90 | 167.93 µs | 66.79 µs | **2.51×** | 135.44 µs |
+| 100 | 96.91 µs | 66.00 µs | 1.47× | 73.78 µs |
+
+The branchless loop's cost is flat at ~67-70 µs across every null density, because there is no
+longer anything for the predictor to get wrong. The branchy loop peaks at 50% null, exactly where
+mispredictions peak.
+
+**End-to-end write** — 200,000 rows, four nullable columns, `WriteParquetAsync` to a `MemoryStream`.
+
+| GC mode | Null % | Before | After | Delta |
+| --- | ---: | ---: | ---: | ---: |
+| Workstation | 20 | 8.388 ms | 8.374 ms | −0.2% (noise) |
+| Workstation | 50 | 9.287 ms | 8.983 ms | −3.3% |
+| Server | 20 | 8.824 ms | 8.615 ms | −2.4% |
+| Server | 50 | 9.561 ms | 9.025 ms | −5.6% |
+
+Allocation is unchanged (5.36 MB/op in every configuration). End to end, Parquet.Net's encoding and
+compression dominate, so a 6× win in extraction shows up as a few percent of wall clock. Both wins
+are real; they are just measuring different denominators.
+
+### 6.4 Negative Result: SIMD Packing Does Not Pay Here
+
+Issue #145's second proposal — load vectors of `Nullable<T>`, extract null masks into SIMD vectors,
+`PopCount` the mask — was implemented as `NullableColumnExtractor.ExtractTwoPass` (a branchless
+split into a presence bitmap plus unpacked payloads, then a vectorised widen of the bitmap into
+definition levels and a vectorised in-place compaction) and **measured slower than the branchless
+scalar single pass at every null density** (see the table above: ~136 µs vs ~68 µs on mixed data).
+
+Two reasons, both structural rather than incidental:
+
+1. **The write path's source is an array of structures.** Extraction reads `item.Property` across a
+   span of row objects; the `Nullable<T>` slots are strided by the row size and are not vector
+   loadable at all. Any vector form must first gather them into a contiguous staging buffer, and
+   that extra pass over 100k elements costs more than the branch it removes.
+2. **Arm64 has no vector compress.** The value compaction is a stream compaction. AVX-512 has
+   `VPCOMPRESS`; NEON does not, so the mixed-block case falls back to the same element-at-a-time
+   branchless store the scalar path already does, and only the all-present / all-absent 16-byte
+   blocks take a vector fast path.
+
+`NullableColumnExtractor` is kept as a tested public helper because the columnar hand-off work
+(#136, #137) will produce contiguous `Nullable<T>` columns, where the picture may differ — but on
+this shape and this hardware, **the branchless scalar single pass is the right answer and the
+vectorised one is not**.
