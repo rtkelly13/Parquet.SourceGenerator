@@ -199,26 +199,18 @@ public static partial class ScalarMetricParquetExtensions
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_0, i) = item.RowId;
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_1, i) = item.Flag;
                         var val_2 = item.NullableFlag;
-                        if (val_2.HasValue)
-                        {
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_2, nonNullCount_2++) = val_2.Value;
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_2, i) = 1;
-                        }
-                        else
-                        {
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_2, i) = 0;
-                        }
+                        bool has_2 = val_2.HasValue;
+                        int hv_2 = global::System.Runtime.CompilerServices.Unsafe.As<bool, byte>(ref has_2);
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_2, nonNullCount_2) = val_2.GetValueOrDefault();
+                        nonNullCount_2 += hv_2;
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_2, i) = hv_2;
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_3, i) = (int)item.StatusCode;
                         var val_4 = item.OptionalStatus;
-                        if (val_4.HasValue)
-                        {
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_4, nonNullCount_4++) = (int)val_4.Value;
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_4, i) = 1;
-                        }
-                        else
-                        {
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_4, i) = 0;
-                        }
+                        bool has_4 = val_4.HasValue;
+                        int hv_4 = global::System.Runtime.CompilerServices.Unsafe.As<bool, byte>(ref has_4);
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_4, nonNullCount_4) = (int)val_4.GetValueOrDefault();
+                        nonNullCount_4 += hv_4;
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_4, i) = hv_4;
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_5, i) = item.TinyNum;
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_6, i) = item.ShortNum;
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_7, i) = item.FloatVal;
@@ -232,26 +224,16 @@ public static partial class ScalarMetricParquetExtensions
                     buffer_0[i] = item.RowId;
                     buffer_1[i] = item.Flag;
                     var val_2 = item.NullableFlag;
-                    if (val_2.HasValue)
-                    {
-                        buffer_2[nonNullCount_2++] = val_2.Value;
-                        defLevels_2[i] = 1;
-                    }
-                    else
-                    {
-                        defLevels_2[i] = 0;
-                    }
+                    int hv_2 = val_2.HasValue ? 1 : 0;
+                    buffer_2[nonNullCount_2] = val_2.GetValueOrDefault();
+                    nonNullCount_2 += hv_2;
+                    defLevels_2[i] = hv_2;
                     buffer_3[i] = (int)item.StatusCode;
                     var val_4 = item.OptionalStatus;
-                    if (val_4.HasValue)
-                    {
-                        buffer_4[nonNullCount_4++] = (int)val_4.Value;
-                        defLevels_4[i] = 1;
-                    }
-                    else
-                    {
-                        defLevels_4[i] = 0;
-                    }
+                    int hv_4 = val_4.HasValue ? 1 : 0;
+                    buffer_4[nonNullCount_4] = (int)val_4.GetValueOrDefault();
+                    nonNullCount_4 += hv_4;
+                    defLevels_4[i] = hv_4;
                     buffer_5[i] = item.TinyNum;
                     buffer_6[i] = item.ShortNum;
                     buffer_7[i] = item.FloatVal;
@@ -280,26 +262,18 @@ public static partial class ScalarMetricParquetExtensions
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_0, i) = item.RowId;
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_1, i) = item.Flag;
                         var val_2 = item.NullableFlag;
-                        if (val_2.HasValue)
-                        {
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_2, nonNullCount_2++) = val_2.Value;
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_2, i) = 1;
-                        }
-                        else
-                        {
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_2, i) = 0;
-                        }
+                        bool has_2 = val_2.HasValue;
+                        int hv_2 = global::System.Runtime.CompilerServices.Unsafe.As<bool, byte>(ref has_2);
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_2, nonNullCount_2) = val_2.GetValueOrDefault();
+                        nonNullCount_2 += hv_2;
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_2, i) = hv_2;
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_3, i) = (int)item.StatusCode;
                         var val_4 = item.OptionalStatus;
-                        if (val_4.HasValue)
-                        {
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_4, nonNullCount_4++) = (int)val_4.Value;
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_4, i) = 1;
-                        }
-                        else
-                        {
-                            global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_4, i) = 0;
-                        }
+                        bool has_4 = val_4.HasValue;
+                        int hv_4 = global::System.Runtime.CompilerServices.Unsafe.As<bool, byte>(ref has_4);
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_4, nonNullCount_4) = (int)val_4.GetValueOrDefault();
+                        nonNullCount_4 += hv_4;
+                        global::System.Runtime.CompilerServices.Unsafe.Add(ref defRef_4, i) = hv_4;
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_5, i) = item.TinyNum;
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_6, i) = item.ShortNum;
                         global::System.Runtime.CompilerServices.Unsafe.Add(ref dstRef_7, i) = item.FloatVal;
@@ -313,26 +287,16 @@ public static partial class ScalarMetricParquetExtensions
                     buffer_0[i] = item.RowId;
                     buffer_1[i] = item.Flag;
                     var val_2 = item.NullableFlag;
-                    if (val_2.HasValue)
-                    {
-                        buffer_2[nonNullCount_2++] = val_2.Value;
-                        defLevels_2[i] = 1;
-                    }
-                    else
-                    {
-                        defLevels_2[i] = 0;
-                    }
+                    int hv_2 = val_2.HasValue ? 1 : 0;
+                    buffer_2[nonNullCount_2] = val_2.GetValueOrDefault();
+                    nonNullCount_2 += hv_2;
+                    defLevels_2[i] = hv_2;
                     buffer_3[i] = (int)item.StatusCode;
                     var val_4 = item.OptionalStatus;
-                    if (val_4.HasValue)
-                    {
-                        buffer_4[nonNullCount_4++] = (int)val_4.Value;
-                        defLevels_4[i] = 1;
-                    }
-                    else
-                    {
-                        defLevels_4[i] = 0;
-                    }
+                    int hv_4 = val_4.HasValue ? 1 : 0;
+                    buffer_4[nonNullCount_4] = (int)val_4.GetValueOrDefault();
+                    nonNullCount_4 += hv_4;
+                    defLevels_4[i] = hv_4;
                     buffer_5[i] = item.TinyNum;
                     buffer_6[i] = item.ShortNum;
                     buffer_7[i] = item.FloatVal;
@@ -347,26 +311,16 @@ public static partial class ScalarMetricParquetExtensions
                     buffer_0[idx] = item.RowId;
                     buffer_1[idx] = item.Flag;
                     var val_2 = item.NullableFlag;
-                    if (val_2.HasValue)
-                    {
-                        buffer_2[nonNullCount_2++] = val_2.Value;
-                        defLevels_2[idx] = 1;
-                    }
-                    else
-                    {
-                        defLevels_2[idx] = 0;
-                    }
+                    int hv_2 = val_2.HasValue ? 1 : 0;
+                    buffer_2[nonNullCount_2] = val_2.GetValueOrDefault();
+                    nonNullCount_2 += hv_2;
+                    defLevels_2[idx] = hv_2;
                     buffer_3[idx] = (int)item.StatusCode;
                     var val_4 = item.OptionalStatus;
-                    if (val_4.HasValue)
-                    {
-                        buffer_4[nonNullCount_4++] = (int)val_4.Value;
-                        defLevels_4[idx] = 1;
-                    }
-                    else
-                    {
-                        defLevels_4[idx] = 0;
-                    }
+                    int hv_4 = val_4.HasValue ? 1 : 0;
+                    buffer_4[nonNullCount_4] = (int)val_4.GetValueOrDefault();
+                    nonNullCount_4 += hv_4;
+                    defLevels_4[idx] = hv_4;
                     buffer_5[idx] = item.TinyNum;
                     buffer_6[idx] = item.ShortNum;
                     buffer_7[idx] = item.FloatVal;
