@@ -1,5 +1,10 @@
 name: Update Golden Code Generation Files
 
+# Refreshes both artefacts the golden suite owns: the full generated sources
+# (GoldenFiles/*.g.cs) and the signature-only public API baselines emitted beside them
+# (GoldenFiles/*.api.txt, see docs/17-GENERATED-API-BASELINES.md). Both are written by the same
+# UPDATE_GOLDEN_FILES pass, so they cannot drift apart.
+
 on:
   workflow_dispatch:
     inputs:
@@ -72,7 +77,7 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore Parquet.SourceGenertor.sln
 
-      - name: Regenerate Golden Files
+      - name: Regenerate Golden Files And API Baselines
         run: |
           UPDATE_GOLDEN_FILES=true dotnet test test/Parquet.SourceGenerator.Tests/Parquet.SourceGenerator.Tests.csproj \
             --configuration Release \
@@ -87,7 +92,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add test/Parquet.SourceGenerator.Tests/GoldenFiles/
           if ! git diff --cached --quiet; then
-            git commit -m "test(generator): update source-controlled golden generated code"
+            git commit -m "test(generator): update source-controlled golden generated code and API baselines"
             git push origin "$BRANCH"
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
           else
@@ -106,8 +111,8 @@ jobs:
         run: |
           if [ "$HAS_CHANGES" = "true" ]; then
             gh pr comment "$PR_NUMBER" --repo "$REPO" \
-              --body "✅ Successfully regenerated and committed the source-controlled golden generated C# files to branch \`$BRANCH\`."
+              --body "✅ Successfully regenerated and committed the source-controlled golden generated C# files and public API baselines to branch \`$BRANCH\`."
           else
             gh pr comment "$PR_NUMBER" --repo "$REPO" \
-              --body "ℹ️ The source-controlled golden generated files on \`$BRANCH\` are already up to date."
+              --body "ℹ️ The source-controlled golden generated files and public API baselines on \`$BRANCH\` are already up to date."
           fi

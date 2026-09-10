@@ -94,6 +94,11 @@ Welcome to the **Parquet.SourceGenerator** documentation repository. This folder
      - Producer/consumer/version matrix across Parquet.Net, PyArrow and DuckDB, and the recorded report.
      - Cross-version interoperability between the modern and classic packages.
 
+18. **[17 - Generated Public API Baselines](./17-GENERATED-API-BASELINES.md)**
+     - The `.api.txt` signature-only baseline emitted next to every golden file, and its grammar.
+     - Why it borrows the `PublicAPI.Shipped.txt` grammar, and the two deliberate deviations.
+     - Deterministic ordinal ordering, the `UPDATE_GOLDEN_FILES` refresh path, and the CI gate.
+
 
 ---
 
