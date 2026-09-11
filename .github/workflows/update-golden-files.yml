@@ -1,9 +1,12 @@
 name: Update Golden Code Generation Files
 
-# Refreshes both artefacts the golden suite owns: the full generated sources
-# (GoldenFiles/*.g.cs) and the signature-only public API baselines emitted beside them
-# (GoldenFiles/*.api.txt, see docs/17-GENERATED-API-BASELINES.md). Both are written by the same
-# UPDATE_GOLDEN_FILES pass, so they cannot drift apart.
+# Refreshes every artefact the golden suite owns: the full generated sources
+# (GoldenFiles/*.g.cs), the signature-only public API baselines emitted beside them
+# (GoldenFiles/*.api.txt, see docs/17-GENERATED-API-BASELINES.md) — both written by the same
+# UPDATE_GOLDEN_FILES pass, so they cannot drift apart — and then the code metrics over both the
+# hand-written source (metrics/*.metrics.txt, docs/21-CODE-METRICS.md) and the regenerated emitted
+# source (GoldenFiles/*.metrics.txt, docs/22-GENERATED-CODE-METRICS.md). The order matters: the
+# metrics are measured over the golden files this job has just rewritten.
 
 on:
   workflow_dispatch:
@@ -87,8 +90,10 @@ jobs:
             --configuration Release \
             --filter "FullyQualifiedName~GoldenCodeGenRegressionTests"
 
-      # docs/21-CODE-METRICS.md. Same refresh verb, same commit, so a change that moves both the
-      # emitted surface and the maintainability of the code that emits it lands as one diff.
+      # docs/21-CODE-METRICS.md and docs/22-GENERATED-CODE-METRICS.md. Same refresh verb, same
+      # commit, so a change that moves the emitted surface, the maintainability of the code that
+      # emits it, and the shape of what it emits lands as one reviewable diff. This must run AFTER
+      # the golden regeneration above: it measures the *.g.cs files that step writes.
       - name: Regenerate Code Metrics Baselines
         run: UPDATE_GOLDEN_FILES=true dotnet run scripts/CodeMetrics.cs
 
@@ -120,8 +125,8 @@ jobs:
         run: |
           if [ "$HAS_CHANGES" = "true" ]; then
             gh pr comment "$PR_NUMBER" --repo "$REPO" \
-              --body "✅ Successfully regenerated and committed the source-controlled golden generated C# files and public API baselines to branch \`$BRANCH\`."
+              --body "✅ Successfully regenerated and committed the source-controlled golden generated C# files, public API baselines and code metrics baselines to branch \`$BRANCH\`."
           else
             gh pr comment "$PR_NUMBER" --repo "$REPO" \
-              --body "ℹ️ The source-controlled golden generated files and public API baselines on \`$BRANCH\` are already up to date."
+              --body "ℹ️ The source-controlled golden generated files, public API baselines and code metrics baselines on \`$BRANCH\` are already up to date."
           fi

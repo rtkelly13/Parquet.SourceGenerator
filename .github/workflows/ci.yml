@@ -126,19 +126,27 @@ jobs:
       - name: Build solution (Release)
         run: dotnet build Parquet.SourceGenertor.sln --configuration Release --no-restore -warnaserror
 
-      # Layer 1 of #251 (docs/21-CODE-METRICS.md). The build above already enforces CA1502 /
-      # CA1505 / CA1506 against the thresholds in CodeMetricsConfig.txt, which is an absolute
-      # judgement and therefore the weaker half. This is the other half: a checked-in, ordinal
-      # baseline of Roslyn's maintainability index, cyclomatic complexity, class coupling,
-      # inheritance depth and line counts for every namespace, type and member under src/, gated
-      # on DRIFT rather than on an absolute number. It also validates CodeMetricsConfig.txt,
-      # because a single unrecognised entry in that file silently disables all three analyzers.
+      # Layers 1 and 2 of #251 (docs/21-CODE-METRICS.md, docs/22-GENERATED-CODE-METRICS.md). The
+      # build above already enforces CA1502 / CA1505 / CA1506 against the thresholds in
+      # CodeMetricsConfig.txt, which is an absolute judgement and therefore the weaker half. This
+      # is the other half: checked-in, ordinal baselines of Roslyn's maintainability index,
+      # cyclomatic complexity, class coupling, inheritance depth and line counts, gated on DRIFT
+      # rather than on an absolute number — for every namespace, type and member under src/
+      # (metrics/*.metrics.txt), and for every emitted golden model
+      # (GoldenFiles/*.metrics.txt). It also validates CodeMetricsConfig.txt, because a single
+      # unrecognised entry in that file silently disables all three analyzers.
+      #
+      # This step is what proves cross-platform determinism: the baselines are regenerated here on
+      # ubuntu-latest / x64 from files a contributor generated on their own machine, and compared
+      # with no tolerance at all on every metric but one.
       #
       # It runs `dotnet run` on a file-based app whose Roslyn version is pinned in the script, so
       # the numbers do not move when the runner's SDK does. NU1903 on Microsoft.Build.Tasks.Core
-      # is expected and unavoidable here: it is a transitive dependency of
-      # Microsoft.CodeAnalysis.Workspaces.MSBuild, its assemblies are never loaded (MSBuildLocator
-      # binds the SDK's copy), and it is outside the solution the audit step above governs.
+      # and on Snappier is expected and unavoidable here: they are transitive dependencies of
+      # Microsoft.CodeAnalysis.Workspaces.MSBuild and of the Parquet.Net 4.25.0 pin the legacy
+      # golden file is measured against, no code from either is executed (MSBuildLocator binds the
+      # SDK's copy of the former; the latter is loaded only as a Roslyn metadata reference), and
+      # both are outside the solution the audit step above governs.
       - name: Verify Code Metrics Baselines
         run: |
           status=0
