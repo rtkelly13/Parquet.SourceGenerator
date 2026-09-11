@@ -280,6 +280,201 @@ deliberately for throughput, not a thicket of unrelated conditions. Any argument
 has to be made against the performance case in
 [11](./11-PERFORMANCE-OPTIMIZATION-FINDINGS.md), not on the number alone.
 
+## Is emitted method size actionable? No. Watch it; do not fix it.
+
+[#257](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/257) asked the question this
+table provokes and refused to answer it by argument. Both sides of that argument were plausible —
+splitting an `async` method multiplies state machines, but only locals live *across an await*
+become state-machine fields, so extracting the non-async chunks might have been free or better.
+Four emitted shapes were built and measured against each other. **The result is a negative one, and
+it settles the metric's status: emitted method size is informational, not a call to action.**
+
+### What was measured
+
+Four shapes of `ListOrderParquetExtensions.WriteParquetRowGroupAsync`, produced by the real emitter
+with a temporary `WriteShape` switch (the [#212](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/212)
+pattern — change the emitter between runs) and then compiled side by side in one assembly so a
+single process could A/B them:
+
+| | shape |
+|:--|:--|
+| **V0** | baseline, exactly as emitted today |
+| **V1** | **H1** — each of the four column writes moved into its own `async Task` helper |
+| **V2** | **H2** — the three extraction bodies moved into plain `static void` helpers taking the buffers as `ref` parameters |
+| **V3** | **H5** — V2 plus `[MethodImpl(AggressiveInlining)]` on those helpers |
+
+All four produce **byte-identical Parquet** (186,283 bytes) on both the `List<T>` fast path and the
+enumerable fallback, verified before any timing was taken. If they had not, the A/B would have been
+comparing different work.
+
+### The fact that reframes the whole question
+
+`WriteParquetRowGroupAsync` is 1,148 source lines with ~38 declared locals. Read straight from
+assembly metadata (`scripts/StateMachineMetrics.cs`), its state machine has **eight fields**:
+
+```
+<>1__state   <>t__builder   writer   chunk   cancellationToken
+<>8__1       <groupWriter>5__2       <>u__1
+```
+
+Five of those are structural (state, builder, three parameters). Only **three** are hoisted locals,
+and `<>8__1` is a single reference to the display class that already holds all sixteen buffers.
+**The compiler has already done H2's job.** Of the write path's 10,838 IL bytes, 5,108 already live
+outside `MoveNext` in two plain local-function helpers (`g__ExtractSpan`, `g__ExtractArray`) that
+cost no state machine at all. The 1,148 source lines were never 1,148 lines of `MoveNext`.
+
+### H1 — splitting into smaller *async* methods
+
+**Confirmed, and negligible.** Four extra state machines, and allocation rises by **~560 bytes per
+row-group write — +0.12%** of the 454 KB the operation already costs. Stable to the byte across
+five independent runs and both GC modes. Throughput is unchanged (within the noise floor below).
+
+| | state machines | state-machine fields | `MoveNext` IL | Allocated / call |
+|:--|--:|--:|--:|--:|
+| V0 baseline | 1 | 8 | 5,730 B | 454.44 KB |
+| V1 async split | 5 | 8 + 7 + 10 + 10 + 10 | 5,605 B + 4×~220 B | 454.98 KB |
+
+### H2 — extracting *non-async* chunks into plain helpers
+
+**Falsified on its stated prediction.** It did not reduce the state-machine field count. It
+**tripled** it, 8 → 23, because removing the local functions removed the display class that had
+been carrying all sixteen buffers behind one reference. Every buffer that lives across an `await`
+then got its own hoisted slot.
+
+| | state-machine fields | `MoveNext` IL | write-path native code | Allocated / call |
+|:--|--:|--:|--:|--:|
+| V0 baseline | 8 | 5,730 B | 20,632 B | 454.43 KB |
+| V2 helper split | **23** | **2,066 B** (−64%) | **24,941 B** (+21%) | 454.43 KB |
+
+Allocation is identical to the byte: one display class saved, one larger state-machine box paid.
+`MoveNext` shrinks by 64% and the *native code for the whole write path grows by 21%*, because the
+enumerable fallback that used to share code with `MoveNext` becomes a fourth fully outlined method
+and every buffer access becomes a `ref` indirection.
+
+(V2's emitted *source* is shorter than V0's — 2,616 lines against 3,031 — only because the spike
+shape drops the pre-`NET6_0_OR_GREATER` `#else` duplicates, which never compile on `net8.0`. Source
+lines are not the measure here. IL and native bytes are.)
+
+### H3 — does size materially affect throughput?
+
+**No, and the small effect that exists points the opposite way from the hypothesis.** Timings are
+minimum-of-80 rounds, variants round-robined inside one process. V2 and V3 have byte-identical IL
+*and* byte-identical native code, so **the gap between them is this experiment's own noise floor**:
+0.3% under Server GC, 3.2% under Workstation GC.
+
+| GC | path | V0 | V1 async split | V2 helper split |
+|:--|:--|--:|--:|--:|
+| Server | `List<T>` fast | 445.4 us | −0.2% | **+6.8%** |
+| Server | enumerable fallback | 494.2 us | +0.1% | **−2.6%** |
+| Workstation | `List<T>` fast | 475.5 us | −3.4% | +0.4% |
+| Workstation | enumerable fallback | 508.4 us | −1.0% | **−8.0%** |
+
+The direction is consistent across both GC modes: outlining helps only the path that was genuinely
+inline in `MoveNext` (the enumerable fallback), and costs throughput on the `List<T>` fast path that
+the compiler had already outlined. Splitting is not a throughput win; it is a trade between two
+paths, and it loses on the fast one.
+
+### H4 — native code size and AOT cold start
+
+**Splitting makes the AOT binary bigger and cold start no better.** Native sizes are from the ILC
+map file; cold start is the minimum of 20 fresh process launches, timing data-ready to
+first-completed-write.
+
+| | write-path native | binary | AOT first write | AOT steady |
+|:--|--:|--:|--:|--:|
+| V0 baseline | 20,632 B | 4,868,328 B | **1,696 us** | 688 us |
+| V1 async split | 29,561 B (+43%) | 4,901,432 B (+33 KB) | 1,767 us | 630 us |
+| V2 helper split | 24,941 B (+21%) | 4,901,352 B (+33 KB) | 1,876 us | 767 us |
+| V3 + AggressiveInlining | 24,941 B (identical) | 4,901,352 B (identical) | 2,013 us | 806 us |
+
+The V2/V3 spread (1,876 vs 2,013 us for identical machine code) is the noise floor for these
+figures, about 7%. No variant beats the baseline on cold start outside it.
+
+### H5 — are the emitted helpers inlined, and does forcing it change anything?
+
+**No, and no — decisively.** The extraction helpers are 2,548–2,560 bytes of IL, far beyond any
+inlining budget. Marking all three `AggressiveInlining` produced **byte-identical native code and a
+byte-identical binary**, down to every per-method entry in the ILC map. The attribute is not a
+lever on emitted code of this size. Nothing here suggests adding it.
+
+### H6 — does a very large method delay tier-1 promotion enough to matter?
+
+**Measurable, small, and not what dominates.** Whole-process first-call timing cannot answer this:
+the first write costs ~86 ms and nearly all of it is Parquet.Net's own tier-0 JIT — two variants
+with *identical IL* differed by 2× in median first-call time. Isolating the emitted methods with
+`RuntimeHelpers.PrepareMethod` gives a clean number (minimum of three runs):
+
+| | tier-0 JIT (default) | full-opt JIT (`DOTNET_TieredCompilation=0`) |
+|:--|--:|--:|
+| V0 baseline | 4,284 us (`MoveNext` alone: 2,116 us) | 11,040 us |
+| V1 async split | 4,279 us | 11,442 us |
+| V2 helper split | 3,411 us | 9,342 us |
+| V3 + AggressiveInlining | 3,374 us | 9,933 us |
+
+Splitting saves **about 0.9 ms of tier-0 JIT, once per process**. For a short-lived process that is
+real, and it is the only thing in this whole exercise that splitting reliably improves. It is also
+smaller than the 33 KB of extra native code AOT pays for the same change, and AOT — the mode this
+project advertises for cold start — does not JIT at all.
+
+### The verdict
+
+**Emitted method size is a debuggability and correctness-risk proxy. It is not a performance
+defect, and this table is not a work queue.**
+
+- The largest coherent win available from splitting is ~1 ms of one-time JIT per process, and up to
+  8% on the enumerable fallback path.
+- It is bought with +21% native code, +33 KB of AOT binary, a 6.8% regression on the `List<T>` fast
+  path under Server GC, and a state machine with three times as many fields.
+- The async split (H1) costs 0.12% allocation and buys nothing at all.
+- The compiler has already extracted the bulk of the method for free. A hand-rolled split competes
+  with that, and loses.
+
+One more thing the measurement put in perspective: the *read* methods emit state machines with
+**33 to 44 fields**, against this method's 8. The headline row of the complexity table is not even
+the largest state machine the generator produces. Size in source lines and cost at runtime are not
+the same axis, which is the whole point of having measured.
+
+**So: keep the metric, keep the drift gate, and read it for what it is** — "a consumer debugging a
+failing write lands in 1,148 lines", and "this emitter change made the generated code materially
+bigger". Neither of those is a reason to split the method, and nothing in this document should be
+cited as one without new measurements.
+
+### Reproducing it
+
+`scripts/StateMachineMetrics.cs` is the part of the harness that was kept, because it answers a
+question nothing else in the repo could — how many fields an emitted async state machine actually
+carries, read from metadata rather than inferred from source:
+
+```bash
+dotnet run scripts/StateMachineMetrics.cs -- \
+    --assembly test/Parquet.SourceGenerator.CLI/bin/Release/net8.0/Parquet.SourceGenerator.CLI.dll
+```
+
+It reports state-machine field counts, `MoveNext` IL size, and the largest emitted methods by IL
+bytes. It is the companion to `scripts/InterrogateIL.cs`
+([08](./08-IL-INTERROGATION.md)), which asks whether the emitted IL *boxes*; this asks how *big* it
+is.
+
+The four-shape spike harness itself was **not** landed. It is ~12,000 lines of checked-in generated
+variants plus a temporary emitter switch, and it exists to answer one question that is now
+answered; carrying it would cost more than re-deriving it. The emitter transformation it applied is
+described above precisely enough to rebuild: capture the write-path rentals, derive a `ref`
+parameter list from them, and move each extraction branch into a `static void` helper (H2) or each
+column write into its own `async Task` helper (H1).
+
+### Machine and conditions — stated, because they were not ideal
+
+Apple M1, 8 cores, macOS (Darwin 24.6.0); .NET SDK 9.0.315, target `net8.0`; Native AOT
+`osx-arm64`. **The machine was not quiet.** One-minute load average ranged from 5.6 to 20 across
+the runs (other agent sessions, a headless Chromium, and system indexing), and one early
+BenchmarkDotNet pass had to be discarded at load 81 with a 25% standard deviation. That is why
+every timing above is a *minimum* over many rounds with the variants round-robined inside one
+process, and why V2-versus-V3 — byte-identical machine code — is quoted as the noise floor beside
+every timing table rather than assumed. The IL, native-size, allocation and state-machine-field
+numbers are unaffected by load: they are deterministic, and they reproduced exactly across runs.
+Treat the throughput and cold-start figures as indicative to about ±3% (Server GC), ±5%
+(Workstation GC) and ±7% (AOT cold start); treat everything else as exact.
+
 ## What is deliberately *not* here
 
 - **No absolute threshold, and no analyzer rules.** `CA1502`/`CA1505`/`CA1506` are scoped to
