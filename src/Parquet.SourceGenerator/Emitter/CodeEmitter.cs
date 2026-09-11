@@ -149,6 +149,11 @@ public static class CodeEmitter
             ColumnarBatchComponent.EmitBatchStruct(builder, model);
         }
 
+        // Read entry point and builder structs (#217). Each axis of the read grid becomes a
+        // member rather than a name segment; see docs/19-PUBLIC-API-SURFACE.md. The flat Read*
+        // methods above remain and are what these delegate to, for one release (decision D3).
+        ReadBuilderComponent.Emit(builder, model);
+
         return builder.ToString();
     }
 

@@ -2550,3 +2550,199 @@ public struct OrderEventColumnarBatch
     /// stores an empty value where a null was meant.</remarks>
     public global::System.ReadOnlyMemory<global::System.ReadOnlyMemory<byte>?> Payload;
 }
+
+/// <summary>
+/// Entry point for reading <c>OrderEvent</c> values from Parquet (issue #217).
+/// </summary>
+public static partial class OrderEventParquet
+{
+    /// <summary>Reads from a <see cref="System.IO.Stream"/>.</summary>
+    public static OrderEventParquetStreamSource From(global::System.IO.Stream stream)
+        => new OrderEventParquetStreamSource(stream ?? throw new global::System.ArgumentNullException(nameof(stream)), null);
+
+    /// <summary>Reads from an in-memory buffer.</summary>
+    public static OrderEventParquetMemorySource From(global::System.ReadOnlyMemory<byte> parquetBytes)
+        => new OrderEventParquetMemorySource(parquetBytes, null);
+}
+
+/// <summary>
+/// A pending read of <c>OrderEvent</c> from a stream.
+/// </summary>
+/// <remarks>
+/// There is deliberately no <c>Parallel</c> member. A single <c>ParquetReader</c> seeks
+/// within its stream, so concurrent row-group reads would corrupt one another, and an
+/// arbitrary stream cannot be handed to more than one reader. Buffer the file and use
+/// <c>From(ReadOnlyMemory&lt;byte&gt;)</c> for genuine decode parallelism.
+/// </remarks>
+public readonly struct OrderEventParquetStreamSource
+{
+    private readonly global::System.IO.Stream _stream;
+    private readonly global::Parquet.SourceGenerator.ParquetSerializerOptions? _options;
+
+    internal OrderEventParquetStreamSource(global::System.IO.Stream stream, global::Parquet.SourceGenerator.ParquetSerializerOptions? options)
+    {
+        _stream = stream;
+        _options = options;
+    }
+
+    /// <summary>Replaces the serializer options.</summary>
+    public OrderEventParquetStreamSource WithOptions(global::Parquet.SourceGenerator.ParquetSerializerOptions options)
+        => new OrderEventParquetStreamSource(_stream, options ?? throw new global::System.ArgumentNullException(nameof(options)));
+
+    /// <summary>Skips row groups whose footer statistics cannot satisfy the predicate.</summary>
+    public OrderEventParquetFilteredSource Where(global::System.Func<global::SampleDomain.Models.OrderEventRowGroupMetadata, bool> predicate)
+        => new OrderEventParquetFilteredSource(_stream, default, _options, predicate ?? throw new global::System.ArgumentNullException(nameof(predicate)));
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<OrderEvent>> ToListAsync(global::System.Threading.CancellationToken cancellationToken = default)
+        => OrderEventParquetExtensions.ReadParquetAsync(_stream, _options, cancellationToken);
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Threading.Tasks.Task<OrderEvent[]> ToArrayAsync(global::System.Threading.CancellationToken cancellationToken = default)
+        => OrderEventParquetExtensions.ReadParquetArrayAsync(_stream, _options, cancellationToken);
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Collections.Generic.IAsyncEnumerable<OrderEvent> AsAsyncEnumerable(global::System.Threading.CancellationToken cancellationToken = default)
+        => OrderEventParquetExtensions.ReadParquetStreamAsync(_stream, _options, cancellationToken);
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Collections.Generic.IAsyncEnumerable<OrderEventParquetExtensions.ColumnBatch> Batches(global::System.Threading.CancellationToken cancellationToken = default)
+        => OrderEventParquetExtensions.ReadParquetBatchesAsync(_stream, _options, cancellationToken);
+
+}
+
+/// <summary>
+/// A pending read of <c>OrderEvent</c> from an in-memory buffer.
+/// </summary>
+public readonly struct OrderEventParquetMemorySource
+{
+    private readonly global::System.ReadOnlyMemory<byte> _bytes;
+    private readonly global::Parquet.SourceGenerator.ParquetSerializerOptions? _options;
+
+    internal OrderEventParquetMemorySource(global::System.ReadOnlyMemory<byte> bytes, global::Parquet.SourceGenerator.ParquetSerializerOptions? options)
+    {
+        _bytes = bytes;
+        _options = options;
+    }
+
+    /// <summary>Replaces the serializer options.</summary>
+    public OrderEventParquetMemorySource WithOptions(global::Parquet.SourceGenerator.ParquetSerializerOptions options)
+        => new OrderEventParquetMemorySource(_bytes, options ?? throw new global::System.ArgumentNullException(nameof(options)));
+
+    /// <summary>Decodes row groups concurrently, each worker over its own view of the buffer.</summary>
+    /// <remarks>
+    /// Takes no degree argument. #239 made <c>ParquetSerializerOptions</c> the single home for
+    /// configuration, and an argument here would give the knob two homes again — the condition
+    /// #218 existed to remove. Set <c>MaxDegreeOfParallelism</c> on the options; #241 decides
+    /// whether it moves here now this builder exists.
+    /// </remarks>
+    public OrderEventParquetParallelSource Parallel()
+        => new OrderEventParquetParallelSource(_bytes, _options);
+
+    /// <summary>Skips row groups whose footer statistics cannot satisfy the predicate.</summary>
+    public OrderEventParquetFilteredSource Where(global::System.Func<global::SampleDomain.Models.OrderEventRowGroupMetadata, bool> predicate)
+        => new OrderEventParquetFilteredSource(null, _bytes, _options, predicate ?? throw new global::System.ArgumentNullException(nameof(predicate)));
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<OrderEvent>> ToListAsync(global::System.Threading.CancellationToken cancellationToken = default)
+        => OrderEventParquetExtensions.ReadParquetAsync(_bytes, _options, cancellationToken);
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Threading.Tasks.Task<OrderEvent[]> ToArrayAsync(global::System.Threading.CancellationToken cancellationToken = default)
+        => OrderEventParquetExtensions.ReadParquetArrayAsync(_bytes, _options, cancellationToken);
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Collections.Generic.IAsyncEnumerable<OrderEvent> AsAsyncEnumerable(global::System.Threading.CancellationToken cancellationToken = default)
+        => OrderEventParquetExtensions.ReadParquetStreamAsync(_bytes, _options, cancellationToken);
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Collections.Generic.IAsyncEnumerable<OrderEventParquetExtensions.ColumnBatch> Batches(global::System.Threading.CancellationToken cancellationToken = default)
+        => OrderEventParquetExtensions.ReadParquetBatchesAsync(_bytes, _options, cancellationToken);
+
+}
+
+/// <summary>
+/// A pending read of <c>OrderEvent</c> with a row-group predicate applied.
+/// </summary>
+/// <remarks>
+/// There is deliberately no <c>Parallel</c> member: no parallel reader accepts a
+/// predicate yet (issue #222). When one does, this type gains the member.
+/// </remarks>
+public readonly struct OrderEventParquetFilteredSource
+{
+    private readonly global::System.IO.Stream? _stream;
+    private readonly global::System.ReadOnlyMemory<byte> _bytes;
+    private readonly global::Parquet.SourceGenerator.ParquetSerializerOptions? _options;
+    private readonly global::System.Func<global::SampleDomain.Models.OrderEventRowGroupMetadata, bool> _predicate;
+
+    internal OrderEventParquetFilteredSource(global::System.IO.Stream? stream, global::System.ReadOnlyMemory<byte> bytes, global::Parquet.SourceGenerator.ParquetSerializerOptions? options, global::System.Func<global::SampleDomain.Models.OrderEventRowGroupMetadata, bool> predicate)
+    {
+        _stream = stream;
+        _bytes = bytes;
+        _options = options;
+        _predicate = predicate;
+    }
+
+    /// <summary>Replaces the serializer options.</summary>
+    public OrderEventParquetFilteredSource WithOptions(global::Parquet.SourceGenerator.ParquetSerializerOptions options)
+        => new OrderEventParquetFilteredSource(_stream, _bytes, options ?? throw new global::System.ArgumentNullException(nameof(options)), _predicate);
+
+    /// <summary>Materializes the surviving rows into a list.</summary>
+    public async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<OrderEvent>> ToListAsync(global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        if (_stream is not null)
+            return await OrderEventParquetExtensions.ReadParquetAsync(_stream, _options, cancellationToken, _predicate).ConfigureAwait(false);
+
+        var results = new global::System.Collections.Generic.List<OrderEvent>();
+        await foreach (var item in OrderEventParquetExtensions.ReadParquetStreamAsync(_bytes, _options, cancellationToken, _predicate))
+            results.Add(item);
+        return results;
+    }
+
+    /// <summary>Materializes the surviving rows into an array.</summary>
+    public async global::System.Threading.Tasks.Task<OrderEvent[]> ToArrayAsync(global::System.Threading.CancellationToken cancellationToken = default)
+    {
+        if (_stream is not null)
+            return await OrderEventParquetExtensions.ReadParquetArrayAsync(_stream, _options, cancellationToken, _predicate).ConfigureAwait(false);
+
+        return (await ToListAsync(cancellationToken).ConfigureAwait(false)).ToArray();
+    }
+
+    /// <summary>Streams the surviving rows without materializing them all.</summary>
+    public global::System.Collections.Generic.IAsyncEnumerable<OrderEvent> AsAsyncEnumerable(global::System.Threading.CancellationToken cancellationToken = default)
+        => _stream is not null
+            ? OrderEventParquetExtensions.ReadParquetStreamAsync(_stream, _options, cancellationToken, _predicate)
+            : OrderEventParquetExtensions.ReadParquetStreamAsync(_bytes, _options, cancellationToken, _predicate);
+}
+
+/// <summary>
+/// A pending parallel read of <c>OrderEvent</c> from an in-memory buffer.
+/// </summary>
+/// <remarks>
+/// Only the materializing shapes are offered: there is no parallel streaming or
+/// columnar-batch reader to delegate to, so offering the member would mean throwing.
+/// </remarks>
+public readonly struct OrderEventParquetParallelSource
+{
+    private readonly global::System.ReadOnlyMemory<byte> _bytes;
+    private readonly global::Parquet.SourceGenerator.ParquetSerializerOptions? _options;
+
+    internal OrderEventParquetParallelSource(global::System.ReadOnlyMemory<byte> bytes, global::Parquet.SourceGenerator.ParquetSerializerOptions? options)
+    {
+        _bytes = bytes;
+        _options = options;
+    }
+
+    /// <summary>Replaces the serializer options.</summary>
+    public OrderEventParquetParallelSource WithOptions(global::Parquet.SourceGenerator.ParquetSerializerOptions options)
+        => new OrderEventParquetParallelSource(_bytes, options ?? throw new global::System.ArgumentNullException(nameof(options)));
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<OrderEvent>> ToListAsync(global::System.Threading.CancellationToken cancellationToken = default)
+        => OrderEventParquetExtensions.ReadParquetParallelAsync(_bytes, _options, cancellationToken);
+
+    /// <summary>Executes the read.</summary>
+    public global::System.Threading.Tasks.Task<OrderEvent[]> ToArrayAsync(global::System.Threading.CancellationToken cancellationToken = default)
+        => OrderEventParquetExtensions.ReadParquetParallelArrayAsync(_bytes, _options, cancellationToken);
+
+}
