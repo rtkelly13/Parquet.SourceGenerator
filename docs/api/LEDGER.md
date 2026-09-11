@@ -16,6 +16,17 @@ The rule, the three surfaces and the author process are in
 
 <!-- Add new entries directly below this line, newest first. -->
 
+### 2026-09-11 — `PocoOrderParquetExtensions` catalogued golden model (#176 M3b-2)
+
+- **Surface:** emitted
+- **Semver:** generated-shape
+- **Issue:** [#176](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/176)
+- **Rationale:** Adds **47** emitted members by cataloguing one new driver model
+  (`PocoOrder`, a `List<POCO>`/`POCO[]` shape) alongside the existing five — the same member
+  families every catalogued model already carries (entry point, builders, flat reads, writer
+  trio). No signature *shape* is new: the catalogue exists so drift in emitted surface is
+  diffable, and this model's drift is exactly the stack that introduced it.
+
 ### 2026-09-10 — Read entry point and builder (#217)
 
 - **Surface:** emitted
