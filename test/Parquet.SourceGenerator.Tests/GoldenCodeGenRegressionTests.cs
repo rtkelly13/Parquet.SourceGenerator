@@ -603,6 +603,82 @@ public sealed class GoldenCodeGenRegressionTests
         AssertGoldenMatch("ListOrderParquetExtensions.g.cs", generated);
     }
 
+    [Fact]
+    public void GoldenMasterListOfPocoModel()
+    {
+        // M3b stack 2 (#176): row-level lists/arrays of attributed reference POCOs with
+        // leaf children through the real pipeline — 3-level ListField over a StructField
+        // element, one lane column per element field, aligned def walk on read.
+        string source = """
+            using Parquet.SourceGenerator;
+            using System;
+            using System.Collections.Generic;
+
+            namespace SampleDomain.Models;
+
+            [ParquetSerializable]
+            public partial class Stop
+            {
+                public string? City { get; init; }
+                public int? Zip { get; init; }
+                public Guid Node { get; init; }
+            }
+
+            [ParquetSerializable]
+            public partial record PocoOrder
+            {
+                public int Id { get; init; }
+                public List<Stop>? Stops { get; init; }
+                public Stop[]? Route { get; init; }
+            }
+            """;
+
+        var (diagnostics, outputTrees) = RunGenerator(source);
+        Assert.DoesNotContain(diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+        string generated = outputTrees[outputTrees.Count - 1].ToString();
+        Assert.Contains("new global::Parquet.Schema.ListField(", generated);
+        Assert.Contains("StructField(\n", generated);
+        Assert.Contains(".Item).Fields[", generated);
+        AssertGoldenMatch("PocoOrderParquetExtensions.g.cs", generated);
+    }
+
+    [Fact]
+    public void DumpListPoco()
+    {
+        const string src = """
+            using Parquet.SourceGenerator;
+            using System.Collections.Generic;
+
+            namespace DumpP;
+
+            [ParquetSerializable]
+            public sealed partial class Stop
+            {
+                public string? City { get; init; }
+                public int? Zip { get; init; }
+            }
+
+            [ParquetSerializable]
+            public sealed partial record TripRow
+            {
+                public int Id { get; init; }
+                public List<Stop>? Stops { get; init; }
+                public Stop[]? Route { get; init; }
+            }
+            """;
+        var (diags, trees) = RunGenerator(src);
+        global::System.IO.File.AppendAllText(
+            "/tmp/dumpp.g.cs",
+            "DIAGS: "
+                + string.Join(" | ", diags.Select(d => d.Id + " " + d.GetMessage()))
+                + "\ntrees="
+                + trees.Count
+                + "\n"
+        );
+        foreach (var t in trees.Skip(1))
+            global::System.IO.File.AppendAllText("/tmp/dumpp.g.cs", t.ToString());
+    }
+
     private static (
         IReadOnlyList<Diagnostic> Diagnostics,
         IReadOnlyList<SyntaxTree> OutputTrees

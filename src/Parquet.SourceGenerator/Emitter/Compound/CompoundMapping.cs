@@ -132,6 +132,31 @@ internal static class CompoundMapping
         builder.AppendLine($"{prefix}}}");
     }
 
+    private static void EmitListElementField(StringBuilder builder, LeafColumn col, string p)
+    {
+        int n = col.Slot;
+        string cv = $"cv_{n}";
+        builder.AppendLine($"{p}var {cv} = el_{n}.{col.Leaf.Name};");
+        string conv = GetCompoundLeafWriteExpression(col.Leaf, cv);
+        if (col.Leaf.IsNullable)
+        {
+            builder.AppendLine($"{p}if ({cv} is not null) {{");
+            GrowValues(builder, col, p + "    ");
+            builder.AppendLine($"{p}    buffer_{n}[nonNullCount_{n}++] = {conv};");
+            builder.AppendLine($"{p}    defLevels_{n}[posCount_{n}] = {col.MaxDef};");
+            builder.AppendLine($"{p}}}");
+            builder.AppendLine($"{p}else {{");
+            builder.AppendLine($"{p}    defLevels_{n}[posCount_{n}] = {col.MaxDef - 1};");
+            builder.AppendLine($"{p}}}");
+        }
+        else
+        {
+            GrowValues(builder, col, p);
+            builder.AppendLine($"{p}buffer_{n}[nonNullCount_{n}++] = {conv};");
+            builder.AppendLine($"{p}defLevels_{n}[posCount_{n}] = {col.MaxDef};");
+        }
+    }
+
     private static void GrowLevels(StringBuilder b, int n, string prefix)
     {
         string P = prefix;
@@ -208,7 +233,20 @@ internal static class CompoundMapping
         builder.AppendLine($"{prefix}    {{");
         builder.AppendLine($"{prefix}        any_{n} = true;");
         GrowLevels(builder, n, prefix + "        ");
-        if (el.IsNullable)
+        if (col.ListElementStruct is not null)
+        {
+            // List<POCO>: element slot gets its own rung (def == ListElementRung means a
+            // null element); below that the field ladder walks with bases offset by two.
+            builder.AppendLine($"{prefix}        if (el_{n} is not null) {{");
+            EmitListElementField(builder, col, prefix + "            ");
+            builder.AppendLine($"{prefix}        }}");
+            builder.AppendLine($"{prefix}        else {{");
+            builder.AppendLine(
+                $"{prefix}            defLevels_{n}[posCount_{n}] = {col.ListElementRung};"
+            );
+            builder.AppendLine($"{prefix}        }}");
+        }
+        else if (el.IsNullable)
         {
             builder.AppendLine($"{prefix}        if (el_{n} is not null) {{");
             GrowValues(builder, col, prefix + "            ");
@@ -254,47 +292,132 @@ internal static class CompoundMapping
         string indent
     )
     {
+        var seenRoots = new HashSet<int>();
         foreach (LeafColumn col in plan.Columns)
         {
-            if (!col.IsListLeaf)
+            if (!col.IsListLeaf || !seenRoots.Add(col.RootPropertyIndex))
                 continue;
-            int n = col.Slot;
-            // The parser renders element types without nullability suffixes; the lane must
-            // carry the element's annotation or assigning a List<string> into a
-            // List<string?> property fails the compiler's nullability check.
-            string elemType = col.Leaf.TypeName;
-            if (
-                col.Leaf.IsNullable
-                && !elemType.EndsWith("?", StringComparison.Ordinal)
-                && !elemType.EndsWith("[]", StringComparison.Ordinal)
-            )
-                elemType += "?";
-            string listType = $"global::System.Collections.Generic.List<{elemType}>";
-            builder.AppendLine($"{indent}var lane_{n} = new {listType}?[{rowCountVar}];");
-            builder.AppendLine(
-                $"{indent}{listType}? bk_{n} = null; int rc_{n} = 0; int vc_{n} = 0; bool st_{n} = false;"
-            );
-            builder.AppendLine($"{indent}for (int p_{n} = 0; p_{n} < entries_{n}; p_{n}++)");
-            builder.AppendLine($"{indent}{{");
-            builder.AppendLine(
-                $"{indent}    if (repLevels_{n}[p_{n}] == 0) {{ if (st_{n}) lane_{n}[rc_{n}++] = bk_{n}; st_{n} = true; bk_{n} = null; }}"
-            );
-            builder.AppendLine($"{indent}    int dv_{n} = defLevels_{n}[p_{n}];");
-            builder.AppendLine(
-                $"{indent}    if (dv_{n} == {col.ListPresenceRung}) bk_{n} = new {listType}();"
-            );
-            builder.AppendLine($"{indent}    else if (dv_{n} >= {col.ListElementRung}) {{");
-            builder.AppendLine($"{indent}        bk_{n} ??= new {listType}();");
-            builder.AppendLine(
-                $"{indent}        if (dv_{n} == {col.MaxDef}) bk_{n}.Add({GetCompoundLeafReadExpression(col.Leaf, $"buffer_{n}[vc_{n}++]")});"
-            );
-            if (col.Leaf.IsNullable)
-                builder.AppendLine($"{indent}        else bk_{n}.Add(null!);");
-            builder.AppendLine($"{indent}    }}");
-            builder.AppendLine($"{indent}}}");
-            builder.AppendLine($"{indent}if (st_{n}) lane_{n}[rc_{n}++] = bk_{n};");
-            builder.AppendLine($"{indent}_ = rc_{n};");
+            if (col.ListElementStruct is null)
+            {
+                EmitLeafListLane(builder, col, rowCountVar, indent);
+                continue;
+            }
+            List<LeafColumn> group =
+            [
+                .. plan.Columns.Where(c =>
+                    c.IsListLeaf && c.RootPropertyIndex == col.RootPropertyIndex
+                ),
+            ];
+            EmitStructListLane(builder, col, group, rowCountVar, indent);
         }
+    }
+
+    private static void EmitLeafListLane(
+        StringBuilder builder,
+        LeafColumn col,
+        string rowCountVar,
+        string indent
+    )
+    {
+        int n = col.Slot;
+        string listType = ListTypeOf(col, col.Leaf);
+        builder.AppendLine($"{indent}var lane_{n} = new {listType}?[{rowCountVar}];");
+        builder.AppendLine(
+            $"{indent}{listType}? bk_{n} = null; int rc_{n} = 0; int vc_{n} = 0; bool st_{n} = false;"
+        );
+        builder.AppendLine($"{indent}for (int p_{n} = 0; p_{n} < entries_{n}; p_{n}++)");
+        builder.AppendLine($"{indent}{{");
+        builder.AppendLine(
+            $"{indent}    if (repLevels_{n}[p_{n}] == 0) {{ if (st_{n}) lane_{n}[rc_{n}++] = bk_{n}; st_{n} = true; bk_{n} = null; }}"
+        );
+        builder.AppendLine($"{indent}    int dv_{n} = defLevels_{n}[p_{n}];");
+        builder.AppendLine(
+            $"{indent}    if (dv_{n} == {col.ListPresenceRung}) bk_{n} = new {listType}();"
+        );
+        builder.AppendLine($"{indent}    else if (dv_{n} >= {col.ListElementRung}) {{");
+        builder.AppendLine($"{indent}        bk_{n} ??= new {listType}();");
+        builder.AppendLine(
+            $"{indent}        if (dv_{n} == {col.MaxDef}) bk_{n}.Add({GetCompoundLeafReadExpression(col.Leaf, $"buffer_{n}[vc_{n}++]")});"
+        );
+        if (col.Leaf.IsNullable)
+            builder.AppendLine($"{indent}        else bk_{n}.Add(null!);");
+        builder.AppendLine($"{indent}    }}");
+        builder.AppendLine($"{indent}}}");
+        builder.AppendLine($"{indent}if (st_{n}) lane_{n}[rc_{n}++] = bk_{n};");
+        builder.AppendLine($"{indent}_ = rc_{n};");
+    }
+
+    /// <summary>
+    /// List&lt;POCO&gt; lane: the element's child columns share one entry stream position (every
+    /// element contributes exactly one def slot per column, nulls included), so a single walk
+    /// on the anchor column's rep/def drives aligned per-column value cursors. def==element
+    /// rung is a null element; above it the child fields read at the same position.
+    /// </summary>
+    private static void EmitStructListLane(
+        StringBuilder builder,
+        LeafColumn anchor,
+        List<LeafColumn> group,
+        string rowCountVar,
+        string indent
+    )
+    {
+        int a = anchor.Slot;
+        PropertyModel element = anchor.ListElementStruct!;
+        string elemType = element.TypeName.TrimEnd('?');
+        string annotated = elemType + (element.IsNullable ? "?" : "");
+        string listType = $"global::System.Collections.Generic.List<{annotated}>";
+        builder.AppendLine($"{indent}var lane_{a} = new {listType}?[{rowCountVar}];");
+        builder.AppendLine(
+            $"{indent}{listType}? bk_{a} = null; int rc_{a} = 0; bool st_{a} = false;"
+        );
+        foreach (LeafColumn g in group)
+            builder.AppendLine($"{indent}int vc_{g.Slot} = 0;");
+        builder.AppendLine($"{indent}for (int p_{a} = 0; p_{a} < entries_{a}; p_{a}++)");
+        builder.AppendLine($"{indent}{{");
+        builder.AppendLine(
+            $"{indent}    if (repLevels_{a}[p_{a}] == 0) {{ if (st_{a}) lane_{a}[rc_{a}++] = bk_{a}; st_{a} = true; bk_{a} = null; }}"
+        );
+        builder.AppendLine($"{indent}    int dv_{a} = defLevels_{a}[p_{a}];");
+        builder.AppendLine(
+            $"{indent}    if (dv_{a} == {anchor.ListPresenceRung}) bk_{a} = new {listType}();"
+        );
+        builder.AppendLine($"{indent}    else if (dv_{a} >= {anchor.ListElementRung}) {{");
+        builder.AppendLine($"{indent}        bk_{a} ??= new {listType}();");
+        builder.AppendLine(
+            $"{indent}        if (dv_{a} == {anchor.ListElementRung}) bk_{a}.Add(null!);"
+        );
+        builder.AppendLine($"{indent}        else {{");
+        builder.AppendLine($"{indent}            bk_{a}.Add(new {elemType}");
+        builder.AppendLine($"{indent}            {{");
+        foreach (LeafColumn g in group)
+        {
+            string read = GetCompoundLeafReadExpression(g.Leaf, $"buffer_{g.Slot}[vc_{g.Slot}++]");
+            string absent = g.Leaf.IsNullable ? "null!" : "default";
+            builder.AppendLine(
+                $"{indent}                {g.Leaf.Name} = defLevels_{g.Slot}[p_{a}] >= {g.MaxDef} ? {read} : {absent},"
+            );
+        }
+        builder.AppendLine($"{indent}            }});");
+        builder.AppendLine($"{indent}        }}");
+        builder.AppendLine($"{indent}    }}");
+        builder.AppendLine($"{indent}}}");
+        builder.AppendLine($"{indent}if (st_{a}) lane_{a}[rc_{a}++] = bk_{a};");
+        builder.AppendLine($"{indent}_ = rc_{a};");
+    }
+
+    private static string ListTypeOf(LeafColumn col, PropertyModel element)
+    {
+        // The parser renders element types without nullability suffixes; the lane must
+        // carry the element's annotation or assigning a List<string> into a
+        // List<string?> property fails the compiler's nullability check.
+        string elemType = element.TypeName;
+        if (
+            element.IsNullable
+            && !elemType.EndsWith("?", StringComparison.Ordinal)
+            && !elemType.EndsWith("[]", StringComparison.Ordinal)
+        )
+            elemType += "?";
+        return $"global::System.Collections.Generic.List<{elemType}>";
     }
 
     /// <summary>

@@ -138,6 +138,49 @@ public sealed class CompoundModelParsingTests
     }
 
     [Fact]
+    public void PipelineDialAcceptsListOfPocoWithLeafChildren()
+    {
+        var (_, symbol) = Parse(Row("public List<Address>? Stops { get; init; }"), "App.Row");
+        TargetParserResult viaPipeline = TargetParser.GetTargetModel(
+            symbol,
+            ParquetApiLevel.V6,
+            CompoundKinds.Struct | CompoundKinds.List
+        );
+        Assert.NotNull(viaPipeline.Model);
+        Assert.DoesNotContain(
+            viaPipeline.Diagnostics,
+            d => d.Descriptor.Id == DiagnosticDescriptors.UnsupportedPropertyType.Id
+        );
+    }
+
+    [Fact]
+    public void PipelineDialRejectsListOfValuePoco()
+    {
+        const string pointDecl = """
+            [ParquetSerializable]
+            public partial struct Point
+            {
+                public int X { get; init; }
+                public int Y { get; init; }
+            }
+            """;
+        var (_, symbol) = Parse(
+            Row("public List<Point>? Spots { get; init; }", extra: pointDecl),
+            "App.Row"
+        );
+        TargetParserResult viaPipeline = TargetParser.GetTargetModel(
+            symbol,
+            ParquetApiLevel.V6,
+            CompoundKinds.Struct | CompoundKinds.List
+        );
+        Assert.Contains(
+            viaPipeline.Diagnostics,
+            d => d.Descriptor.Id == DiagnosticDescriptors.UnsupportedPropertyType.Id
+        );
+        Assert.Null(viaPipeline.Model);
+    }
+
+    [Fact]
     public void ListOfStructsNestsElementTree()
     {
         var (result, _) = Parse(Row("public List<Address> Stops { get; init; }"), "App.Row");

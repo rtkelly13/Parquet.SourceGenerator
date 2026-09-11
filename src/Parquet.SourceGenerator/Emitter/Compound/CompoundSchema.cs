@@ -28,7 +28,11 @@ internal static class CompoundSchema
                 quote: true
             );
             PropertyModel element = prop.Element!;
-            return $"{indent}new global::Parquet.Schema.ListField({listName}, {SchemaComponent.GetFieldCreationExpression(element)})";
+            string itemField =
+                element.Kind == PropertyKind.Struct
+                    ? GetFieldCreationExpression(element, "")
+                    : SchemaComponent.GetFieldCreationExpression(element);
+            return $"{indent}new global::Parquet.Schema.ListField({listName}, {itemField})";
         }
 
         if (prop.Kind != PropertyKind.Struct)

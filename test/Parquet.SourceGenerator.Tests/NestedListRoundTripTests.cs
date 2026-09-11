@@ -142,4 +142,152 @@ public sealed partial record ListRow
     public Guid[]? Keys { get; init; }
     public List<DateTime?>? When { get; init; }
     public List<byte[]>? Blobs { get; init; }
+
+    [Fact]
+    public async Task ListOfPocoRoundTripPreservesMarkersFieldsAndAlignment()
+    {
+        var node1 = Guid.NewGuid();
+        var node2 = Guid.NewGuid();
+        var rows = new List<TripRow>
+        {
+            new()
+            {
+                Id = 0,
+                Stops = null,
+                Route = null,
+            },
+            new()
+            {
+                Id = 1,
+                Stops = [],
+                Route = [],
+            },
+            new()
+            {
+                Id = 2,
+                Stops =
+                [
+                    new Stop
+                    {
+                        City = "A",
+                        Zip = 1,
+                        Node = node1,
+                    },
+                    new Stop
+                    {
+                        City = null,
+                        Zip = null,
+                        Node = node2,
+                    },
+                ],
+                Route =
+                [
+                    new Stop
+                    {
+                        City = "R",
+                        Zip = 9,
+                        Node = node1,
+                    },
+                ],
+            },
+            new()
+            {
+                Id = 3,
+                Stops =
+                [
+                    new Stop
+                    {
+                        City = "Z",
+                        Zip = 0,
+                        Node = Guid.NewGuid(),
+                    },
+                ],
+            },
+        };
+
+        var ms = new MemoryStream();
+        await TripRowParquetExtensions.WriteParquetAsync(rows, ms);
+        ms.Position = 0;
+
+        var back = await TripRowParquetExtensions.ReadParquetParallelArrayAsync(ms);
+
+        Assert.Equal(4, back.Length);
+        Assert.Null(back[0].Stops);
+        Assert.Null(back[0].Route);
+        Assert.Empty(back[1].Stops!);
+        Assert.Empty(back[1].Route!);
+        Assert.Equal(2, back[2].Stops!.Count);
+        Assert.Equal("A", back[2].Stops[0].City);
+        Assert.Equal(1, back[2].Stops[0].Zip);
+        Assert.Equal(node1, back[2].Stops[0].Node);
+        Assert.Null(back[2].Stops[1].City);
+        Assert.Null(back[2].Stops[1].Zip);
+        Assert.Equal(node2, back[2].Stops[1].Node);
+        Assert.Single(back[2].Route!);
+        Assert.Equal("R", back[2].Route![0].City);
+        Assert.Equal(9, back[2].Route![0].Zip!.Value);
+        Assert.Single(back[3].Stops!);
+        Assert.Equal(0, back[3].Stops![0].Zip!.Value);
+    }
+
+    [Fact]
+    public async Task MultiRowGroupListOfPocoReadsBackAligned()
+    {
+        var rows = new List<TripRow>();
+        for (int i = 0; i < 50; i++)
+        {
+            rows.Add(
+                new TripRow
+                {
+                    Id = i,
+                    Stops =
+                    [
+                        new Stop
+                        {
+                            City = $"c{i}",
+                            Zip = i % 2,
+                            Node = Guid.NewGuid(),
+                        },
+                        new Stop
+                        {
+                            City = null,
+                            Zip = null,
+                            Node = Guid.NewGuid(),
+                        },
+                    ],
+                }
+            );
+        }
+
+        var ms = new MemoryStream();
+        await rows.WriteParquetBatchedAsync(ms, new ParquetSerializerOptions { RowGroupSize = 10 });
+        ms.Position = 0;
+
+        var back = await TripRowParquetExtensions.ReadParquetParallelArrayAsync(ms);
+
+        Assert.Equal(50, back.Length);
+        for (int i = 0; i < 50; i++)
+        {
+            Assert.Equal(2, back[i].Stops!.Count);
+            Assert.Equal($"c{i}", back[i].Stops[0].City);
+            Assert.Equal(i % 2, back[i].Stops[0].Zip);
+            Assert.Null(back[i].Stops[1].City);
+        }
+    }
+}
+
+[ParquetSerializable]
+public sealed partial class Stop
+{
+    public string? City { get; init; }
+    public int? Zip { get; init; }
+    public Guid Node { get; init; }
+}
+
+[ParquetSerializable]
+public sealed partial record TripRow
+{
+    public int Id { get; init; }
+    public List<Stop>? Stops { get; init; }
+    public Stop[]? Route { get; init; }
 }
