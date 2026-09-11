@@ -44,6 +44,16 @@ Changes since `0.0.4`; this section becomes the next release entry when one is c
   version to a `build` job (full verification battery) and a `publish` job (NuGet push plus a
   GitHub release whose body is the changelog section). A version that is not described in the
   changelog cannot be published.
+- **`TargetParser.CollectMembers` decomposed (#263).** The generator's front door — every
+  `[ParquetSerializable]` type in every consumer's compilation passes through it — measured
+  cyclomatic complexity **105** across 463 lines with 11 parameters. It is now a `MemberScope` /
+  `MemberSink` pipeline of small methods, one per attribute family, rule, and model shape:
+  `CollectMember` itself is CC 15 and the largest fragment 21, `GetTargetModelCore` (CC 38, the
+  other grandfathered method) is 16, and no method in the repository exceeds the pre-existing
+  worst of 25. Both `[SuppressMessage]` grandfather clauses are deleted, the class-coupling
+  method gate has eight points of headroom where it had zero, and the maintainability floor moved
+  14 → 27. Behaviour-preserving by construction: every golden file and emitted-API baseline is
+  byte-identical.
 
 ---
 

@@ -141,17 +141,6 @@ public static class TargetParser
         return GetTargetModelCore(typeSymbol, syntax, apiLevel, compoundKinds);
     }
 
-    // CA1502 baseline exception, #251. Measured cyclomatic complexity 38 against a threshold of
-    // 25 (CodeMetricsConfig.txt). This is a grandfathered violation, not an approved shape:
-    // the recommended maximum is 7 and this method is 5x that. It is suppressed by name so
-    // that the exception is countable and removable rather than hidden behind a threshold
-    // raised to fit it. Deleting this attribute is the definition of done for the refactor;
-    // do not add a third one. See docs/21-CODE-METRICS.md.
-    [SuppressMessage(
-        "Microsoft.Maintainability",
-        "CA1502:AvoidExcessiveComplexity",
-        Justification = "Grandfathered at cyclomatic complexity 38 by #251; tracked for refactor."
-    )]
     private static TargetParserResult GetTargetModelCore(
         INamedTypeSymbol typeSymbol,
         TypeDeclarationSyntax? typeDeclaration,
@@ -168,6 +157,120 @@ public static class TargetParser
 
         var diagnostics = new List<DiagnosticInfo>();
 
+        (bool isPartial, bool nestedUnreachable, bool isGeneric) = ValidateTargetDeclaration(
+            typeSymbol,
+            typeDeclaration,
+            diagnostics
+        );
+
+        string namespaceName = typeSymbol.ContainingNamespace.IsGlobalNamespace
+            ? string.Empty
+            : typeSymbol.ContainingNamespace.ToDisplayString();
+
+        // Dotted for nested targets ("Outer.Inner") so every type reference the emitter writes
+        // resolves at namespace scope; identical to Name for the top-level case, which keeps
+        // existing emitted output byte-for-byte unchanged.
+        string className = GetNestedQualifiedTypeName(typeSymbol);
+
+        Location fallbackLocation =
+            typeDeclaration?.Identifier.GetLocation()
+            ?? typeSymbol.Locations.FirstOrDefault()
+            ?? Location.None;
+
+        var scope = new MemberScope(
+            ClassName: className,
+            FallbackLocation: fallbackLocation,
+            ApiLevel: apiLevel,
+            CompoundKinds: compoundKinds,
+            Diagnostics: diagnostics,
+            ContainmentPath: new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default)
+            {
+                typeSymbol,
+            },
+            CompoundDepth: 0
+        );
+        var sink = new MemberSink();
+
+        CollectMembers(typeSymbol, scope, sink);
+
+        // Rule PARQ003: Warning if no public serializable properties found. Suppressed when a
+        // member was rejected above — "this type has no serializable members" is misleading when the
+        // real answer is "its members were rejected", and PARQ006/PARQ007 already say why.
+        bool rejectedAnyMember = sink.RejectedAnyMember;
+        if (sink.Properties.Count == 0 && !rejectedAnyMember)
+        {
+            diagnostics.Add(
+                new DiagnosticInfo(
+                    DiagnosticDescriptors.NoPropertiesFound,
+                    fallbackLocation,
+                    new[] { className }
+                )
+            );
+        }
+
+        // Rule PARQ008: the read path constructs through an object initializer, which needs an
+        // accessible parameterless constructor. Value types always have one; a positional record or
+        // a class whose only constructors take arguments does not, and previously failed with CS7036
+        // reported against generated source.
+        bool hasParameterlessConstructor = HasParameterlessConstructor(typeSymbol);
+        if (!hasParameterlessConstructor)
+        {
+            diagnostics.Add(
+                new DiagnosticInfo(
+                    DiagnosticDescriptors.NoParameterlessConstructor,
+                    fallbackLocation,
+                    new[] { className }
+                )
+            );
+        }
+
+        List<PropertyModel> orderedProperties = sink
+            .Properties.OrderBy(p => p.Order >= 0 ? p.Order : int.MaxValue)
+            .ToList();
+
+        // Emission is suppressed whenever a fatal diagnostic already explains the problem. Emitting
+        // anyway buries that message under cascading errors from the generated file.
+        bool canEmit =
+            isPartial
+            && hasParameterlessConstructor
+            && !rejectedAnyMember
+            && !nestedUnreachable
+            && !isGeneric;
+
+        bool hasSingleInstanceField = ComputeHasSingleInstanceField(typeSymbol);
+
+        TargetClassModel? model = canEmit
+            ? new TargetClassModel(
+                Namespace: namespaceName,
+                ClassName: className,
+                Properties: new EquatableArray<PropertyModel>(orderedProperties.ToArray()),
+                IsValueType: typeSymbol.IsValueType,
+                IsUnmanaged: typeSymbol.IsUnmanagedType,
+                HasSingleInstanceField: hasSingleInstanceField
+            )
+            : null;
+
+        return new TargetParserResult(
+            model,
+            new EquatableArray<DiagnosticInfo>(diagnostics.ToArray())
+        );
+    }
+
+    /// <summary>
+    /// Declaration-level rules PARQ001 (must be partial), PARQ009 (a nested target must be
+    /// reachable from the generated extension class) and PARQ010 (no open generic types),
+    /// reporting to the shared diagnostics list and returning the flags that gate emission.
+    /// </summary>
+    private static (
+        bool IsPartial,
+        bool NestedUnreachable,
+        bool IsGeneric
+    ) ValidateTargetDeclaration(
+        INamedTypeSymbol typeSymbol,
+        TypeDeclarationSyntax? typeDeclaration,
+        List<DiagnosticInfo> diagnostics
+    )
+    {
         // Rule PARQ001: Target type must be declared as partial
         bool isPartial =
             typeDeclaration is null
@@ -219,604 +322,705 @@ public static class TargetParser
             );
         }
 
-        string namespaceName = typeSymbol.ContainingNamespace.IsGlobalNamespace
-            ? string.Empty
-            : typeSymbol.ContainingNamespace.ToDisplayString();
-
-        // Dotted for nested targets ("Outer.Inner") so every type reference the emitter writes
-        // resolves at namespace scope; identical to Name for the top-level case, which keeps
-        // existing emitted output byte-for-byte unchanged.
-        string className = GetNestedQualifiedTypeName(typeSymbol);
-
-        Location fallbackLocation =
-            typeDeclaration?.Identifier.GetLocation()
-            ?? typeSymbol.Locations.FirstOrDefault()
-            ?? Location.None;
-
-        var propertyModels = new List<PropertyModel>();
-        var seenColumnNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        bool rejectedAnyMember = false;
-
-        var containmentPath = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default)
-        {
-            typeSymbol,
-        };
-
-        CollectMembers(
-            typeSymbol,
-            className,
-            fallbackLocation,
-            apiLevel,
-            compoundKinds,
-            diagnostics,
-            seenColumnNames,
-            propertyModels,
-            ref rejectedAnyMember,
-            containmentPath,
-            compoundDepth: 0
-        );
-
-        // Rule PARQ003: Warning if no public serializable properties found. Suppressed when a
-        // member was rejected above — "this type has no serializable members" is misleading when the
-        // real answer is "its members were rejected", and PARQ006/PARQ007 already say why.
-        if (propertyModels.Count == 0 && !rejectedAnyMember)
-        {
-            diagnostics.Add(
-                new DiagnosticInfo(
-                    DiagnosticDescriptors.NoPropertiesFound,
-                    fallbackLocation,
-                    new[] { className }
-                )
-            );
-        }
-
-        // Rule PARQ008: the read path constructs through an object initializer, which needs an
-        // accessible parameterless constructor. Value types always have one; a positional record or
-        // a class whose only constructors take arguments does not, and previously failed with CS7036
-        // reported against generated source.
-        bool hasParameterlessConstructor =
-            typeSymbol.IsValueType
-            || typeSymbol.InstanceConstructors.Any(ctor =>
-                ctor.Parameters.Length == 0
-                && IsReachableFromGeneratedCode(ctor.DeclaredAccessibility)
-            );
-
-        if (!hasParameterlessConstructor)
-        {
-            diagnostics.Add(
-                new DiagnosticInfo(
-                    DiagnosticDescriptors.NoParameterlessConstructor,
-                    fallbackLocation,
-                    new[] { className }
-                )
-            );
-        }
-
-        List<PropertyModel> orderedProperties = propertyModels
-            .OrderBy(p => p.Order >= 0 ? p.Order : int.MaxValue)
-            .ToList();
-
-        // Emission is suppressed whenever a fatal diagnostic already explains the problem. Emitting
-        // anyway buries that message under cascading errors from the generated file.
-        bool canEmit =
-            isPartial
-            && hasParameterlessConstructor
-            && !rejectedAnyMember
-            && !nestedUnreachable
-            && !isGeneric;
-
-        bool hasSingleInstanceField = false;
-        if (typeSymbol.IsValueType && typeSymbol.IsUnmanagedType)
-        {
-            var instanceFields = typeSymbol
-                .GetMembers()
-                .OfType<IFieldSymbol>()
-                .Where(f => !f.IsStatic)
-                .ToList();
-
-            // StructLayout check: Explicit layout or custom Size > 0 alters memory layout
-            bool hasExplicitOrCustomSizeLayout = typeSymbol
-                .GetAttributes()
-                .Any(a =>
-                {
-                    if (
-                        a.AttributeClass?.ToDisplayString()
-                        != "System.Runtime.InteropServices.StructLayoutAttribute"
-                    )
-                        return false;
-                    if (
-                        a.ConstructorArguments.Length > 0
-                        && a.ConstructorArguments[0].Value is int layoutKind
-                        && layoutKind == 2 /* LayoutKind.Explicit */
-                    )
-                        return true;
-                    return a.NamedArguments.Any(na =>
-                        na.Key == "Size" && na.Value.Value is int size && size > 0
-                    );
-                });
-
-            hasSingleInstanceField = instanceFields.Count == 1 && !hasExplicitOrCustomSizeLayout;
-        }
-
-        TargetClassModel? model = canEmit
-            ? new TargetClassModel(
-                Namespace: namespaceName,
-                ClassName: className,
-                Properties: new EquatableArray<PropertyModel>(orderedProperties.ToArray()),
-                IsValueType: typeSymbol.IsValueType,
-                IsUnmanaged: typeSymbol.IsUnmanagedType,
-                HasSingleInstanceField: hasSingleInstanceField
-            )
-            : null;
-
-        return new TargetParserResult(
-            model,
-            new EquatableArray<DiagnosticInfo>(diagnostics.ToArray())
-        );
+        return (isPartial, nestedUnreachable, isGeneric);
     }
 
     /// <summary>
-    /// Parses every serializable member of <paramref name="declaringType"/> into property models,
-    /// recursing through compound members whose kind is in <paramref name="compoundKinds"/>.
+    /// Whether the read path can construct this type: value types always have an accessible
+    /// parameterless constructor; reference types need one declared (or defaulted).
+    /// </summary>
+    private static bool HasParameterlessConstructor(INamedTypeSymbol typeSymbol) =>
+        typeSymbol.IsValueType
+        || typeSymbol.InstanceConstructors.Any(ctor =>
+            ctor.Parameters.Length == 0 && IsReachableFromGeneratedCode(ctor.DeclaredAccessibility)
+        );
+
+    /// <summary>
+    /// Whether an unmanaged struct is a single-instance-field wrapper — the shape the emitter
+    /// can copy field-for-field. Explicit layout or a custom Size alters the memory picture and
+    /// disqualifies it.
+    /// </summary>
+    private static bool ComputeHasSingleInstanceField(INamedTypeSymbol typeSymbol)
+    {
+        if (!typeSymbol.IsValueType || !typeSymbol.IsUnmanagedType)
+            return false;
+
+        var instanceFields = typeSymbol
+            .GetMembers()
+            .OfType<IFieldSymbol>()
+            .Where(f => !f.IsStatic)
+            .ToList();
+
+        bool hasExplicitOrCustomSizeLayout = typeSymbol
+            .GetAttributes()
+            .Any(a =>
+            {
+                if (
+                    a.AttributeClass?.ToDisplayString()
+                    != "System.Runtime.InteropServices.StructLayoutAttribute"
+                )
+                    return false;
+                if (
+                    a.ConstructorArguments.Length > 0
+                    && a.ConstructorArguments[0].Value is int layoutKind
+                    && layoutKind == 2 /* LayoutKind.Explicit */
+                )
+                    return true;
+                return a.NamedArguments.Any(na =>
+                    na.Key == "Size" && na.Value.Value is int size && size > 0
+                );
+            });
+
+        return instanceFields.Count == 1 && !hasExplicitOrCustomSizeLayout;
+    }
+
+    /// <summary>
+    /// The per-target context <see cref="CollectMembers"/> reads: identical for every member of
+    /// one type, and rebuilt per compound child so the containment path and depth stay
+    /// path-relative. A parameter object, not new state: each field was already a parameter of
+    /// the CC-105 method it came from (#263).
+    /// </summary>
+    private sealed record MemberScope(
+        string ClassName,
+        Location FallbackLocation,
+        ParquetApiLevel ApiLevel,
+        CompoundKinds CompoundKinds,
+        List<DiagnosticInfo> Diagnostics,
+        HashSet<INamedTypeSymbol> ContainmentPath,
+        int CompoundDepth
+    );
+
+    /// <summary>
+    /// Per-type collection state: the columns found so far, the names claimed so far, and the
+    /// rejection flag the caller needs for PARQ003 suppression. Names collide per group and
+    /// cycles are path-relative, so each level of a compound tree gets exactly one of these.
+    /// </summary>
+    private sealed class MemberSink
+    {
+        public HashSet<string> SeenColumnNames { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public List<PropertyModel> Properties { get; } = [];
+        public bool RejectedAnyMember { get; set; }
+    }
+
+    /// <summary>
+    /// The column shape resolved from <c>[ParquetColumn]</c> and the <c>System.Text.Json</c>
+    /// equivalents, plus the <c>[ParquetSortKey]</c> opt-in carried alongside it.
+    /// </summary>
+    private sealed record ColumnOptions(
+        string Name,
+        int Order,
+        bool Deduplicate,
+        ColumnEncoding Encoding,
+        bool IsSortKey
+    );
+
+    /// <summary>
+    /// Outcome of attempting to expand a leaf-classification failure into a compound member.
+    /// <see cref="NotRepresentable"/> means the caller must report PARQ006 — either the type has
+    /// no compound shape at all, or it has one the model declined to build (a non-string map key),
+    /// and in both cases the member-level message names the member and its declared type.
+    /// </summary>
+    private enum CompoundOutcome
+    {
+        NotRepresentable,
+        Rejected,
+        Accepted,
+    }
+
+    // Attribute identities accepted for each member-level annotation. The extra spellings are the
+    // legacy namespaces (#48's V5 lineage) and the short names matched without a namespace, so a
+    // consumer's using-director choice never changes what the parser sees.
+    private static readonly string[] ColumnFullNames =
+    [
+        ColumnAttributeFullName,
+        "Parquet.Attributes.ParquetColumnAttribute",
+        "Parquet.Serialization.Attributes.ParquetColumnAttribute",
+    ];
+
+    private static readonly string[] ColumnShortNames = ["ParquetColumnAttribute", "ParquetColumn"];
+
+    // PARQ004 counts a JsonPropertyName as "decorated" too — it, like ParquetColumn, says the
+    // author meant this member to be a column and will be surprised when a non-public one is not.
+    private static readonly string[] ColumnOrJsonNameFullNames =
+    [
+        .. ColumnFullNames,
+        "System.Text.Json.Serialization.JsonPropertyNameAttribute",
+    ];
+
+    private static readonly string[] ColumnOrJsonNameShortNames =
+    [
+        .. ColumnShortNames,
+        "JsonPropertyNameAttribute",
+        "JsonPropertyName",
+    ];
+
+    private static readonly string[] IgnoreFullNames =
+    [
+        IgnoreAttributeFullName,
+        "Parquet.Attributes.ParquetIgnoreAttribute",
+        "Parquet.Serialization.Attributes.ParquetIgnoreAttribute",
+        "System.Text.Json.Serialization.JsonIgnoreAttribute",
+    ];
+
+    private static readonly string[] IgnoreShortNames =
+    [
+        "ParquetIgnoreAttribute",
+        "ParquetIgnore",
+        "JsonIgnoreAttribute",
+        "JsonIgnore",
+    ];
+
+    private static readonly string[] SortKeyFullNames = [SortKeyAttributeFullName];
+
+    private static readonly string[] SortKeyShortNames =
+    [
+        "ParquetSortKeyAttribute",
+        "ParquetSortKey",
+    ];
+
+    private static readonly string[] JsonPropertyNameFullNames =
+    [
+        "System.Text.Json.Serialization.JsonPropertyNameAttribute",
+    ];
+
+    private static readonly string[] JsonPropertyNameShortNames =
+    [
+        "JsonPropertyNameAttribute",
+        "JsonPropertyName",
+    ];
+
+    private static readonly string[] JsonPropertyOrderFullNames =
+    [
+        "System.Text.Json.Serialization.JsonPropertyOrderAttribute",
+    ];
+
+    private static readonly string[] JsonPropertyOrderShortNames =
+    [
+        "JsonPropertyOrderAttribute",
+        "JsonPropertyOrder",
+    ];
+
+    private static readonly string[] DecimalFullNames =
+    [
+        DecimalAttributeFullName,
+        "Parquet.Attributes.ParquetDecimalAttribute",
+        "Parquet.Serialization.Attributes.ParquetDecimalAttribute",
+    ];
+
+    private static readonly string[] DecimalShortNames =
+    [
+        "ParquetDecimalAttribute",
+        "ParquetDecimal",
+    ];
+
+    private static readonly string[] TimestampFullNames =
+    [
+        TimestampAttributeFullName,
+        "Parquet.Attributes.ParquetTimestampAttribute",
+        "Parquet.Serialization.Attributes.ParquetTimestampAttribute",
+    ];
+
+    private static readonly string[] TimestampShortNames =
+    [
+        "ParquetTimestampAttribute",
+        "ParquetTimestamp",
+    ];
+
+    private static bool MatchesAttributeName(
+        INamedTypeSymbol? attributeClass,
+        string[] fullNames,
+        string[] shortNames
+    )
+    {
+        string? fullName = attributeClass?.ToDisplayString();
+        if (fullName is not null && Array.IndexOf(fullNames, fullName) >= 0)
+            return true;
+
+        string? name = attributeClass?.Name;
+        return name is not null && Array.IndexOf(shortNames, name) >= 0;
+    }
+
+    private static AttributeData? FindAttribute(
+        ISymbol member,
+        string[] fullNames,
+        string[] shortNames
+    )
+    {
+        foreach (AttributeData a in member.GetAttributes())
+        {
+            if (MatchesAttributeName(a.AttributeClass, fullNames, shortNames))
+                return a;
+        }
+        return null;
+    }
+
+    private static bool HasAttribute(ISymbol member, string[] fullNames, string[] shortNames) =>
+        FindAttribute(member, fullNames, shortNames) is not null;
+
+    /// <summary>
+    /// Parses every serializable member of <paramref name="declaringType"/> into the
+    /// <paramref name="sink"/>, recursing through compound members whose kind is in the scope's
+    /// <see cref="CompoundKinds"/>.
     /// </summary>
     /// <remarks>
     /// One method serves both the top-level type and any nested <c>[ParquetSerializable]</c>
     /// member's children, so attribute handling, ordering, and the PARQ002/PARQ004/PARQ005/PARQ007
-    /// rules apply uniformly down the tree. Per-type state (<c>seenColumnNames</c>, the containment
-    /// path, the depth counter) is carried by the caller's locals, which is exactly the scoping
-    /// duplicate-name and cycle rules need: names collide per group, cycles are path-relative.
+    /// rules apply uniformly down the tree. Per-type state now lives in a <see cref="MemberSink"/>
+    /// and the read-only context in a <see cref="MemberScope"/> — the same values the eleven
+    /// parameters of the pre-#263 method carried, grouped by what actually scopes them.
     /// </remarks>
-    // CA1502 baseline exception, #251. Measured cyclomatic complexity 105 against a threshold of
-    // 25 (CodeMetricsConfig.txt). This is a grandfathered violation, not an approved shape:
-    // the recommended maximum is 7 and this method is 15x that. It is suppressed by name so
-    // that the exception is countable and removable rather than hidden behind a threshold
-    // raised to fit it. Deleting this attribute is the definition of done for the refactor;
-    // do not add a third one. See docs/21-CODE-METRICS.md.
-    [SuppressMessage(
-        "Microsoft.Maintainability",
-        "CA1502:AvoidExcessiveComplexity",
-        Justification = "Grandfathered at cyclomatic complexity 105 by #251; tracked for refactor."
-    )]
     private static void CollectMembers(
         INamedTypeSymbol declaringType,
-        string className,
-        Location fallbackLocation,
-        ParquetApiLevel apiLevel,
-        CompoundKinds compoundKinds,
-        List<DiagnosticInfo> diagnostics,
-        HashSet<string> seenColumnNames,
-        List<PropertyModel> propertyModels,
-        ref bool rejectedAnyMember,
-        HashSet<INamedTypeSymbol> containmentPath,
-        int compoundDepth
+        MemberScope scope,
+        MemberSink sink
     )
     {
-        IEnumerable<ISymbol> members = GetSerializableMembers(declaringType);
-
-        foreach (ISymbol member in members)
+        foreach (ISymbol member in GetSerializableMembers(declaringType))
         {
-            if (member.IsStatic)
-                continue;
+            CollectMember(member, scope, sink);
+        }
+    }
 
-            // Rule PARQ004: Non-public property decorated with [ParquetColumn] warning
-            if (member.DeclaredAccessibility != Accessibility.Public)
-            {
-                bool hasColAttr = member
-                    .GetAttributes()
-                    .Any(a =>
-                    {
-                        string? fullName = a.AttributeClass?.ToDisplayString();
-                        string? name = a.AttributeClass?.Name;
-                        return fullName == ColumnAttributeFullName
-                            || fullName == "Parquet.Attributes.ParquetColumnAttribute"
-                            || fullName == "Parquet.Serialization.Attributes.ParquetColumnAttribute"
-                            || fullName
-                                == "System.Text.Json.Serialization.JsonPropertyNameAttribute"
-                            || name
-                                is "ParquetColumnAttribute"
-                                    or "ParquetColumn"
-                                    or "JsonPropertyNameAttribute"
-                                    or "JsonPropertyName";
-                    });
+    /// <summary>
+    /// The per-member pipeline: statics, non-publics, ignoreds and error types are skipped;
+    /// column options and decimal/timestamp annotations are read; then the member is classified
+    /// as a leaf (and modelled) or a compound (and expanded), with one diagnostic rule decided
+    /// per reject.
+    /// </summary>
+    private static void CollectMember(ISymbol member, MemberScope scope, MemberSink sink)
+    {
+        if (member.IsStatic)
+            return;
 
-                if (hasColAttr)
-                {
-                    Location loc = member.Locations.FirstOrDefault() ?? fallbackLocation;
-                    diagnostics.Add(
-                        new DiagnosticInfo(
-                            DiagnosticDescriptors.NonPublicPropertyIgnored,
-                            loc,
-                            new[] { member.Name, className }
-                        )
-                    );
-                }
-                continue;
-            }
+        Location memberLocation = member.Locations.FirstOrDefault() ?? scope.FallbackLocation;
 
-            ITypeSymbol? memberType = null;
-            if (member is IPropertySymbol propSymbol)
-                memberType = propSymbol.Type;
-            else if (member is IFieldSymbol fieldSymbol)
-                memberType = fieldSymbol.Type;
+        // Rule PARQ004: Non-public property decorated with [ParquetColumn] warning
+        if (member.DeclaredAccessibility != Accessibility.Public)
+        {
+            ReportNonPublicColumn(member, scope, memberLocation);
+            return;
+        }
 
-            if (memberType is null)
-                continue;
+        ITypeSymbol? memberType = GetMemberType(member);
+        if (memberType is null)
+            return;
 
-            bool isIgnored = member
-                .GetAttributes()
-                .Any(a =>
-                {
-                    string? fullName = a.AttributeClass?.ToDisplayString();
-                    string? name = a.AttributeClass?.Name;
-                    return fullName == IgnoreAttributeFullName
-                        || fullName == "Parquet.Attributes.ParquetIgnoreAttribute"
-                        || fullName == "Parquet.Serialization.Attributes.ParquetIgnoreAttribute"
-                        || fullName == "System.Text.Json.Serialization.JsonIgnoreAttribute"
-                        || name
-                            is "ParquetIgnoreAttribute"
-                                or "ParquetIgnore"
-                                or "JsonIgnoreAttribute"
-                                or "JsonIgnore";
-                });
-            if (isIgnored)
-                continue;
+        if (HasAttribute(member, IgnoreFullNames, IgnoreShortNames))
+            return;
 
-            AttributeData? columnAttr = member
-                .GetAttributes()
-                .FirstOrDefault(a =>
-                {
-                    string? fullName = a.AttributeClass?.ToDisplayString();
-                    string? name = a.AttributeClass?.Name;
-                    return fullName == ColumnAttributeFullName
-                        || fullName == "Parquet.Attributes.ParquetColumnAttribute"
-                        || fullName == "Parquet.Serialization.Attributes.ParquetColumnAttribute"
-                        || name is "ParquetColumnAttribute" or "ParquetColumn";
-                });
+        ColumnOptions column = ReadColumnOptions(member);
 
-            // Sorted row-group pruning is opt-in (issue #151): the lookup overloads are public
-            // API on the generated class, so the model author names the keys rather than getting
-            // two methods per eligible column whether or not anything looks them up.
-            bool isSortKey = member
-                .GetAttributes()
-                .Any(a =>
-                {
-                    string? fullName = a.AttributeClass?.ToDisplayString();
-                    string? name = a.AttributeClass?.Name;
-                    return fullName == SortKeyAttributeFullName
-                        || name is "ParquetSortKeyAttribute" or "ParquetSortKey";
-                });
-
-            AttributeData? jsonPropertyAttr = member
-                .GetAttributes()
-                .FirstOrDefault(a =>
-                {
-                    string? fullName = a.AttributeClass?.ToDisplayString();
-                    string? name = a.AttributeClass?.Name;
-                    return fullName == "System.Text.Json.Serialization.JsonPropertyNameAttribute"
-                        || name is "JsonPropertyNameAttribute" or "JsonPropertyName";
-                });
-
-            AttributeData? jsonOrderAttr = member
-                .GetAttributes()
-                .FirstOrDefault(a =>
-                {
-                    string? fullName = a.AttributeClass?.ToDisplayString();
-                    string? name = a.AttributeClass?.Name;
-                    return fullName == "System.Text.Json.Serialization.JsonPropertyOrderAttribute"
-                        || name is "JsonPropertyOrderAttribute" or "JsonPropertyOrder";
-                });
-
-            string columnName = member.Name;
-            int order = -1;
-            bool deduplicate = false;
-            ColumnEncoding encoding = ColumnEncoding.Default;
-
-            if (columnAttr is not null)
-            {
-                if (
-                    columnAttr.ConstructorArguments.Length > 0
-                    && columnAttr.ConstructorArguments[0].Value is string customColName
+        // Rule PARQ002: Duplicate column name check. Recorded, not a reject — the member keeps
+        // its position in the model and the duplicate name is what the diagnostic talks about.
+        if (!sink.SeenColumnNames.Add(column.Name))
+        {
+            scope.Diagnostics.Add(
+                new DiagnosticInfo(
+                    DiagnosticDescriptors.DuplicateColumnName,
+                    memberLocation,
+                    new[] { column.Name, scope.ClassName }
                 )
-                {
-                    columnName = customColName;
-                }
+            );
+        }
 
-                // Named arguments used to be read only when a constructor argument was also present,
-                // which made [ParquetColumn(Order = 2)] — reorder without rename — impossible to
-                // express: there was no parameterless constructor, and even with one the Order would
-                // have been ignored. Name is accepted as a named argument for the same reason.
-                foreach (KeyValuePair<string, TypedConstant> namedArg in columnAttr.NamedArguments)
-                {
-                    if (namedArg.Key == "Order" && namedArg.Value.Value is int customOrder)
-                        order = customOrder;
-                    else if (namedArg.Key == "Name" && namedArg.Value.Value is string namedColName)
-                        columnName = namedColName;
-                    else if (namedArg.Key == "Deduplicate" && namedArg.Value.Value is bool dedupe)
-                        deduplicate = dedupe;
-                    else if (namedArg.Key == "Encoding" && namedArg.Value.Value is int encodingInt)
-                        encoding = (ColumnEncoding)encodingInt;
-                }
-            }
+        (int? precision, int? scale) = ReadDecimalOptions(member, scope, memberLocation);
+        string? timestampUnit = ReadTimestampUnit(member);
 
-            // Fallback to JsonPropertyNameAttribute if column name was not explicitly specified via ParquetColumn
-            if (columnName == member.Name && jsonPropertyAttr is not null)
-            {
-                if (
-                    jsonPropertyAttr.ConstructorArguments.Length > 0
-                    && jsonPropertyAttr.ConstructorArguments[0].Value is string jsonColName
-                )
-                {
-                    columnName = jsonColName;
-                }
-            }
+        // Unwrap Nullable<T> to get the underlying type for kind classification
+        (ITypeSymbol underlyingType, bool isNullable) = UnwrapNullable(memberType);
 
-            // Fallback to JsonPropertyOrderAttribute if order was not explicitly specified via ParquetColumn
-            if (order == -1 && jsonOrderAttr is not null)
-            {
-                if (
-                    jsonOrderAttr.ConstructorArguments.Length > 0
-                    && jsonOrderAttr.ConstructorArguments[0].Value is int jsonOrder
-                )
-                {
-                    order = jsonOrder;
-                }
-            }
+        // An unresolved type — a missing using, a half-typed name, a reference the project has
+        // not added yet — must not be reported as unsupported. The compiler is already saying
+        // something accurate about it, and PARQ006 on top would fire constantly while typing.
+        if (memberType.TypeKind == TypeKind.Error || underlyingType.TypeKind == TypeKind.Error)
+            return;
 
-            // Rule PARQ002: Duplicate column name check
-            if (!seenColumnNames.Add(columnName))
-            {
-                Location loc = member.Locations.FirstOrDefault() ?? fallbackLocation;
-                diagnostics.Add(
-                    new DiagnosticInfo(
-                        DiagnosticDescriptors.DuplicateColumnName,
-                        loc,
-                        new[] { columnName, className }
-                    )
-                );
-            }
-
-            AttributeData? decimalAttr = member
-                .GetAttributes()
-                .FirstOrDefault(a =>
-                {
-                    string? fullName = a.AttributeClass?.ToDisplayString();
-                    string? name = a.AttributeClass?.Name;
-                    return fullName == DecimalAttributeFullName
-                        || fullName == "Parquet.Attributes.ParquetDecimalAttribute"
-                        || fullName == "Parquet.Serialization.Attributes.ParquetDecimalAttribute"
-                        || name is "ParquetDecimalAttribute" or "ParquetDecimal";
-                });
-            int? precision = null;
-            int? scale = null;
-            if (decimalAttr is not null && decimalAttr.ConstructorArguments.Length >= 2)
-            {
-                if (
-                    decimalAttr.ConstructorArguments[0].Value is int p
-                    && decimalAttr.ConstructorArguments[1].Value is int s
-                )
-                {
-                    precision = p;
-                    scale = s;
-
-                    // Rule PARQ005: Decimal precision/scale validation
-                    if (p < s || p > 38 || p <= 0 || s < 0)
-                    {
-                        Location loc = member.Locations.FirstOrDefault() ?? fallbackLocation;
-                        diagnostics.Add(
-                            new DiagnosticInfo(
-                                DiagnosticDescriptors.InvalidDecimalPrecisionScale,
-                                loc,
-                                new[]
-                                {
-                                    member.Name,
-                                    p.ToString(CultureInfo.InvariantCulture),
-                                    s.ToString(CultureInfo.InvariantCulture),
-                                }
-                            )
-                        );
-                    }
-                }
-            }
-
-            AttributeData? timestampAttr = member
-                .GetAttributes()
-                .FirstOrDefault(a =>
-                {
-                    string? fullName = a.AttributeClass?.ToDisplayString();
-                    string? name = a.AttributeClass?.Name;
-                    return fullName == TimestampAttributeFullName
-                        || fullName == "Parquet.Attributes.ParquetTimestampAttribute"
-                        || fullName == "Parquet.Serialization.Attributes.ParquetTimestampAttribute"
-                        || name is "ParquetTimestampAttribute" or "ParquetTimestamp";
-                });
-            string? timestampUnit = null;
-            if (timestampAttr is not null && timestampAttr.ConstructorArguments.Length > 0)
-                timestampUnit = timestampAttr.ConstructorArguments[0].Value?.ToString();
-
-            // Unwrap Nullable<T> to get the underlying type for kind classification
-            ITypeSymbol underlyingType = memberType;
-            bool isNullable = IsNullableColumn(memberType);
-
-            if (
-                memberType is INamedTypeSymbol { IsGenericType: true } genericType
-                && genericType.ConstructedFrom.SpecialType == SpecialType.System_Nullable_T
-            )
-            {
-                isNullable = true;
-                underlyingType = genericType.TypeArguments[0];
-            }
-
-            // An unresolved type — a missing using, a half-typed name, a reference the project has
-            // not added yet — must not be reported as unsupported. The compiler is already saying
-            // something accurate about it, and PARQ006 on top would fire constantly while typing.
-            if (memberType.TypeKind == TypeKind.Error || underlyingType.TypeKind == TypeKind.Error)
-                continue;
-
+        if (!TryClassifyKind(underlyingType, memberType, out PropertyKind kind))
+        {
             // Rule PARQ006: the type must have a Parquet column representation — leaf or, when
             // the kind is compound and the consuming emitter supports it (#176), a struct/list/map
             // the parser can expand. Rejected members are left out of the model — the diagnostic
             // is an error, so the build stops either way, and emitting a column for a type with no
             // representation only buries the real message under cascading errors in generated code.
-            if (!TryClassifyKind(underlyingType, memberType, out PropertyKind kind))
-            {
-                bool classifiedCompound = TryClassifyCompound(
+            switch (
+                TryCollectCompoundMember(
+                    member,
+                    memberType,
                     underlyingType,
-                    out PropertyKind compoundKind
-                );
-
-                // A compound shape the backend cannot emit yet is rejected exactly like an
-                // unsupported type: the milestone dial (CompoundKinds) says how far the emitter
-                // has got, and until then the member must fail the build where it is declared.
-                if (classifiedCompound && !IsCompoundKindEmittable(compoundKind, compoundKinds))
-                    classifiedCompound = false;
-
-                // M3a emission scope: the v6 pipeline dial (Struct|List, no Map) means
-                // specifically row-level lists with leaf elements — lists of POCOs and
-                // lists nested in structs reject with PARQ006 until M3b. The full-capability
-                // dial (maps present ⇒ every model the parser can build) stays unfiltered,
-                // which keeps parser tests and M3b+ emitters able to see whole trees.
-                bool pipelineScopedDial =
-                    (compoundKinds & (CompoundKinds.List | CompoundKinds.Map))
-                    == CompoundKinds.List;
-                if (
-                    classifiedCompound
-                    && compoundKind == PropertyKind.List
-                    && pipelineScopedDial
-                    && (compoundDepth > 0 || !ListElementIsLeaf(underlyingType))
+                    column,
+                    isNullable,
+                    memberLocation,
+                    scope,
+                    sink
                 )
-                    classifiedCompound = false;
-
-                if (classifiedCompound)
-                {
-                    PropertyModel? compoundModel = BuildCompoundModel(
-                        compoundKind,
-                        underlyingType,
-                        member.Name,
-                        memberType,
-                        columnName,
-                        order,
-                        isNullable,
-                        apiLevel,
-                        className,
-                        member.Locations.FirstOrDefault() ?? fallbackLocation,
-                        diagnostics,
-                        containmentPath,
-                        compoundDepth,
-                        compoundKinds,
-                        out bool compoundRejected
-                    );
-                    if (compoundRejected)
-                    {
-                        // The builder already reported why (cycle, depth, a child-level rule).
-                        rejectedAnyMember = true;
-                        continue;
-                    }
-                    if (compoundModel is not null)
-                    {
-                        // Rule PARQ014: a compound member has no row-group statistics of its own.
-                        ReportIneligibleSortKey(
-                            isSortKey,
-                            compoundModel,
-                            member,
-                            className,
-                            fallbackLocation,
-                            diagnostics
-                        );
-                        propertyModels.Add(compoundModel);
-                        continue;
-                    }
-                    // Classified as compound but declined (e.g. a non-string map key): fall
-                    // through to the standard PARQ006 rejection so the member's name and type
-                    // appear in the message.
-                }
-
-                Location typeLoc = member.Locations.FirstOrDefault() ?? fallbackLocation;
-                diagnostics.Add(
-                    new DiagnosticInfo(
-                        DiagnosticDescriptors.UnsupportedPropertyType,
-                        typeLoc,
-                        new[] { member.Name, memberType.ToDisplayString(), className }
-                    )
-                );
-                rejectedAnyMember = true;
-                continue;
-            }
-
-            // Rule PARQ011: the type has a representation in Parquet.Net 6 but not in the 4.x/5.x
-            // API. Reported separately from PARQ006 because the answer is different: the member is
-            // fine, the backend is not, and the fix is to use the v6 package rather than to change
-            // the type.
-            if (apiLevel == ParquetApiLevel.V4 && !IsSupportedOnClassicApi(underlyingType))
-            {
-                Location classicLoc = member.Locations.FirstOrDefault() ?? fallbackLocation;
-                diagnostics.Add(
-                    new DiagnosticInfo(
-                        DiagnosticDescriptors.TypeUnsupportedOnClassicApi,
-                        classicLoc,
-                        new[] { member.Name, memberType.ToDisplayString(), className }
-                    )
-                );
-                rejectedAnyMember = true;
-                continue;
-            }
-
-            // Rule PARQ007: the read path materialises through an object initializer, so every
-            // column needs a reachable setter. Without this the failure was CS0200/CS0191 reported
-            // against generated source, with nothing pointing at the declaration responsible.
-            if (!IsAssignable(member))
-            {
-                Location setLoc = member.Locations.FirstOrDefault() ?? fallbackLocation;
-                diagnostics.Add(
-                    new DiagnosticInfo(
-                        DiagnosticDescriptors.MemberNotAssignable,
-                        setLoc,
-                        new[] { member.Name, className }
-                    )
-                );
-                rejectedAnyMember = true;
-                continue;
-            }
-
-            // For enum types, capture the underlying type name for correct array allocation
-            string? enumUnderlyingTypeName = null;
-            if (kind == PropertyKind.Enum && underlyingType is INamedTypeSymbol enumTypeSymbol)
-                enumUnderlyingTypeName = enumTypeSymbol.EnumUnderlyingType?.ToDisplayString(
-                    SymbolDisplayFormat.FullyQualifiedFormat
-                );
-
-            string typeName = memberType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-
-            var propertyModel = new PropertyModel(
-                Name: member.Name,
-                ParquetColumnName: columnName,
-                TypeName: typeName,
-                TimestampUnit: timestampUnit,
-                EnumUnderlyingTypeName: enumUnderlyingTypeName,
-                Order: order,
-                DecimalPrecision: precision,
-                DecimalScale: scale,
-                Kind: kind,
-                IsNullable: isNullable,
-                Deduplicate: deduplicate,
-                Encoding: encoding
             )
             {
-                IsSortKey = isSortKey,
-            };
+                case CompoundOutcome.Accepted:
+                    return;
+                case CompoundOutcome.Rejected:
+                    // The builder already reported why (cycle, depth, a child-level rule).
+                    sink.RejectedAnyMember = true;
+                    return;
+            }
 
-            // Rule PARQ014: an opt-in marker the pruning rules reject is reported rather than
-            // silently dropped, so the author is not left waiting for a method that never appears.
-            ReportIneligibleSortKey(
-                isSortKey,
-                propertyModel,
-                member,
-                className,
-                fallbackLocation,
-                diagnostics
+            scope.Diagnostics.Add(
+                new DiagnosticInfo(
+                    DiagnosticDescriptors.UnsupportedPropertyType,
+                    memberLocation,
+                    new[] { member.Name, memberType.ToDisplayString(), scope.ClassName }
+                )
+            );
+            sink.RejectedAnyMember = true;
+            return;
+        }
+
+        // Rule PARQ011: the type has a representation in Parquet.Net 6 but not in the 4.x/5.x
+        // API. Reported separately from PARQ006 because the answer is different: the member is
+        // fine, the backend is not, and the fix is to use the v6 package rather than to change
+        // the type.
+        if (scope.ApiLevel == ParquetApiLevel.V4 && !IsSupportedOnClassicApi(underlyingType))
+        {
+            scope.Diagnostics.Add(
+                new DiagnosticInfo(
+                    DiagnosticDescriptors.TypeUnsupportedOnClassicApi,
+                    memberLocation,
+                    new[] { member.Name, memberType.ToDisplayString(), scope.ClassName }
+                )
+            );
+            sink.RejectedAnyMember = true;
+            return;
+        }
+
+        // Rule PARQ007: the read path materialises through an object initializer, so every
+        // column needs a reachable setter. Without this the failure was CS0200/CS0191 reported
+        // against generated source, with nothing pointing at the declaration responsible.
+        if (!IsAssignable(member))
+        {
+            scope.Diagnostics.Add(
+                new DiagnosticInfo(
+                    DiagnosticDescriptors.MemberNotAssignable,
+                    memberLocation,
+                    new[] { member.Name, scope.ClassName }
+                )
+            );
+            sink.RejectedAnyMember = true;
+            return;
+        }
+
+        PropertyModel propertyModel = BuildLeafModel(
+            member,
+            memberType,
+            underlyingType,
+            kind,
+            column,
+            isNullable,
+            precision,
+            scale,
+            timestampUnit
+        );
+
+        // Rule PARQ014: an opt-in marker the pruning rules reject is reported rather than
+        // silently dropped, so the author is not left waiting for a method that never appears.
+        ReportIneligibleSortKey(
+            column.IsSortKey,
+            propertyModel,
+            member,
+            scope.ClassName,
+            scope.FallbackLocation,
+            scope.Diagnostics
+        );
+
+        sink.Properties.Add(propertyModel);
+    }
+
+    private static void ReportNonPublicColumn(
+        ISymbol member,
+        MemberScope scope,
+        Location memberLocation
+    )
+    {
+        if (!HasAttribute(member, ColumnOrJsonNameFullNames, ColumnOrJsonNameShortNames))
+            return;
+
+        scope.Diagnostics.Add(
+            new DiagnosticInfo(
+                DiagnosticDescriptors.NonPublicPropertyIgnored,
+                memberLocation,
+                new[] { member.Name, scope.ClassName }
+            )
+        );
+    }
+
+    private static ITypeSymbol? GetMemberType(ISymbol member) =>
+        member switch
+        {
+            IPropertySymbol propertySymbol => propertySymbol.Type,
+            IFieldSymbol fieldSymbol => fieldSymbol.Type,
+            _ => null,
+        };
+
+    private static ColumnOptions ReadColumnOptions(ISymbol member)
+    {
+        AttributeData? columnAttr = FindAttribute(member, ColumnFullNames, ColumnShortNames);
+
+        string columnName = member.Name;
+        int order = -1;
+        bool deduplicate = false;
+        ColumnEncoding encoding = ColumnEncoding.Default;
+
+        if (columnAttr is not null)
+        {
+            if (
+                columnAttr.ConstructorArguments.Length > 0
+                && columnAttr.ConstructorArguments[0].Value is string customColName
+            )
+            {
+                columnName = customColName;
+            }
+
+            // Named arguments used to be read only when a constructor argument was also present,
+            // which made [ParquetColumn(Order = 2)] — reorder without rename — impossible to
+            // express: there was no parameterless constructor, and even with one the Order would
+            // have been ignored. Name is accepted as a named argument for the same reason.
+            foreach (KeyValuePair<string, TypedConstant> namedArg in columnAttr.NamedArguments)
+            {
+                if (namedArg.Key == "Order" && namedArg.Value.Value is int customOrder)
+                    order = customOrder;
+                else if (namedArg.Key == "Name" && namedArg.Value.Value is string namedColName)
+                    columnName = namedColName;
+                else if (namedArg.Key == "Deduplicate" && namedArg.Value.Value is bool dedupe)
+                    deduplicate = dedupe;
+                else if (namedArg.Key == "Encoding" && namedArg.Value.Value is int encodingInt)
+                    encoding = (ColumnEncoding)encodingInt;
+            }
+        }
+
+        // Fallback to JsonPropertyNameAttribute if column name was not explicitly specified via ParquetColumn
+        AttributeData? jsonPropertyAttr = FindAttribute(
+            member,
+            JsonPropertyNameFullNames,
+            JsonPropertyNameShortNames
+        );
+        if (
+            columnName == member.Name
+            && jsonPropertyAttr is not null
+            && jsonPropertyAttr.ConstructorArguments.Length > 0
+            && jsonPropertyAttr.ConstructorArguments[0].Value is string jsonColName
+        )
+        {
+            columnName = jsonColName;
+        }
+
+        // Fallback to JsonPropertyOrderAttribute if order was not explicitly specified via ParquetColumn
+        AttributeData? jsonOrderAttr = FindAttribute(
+            member,
+            JsonPropertyOrderFullNames,
+            JsonPropertyOrderShortNames
+        );
+        if (
+            order == -1
+            && jsonOrderAttr is not null
+            && jsonOrderAttr.ConstructorArguments.Length > 0
+            && jsonOrderAttr.ConstructorArguments[0].Value is int jsonOrder
+        )
+        {
+            order = jsonOrder;
+        }
+
+        // Sorted row-group pruning is opt-in (issue #151): the lookup overloads are public API on
+        // the generated class, so the model author names the keys rather than getting two methods
+        // per eligible column whether or not anything looks them up.
+        bool isSortKey = HasAttribute(member, SortKeyFullNames, SortKeyShortNames);
+
+        return new ColumnOptions(columnName, order, deduplicate, encoding, isSortKey);
+    }
+
+    private static (int? Precision, int? Scale) ReadDecimalOptions(
+        ISymbol member,
+        MemberScope scope,
+        Location memberLocation
+    )
+    {
+        AttributeData? decimalAttr = FindAttribute(member, DecimalFullNames, DecimalShortNames);
+
+        if (
+            decimalAttr is null
+            || decimalAttr.ConstructorArguments.Length < 2
+            || decimalAttr.ConstructorArguments[0].Value is not int p
+            || decimalAttr.ConstructorArguments[1].Value is not int s
+        )
+        {
+            return (null, null);
+        }
+
+        // Rule PARQ005: Decimal precision/scale validation. The values are still carried — a
+        // precision error stops the build on the diagnostic, and PARQ005 is the only message.
+        if (p < s || p > 38 || p <= 0 || s < 0)
+        {
+            scope.Diagnostics.Add(
+                new DiagnosticInfo(
+                    DiagnosticDescriptors.InvalidDecimalPrecisionScale,
+                    memberLocation,
+                    new[]
+                    {
+                        member.Name,
+                        p.ToString(CultureInfo.InvariantCulture),
+                        s.ToString(CultureInfo.InvariantCulture),
+                    }
+                )
+            );
+        }
+
+        return (p, s);
+    }
+
+    private static string? ReadTimestampUnit(ISymbol member)
+    {
+        AttributeData? timestampAttr = FindAttribute(
+            member,
+            TimestampFullNames,
+            TimestampShortNames
+        );
+        if (timestampAttr is not null && timestampAttr.ConstructorArguments.Length > 0)
+            return timestampAttr.ConstructorArguments[0].Value?.ToString();
+
+        return null;
+    }
+
+    private static (ITypeSymbol UnderlyingType, bool IsNullable) UnwrapNullable(
+        ITypeSymbol memberType
+    )
+    {
+        bool isNullable = IsNullableColumn(memberType);
+
+        if (
+            memberType is INamedTypeSymbol { IsGenericType: true } genericType
+            && genericType.ConstructedFrom.SpecialType == SpecialType.System_Nullable_T
+        )
+        {
+            return (genericType.TypeArguments[0], true);
+        }
+
+        return (memberType, isNullable);
+    }
+
+    /// <summary>
+    /// Expands a member that failed leaf classification into a compound model when its shape,
+    /// the milestone dial and the pipeline scope allow it. Returns
+    /// <see cref="CompoundOutcome.NotRepresentable"/> for anything the caller must reject with
+    /// PARQ006 — an unsupported shape, a kind the backend cannot emit yet, a list outside the
+    /// M3a pipeline scope, or a compound shape the builder declined (a non-string map key) so the
+    /// member's own name and type appear in the message.
+    /// </summary>
+    private static CompoundOutcome TryCollectCompoundMember(
+        ISymbol member,
+        ITypeSymbol memberType,
+        ITypeSymbol underlyingType,
+        ColumnOptions column,
+        bool isNullable,
+        Location memberLocation,
+        MemberScope scope,
+        MemberSink sink
+    )
+    {
+        if (!TryClassifyCompound(underlyingType, out PropertyKind compoundKind))
+            return CompoundOutcome.NotRepresentable;
+
+        // A compound shape the backend cannot emit yet is rejected exactly like an unsupported
+        // type: the milestone dial (CompoundKinds) says how far the emitter has got, and until
+        // then the member must fail the build where it is declared.
+        if (!IsCompoundKindEmittable(compoundKind, scope.CompoundKinds))
+            return CompoundOutcome.NotRepresentable;
+
+        // M3a emission scope: the v6 pipeline dial (Struct|List, no Map) means specifically
+        // row-level lists with leaf elements — lists of POCOs and lists nested in structs reject
+        // with PARQ006 until M3b. The full-capability dial (maps present ⇒ every model the parser
+        // can build) stays unfiltered, which keeps parser tests and M3b+ emitters able to see
+        // whole trees.
+        bool pipelineScopedDial =
+            (scope.CompoundKinds & (CompoundKinds.List | CompoundKinds.Map)) == CompoundKinds.List;
+        if (
+            compoundKind == PropertyKind.List
+            && pipelineScopedDial
+            && (scope.CompoundDepth > 0 || !ListElementIsLeaf(underlyingType))
+        )
+            return CompoundOutcome.NotRepresentable;
+
+        PropertyModel? compoundModel = BuildCompoundModel(
+            compoundKind,
+            underlyingType,
+            member.Name,
+            memberType,
+            column.Name,
+            column.Order,
+            isNullable,
+            scope.ApiLevel,
+            scope.ClassName,
+            memberLocation,
+            scope.Diagnostics,
+            scope.ContainmentPath,
+            scope.CompoundDepth,
+            scope.CompoundKinds,
+            out bool compoundRejected
+        );
+
+        if (compoundRejected)
+            return CompoundOutcome.Rejected;
+
+        if (compoundModel is null)
+            return CompoundOutcome.NotRepresentable;
+
+        // Rule PARQ014: a compound member has no row-group statistics of its own.
+        ReportIneligibleSortKey(
+            column.IsSortKey,
+            compoundModel,
+            member,
+            scope.ClassName,
+            scope.FallbackLocation,
+            scope.Diagnostics
+        );
+        sink.Properties.Add(compoundModel);
+        return CompoundOutcome.Accepted;
+    }
+
+    private static PropertyModel BuildLeafModel(
+        ISymbol member,
+        ITypeSymbol memberType,
+        ITypeSymbol underlyingType,
+        PropertyKind kind,
+        ColumnOptions column,
+        bool isNullable,
+        int? precision,
+        int? scale,
+        string? timestampUnit
+    )
+    {
+        // For enum types, capture the underlying type name for correct array allocation
+        string? enumUnderlyingTypeName = null;
+        if (kind == PropertyKind.Enum && underlyingType is INamedTypeSymbol enumTypeSymbol)
+            enumUnderlyingTypeName = enumTypeSymbol.EnumUnderlyingType?.ToDisplayString(
+                SymbolDisplayFormat.FullyQualifiedFormat
             );
 
-            propertyModels.Add(propertyModel);
-        }
+        string typeName = memberType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+        return new PropertyModel(
+            Name: member.Name,
+            ParquetColumnName: column.Name,
+            TypeName: typeName,
+            TimestampUnit: timestampUnit,
+            EnumUnderlyingTypeName: enumUnderlyingTypeName,
+            Order: column.Order,
+            DecimalPrecision: precision,
+            DecimalScale: scale,
+            Kind: kind,
+            IsNullable: isNullable,
+            Deduplicate: column.Deduplicate,
+            Encoding: column.Encoding
+        )
+        {
+            IsSortKey = column.IsSortKey,
+        };
     }
 
     /// <summary>
@@ -1084,33 +1288,28 @@ public static class TargetParser
                     return null;
                 }
 
-                var children = new List<PropertyModel>();
-                bool childRejected = false;
-                var childSeenColumnNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 Location childFallback = childSymbol.Locations.FirstOrDefault() ?? location;
-
-                CollectMembers(
-                    childSymbol,
-                    childName,
-                    childFallback,
-                    apiLevel,
-                    compoundKinds,
-                    diagnostics,
-                    childSeenColumnNames,
-                    children,
-                    ref childRejected,
-                    containmentPath,
-                    compoundDepth + 1
+                var childScope = new MemberScope(
+                    ClassName: childName,
+                    FallbackLocation: childFallback,
+                    ApiLevel: apiLevel,
+                    CompoundKinds: compoundKinds,
+                    Diagnostics: diagnostics,
+                    ContainmentPath: containmentPath,
+                    CompoundDepth: compoundDepth + 1
                 );
+                var childSink = new MemberSink();
+
+                CollectMembers(childSymbol, childScope, childSink);
                 containmentPath.Remove(childSymbol);
 
-                if (childRejected)
+                if (childSink.RejectedAnyMember)
                 {
                     rejected = true;
                     return null;
                 }
 
-                if (children.Count == 0)
+                if (childSink.Properties.Count == 0)
                 {
                     // An empty group serializes to nothing — the member would silently
                     // disappear from the file. Same reasoning as PARQ003 at top level.
@@ -1125,7 +1324,9 @@ public static class TargetParser
                     return null;
                 }
 
-                children = children.OrderBy(p => p.Order >= 0 ? p.Order : int.MaxValue).ToList();
+                List<PropertyModel> children = childSink
+                    .Properties.OrderBy(p => p.Order >= 0 ? p.Order : int.MaxValue)
+                    .ToList();
 
                 return new PropertyModel(
                     memberName,
