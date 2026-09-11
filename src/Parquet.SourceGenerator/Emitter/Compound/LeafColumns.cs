@@ -5,11 +5,6 @@ using Parquet.SourceGenerator.Models;
 
 namespace Parquet.SourceGenerator.Emitter.Compound;
 
-/// <summary>
-/// One leaf column of the flattened emission plan. A flat property produces exactly one column
-/// whose <see cref="Slot"/> equals its property index and whose <see cref="SchemaPath"/> is
-/// empty, so all-leaf models reproduce the pre-#176 numbering — and emitted output — verbatim.
-/// </summary>
 /// <summary>What a leaf column's member chain step contributes to the def ladder.</summary>
 internal enum ChainStepKind
 {
@@ -20,6 +15,11 @@ internal enum ChainStepKind
     List,
 }
 
+/// <summary>
+/// One leaf column of the flattened emission plan. A flat property produces exactly one column
+/// whose <see cref="Slot"/> equals its property index and whose <see cref="SchemaPath"/> is
+/// empty, so all-leaf models reproduce the pre-#176 numbering — and emitted output — verbatim.
+/// </summary>
 internal sealed class LeafColumn
 {
     public int Slot { get; set; }
