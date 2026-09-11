@@ -8,14 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
-Changes since `0.0.2`; this section becomes the next release entry when one is cut.
+Changes since `0.0.3`; this section becomes the next release entry when one is cut.
 
 ---
 
-## [0.0.2] - 2026-09-11
-
-Changes since `0.0.1`, which is published on nuget.org alongside the `0.0.1-dev.1` and
-`0.0.1-dev.2` prereleases.
+## [0.0.4] - 2026-09-11
 
 This release introduces the generated read builder (`{T}Parquet.From(...)`) and keeps every
 existing flat read method working as a forwarder. Both surfaces ship together **deliberately and
@@ -34,6 +31,12 @@ the `0.1.0` freeze. Callers should adopt the builder now; the flat methods are n
   until a parallel reader accepts a predicate. `Where` also closes a gap in the flat methods,
   where pushdown existed on the `Stream` overloads but not the buffer ones. Rationale and the
   full axis grid are in `docs/19-PUBLIC-API-SURFACE.md` (decision D2).
+- **Row-group predicate pushdown from footer statistics**: a predicate over a generated per-column
+  `[Min, Max]` metadata view skips row groups that cannot contain a match, so they are never
+  decompressed. This is the mechanism the builder's `Where()` exposes.
+- **Struct-of-arrays (SoA) columnar batch reading**: a caller that wants columns rather than
+  objects can read straight into contiguous per-column buffers and skip materialising a row type
+  at all.
 - **API change contract (`PARQAPI001` / `PARQAPI002`)**: three API surfaces are now governed, and
   nothing enters one without a catalogue line *and* a `docs/api/LEDGER.md` entry recording its
   semver bucket. The emitted consumer API is gated at **build** time against the `*.api.txt`
@@ -64,33 +67,6 @@ the `0.1.0` freeze. Callers should adopt the builder now; the flat methods are n
   once); fixed-width Arrow buffers are handed to the writer with no copy and no `ArrayPool` rental;
   nullable columns derive definition levels from the Arrow validity bitmap and produce byte-identical
   files to the POCO write path. Supported Apache.Arrow floor: `23.0.0`.
-- **Roslyn incremental source generator**: compiles zero-reflection Parquet serializers and
-  deserializers against Parquet.Net low-level primitives.
-- **Native AOT support**, exercised on every CI run by publishing the AOT test project with
-  `-r linux-x64` and executing the resulting native binary. `linux-x64` only, and note that
-  Parquet.Net 6.0.3 emits its own trim (`IL2104`) and AOT-analysis (`IL3053`) warnings — so this
-  covers the paths the test exercises rather than guaranteeing AOT safety in general.
-- **`Guid` columns** written as native 16-byte values via pooled struct buffers rather than
-  strings.
-- **Parallel reader (`ReadParquetParallelAsync`)**: materialises into a single pre-sized array
-  indexed by row-group offset. Over a `ReadOnlyMemory<byte>` it decodes row groups concurrently —
-  one `ParquetReader` over one stream per worker, groups claimed dynamically — with results in file
-  order. Over an arbitrary `Stream` it stays sequential, because a stream cannot be shared between
-  readers, and `maxDegreeOfParallelism` is not honoured there.
-- **`Parquet.SourceGenerator.V5`**: a second generator emitting against the Parquet.Net 4.x/5.x
-  `DataColumn` API, which is what restores .NET Framework 4.7.2 support. It accepts a narrower set
-  of member types than the v6 backend and reports the difference as `PARQ011`.
-- **`IAsyncEnumerable<T>` streaming** directly into chunked row groups.
-- **Microsecond `Int64` timestamps** via `[ParquetTimestamp(ParquetTimestampUnit.Microseconds)]`.
-- **`ParquetSerializerOptions`** for `RowGroupSize`, `CompressionMethod` (`None`, `Snappy`, `Gzip`,
-  `Lz4`, `Brotli`, `Zstd`) and `CompressionLevel` (`Optimal`, `Fastest`, `NoCompression`,
-  `SmallestSize`; unset keeps Parquet.Net's default). `MaxDegreeOfParallelism` supplies the worker
-  count for the buffer-based parallel read.
-- **Compiler diagnostics `PARQ001`–`PARQ011`**: partial-type enforcement, duplicate column names,
-  no serializable members, ignored non-public members, invalid decimal precision/scale, unsupported
-  member types, unassignable members, types with no parameterless constructor, nested or generic
-  target types, and member types the 4.x/5.x backend cannot represent.
-- **CI workflow** building, testing and packing the solution. Benchmarks run on demand.
 - **Sorted row-group pruning (experiment, issue #151)**: mark a column `[ParquetSortKey]` and the
   generator emits `ReadParquetBy<Column>Async` (point lookup) and `ReadParquet<Column>RangeAsync`
   (inclusive slice) for it. Both certify the column as sorted from the footer `[Min, Max]`
@@ -113,6 +89,18 @@ the `0.1.0` freeze. Callers should adopt the builder now; the flat methods are n
   from 20.38 MB to 8.75 MB. The `ReadOnlySpan<byte>` variant the design originally called for is
   not reachable — Parquet.Net 6.1.0 exposes no UTF-8 byte surface for string columns; see
   `UPSTREAM_DEPENDENCY_LIMITATIONS.md`.
+- **Compound models (nested POCOs, lists and maps)**: a recursive model and parser replace the
+  flat-only target model, and the v6 backend emits struct schemas with definition-ladder shredding
+  and matching reconstruction on read, plus row-level lists and arrays of primitives. Two new
+  diagnostics guard the shapes that cannot work: **PARQ012** for a compound member that closes a
+  type cycle, and **PARQ013** for nesting deeper than the emitter will expand.
+- **Format-level dictionary encoding and column encoding hints**, exposed so a model can ask for
+  the Parquet encoding a column should use.
+- **Conformance and interoperability suites**: generated and fixture files are validated against
+  pinned Apache tooling, with bidirectional PyArrow and DuckDB tests, a producer/consumer version
+  and schema-evolution matrix, a semantic compatibility oracle, and property-based
+  supported-schema and corrupted-file coverage. The envelope these test is written down in the
+  compatibility docs.
 
 ### Changed
 - **Breaking (pre-1.0), #218 — every configuration option now has a single home.** The duplicated
@@ -140,15 +128,18 @@ the `0.1.0` freeze. Callers should adopt the builder now; the flat methods are n
   configuration (`max_line_length`, its non-configurable behaviors) and disables `IDE0055`, so no
   Roslyn-based formatter — build, IDE or CLI — competes with CSharpier over C# layout. `.gitattributes`
   pins `eol=lf` on checkout, replacing the whitespace formatter's line-ending role for non-C# files.
+- Generated public API baselines are emitted as signature-only `*.api.txt` files beside the golden
+  `.g.cs` files, so an API change is reviewable separately from a body change.
 
-### Fixed before release
-- `CompressionMethod` was accepted and discarded — no compression setting ever reached the writer.
-- `[ParquetTimestamp(Microseconds)]` mapped to `DateTimeFormat.DateAndTime`, which Parquet.Net
-  defines as *millisecond* precision, so microsecond columns were silently written coarser and the
-  sub-millisecond component was lost. Now maps to `DateAndTimeMicros`.
-- `ParquetTimestampUnit.Nanoseconds` and `ParquetSerializerOptions.UseMicrosecondTimestamps` are
-  removed. Neither could work: Parquet.Net has no nanosecond format, and the schema is emitted at
-  compile time so no runtime flag can change a column's encoding.
+### Performance
+- All-null nullable chunks are detected and bypassed instead of being decoded value by value.
+- Write-side extraction loops drop their bounds checks via `MemoryMarshal` and `Unsafe.Add`.
+- Null bitmap construction for nullable column extraction is branchless.
+
+### Fixed
+- The benchmark headline table is regenerated through a pull request rather than pushed directly
+  to protected `main`, and is written without a UTF-8 BOM.
+- CI builds pull requests that are not based on `main`.
 
 ### Known gaps
 - Nested collections, `DateTimeOffset` and positional records are unsupported. They are now
@@ -159,9 +150,175 @@ the `0.1.0` freeze. Callers should adopt the builder now; the flat methods are n
   genuine parallel path. On the new builder this combination is simply unwriteable — `Parallel()`
   does not exist on a `Stream` source — so the flat method is the only place the lie remains.
 - Nested and generic target types are rejected (`PARQ009`/`PARQ010`) rather than supported.
-- .NET Framework needs the `Parquet.SourceGenerator.V5` package. The classic backend has no
+- .NET Framework needs the `Parquet.SourceGenerator.Legacy` package. The classic backend has no
   `ArrayPool` story — `DataColumn` allocates its own arrays — so it does not inherit the main
   package's allocation characteristics, and it offers no streaming or parallel reader.
 - IronCompress ships no `win-x86` native binary, so 32-bit .NET Framework applications fail at
   runtime on any compressed write.
 - See [docs/07-KNOWN-LIMITATIONS.md](docs/07-KNOWN-LIMITATIONS.md) for the full audit.
+
+---
+
+## [0.0.3] - 2026-09-05
+
+> Backfilled retrospectively from git history (`v0.0.2..v0.0.3`, 55 commits). No changelog section
+> was written when this version was published, so these notes were reconstructed after the fact
+> from commit subjects and pull request descriptions rather than recorded at release time.
+
+### Added
+- **Parallel reader over `ReadOnlyMemory<byte>` (real concurrency)**: `ReadParquetParallelAsync`
+  now decodes row groups concurrently — one `ParquetReader` over one stream per worker, groups
+  claimed dynamically — with results in file order. Over an arbitrary `Stream` it stays
+  sequential, because a stream cannot be shared between readers, and `maxDegreeOfParallelism` is
+  not honoured there. Before this release the "parallel" reader did no parallel work.
+- **Native `T[]` reader overloads and zero-copy `List<T>` deserialization**, with threshold-driven
+  drop-down optimizations for small reads.
+- **`TimeOnly` columns**, via a migration to Parquet.Net's `TimeDataField`.
+- **Drop-in attribute interoperability**: `System.Text.Json` and Parquet.Net's own attributes are
+  honoured, so an existing annotated model does not need a second set of attributes.
+- **Diagnostic `PARQ011`**: a member type that Parquet.Net 6 supports but the 4.x/5.x
+  `DataColumn` API cannot represent is reported by the classic backend, pointing at the package
+  switch rather than at the model.
+- **`InvalidDataException` with a descriptive message** when a required schema column is missing
+  from the file being read.
+- **Real-world benchmark datasets**, provenanced and stored via Git LFS, with reporting scripts.
+- **Source-controlled golden generated code** plus an `/update-golden` workflow, so a change to
+  emitted output is visible in review.
+- **Fail-fast cancellation for parallel workers** through a linked `CancellationTokenSource`.
+
+### Performance
+- **SIMD hardware acceleration** for column transforms and timestamp conversions.
+- **Zero-copy blittable struct array materialization** via `MemoryMarshal.Cast`, made memory-safe
+  and covered by a full property test matrix.
+- **Dictionary string deduplication with an L1 span cache** on the read path.
+- **String and binary serialization no longer box**, with a universal zero-boxing IL bytecode
+  assertion across all models to keep it that way.
+- **Zero-copy nullable writes** through `ParquetRowGroupWriter.WriteAllPartsAsync`.
+- **Eager progressive column buffer return** during row-group serialization.
+- **Single-pass layout probe and lifted `ArrayPool` rentals** in the parallel worker.
+- **`CollectionsMarshal.AsSpan`** for `List<T>` write extraction.
+- **A dedicated sequential buffer reader**, removing recursive delegation from the emitted read
+  path.
+
+### Changed
+- Parquet.Net bumped from 6.0.3 to 6.1.0; test SDK and runner dependencies bumped.
+- `CodeEmitter` and `LegacyCodeEmitter` split into modular partial classes and then into
+  composable emitter components, removing the shared-helper class entirely.
+- Analyzer and style enforcement added: `PublicApiAnalyzers` guarding the public API surface,
+  `Meziantou.Analyzer` for performance and correctness rules, `.editorconfig` code style and
+  naming rules at warning level, and CSharpier for deterministic formatting.
+- CI hardened: a code coverage gate with a sticky PR comment (raised to 85% line / 70% branch),
+  an automated IL interrogation regression gate during `dotnet test`, all GitHub Actions pinned
+  to 40-character commit SHAs, and tiered benchmarking for fast PR slices and deep profiling.
+- Diagnostics tooling added for investigation rather than for consumers: an `ilspycmd`-based IL
+  interrogation workflow and a `dotnet-dump` memory profiling and triage workflow.
+
+### Fixed
+- Release workflow hydrates Git LFS test datasets and verifies their provenance, so a release
+  build no longer runs against LFS pointer files.
+- The PR coverage sticky comment no longer fails on fork pull requests, where the token is
+  read-only.
+- `issue_comment` workflows authorize the commenting actor and sanitize their input.
+- `gh pr` commands in CI specify `--repo`, so they work before the repository is checked out.
+- Benchmark model column names align with the reflection serializer, the baseline is guarded in
+  tests, and a 1.0x result is reported as parity rather than as a speedup.
+
+---
+
+## [0.0.2] - 2026-09-02
+
+> Backfilled retrospectively from git history (`v0.0.1..v0.0.2`, 20 commits). No changelog section
+> was written when this version was published, so these notes were reconstructed after the fact
+> from commit subjects and pull request descriptions rather than recorded at release time.
+
+### Added
+- **`Parquet.SourceGenerator.Legacy`**: a second generator emitting against the Parquet.Net
+  4.x/5.x `DataColumn` API, which is what restores .NET Framework 4.7.2 support. It accepts a
+  narrower set of member types than the v6 backend. Introduced as `Parquet.SourceGenerator.V5`
+  and renamed to `.Legacy` before release, because the API break is between v5 and v6 rather than
+  between v4 and v5, so one backend covers both. The release workflow verifies the extra package.
+- **`ReadParquetStreamAsync`**: an `IAsyncEnumerable<T>` streaming *reader*, complementing the
+  streaming write path that shipped in `0.0.1`.
+- **.NET 9 target framework support**, with package consumption tested against both .NET 8 and
+  .NET 9.
+- **Compiler diagnostics `PARQ006`–`PARQ010`**: unsupported member types, unassignable members,
+  types with no parameterless constructor, and nested or generic target types. Shapes that
+  previously emitted uncompilable code or failed at runtime — positional records, get-only
+  members, unsupported types — now fail the build with a pointer to the declaration responsible.
+- **`docs/BENCHMARKS.md`** as a standalone document, and a dedicated `PACKAGE_README.md` for
+  NuGet packaging.
+
+### Changed
+- **Un-ordered columns default to declaration order** rather than to an arbitrary order, so a
+  model without explicit column ordering produces a stable, predictable schema.
+- **`ParquetSerializerOptions` reaches the reader.** All three readers assigned the options and
+  then never used them; they are now threaded through to `ParquetReader.CreateAsync`. This is
+  plumbing rather than a behaviour change today, since the options type carries only write-side
+  settings, but a read-relevant option added later will not be silently dropped.
+- **`rowGroupSize` no longer uses its default value as an "unset" sentinel.** Asking for exactly
+  50,000 was indistinguishable from not asking, and whenever options carried a size it overrode
+  the explicit method argument — the more specific value losing to the more general one. The
+  parameter is now nullable, so "not supplied" is representable.
+- Benchmarks standardized on a 100k item scale across all suites, with a concise headline table
+  embedded in the READMEs and refreshed by CI.
+- READMEs use plain Markdown rather than raw HTML so they render on NuGet, and the status badge
+  and installation guide reflect the published packages.
+
+### Fixed
+- **The read path reallocated its result list once per row group.** `results` was pre-sized to the
+  file's total row count and then had `Capacity` reassigned to the running total inside the
+  row-group loop, so each row group allocated a *smaller* array and copied into it before the list
+  grew back — O(groups × rows) of copying to arrive at the capacity it already had.
+  Single-row-group files were unaffected, which is why it survived; the multi-row-group files
+  `WriteParquetBatchedAsync` produces are the ones that paid.
+- **The parallel reader could lose its pre-allocated destination array** while making stream reads
+  thread-safe; the array is now preserved.
+- Release workflow uses embedded PDB symbols and passes `--no-symbols` to `nuget push`, so
+  publishing does not fail on the symbol package.
+- Benchmarks use the `InProcess` execution toolchain, resolving reference-assembly build errors.
+
+### Performance
+- **`ReadParquetParallelAsync` materialises into a single pre-sized array** indexed by row-group
+  offset, rather than concatenating per-group results. (The decode itself was still sequential at
+  this release; genuine concurrency arrived in `0.0.3`.)
+
+---
+
+## [0.0.1] - 2026-08-05
+
+Initial published release, alongside the `0.0.1-dev.1` and `0.0.1-dev.2` prereleases.
+
+### Added
+- **Roslyn incremental source generator**: compiles zero-reflection Parquet serializers and
+  deserializers against Parquet.Net low-level primitives.
+- **Native AOT support**, exercised on every CI run by publishing the AOT test project with
+  `-r linux-x64` and executing the resulting native binary. `linux-x64` only, and note that
+  Parquet.Net 6.0.3 emits its own trim (`IL2104`) and AOT-analysis (`IL3053`) warnings — so this
+  covers the paths the test exercises rather than guaranteeing AOT safety in general.
+- **`Guid` columns** written as native 16-byte values via pooled struct buffers rather than
+  strings.
+- **`IAsyncEnumerable<T>` streaming** directly into chunked row groups.
+- **Microsecond `Int64` timestamps** via `[ParquetTimestamp(ParquetTimestampUnit.Microseconds)]`.
+- **`ParquetSerializerOptions`** for `RowGroupSize`, `CompressionMethod` (`None`, `Snappy`, `Gzip`,
+  `Lz4`, `Brotli`, `Zstd`) and `CompressionLevel` (`Optimal`, `Fastest`, `NoCompression`,
+  `SmallestSize`; unset keeps Parquet.Net's default). `MaxDegreeOfParallelism` supplies the worker
+  count for the buffer-based parallel read.
+- **Compiler diagnostics `PARQ001`–`PARQ005`**: partial-type enforcement, duplicate column names,
+  no serializable members, ignored non-public members, and invalid decimal precision/scale.
+- **CI workflow** building, testing and packing the solution. Benchmarks run on demand.
+- Generated logo and favicon set, with the design record.
+
+### Fixed
+The following landed after the options were documented but before the first publish, so no
+released version ever carried them:
+
+- `CompressionMethod` was accepted and discarded — no compression setting ever reached the writer.
+- `[ParquetTimestamp(Microseconds)]` mapped to `DateTimeFormat.DateAndTime`, which Parquet.Net
+  defines as *millisecond* precision, so microsecond columns were silently written coarser and the
+  sub-millisecond component was lost. Now maps to `DateAndTimeMicros`.
+- `ParquetTimestampUnit.Nanoseconds` and `ParquetSerializerOptions.UseMicrosecondTimestamps` are
+  removed. Neither could work: Parquet.Net has no nanosecond format, and the schema is emitted at
+  compile time so no runtime flag can change a column's encoding.
+- Column names are escaped and hint names qualified by namespace in the emitted code.
+- The NuGet packages were not usable as published; packaging is fixed and verified in CI, and the
+  release workflow publishes the tagged version.

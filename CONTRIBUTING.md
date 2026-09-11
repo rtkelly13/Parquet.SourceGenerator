@@ -114,6 +114,8 @@ Two key behavior rules:
 - **SemVer 2.0.0 validation:** The workflow verifies inputs against the SemVer specification.
 - **Git tag creation:** Full releases (e.g. `0.0.1`) are automatically tagged and pushed to GitHub (`v0.0.1`). Pre-release builds (e.g. `0.0.1-rc.1`) deploy to NuGet.org but do **not** create or push git tags.
 
+> **`CHANGELOG.md` is not a release gate.** Nothing validates that the dispatched version has a cut changelog section — `scripts/ParseChangelog.cs` does not exist and no workflow reads the changelog. Update `CHANGELOG.md` by hand when you release; tracked as [#248](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/248).
+
 ---
 
 ## 📄 License
