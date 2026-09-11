@@ -8,10 +8,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
-Changes since `0.0.1`. That version is published on nuget.org (alongside the `0.0.1-dev.1` and
-`0.0.1-dev.2` prereleases); this section becomes the next release entry when one is cut.
+Changes since `0.0.2`; this section becomes the next release entry when one is cut.
+
+---
+
+## [0.0.2] - 2026-09-11
+
+Changes since `0.0.1`, which is published on nuget.org alongside the `0.0.1-dev.1` and
+`0.0.1-dev.2` prereleases.
+
+This release introduces the generated read builder (`{T}Parquet.From(...)`) and keeps every
+existing flat read method working as a forwarder. Both surfaces ship together **deliberately and
+for this release only**: `docs/19-PUBLIC-API-SURFACE.md` decision D3 removes the flat methods at
+the `0.1.0` freeze. Callers should adopt the builder now; the flat methods are not yet marked
+`[Obsolete]` because the two surfaces are still being validated against each other.
 
 ### Added
+- **Generated read builder (`{T}Parquet.From(...)`)**: reads are now expressed as a chain rather
+  than a cross-product of method names — `PersonParquet.From(stream).ToListAsync(ct)`,
+  `PersonParquet.From(bytes).Parallel().ToArrayAsync(ct)`,
+  `PersonParquet.From(bytes).Where(m => m.Id.Min >= 100).ToListAsync(ct)`. The builder is
+  **type-state**: a combination that cannot work is not a member you can call. `Parallel()` is
+  absent on a `Stream` source, because a single `ParquetReader` seeks within its stream and
+  concurrent row-group reads corrupt each other; `Where()` and `Parallel()` are mutually absent
+  until a parallel reader accepts a predicate. `Where` also closes a gap in the flat methods,
+  where pushdown existed on the `Stream` overloads but not the buffer ones. Rationale and the
+  full axis grid are in `docs/19-PUBLIC-API-SURFACE.md` (decision D2).
 - **API change contract (`PARQAPI001` / `PARQAPI002`)**: three API surfaces are now governed, and
   nothing enters one without a catalogue line *and* a `docs/api/LEDGER.md` entry recording its
   semver bucket. The emitted consumer API is gated at **build** time against the `*.api.txt`
@@ -131,8 +153,11 @@ Changes since `0.0.1`. That version is published on nuget.org (alongside the `0.
 ### Known gaps
 - Nested collections, `DateTimeOffset` and positional records are unsupported. They are now
   rejected at compile time (`PARQ006`/`PARQ008`) rather than failing at runtime.
-- `ReadParquetParallelAsync(Stream)` reads row groups sequentially and ignores
-  `maxDegreeOfParallelism`; pass a `ReadOnlyMemory<byte>` for the parallel path.
+- `ReadParquetParallelAsync(Stream)` reads row groups sequentially — a single `ParquetReader`
+  seeks within its stream, so concurrent row-group reads would corrupt each other. It silently
+  ignores `ParquetSerializerOptions.MaxDegreeOfParallelism`; pass a `ReadOnlyMemory<byte>` for the
+  genuine parallel path. On the new builder this combination is simply unwriteable — `Parallel()`
+  does not exist on a `Stream` source — so the flat method is the only place the lie remains.
 - Nested and generic target types are rejected (`PARQ009`/`PARQ010`) rather than supported.
 - .NET Framework needs the `Parquet.SourceGenerator.V5` package. The classic backend has no
   `ArrayPool` story — `DataColumn` allocates its own arrays — so it does not inherit the main
