@@ -16,17 +16,19 @@
 # to run at all when this file does not parse.
 
 # Cyclomatic complexity per method. 25 is the .NET default, pinned here so an SDK update cannot
-# move the gate. Mark Seemann's recommended maximum is 7 (Miller's 7 +/- 2); this is 3.6x that,
-# and the two methods that exceed even 25 today are grandfathered by name in TargetParser.cs.
+# move the gate. Mark Seemann's recommended maximum is 7 (Miller's 7 +/- 2); this is 3.6x that.
+# No method exceeds it: the two grandfathered TargetParser methods were decomposed by #263, and
+# the repository worst sits exactly at the threshold (ArrowMappingComponent.TryMap, CC 25). The
+# next ratchet step waits for a refactor of that method, not a number tuned to pass.
 CA1502: 25
 
-# Maintainability index. Fires below 10. The worst member in the repository today is 14
-# (TargetParser.CollectMembers), so this gate has four points of headroom and is live, not vacuous.
+# Maintainability index. Fires below 10. The worst member in the repository today is 27
+# (SortedRowGroupPruningComponent.EmitPruningHelpers) — #263 moved the floor from 14 to 27, so
+# this gate has seventeen points of headroom.
 CA1505: 10
 
-# Class coupling. .NET defaults, pinned. Worst today: 61 for a type (TargetParser) and 40 for a
-# method (TargetParser.GetTargetModelCore). The method gate therefore has ZERO headroom: the next
-# type that method touches fails the build. That is deliberate — it is the one place in this
-# repository where the ratchet is already tight.
+# Class coupling. .NET defaults, pinned. Worst today: 66 for a type (TargetParser) and 32 for a
+# method (TargetParser.BuildCompoundModel). The method gate had zero headroom before #263
+# (GetTargetModelCore sat at exactly 40); the decomposition gave it eight points back.
 CA1506(Type): 95
 CA1506(Method): 40

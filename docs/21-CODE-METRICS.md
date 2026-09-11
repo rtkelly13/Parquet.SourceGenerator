@@ -189,37 +189,35 @@ Addison-Wesley 2021, and blog.ploeh.dk):
 
 Now the uncomfortable part, stated rather than buried:
 
-**These thresholds are deliberately weaker than the guidance they cite, and the two worst methods
-in the repository are grandfathered.** Seemann's position is the opposite of grandfathering —
-"once you've responded to the situation, find a way to bring the offending code back in line". The
-calibrated values below are a *pragmatic starting point* chosen so that `main` builds clean on day
-one and the gate can exist at all; they are not the recommended values, and they should not be
-quoted as if they were.
+**These thresholds are deliberately weaker than the guidance they cite.** Seemann's position is
+the opposite of grandfathering — "once you've responded to the situation, find a way to bring the
+offending code back in line". The calibrated values below are a *pragmatic starting point* chosen
+so that `main` builds clean on day one and the gate can exist at all; they are not the recommended
+values, and they should not be quoted as if they were.
 
 | Rule | Threshold | Current worst case | Distance from the cited guidance |
 |:--|--:|:--|:--|
-| `CA1502` cyclomatic complexity (method) | 25 | **105** — `TargetParser.CollectMembers` | 25 is 3.6× the recommended 7. The worst method is **15× the recommended 7**. |
-| `CA1505` maintainability index | 10 | **14** — `TargetParser.CollectMembers` | Live, not vacuous: four points of headroom. |
-| `CA1506` class coupling (type) | 95 | **61** — `TargetParser` | Considerable headroom; the weakest of the three. |
-| `CA1506` class coupling (method) | 40 | **40** — `TargetParser.GetTargetModelCore` | **Zero headroom.** The next type that method touches fails the build. |
+| `CA1502` cyclomatic complexity (method) | 25 | **25** — `ArrowMappingComponent.TryMap` | 25 is 3.6× the recommended 7. No method exceeds the threshold at all. |
+| `CA1505` maintainability index | 10 | **27** — `SortedRowGroupPruningComponent.EmitPruningHelpers` | Live, not vacuous, and nowhere near the floor. |
+| `CA1506` class coupling (type) | 95 | **66** — `TargetParser` | Considerable headroom; the weakest of the three. |
+| `CA1506` class coupling (method) | 40 | **32** — `TargetParser.BuildCompoundModel` | Eight points of headroom. |
 
-`CA1502` is the rule that could not be calibrated honestly. Setting it to 105 so that every
-existing method passes would have produced a number with no meaning — it would permit any new
-method up to a complexity of 105, which is not a standard, it is a formality. So the .NET default
-of 25 is kept, and the two methods that exceed it are grandfathered **individually, by name**, with
-a `[SuppressMessage]` attribute on each in `src/Parquet.SourceGenerator/Parser/TargetParser.cs`:
+When this page was written, the picture was different: `TargetParser.CollectMembers` measured
+cyclomatic complexity **105** in 463 lines with 11 parameters, `GetTargetModelCore` measured 38,
+and both sat under name-by-name `[SuppressMessage]` attributes — a list of exactly two entries,
+which was the ratchet made countable. **#263 deleted both entries** by decomposing the two methods
+into the context/sink pipeline now in `TargetParser.cs` (a `MemberScope` + `MemberSink` replacing
+the eleven parameters; one small method per attribute family, rule, and model shape). The
+decomposition was proved behaviour-preserving by byte-identical golden files across five models
+and two backends, and the numbers above are its measurement. `CA1502` stays at 25 rather than
+ratcheting down because the new repository worst is exactly 25 — the pre-existing
+`ArrowMappingComponent.TryMap`, not anything #263 wrote; the next ratchet step belongs with a
+refactor of that method, not with a number tuned to pass.
 
-- `TargetParser.CollectMembers` — cyclomatic complexity **105**, 463 source lines, 11 parameters,
-  maintainability index **14**
-- `TargetParser.GetTargetModelCore` — cyclomatic complexity **38**, 213 source lines, class
-  coupling **40**
-
-That list is the ratchet made countable. There are two entries; there must never be three. Deleting
-an entry is the definition of done for the corresponding refactor.
-
-> A small irony worth knowing: adding a `[SuppressMessage]` attribute *raises* the measured class
-> coupling of the method it sits on by one, because `SuppressMessageAttribute` is a referenced
-> named type. That is what moved `GetTargetModelCore` from 39 to 40.
+> A small irony worth keeping in mind: adding a `[SuppressMessage]` attribute *raises* the
+> measured class coupling of the method it sits on by one, because `SuppressMessageAttribute` is
+> a referenced named type. It moved `GetTargetModelCore` from 39 to 40 while the exemption was
+> live. Suppressions now count zero.
 
 ### The ratchet policy
 
