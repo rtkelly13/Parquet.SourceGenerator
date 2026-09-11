@@ -113,9 +113,12 @@ internal static class CompoundMapping
         string member = col.MemberChain[level];
         builder.AppendLine($"{prefix}var {local} = {curExpr}.{member};");
 
-        if (col.AncestorIsValueType[level])
+        bool nullableValueStep =
+            level < col.AncestorNullableValueStep.Length && col.AncestorNullableValueStep[level];
+
+        if (col.AncestorIsValueType[level] && !nullableValueStep)
         {
-            // A C# struct member can never be null: its rung is always present, no test.
+            // A required C# struct member can never be null: its rung is always present.
             EmitLadder(builder, col, local, level + 1, indexVar, prefix);
             return;
         }
@@ -123,7 +126,9 @@ internal static class CompoundMapping
         string defWriteOuter = $"defLevels_{col.Slot}[{indexVar}]";
         builder.AppendLine($"{prefix}if ({local} is not null)");
         builder.AppendLine($"{prefix}{{");
-        EmitLadder(builder, col, local, level + 1, indexVar, prefix + "    ");
+        // A Nullable<T> local never flow-sugars into member access; unwrap explicitly.
+        string bodyExpr = nullableValueStep ? $"{local}.Value" : local;
+        EmitLadder(builder, col, bodyExpr, level + 1, indexVar, prefix + "    ");
         builder.AppendLine($"{prefix}}}");
         builder.AppendLine($"{prefix}else {{");
         builder.AppendLine($"{prefix}    {defWriteOuter} = {level};");
@@ -340,9 +345,20 @@ internal static class CompoundMapping
             {
                 StructNode child = plan.Nodes[childId];
                 string bang = child.IsValueType || child.MemberAnnotatedNullable ? "" : "!";
-                builder.AppendLine(
-                    $"{p}    {child.MemberName} = {child.ArrayVar}[ri_{node.Id}]{bang},"
-                );
+                if (child.IsValueType && child.MemberAnnotatedNullable)
+                {
+                    // Absent must mean null, not default(T): gate on the child's presence rung.
+                    LeafColumn cp = child.PresenceLeaf!;
+                    builder.AppendLine(
+                        $"{p}    {child.MemberName} = defLevels_{cp.Slot}[ri_{node.Id}] >= {child.PresenceThreshold} ? {child.ArrayVar}[ri_{node.Id}] : null,"
+                    );
+                }
+                else
+                {
+                    builder.AppendLine(
+                        $"{p}    {child.MemberName} = {child.ArrayVar}[ri_{node.Id}]{bang},"
+                    );
+                }
             }
             foreach (LeafColumn leafCol in node.Leaves)
             {
@@ -400,7 +416,17 @@ internal static class CompoundMapping
             {
                 StructNode node = plan.Nodes[nodeId];
                 string bang = node.IsValueType || prop.IsNullable ? "" : "!";
-                builder.AppendLine($"{prefix}{prop.Name} = {node.ArrayVar}[{indexVar}]{bang},");
+                if (node.IsValueType && prop.IsNullable)
+                {
+                    LeafColumn pp = node.PresenceLeaf!;
+                    builder.AppendLine(
+                        $"{prefix}{prop.Name} = defLevels_{pp.Slot}[{indexVar}] >= {node.PresenceThreshold} ? {node.ArrayVar}[{indexVar}] : null,"
+                    );
+                }
+                else
+                {
+                    builder.AppendLine($"{prefix}{prop.Name} = {node.ArrayVar}[{indexVar}]{bang},");
+                }
                 continue;
             }
 

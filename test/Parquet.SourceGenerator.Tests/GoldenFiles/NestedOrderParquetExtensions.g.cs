@@ -289,13 +289,25 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         buffer_6[nonNullCount_6++] = cv_6;
                         defLevels_6[i] = 1;
                         var ca_7_0 = item.Start;
-                        var cv_7 = ca_7_0.X;
-                        buffer_7[nonNullCount_7++] = cv_7;
-                        defLevels_7[i] = 1;
+                        if (ca_7_0 is not null)
+                        {
+                            var cv_7 = ca_7_0.Value.X;
+                            buffer_7[nonNullCount_7++] = cv_7;
+                            defLevels_7[i] = 1;
+                        }
+                        else {
+                            defLevels_7[i] = 0;
+                        }
                         var ca_8_0 = item.Start;
-                        var cv_8 = ca_8_0.Y;
-                        buffer_8[nonNullCount_8++] = cv_8;
-                        defLevels_8[i] = 1;
+                        if (ca_8_0 is not null)
+                        {
+                            var cv_8 = ca_8_0.Value.Y;
+                            buffer_8[nonNullCount_8++] = cv_8;
+                            defLevels_8[i] = 1;
+                        }
+                        else {
+                            defLevels_8[i] = 0;
+                        }
                     }
                 }
                 ExtractSpan();
@@ -377,13 +389,25 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                     buffer_6[nonNullCount_6++] = cv_6;
                     defLevels_6[i] = 1;
                     var ca_7_0 = item.Start;
-                    var cv_7 = ca_7_0.X;
-                    buffer_7[nonNullCount_7++] = cv_7;
-                    defLevels_7[i] = 1;
+                    if (ca_7_0 is not null)
+                    {
+                        var cv_7 = ca_7_0.Value.X;
+                        buffer_7[nonNullCount_7++] = cv_7;
+                        defLevels_7[i] = 1;
+                    }
+                    else {
+                        defLevels_7[i] = 0;
+                    }
                     var ca_8_0 = item.Start;
-                    var cv_8 = ca_8_0.Y;
-                    buffer_8[nonNullCount_8++] = cv_8;
-                    defLevels_8[i] = 1;
+                    if (ca_8_0 is not null)
+                    {
+                        var cv_8 = ca_8_0.Value.Y;
+                        buffer_8[nonNullCount_8++] = cv_8;
+                        defLevels_8[i] = 1;
+                    }
+                    else {
+                        defLevels_8[i] = 0;
+                    }
                 }
 #endif
             }
@@ -471,13 +495,25 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         buffer_6[nonNullCount_6++] = cv_6;
                         defLevels_6[i] = 1;
                         var ca_7_0 = item.Start;
-                        var cv_7 = ca_7_0.X;
-                        buffer_7[nonNullCount_7++] = cv_7;
-                        defLevels_7[i] = 1;
+                        if (ca_7_0 is not null)
+                        {
+                            var cv_7 = ca_7_0.Value.X;
+                            buffer_7[nonNullCount_7++] = cv_7;
+                            defLevels_7[i] = 1;
+                        }
+                        else {
+                            defLevels_7[i] = 0;
+                        }
                         var ca_8_0 = item.Start;
-                        var cv_8 = ca_8_0.Y;
-                        buffer_8[nonNullCount_8++] = cv_8;
-                        defLevels_8[i] = 1;
+                        if (ca_8_0 is not null)
+                        {
+                            var cv_8 = ca_8_0.Value.Y;
+                            buffer_8[nonNullCount_8++] = cv_8;
+                            defLevels_8[i] = 1;
+                        }
+                        else {
+                            defLevels_8[i] = 0;
+                        }
                     }
                 }
                 ExtractArray();
@@ -559,13 +595,25 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                     buffer_6[nonNullCount_6++] = cv_6;
                     defLevels_6[i] = 1;
                     var ca_7_0 = item.Start;
-                    var cv_7 = ca_7_0.X;
-                    buffer_7[nonNullCount_7++] = cv_7;
-                    defLevels_7[i] = 1;
+                    if (ca_7_0 is not null)
+                    {
+                        var cv_7 = ca_7_0.Value.X;
+                        buffer_7[nonNullCount_7++] = cv_7;
+                        defLevels_7[i] = 1;
+                    }
+                    else {
+                        defLevels_7[i] = 0;
+                    }
                     var ca_8_0 = item.Start;
-                    var cv_8 = ca_8_0.Y;
-                    buffer_8[nonNullCount_8++] = cv_8;
-                    defLevels_8[i] = 1;
+                    if (ca_8_0 is not null)
+                    {
+                        var cv_8 = ca_8_0.Value.Y;
+                        buffer_8[nonNullCount_8++] = cv_8;
+                        defLevels_8[i] = 1;
+                    }
+                    else {
+                        defLevels_8[i] = 0;
+                    }
                 }
 #endif
             }
@@ -648,13 +696,25 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                     buffer_6[nonNullCount_6++] = cv_6;
                     defLevels_6[idx] = 1;
                     var ca_7_0 = item.Start;
-                    var cv_7 = ca_7_0.X;
-                    buffer_7[nonNullCount_7++] = cv_7;
-                    defLevels_7[idx] = 1;
+                    if (ca_7_0 is not null)
+                    {
+                        var cv_7 = ca_7_0.Value.X;
+                        buffer_7[nonNullCount_7++] = cv_7;
+                        defLevels_7[idx] = 1;
+                    }
+                    else {
+                        defLevels_7[idx] = 0;
+                    }
                     var ca_8_0 = item.Start;
-                    var cv_8 = ca_8_0.Y;
-                    buffer_8[nonNullCount_8++] = cv_8;
-                    defLevels_8[idx] = 1;
+                    if (ca_8_0 is not null)
+                    {
+                        var cv_8 = ca_8_0.Value.Y;
+                        buffer_8[nonNullCount_8++] = cv_8;
+                        defLevels_8[idx] = 1;
+                    }
+                    else {
+                        defLevels_8[idx] = 0;
+                    }
                     idx++;
                 }
             }
@@ -1088,7 +1148,7 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                             Ship = objs_0[i],
                             Bill = objs_1[i]!,
                             Origin = objs_2[i],
-                            Start = objs_3[i],
+                            Start = defLevels_7[i] >= 1 ? objs_3[i] : null,
                         };
                     }
                 }
@@ -1102,7 +1162,7 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         Ship = objs_0[i],
                         Bill = objs_1[i]!,
                         Origin = objs_2[i],
-                        Start = objs_3[i],
+                        Start = defLevels_7[i] >= 1 ? objs_3[i] : null,
                     });
                 }
 #endif
@@ -1335,7 +1395,7 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         Ship = objs_0[i],
                         Bill = objs_1[i]!,
                         Origin = objs_2[i],
-                        Start = objs_3[i],
+                        Start = defLevels_7[i] >= 1 ? objs_3[i] : null,
                     };
                 }
                 currentOffset += rowCount;
@@ -1567,7 +1627,7 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         Ship = objs_0[i],
                         Bill = objs_1[i]!,
                         Origin = objs_2[i],
-                        Start = objs_3[i],
+                        Start = defLevels_7[i] >= 1 ? objs_3[i] : null,
                     };
                 }
             }
@@ -1787,7 +1847,7 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         Ship = objs_0[i],
                         Bill = objs_1[i]!,
                         Origin = objs_2[i],
-                        Start = objs_3[i],
+                        Start = defLevels_7[i] >= 1 ? objs_3[i] : null,
                     };
                 }
             }
@@ -2141,7 +2201,7 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                             Ship = objs_0[i],
                             Bill = objs_1[i]!,
                             Origin = objs_2[i],
-                            Start = objs_3[i],
+                            Start = defLevels_7[i] >= 1 ? objs_3[i] : null,
                         };
                     }
                 }
@@ -2363,7 +2423,7 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         Ship = objs_0[i],
                         Bill = objs_1[i]!,
                         Origin = objs_2[i],
-                        Start = objs_3[i],
+                        Start = defLevels_7[i] >= 1 ? objs_3[i] : null,
                     };
                 }
                 currentOffset += rowCount;

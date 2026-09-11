@@ -226,6 +226,58 @@ public sealed class NestedStructRoundTripTests
         var back = await NestedOrderParquetExtensions.ReadParquetAsync(ms);
         Assert.Equal("S", back[0].Ship!.City);
     }
+
+    [Fact]
+    public async Task NullableValueTypeStructMembersRoundTrip()
+    {
+        var rows = new List<NullableStructRow>
+        {
+            new()
+            {
+                Id = 0,
+                Origin = new Coord2 { X = 1, Y = 2.5 },
+                Start = new Coord2 { X = 3, Y = 4.5 },
+                Frame = new Frame2
+                {
+                    Tag = "f",
+                    Mark = new Coord2 { X = 7, Y = 8.5 },
+                },
+            },
+            new()
+            {
+                Id = 1,
+                Origin = default,
+                Start = null,
+                Frame = null,
+            },
+            new()
+            {
+                Id = 2,
+                Origin = new Coord2 { X = 5, Y = 6.5 },
+                Start = new Coord2(),
+                Frame = new Frame2(),
+            },
+        };
+
+        var ms = new MemoryStream();
+        await NullableStructRowParquetExtensions.WriteParquetAsync(rows, ms);
+        ms.Position = 0;
+
+        var back = await NullableStructRowParquetExtensions.ReadParquetAsync(ms);
+
+        Assert.Equal(3, back.Count);
+        Assert.Equal(1, back[0].Origin.X);
+        Assert.Equal(3, back[0].Start!.Value.X);
+        Assert.Equal(4.5, back[0].Start!.Value.Y);
+        Assert.Equal(7, back[0].Frame!.Mark!.Value.X);
+        Assert.Null(back[1].Start);
+        Assert.Null(back[1].Frame);
+        Assert.NotNull(back[2].Start);
+        Assert.Equal(0, back[2].Start!.Value.X);
+        Assert.NotNull(back[2].Frame);
+        Assert.Null(back[2].Frame!.Tag);
+        Assert.Null(back[2].Frame!.Mark);
+    }
 }
 
 [ParquetSerializable]
@@ -255,4 +307,27 @@ public sealed partial record Envelope
 {
     public int Id { get; init; }
     public OuterInfo? Outer { get; init; }
+}
+
+[ParquetSerializable]
+public partial struct Coord2
+{
+    public int X { get; init; }
+    public double Y { get; init; }
+}
+
+[ParquetSerializable]
+public sealed partial record Frame2
+{
+    public string? Tag { get; init; }
+    public Coord2? Mark { get; init; }
+}
+
+[ParquetSerializable]
+public sealed partial record NullableStructRow
+{
+    public int Id { get; init; }
+    public Coord2 Origin { get; init; }
+    public Coord2? Start { get; init; }
+    public Frame2? Frame { get; init; }
 }
