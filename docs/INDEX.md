@@ -122,6 +122,13 @@ Welcome to the **Parquet.SourceGenerator** documentation repository. This folder
      - The measured evidence: `CodeEmitter` at 2,536 lines / complexity 144, and
        `TargetParser.CollectMembers` at cyclomatic complexity 105.
 
+23. **[22 - Generated Code Metrics](./22-GENERATED-CODE-METRICS.md)**
+     - The same mechanism turned on the *emitted* code: a `*.metrics.txt` beside every `*.api.txt`.
+     - Which metrics carry signal for generated code and which do not — the Maintainability Index
+       is reported but not gated, with the measurement that says why.
+     - `ELOC_PER_MEMBER`, the size-per-capability ratio: 10 executable lines per emitted member for
+       flat models, 33 for row-level lists.
+
 ---
 
 ## ⚡ Quick Summary of Intent

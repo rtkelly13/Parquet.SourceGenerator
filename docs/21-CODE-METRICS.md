@@ -1,8 +1,10 @@
 # 21 - Code Metrics Baselines & The Complexity Ratchet
 
 > Layer 1 of [#251](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/251). This page
-> covers the **hand-written** code under `src/`. Metrics over the *generated* code (layer 2),
-> duplication (layer 3) and mutation testing (layer 4) are separate work.
+> covers the **hand-written** code under `src/`. Metrics over the *generated* code are layer 2 and
+> live in [22 - Generated Code Metrics](./22-GENERATED-CODE-METRICS.md) — same computation, same
+> grammar, a different tolerance policy, and a different answer about which metrics carry signal.
+> Duplication (layer 3) and mutation testing (layer 4) are separate work.
 
 ## Why this exists
 
@@ -304,6 +306,7 @@ the one to act on first.
 
 - [17 - Generated Public API Baselines](./17-GENERATED-API-BASELINES.md) — the checked-in-artifact
   pattern this borrows wholesale.
+- [22 - Generated Code Metrics](./22-GENERATED-CODE-METRICS.md) — layer 2, the emitted half.
 - [18 - The API Change Contract](./18-API-CHANGE-CONTRACT.md) — the gating philosophy. Note that the
   metrics baselines are **not** a governed API surface: `metrics/*.metrics.txt` is not a catalogue,
   and changing it needs no `docs/api/LEDGER.md` entry.

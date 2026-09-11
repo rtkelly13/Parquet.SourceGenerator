@@ -22,6 +22,19 @@ Changes since `0.0.3`; this section becomes the next release entry when one is c
   complexity 144, and `TargetParser.CollectMembers` carries a cyclomatic complexity of **105** in
   one 463-line method — fifteen times the recommended maximum, and the worst maintainability index
   in the repository at 14.
+- **Generated-code metrics** (`test/Parquet.SourceGenerator.Tests/GoldenFiles/*.metrics.txt`,
+  `docs/22-GENERATED-CODE-METRICS.md`). The same computation turned on the code the generator
+  *emits*: one baseline beside every `*.api.txt`, covering both emitters, refreshed by the same
+  `UPDATE_GOLDEN_FILES=true` / `/update-golden` command as the golden files themselves, and gated
+  on drift. Each carries a size-per-capability ratio — emitted executable lines per emitted public
+  member — so growth in emitted volume can be argued against growth in emitted API. The
+  Maintainability Index is **reported but not gated** for emitted code: it correlates with emitted
+  method length at r = −0.95 and has already bottomed out at 0 on the worst method, so it detects
+  nothing that `SLOC` does not. Measured: flat models cost ~10 executable lines per emitted member,
+  row-level lists 33, and `ListOrderParquetExtensions.WriteParquetRowGroupAsync` is a single
+  1,148-line method at cyclomatic complexity **97** — within 8% of the worst hand-written method in
+  the repository. Compiling each golden file in order to measure it also found that the emitted
+  writer does not compile for a nullable value-type compound member (#255).
 
 ---
 

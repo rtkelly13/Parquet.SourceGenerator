@@ -141,18 +141,24 @@ covers removals and ordering.
 
 ## What the baselines currently say
 
-| Golden model | Emitter | Public members |
-|:---|:---|---:|
-| `OrderEventParquetExtensions` | v6 | 55 |
-| `ScalarMetricParquetExtensions` | v6 | 53 |
-| `NestedOrderParquetExtensions` | v6 | 22 |
-| `ListOrderParquetExtensions` | v6 | 22 |
-| `LegacyRecordParquetLegacyExtensions` | V5 (legacy) | 7 |
-| **Total** | | **159** |
+| Golden model | Emitter | Public members | Emitted ELOC | ELOC per member |
+|:---|:---|---:|---:|---:|
+| `OrderEventParquetExtensions` | v6 | 82 | 890 | 10.9 |
+| `ScalarMetricParquetExtensions` | v6 | 80 | 806 | 10.1 |
+| `NestedOrderParquetExtensions` | v6 | 47 | 1,075 | 22.9 |
+| `ListOrderParquetExtensions` | v6 | 47 | 1,543 | 32.8 |
+| `LegacyRecordParquetLegacyExtensions` | V5 (legacy) | 7 | 115 | 16.4 |
+| **Total** | | **263** | **4,429** | |
 
-A bare nine-property `OrderEvent` model emits 55 public members from a single `[ParquetSerializable]`
-attribute. That number is the point of this document: it was not previously visible anywhere, and
-#216 and #217 exist to bring it down.
+A bare nine-property `OrderEvent` model emits 82 public members from a single
+`[ParquetSerializable]` attribute. That number is the point of this document: it was not previously
+visible anywhere, and #216 and #217 exist to bring it down. It was **159** across all five models
+when this page was written and is **263** today, which is the growth those issues are about.
+
+The last two columns come from the `*.metrics.txt` companion introduced by layer 2 of #251 — see
+[22 - Generated Code Metrics](./22-GENERATED-CODE-METRICS.md). Those baselines read their member
+count out of the `.api.txt` files above rather than recomputing it, so the two artefacts cannot
+disagree about what an emitted member is; `GeneratedCodeMetricsBaselineTests` asserts that.
 
 ## Stability contract
 
