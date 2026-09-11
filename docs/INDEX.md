@@ -130,6 +130,15 @@ Welcome to the **Parquet.SourceGenerator** documentation repository. This folder
      - `ELOC_PER_MEMBER`, the size-per-capability ratio: 10 executable lines per emitted member for
        flat models, 33 for row-level lists.
 
+24. **[23 - Duplication Measurement & The Drift Gate](./23-DUPLICATION.md)**
+     - Layer 3 of #251: token-level duplication across `src/`, checked in as `metrics/duplication.txt`
+       and gated on drift — the `*.api.txt` grammar again.
+     - Calibrated against the repo's demonstrated failure: the tool names the historical
+       `ResolveSchemaField` copies and the three read paths that all broke on #196 before it was
+       adopted.
+     - Emitted code is out of scope by design — generated output repeating itself is the design,
+       not a defect.
+
 ---
 
 ## ⚡ Quick Summary of Intent

@@ -35,6 +35,15 @@ Changes since `0.0.4`; this section becomes the next release entry when one is c
   1,148-line method at cyclomatic complexity **97** — within 8% of the worst hand-written method in
   the repository. Compiling each golden file in order to measure it also found that the emitted
   writer does not compile for a nullable value-type compound member (#255).
+- **Duplication measurement with a drift gate** (`metrics/duplication.txt`,
+  `docs/23-DUPLICATION.md`, layer 3 of #251). Token-level clones across the hand-written sources —
+  identifier-blind, literal-sensitive, 16-token windows extended along diagonal alignments, spans
+  of 40+ tokens reported per method pair — checked in with the `*.api.txt` grammar and gated on
+  drift in CI. Emitted code is excluded by design (repetition in generated output is the design,
+  not a defect). The detector was calibrated against the repo's demonstrated failure before
+  adoption: it names the historical `ResolveSchemaField` copies and all three read paths that
+  broke on #196. Current state, reported as the number the refactor case rests on: **93 clusters,
+  12,034 duplicated tokens**, worst pair `EmitReadArrayAsync` ↔ `EmitReadAsync` at 180 tokens.
 
 ### Changed
 - **`CHANGELOG.md` is now the release authority (#248).** `scripts/ParseChangelog.cs` validates the

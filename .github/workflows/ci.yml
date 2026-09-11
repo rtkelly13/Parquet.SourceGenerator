@@ -159,6 +159,18 @@ jobs:
           fi
           exit $status
 
+      # Layer 3 of #251 (docs/23-DUPLICATION.md): token-level duplication across src/, gated on
+      # drift with zero tolerance — the layers 1 and 2 grammar. Emitted code is out of scope by
+      # design; generated output repeating itself is the design, not a defect.
+      - name: Verify Duplication Baseline
+        run: |
+          status=0
+          dotnet run scripts/Duplication.cs -- --summary duplication.md || status=$?
+          if [ -f duplication.md ]; then
+            cat duplication.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit $status
+
       # Dataset hash integrity is a gate on the COMMITTED bytes, so it must run
       # before any generated compatibility datasets are created. The pinned
       # hashes in test/data/fixture-manifest.json match the checked-in files only.
