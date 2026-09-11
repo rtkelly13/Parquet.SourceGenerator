@@ -126,6 +126,28 @@ jobs:
       - name: Build solution (Release)
         run: dotnet build Parquet.SourceGenertor.sln --configuration Release --no-restore -warnaserror
 
+      # Layer 1 of #251 (docs/21-CODE-METRICS.md). The build above already enforces CA1502 /
+      # CA1505 / CA1506 against the thresholds in CodeMetricsConfig.txt, which is an absolute
+      # judgement and therefore the weaker half. This is the other half: a checked-in, ordinal
+      # baseline of Roslyn's maintainability index, cyclomatic complexity, class coupling,
+      # inheritance depth and line counts for every namespace, type and member under src/, gated
+      # on DRIFT rather than on an absolute number. It also validates CodeMetricsConfig.txt,
+      # because a single unrecognised entry in that file silently disables all three analyzers.
+      #
+      # It runs `dotnet run` on a file-based app whose Roslyn version is pinned in the script, so
+      # the numbers do not move when the runner's SDK does. NU1903 on Microsoft.Build.Tasks.Core
+      # is expected and unavoidable here: it is a transitive dependency of
+      # Microsoft.CodeAnalysis.Workspaces.MSBuild, its assemblies are never loaded (MSBuildLocator
+      # binds the SDK's copy), and it is outside the solution the audit step above governs.
+      - name: Verify Code Metrics Baselines
+        run: |
+          status=0
+          dotnet run scripts/CodeMetrics.cs -- --summary code-metrics.md || status=$?
+          if [ -f code-metrics.md ]; then
+            cat code-metrics.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit $status
+
       # Dataset hash integrity is a gate on the COMMITTED bytes, so it must run
       # before any generated compatibility datasets are created. The pinned
       # hashes in test/data/fixture-manifest.json match the checked-in files only.

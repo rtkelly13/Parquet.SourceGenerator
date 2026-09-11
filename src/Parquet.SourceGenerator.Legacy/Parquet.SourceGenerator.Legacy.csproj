@@ -74,6 +74,8 @@
             ReferenceOutputAssembly="false"
             PrivateAssets="all"
         />
+        <!-- CA1502 / CA1505 / CA1506 thresholds. See docs/21-CODE-METRICS.md. -->
+        <AdditionalFiles Include="..\..\CodeMetricsConfig.txt" />
         <AdditionalFiles Include="..\api\seams.txt" />
         <AdditionalFiles Include="..\..\docs\api\LEDGER.md" />
     </ItemGroup>

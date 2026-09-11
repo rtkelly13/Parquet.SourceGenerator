@@ -111,12 +111,18 @@ Welcome to the **Parquet.SourceGenerator** documentation repository. This folder
      - Eight catalogued surface defects, each checkable against the `*.api.txt` baselines.
      - The options-vs-parameters rule (D1), the naming grammar, and the fate of the flat methods.
 
-
----
-
-19. **[20 - Unified Pushdown & the Generated/Shipped Boundary](./20-UNIFIED-PUSHDOWN-API.md)**
+21. **[20 - Unified Pushdown & the Generated/Shipped Boundary](./20-UNIFIED-PUSHDOWN-API.md)**
      - One inspectable filter replacing four pushdown mechanisms; capability declared by attribute, not at the call site.
      - What stays generated, what ships, and the measurements that decide it.
+
+22. **[21 - Code Metrics Baselines & The Complexity Ratchet](./21-CODE-METRICS.md)**
+     - Checked-in Roslyn metrics baselines under `metrics/`, gated on drift rather than on absolute values.
+     - What the Maintainability Index does *not* tell you, and why `CA1502` is calibrated below the
+       cited guidance with two named, countable exceptions.
+     - The measured evidence: `CodeEmitter` at 2,536 lines / complexity 144, and
+       `TargetParser.CollectMembers` at cyclomatic complexity 105.
+
+---
 
 ## ⚡ Quick Summary of Intent
 
