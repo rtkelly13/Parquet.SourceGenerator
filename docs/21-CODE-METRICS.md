@@ -302,6 +302,26 @@ head, and this one is the front door of the generator: every `[ParquetSerializab
 consumer's compilation goes through it. That is the alarming finding of this exercise, and it is
 the one to act on first.
 
+### What a large *method* does and does not cost — and which half of this is actionable
+
+Layer 1 measures hand-written code, where a large method is a maintenance cost and the case for
+splitting rests on readability. Layer 2 measures **emitted** code, where the same number invites a
+performance argument that turns out to be wrong.
+
+[#257](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/257) built four shapes of the
+worst emitted method and measured them. Splitting it into smaller `async` methods costs 0.12%
+allocation and buys nothing; extracting the non-async chunks into plain helpers *tripled* the
+async state machine's field count (8 → 23), grew native code 21% and AOT binary size by 33 KB, and
+regressed the `List<T>` fast path 6.8% under Server GC — in exchange for about 1 ms of one-time JIT
+per process. The C# compiler had already outlined most of the method for free.
+
+The conclusion, with the numbers, is in
+[22 § Is emitted method size actionable?](./22-GENERATED-CODE-METRICS.md#is-emitted-method-size-actionable-no-watch-it-do-not-fix-it).
+**Emitted method size is informational — a debuggability and correctness-risk proxy and a drift
+detector — not a performance defect to fix.** The layer-1 complexity numbers on this page are a
+different claim and remain actionable on their own terms: `CollectMembers` at 105 is a testability
+and comprehension problem, not a codegen one.
+
 ## Related
 
 - [17 - Generated Public API Baselines](./17-GENERATED-API-BASELINES.md) — the checked-in-artifact

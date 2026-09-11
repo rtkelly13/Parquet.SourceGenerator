@@ -33,6 +33,28 @@ dotnet tool restore
 
 We provide an automated interrogation runner in `scripts/InterrogateIL.cs`. It compiles the target project in `Release` configuration, isolates generated extension classes, disassembles their IL, decompiles their C#, and generates an analysis report.
 
+### Companion: `scripts/StateMachineMetrics.cs`
+
+`InterrogateIL.cs` asks whether the emitted IL **boxes**. `StateMachineMetrics.cs` asks how **big**
+it is, and how much of it the compiler hoisted into an async state machine. It reads assembly
+metadata directly through `System.Reflection.Metadata`, so it needs no decompiler and no
+`dotnet tool restore`, and the numbers are the real IL body sizes and the real field counts rather
+than an inference from the generated source:
+
+```bash
+dotnet run scripts/StateMachineMetrics.cs -- \
+    --assembly test/Parquet.SourceGenerator.CLI/bin/Release/net8.0/Parquet.SourceGenerator.CLI.dll \
+    --type ParquetExtensions
+```
+
+It reports, per emitted type: every async state machine with its field count and `MoveNext` IL
+size, the largest methods by IL bytes, and the full field list of each state machine. This is the
+harness that answered
+[#257](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/257) — see
+[22 § Is emitted method size actionable?](./22-GENERATED-CODE-METRICS.md#is-emitted-method-size-actionable-no-watch-it-do-not-fix-it)
+— by showing that a 1,148-line emitted method with ~38 declared locals carries a state machine with
+only **eight** fields, three of them hoisted locals.
+
 ### Standard Run
 ```bash
 dotnet run scripts/InterrogateIL.cs
