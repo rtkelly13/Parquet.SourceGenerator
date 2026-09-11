@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
-Changes since `0.0.3`; this section becomes the next release entry when one is cut.
+Changes since `0.0.4`; this section becomes the next release entry when one is cut.
 
 ### Added
 - **Code metrics baselines and a complexity ratchet** (`metrics/*.metrics.txt`,
@@ -35,6 +35,15 @@ Changes since `0.0.3`; this section becomes the next release entry when one is c
   1,148-line method at cyclomatic complexity **97** — within 8% of the worst hand-written method in
   the repository. Compiling each golden file in order to measure it also found that the emitted
   writer does not compile for a nullable value-type compound member (#255).
+
+### Changed
+- **`CHANGELOG.md` is now the release authority (#248).** `scripts/ParseChangelog.cs` validates the
+  changelog structure in CI and, in `--release` mode, is the only source of the release version and
+  notes. `release.yml` lost its `version` input: a `prepare` job reads the first cut
+  `## [x.y.z] - YYYY-MM-DD` section, refuses an already-taken `v<version>` tag, and hands the
+  version to a `build` job (full verification battery) and a `publish` job (NuGet push plus a
+  GitHub release whose body is the changelog section). A version that is not described in the
+  changelog cannot be published.
 
 ---
 
