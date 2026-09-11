@@ -440,7 +440,9 @@ internal static class CompoundMapping
 
         foreach (LeafColumn col in plan.Columns)
         {
-            if (col.IsCompound)
+            // List lanes consume their packed values through the per-walk vc_ cursors;
+            // cursor_ is for the node reconstruction walk only.
+            if (col.IsCompound && !(col.IsListLeaf && col.ListElementStruct is not null))
                 builder.AppendLine($"{indent}int cursor_{col.Slot} = 0;");
         }
 

@@ -2902,8 +2902,8 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(repLevels_6, 0, entries_6),
                     cancellationToken);
 
-                var lane_1 = new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>?[rowCount];
-                global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>? bk_1 = null; int rc_1 = 0; bool st_1 = false;
+                var lane_1 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>?[rowCount];
+                global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>? bk_1 = null; int rc_1 = 0; bool st_1 = false;
                 int vc_1 = 0;
                 int vc_2 = 0;
                 int vc_3 = 0;
@@ -2911,12 +2911,12 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                 {
                     if (repLevels_1[p_1] == 0) { if (st_1) lane_1[rc_1++] = bk_1; st_1 = true; bk_1 = null; }
                     int dv_1 = defLevels_1[p_1];
-                    if (dv_1 == 1) bk_1 = new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>();
+                    if (dv_1 == 1) bk_1 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                     else if (dv_1 >= 2) {
-                        bk_1 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>();
+                        bk_1 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                         if (dv_1 == 2) bk_1.Add(null!);
                         else {
-                            bk_1.Add(new global::SampleDomain.Models.Stop
+                            bk_1.Add(new global::SampleDomain.Models.PitStop
                             {
                                 City = defLevels_1[p_1] >= 4 ? buffer_1[vc_1++].ToString() : null!,
                                 Zip = defLevels_2[p_1] >= 4 ? buffer_2[vc_2++] : null!,
@@ -2927,8 +2927,8 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                 }
                 if (st_1) lane_1[rc_1++] = bk_1;
                 _ = rc_1;
-                var lane_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>?[rowCount];
-                global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>? bk_4 = null; int rc_4 = 0; bool st_4 = false;
+                var lane_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>?[rowCount];
+                global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>? bk_4 = null; int rc_4 = 0; bool st_4 = false;
                 int vc_4 = 0;
                 int vc_5 = 0;
                 int vc_6 = 0;
@@ -2936,12 +2936,12 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                 {
                     if (repLevels_4[p_4] == 0) { if (st_4) lane_4[rc_4++] = bk_4; st_4 = true; bk_4 = null; }
                     int dv_4 = defLevels_4[p_4];
-                    if (dv_4 == 1) bk_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>();
+                    if (dv_4 == 1) bk_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                     else if (dv_4 >= 2) {
-                        bk_4 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>();
+                        bk_4 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                         if (dv_4 == 2) bk_4.Add(null!);
                         else {
-                            bk_4.Add(new global::SampleDomain.Models.Stop
+                            bk_4.Add(new global::SampleDomain.Models.PitStop
                             {
                                 City = defLevels_4[p_4] >= 4 ? buffer_4[vc_4++].ToString() : null!,
                                 Zip = defLevels_5[p_4] >= 4 ? buffer_5[vc_5++] : null!,
@@ -2952,12 +2952,6 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                 }
                 if (st_4) lane_4[rc_4++] = bk_4;
                 _ = rc_4;
-                int cursor_1 = 0;
-                int cursor_2 = 0;
-                int cursor_3 = 0;
-                int cursor_4 = 0;
-                int cursor_5 = 0;
-                int cursor_6 = 0;
 #if NET8_0_OR_GREATER
                 void PopulateSpan()
                 {
@@ -3213,8 +3207,8 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(repLevels_6, 0, entries_6),
                     cancellationToken);
 
-                var lane_1 = new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>?[rowCount];
-                global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>? bk_1 = null; int rc_1 = 0; bool st_1 = false;
+                var lane_1 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>?[rowCount];
+                global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>? bk_1 = null; int rc_1 = 0; bool st_1 = false;
                 int vc_1 = 0;
                 int vc_2 = 0;
                 int vc_3 = 0;
@@ -3222,12 +3216,12 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                 {
                     if (repLevels_1[p_1] == 0) { if (st_1) lane_1[rc_1++] = bk_1; st_1 = true; bk_1 = null; }
                     int dv_1 = defLevels_1[p_1];
-                    if (dv_1 == 1) bk_1 = new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>();
+                    if (dv_1 == 1) bk_1 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                     else if (dv_1 >= 2) {
-                        bk_1 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>();
+                        bk_1 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                         if (dv_1 == 2) bk_1.Add(null!);
                         else {
-                            bk_1.Add(new global::SampleDomain.Models.Stop
+                            bk_1.Add(new global::SampleDomain.Models.PitStop
                             {
                                 City = defLevels_1[p_1] >= 4 ? buffer_1[vc_1++].ToString() : null!,
                                 Zip = defLevels_2[p_1] >= 4 ? buffer_2[vc_2++] : null!,
@@ -3238,8 +3232,8 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                 }
                 if (st_1) lane_1[rc_1++] = bk_1;
                 _ = rc_1;
-                var lane_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>?[rowCount];
-                global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>? bk_4 = null; int rc_4 = 0; bool st_4 = false;
+                var lane_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>?[rowCount];
+                global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>? bk_4 = null; int rc_4 = 0; bool st_4 = false;
                 int vc_4 = 0;
                 int vc_5 = 0;
                 int vc_6 = 0;
@@ -3247,12 +3241,12 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                 {
                     if (repLevels_4[p_4] == 0) { if (st_4) lane_4[rc_4++] = bk_4; st_4 = true; bk_4 = null; }
                     int dv_4 = defLevels_4[p_4];
-                    if (dv_4 == 1) bk_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>();
+                    if (dv_4 == 1) bk_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                     else if (dv_4 >= 2) {
-                        bk_4 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>();
+                        bk_4 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                         if (dv_4 == 2) bk_4.Add(null!);
                         else {
-                            bk_4.Add(new global::SampleDomain.Models.Stop
+                            bk_4.Add(new global::SampleDomain.Models.PitStop
                             {
                                 City = defLevels_4[p_4] >= 4 ? buffer_4[vc_4++].ToString() : null!,
                                 Zip = defLevels_5[p_4] >= 4 ? buffer_5[vc_5++] : null!,
@@ -3263,12 +3257,6 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                 }
                 if (st_4) lane_4[rc_4++] = bk_4;
                 _ = rc_4;
-                int cursor_1 = 0;
-                int cursor_2 = 0;
-                int cursor_3 = 0;
-                int cursor_4 = 0;
-                int cursor_5 = 0;
-                int cursor_6 = 0;
                 for (int i = 0; i < rowCount; i++)
                 {
                     results[currentOffset + i] = new PocoOrder
@@ -3507,8 +3495,8 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(repLevels_6, 0, entries_6),
                     cancellationToken);
 
-                var lane_1 = new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>?[rowCount];
-                global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>? bk_1 = null; int rc_1 = 0; bool st_1 = false;
+                var lane_1 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>?[rowCount];
+                global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>? bk_1 = null; int rc_1 = 0; bool st_1 = false;
                 int vc_1 = 0;
                 int vc_2 = 0;
                 int vc_3 = 0;
@@ -3516,12 +3504,12 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                 {
                     if (repLevels_1[p_1] == 0) { if (st_1) lane_1[rc_1++] = bk_1; st_1 = true; bk_1 = null; }
                     int dv_1 = defLevels_1[p_1];
-                    if (dv_1 == 1) bk_1 = new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>();
+                    if (dv_1 == 1) bk_1 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                     else if (dv_1 >= 2) {
-                        bk_1 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>();
+                        bk_1 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                         if (dv_1 == 2) bk_1.Add(null!);
                         else {
-                            bk_1.Add(new global::SampleDomain.Models.Stop
+                            bk_1.Add(new global::SampleDomain.Models.PitStop
                             {
                                 City = defLevels_1[p_1] >= 4 ? buffer_1[vc_1++].ToString() : null!,
                                 Zip = defLevels_2[p_1] >= 4 ? buffer_2[vc_2++] : null!,
@@ -3532,8 +3520,8 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                 }
                 if (st_1) lane_1[rc_1++] = bk_1;
                 _ = rc_1;
-                var lane_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>?[rowCount];
-                global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>? bk_4 = null; int rc_4 = 0; bool st_4 = false;
+                var lane_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>?[rowCount];
+                global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>? bk_4 = null; int rc_4 = 0; bool st_4 = false;
                 int vc_4 = 0;
                 int vc_5 = 0;
                 int vc_6 = 0;
@@ -3541,12 +3529,12 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                 {
                     if (repLevels_4[p_4] == 0) { if (st_4) lane_4[rc_4++] = bk_4; st_4 = true; bk_4 = null; }
                     int dv_4 = defLevels_4[p_4];
-                    if (dv_4 == 1) bk_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>();
+                    if (dv_4 == 1) bk_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                     else if (dv_4 >= 2) {
-                        bk_4 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>();
+                        bk_4 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                         if (dv_4 == 2) bk_4.Add(null!);
                         else {
-                            bk_4.Add(new global::SampleDomain.Models.Stop
+                            bk_4.Add(new global::SampleDomain.Models.PitStop
                             {
                                 City = defLevels_4[p_4] >= 4 ? buffer_4[vc_4++].ToString() : null!,
                                 Zip = defLevels_5[p_4] >= 4 ? buffer_5[vc_5++] : null!,
@@ -3557,12 +3545,6 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                 }
                 if (st_4) lane_4[rc_4++] = bk_4;
                 _ = rc_4;
-                int cursor_1 = 0;
-                int cursor_2 = 0;
-                int cursor_3 = 0;
-                int cursor_4 = 0;
-                int cursor_5 = 0;
-                int cursor_6 = 0;
                 for (int i = 0; i < rowCount; i++)
                 {
                     resultArray[startIdx + i] = new PocoOrder
@@ -3789,8 +3771,8 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(repLevels_6, 0, entries_6),
                     cancellationToken);
 
-                    var lane_1 = new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>?[rowCount];
-                    global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>? bk_1 = null; int rc_1 = 0; bool st_1 = false;
+                    var lane_1 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>?[rowCount];
+                    global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>? bk_1 = null; int rc_1 = 0; bool st_1 = false;
                     int vc_1 = 0;
                     int vc_2 = 0;
                     int vc_3 = 0;
@@ -3798,12 +3780,12 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     {
                         if (repLevels_1[p_1] == 0) { if (st_1) lane_1[rc_1++] = bk_1; st_1 = true; bk_1 = null; }
                         int dv_1 = defLevels_1[p_1];
-                        if (dv_1 == 1) bk_1 = new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>();
+                        if (dv_1 == 1) bk_1 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                         else if (dv_1 >= 2) {
-                            bk_1 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>();
+                            bk_1 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                             if (dv_1 == 2) bk_1.Add(null!);
                             else {
-                                bk_1.Add(new global::SampleDomain.Models.Stop
+                                bk_1.Add(new global::SampleDomain.Models.PitStop
                                 {
                                     City = defLevels_1[p_1] >= 4 ? buffer_1[vc_1++].ToString() : null!,
                                     Zip = defLevels_2[p_1] >= 4 ? buffer_2[vc_2++] : null!,
@@ -3814,8 +3796,8 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     }
                     if (st_1) lane_1[rc_1++] = bk_1;
                     _ = rc_1;
-                    var lane_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>?[rowCount];
-                    global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>? bk_4 = null; int rc_4 = 0; bool st_4 = false;
+                    var lane_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>?[rowCount];
+                    global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>? bk_4 = null; int rc_4 = 0; bool st_4 = false;
                     int vc_4 = 0;
                     int vc_5 = 0;
                     int vc_6 = 0;
@@ -3823,12 +3805,12 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     {
                         if (repLevels_4[p_4] == 0) { if (st_4) lane_4[rc_4++] = bk_4; st_4 = true; bk_4 = null; }
                         int dv_4 = defLevels_4[p_4];
-                        if (dv_4 == 1) bk_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>();
+                        if (dv_4 == 1) bk_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                         else if (dv_4 >= 2) {
-                            bk_4 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>();
+                            bk_4 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                             if (dv_4 == 2) bk_4.Add(null!);
                             else {
-                                bk_4.Add(new global::SampleDomain.Models.Stop
+                                bk_4.Add(new global::SampleDomain.Models.PitStop
                                 {
                                     City = defLevels_4[p_4] >= 4 ? buffer_4[vc_4++].ToString() : null!,
                                     Zip = defLevels_5[p_4] >= 4 ? buffer_5[vc_5++] : null!,
@@ -3839,12 +3821,6 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     }
                     if (st_4) lane_4[rc_4++] = bk_4;
                     _ = rc_4;
-                    int cursor_1 = 0;
-                    int cursor_2 = 0;
-                    int cursor_3 = 0;
-                    int cursor_4 = 0;
-                    int cursor_5 = 0;
-                    int cursor_6 = 0;
                 for (int i = 0; i < rowCount; i++)
                 {
                     yield return new PocoOrder
@@ -4205,8 +4181,8 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                         new global::System.Memory<int>(repLevels_6, 0, entries_6),
                         cancellationToken);
 
-                    var lane_1 = new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>?[rowCount];
-                    global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>? bk_1 = null; int rc_1 = 0; bool st_1 = false;
+                    var lane_1 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>?[rowCount];
+                    global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>? bk_1 = null; int rc_1 = 0; bool st_1 = false;
                     int vc_1 = 0;
                     int vc_2 = 0;
                     int vc_3 = 0;
@@ -4214,12 +4190,12 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     {
                         if (repLevels_1[p_1] == 0) { if (st_1) lane_1[rc_1++] = bk_1; st_1 = true; bk_1 = null; }
                         int dv_1 = defLevels_1[p_1];
-                        if (dv_1 == 1) bk_1 = new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>();
+                        if (dv_1 == 1) bk_1 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                         else if (dv_1 >= 2) {
-                            bk_1 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>();
+                            bk_1 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                             if (dv_1 == 2) bk_1.Add(null!);
                             else {
-                                bk_1.Add(new global::SampleDomain.Models.Stop
+                                bk_1.Add(new global::SampleDomain.Models.PitStop
                                 {
                                     City = defLevels_1[p_1] >= 4 ? buffer_1[vc_1++].ToString() : null!,
                                     Zip = defLevels_2[p_1] >= 4 ? buffer_2[vc_2++] : null!,
@@ -4230,8 +4206,8 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     }
                     if (st_1) lane_1[rc_1++] = bk_1;
                     _ = rc_1;
-                    var lane_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>?[rowCount];
-                    global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>? bk_4 = null; int rc_4 = 0; bool st_4 = false;
+                    var lane_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>?[rowCount];
+                    global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>? bk_4 = null; int rc_4 = 0; bool st_4 = false;
                     int vc_4 = 0;
                     int vc_5 = 0;
                     int vc_6 = 0;
@@ -4239,12 +4215,12 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     {
                         if (repLevels_4[p_4] == 0) { if (st_4) lane_4[rc_4++] = bk_4; st_4 = true; bk_4 = null; }
                         int dv_4 = defLevels_4[p_4];
-                        if (dv_4 == 1) bk_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>();
+                        if (dv_4 == 1) bk_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                         else if (dv_4 >= 2) {
-                            bk_4 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>();
+                            bk_4 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                             if (dv_4 == 2) bk_4.Add(null!);
                             else {
-                                bk_4.Add(new global::SampleDomain.Models.Stop
+                                bk_4.Add(new global::SampleDomain.Models.PitStop
                                 {
                                     City = defLevels_4[p_4] >= 4 ? buffer_4[vc_4++].ToString() : null!,
                                     Zip = defLevels_5[p_4] >= 4 ? buffer_5[vc_5++] : null!,
@@ -4255,12 +4231,6 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     }
                     if (st_4) lane_4[rc_4++] = bk_4;
                     _ = rc_4;
-                    int cursor_1 = 0;
-                    int cursor_2 = 0;
-                    int cursor_3 = 0;
-                    int cursor_4 = 0;
-                    int cursor_5 = 0;
-                    int cursor_6 = 0;
                     for (int i = 0; i < rowCount; i++)
                     {
                         target[startIdx + i] = new PocoOrder
@@ -4489,8 +4459,8 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(repLevels_6, 0, entries_6),
                     cancellationToken);
 
-                var lane_1 = new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>?[rowCount];
-                global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>? bk_1 = null; int rc_1 = 0; bool st_1 = false;
+                var lane_1 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>?[rowCount];
+                global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>? bk_1 = null; int rc_1 = 0; bool st_1 = false;
                 int vc_1 = 0;
                 int vc_2 = 0;
                 int vc_3 = 0;
@@ -4498,12 +4468,12 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                 {
                     if (repLevels_1[p_1] == 0) { if (st_1) lane_1[rc_1++] = bk_1; st_1 = true; bk_1 = null; }
                     int dv_1 = defLevels_1[p_1];
-                    if (dv_1 == 1) bk_1 = new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>();
+                    if (dv_1 == 1) bk_1 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                     else if (dv_1 >= 2) {
-                        bk_1 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>();
+                        bk_1 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                         if (dv_1 == 2) bk_1.Add(null!);
                         else {
-                            bk_1.Add(new global::SampleDomain.Models.Stop
+                            bk_1.Add(new global::SampleDomain.Models.PitStop
                             {
                                 City = defLevels_1[p_1] >= 4 ? buffer_1[vc_1++].ToString() : null!,
                                 Zip = defLevels_2[p_1] >= 4 ? buffer_2[vc_2++] : null!,
@@ -4514,8 +4484,8 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                 }
                 if (st_1) lane_1[rc_1++] = bk_1;
                 _ = rc_1;
-                var lane_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>?[rowCount];
-                global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>? bk_4 = null; int rc_4 = 0; bool st_4 = false;
+                var lane_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>?[rowCount];
+                global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>? bk_4 = null; int rc_4 = 0; bool st_4 = false;
                 int vc_4 = 0;
                 int vc_5 = 0;
                 int vc_6 = 0;
@@ -4523,12 +4493,12 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                 {
                     if (repLevels_4[p_4] == 0) { if (st_4) lane_4[rc_4++] = bk_4; st_4 = true; bk_4 = null; }
                     int dv_4 = defLevels_4[p_4];
-                    if (dv_4 == 1) bk_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>();
+                    if (dv_4 == 1) bk_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                     else if (dv_4 >= 2) {
-                        bk_4 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.Stop>();
+                        bk_4 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                         if (dv_4 == 2) bk_4.Add(null!);
                         else {
-                            bk_4.Add(new global::SampleDomain.Models.Stop
+                            bk_4.Add(new global::SampleDomain.Models.PitStop
                             {
                                 City = defLevels_4[p_4] >= 4 ? buffer_4[vc_4++].ToString() : null!,
                                 Zip = defLevels_5[p_4] >= 4 ? buffer_5[vc_5++] : null!,
@@ -4539,12 +4509,6 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                 }
                 if (st_4) lane_4[rc_4++] = bk_4;
                 _ = rc_4;
-                int cursor_1 = 0;
-                int cursor_2 = 0;
-                int cursor_3 = 0;
-                int cursor_4 = 0;
-                int cursor_5 = 0;
-                int cursor_6 = 0;
                 for (int i = 0; i < rowCount; i++)
                 {
                     results[currentOffset + i] = new PocoOrder

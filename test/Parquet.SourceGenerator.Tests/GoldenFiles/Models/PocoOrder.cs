@@ -2,7 +2,7 @@
 // Mirrors GoldenCodeGenRegressionTests.GoldenMasterListOfPocoModel.
 namespace SampleDomain.Models;
 
-public partial class Stop
+public partial class PitStop
 {
     public string? City { get; init; }
 
@@ -15,7 +15,7 @@ public partial record PocoOrder
 {
     public int Id { get; init; }
 
-    public System.Collections.Generic.List<Stop>? Stops { get; init; }
+    public System.Collections.Generic.List<PitStop>? Stops { get; init; }
 
-    public Stop[]? Route { get; init; }
+    public PitStop[]? Route { get; init; }
 }

@@ -167,13 +167,13 @@ public sealed partial record ListRow
                 Id = 2,
                 Stops =
                 [
-                    new Stop
+                    new PitStop
                     {
                         City = "A",
                         Zip = 1,
                         Node = node1,
                     },
-                    new Stop
+                    new PitStop
                     {
                         City = null,
                         Zip = null,
@@ -182,7 +182,7 @@ public sealed partial record ListRow
                 ],
                 Route =
                 [
-                    new Stop
+                    new PitStop
                     {
                         City = "R",
                         Zip = 9,
@@ -195,7 +195,7 @@ public sealed partial record ListRow
                 Id = 3,
                 Stops =
                 [
-                    new Stop
+                    new PitStop
                     {
                         City = "Z",
                         Zip = 0,
@@ -216,13 +216,14 @@ public sealed partial record ListRow
         Assert.Null(back[0].Route);
         Assert.Empty(back[1].Stops!);
         Assert.Empty(back[1].Route!);
-        Assert.Equal(2, back[2].Stops!.Count);
-        Assert.Equal("A", back[2].Stops[0].City);
-        Assert.Equal(1, back[2].Stops[0].Zip);
-        Assert.Equal(node1, back[2].Stops[0].Node);
-        Assert.Null(back[2].Stops[1].City);
-        Assert.Null(back[2].Stops[1].Zip);
-        Assert.Equal(node2, back[2].Stops[1].Node);
+        var stops2 = back[2].Stops!;
+        Assert.Equal(2, stops2.Count);
+        Assert.Equal("A", stops2[0].City);
+        Assert.Equal(1, stops2[0].Zip);
+        Assert.Equal(node1, stops2[0].Node);
+        Assert.Null(stops2[1].City);
+        Assert.Null(stops2[1].Zip);
+        Assert.Equal(node2, stops2[1].Node);
         Assert.Single(back[2].Route!);
         Assert.Equal("R", back[2].Route![0].City);
         Assert.Equal(9, back[2].Route![0].Zip!.Value);
@@ -242,13 +243,13 @@ public sealed partial record ListRow
                     Id = i,
                     Stops =
                     [
-                        new Stop
+                        new PitStop
                         {
                             City = $"c{i}",
                             Zip = i % 2,
                             Node = Guid.NewGuid(),
                         },
-                        new Stop
+                        new PitStop
                         {
                             City = null,
                             Zip = null,
@@ -268,16 +269,17 @@ public sealed partial record ListRow
         Assert.Equal(50, back.Length);
         for (int i = 0; i < 50; i++)
         {
-            Assert.Equal(2, back[i].Stops!.Count);
-            Assert.Equal($"c{i}", back[i].Stops[0].City);
-            Assert.Equal(i % 2, back[i].Stops[0].Zip);
-            Assert.Null(back[i].Stops[1].City);
+            var stopsI = back[i].Stops!;
+            Assert.Equal(2, stopsI.Count);
+            Assert.Equal($"c{i}", stopsI[0].City);
+            Assert.Equal(i % 2, stopsI[0].Zip);
+            Assert.Null(stopsI[1].City);
         }
     }
 }
 
 [ParquetSerializable]
-public sealed partial class Stop
+public sealed partial class PitStop
 {
     public string? City { get; init; }
     public int? Zip { get; init; }
@@ -288,6 +290,6 @@ public sealed partial class Stop
 public sealed partial record TripRow
 {
     public int Id { get; init; }
-    public List<Stop>? Stops { get; init; }
-    public Stop[]? Route { get; init; }
+    public List<PitStop>? Stops { get; init; }
+    public PitStop[]? Route { get; init; }
 }
