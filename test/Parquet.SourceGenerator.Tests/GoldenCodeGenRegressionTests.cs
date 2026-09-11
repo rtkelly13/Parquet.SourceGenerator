@@ -1,6 +1,7 @@
 extern alias LegacyGenerator;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using Microsoft.CodeAnalysis;
@@ -608,20 +609,28 @@ public sealed class GoldenCodeGenRegressionTests
     ) RunGenerator(string source)
     {
         SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(source);
-        var references = new[]
+        // The real runtime reference set (filtered TPA): an emitted source that only
+        // "looks" stable but would not bind in a consumer project fails here (#255).
+        if (AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") is not string tpaJoined)
         {
-            MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(Attribute).Assembly.Location),
-            MetadataReference.CreateFromFile(
-                typeof(ParquetSerializableAttribute).Assembly.Location
-            ),
-            MetadataReference.CreateFromFile(typeof(Parquet.ParquetReader).Assembly.Location),
-            MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location),
-            MetadataReference.CreateFromFile(Assembly.Load("System.Collections").Location),
-            MetadataReference.CreateFromFile(Assembly.Load("System.Threading").Location),
-            MetadataReference.CreateFromFile(Assembly.Load("System.Threading.Tasks").Location),
-            MetadataReference.CreateFromFile(Assembly.Load("System.Linq").Location),
-        };
+            throw new InvalidOperationException("TPA unavailable");
+        }
+        string[] tpa = tpaJoined.Split(Path.PathSeparator);
+        var references = tpa.Where(p => p.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+            .Where(p => !p.Contains("/runtimes/", StringComparison.OrdinalIgnoreCase))
+            .Where(p =>
+                Path.GetFileName(p).StartsWith("System.", StringComparison.OrdinalIgnoreCase)
+                || Path.GetFileName(p)
+                    .StartsWith("Microsoft.Win32", StringComparison.OrdinalIgnoreCase)
+                || Path.GetFileName(p)
+                    is "netstandard.dll"
+                        or "mscorlib.dll"
+                        or "Parquet.dll"
+                        or "Parquet.SourceGenerator.Attributes.dll"
+            )
+            .Distinct(StringComparer.Ordinal)
+            .Select(p => (MetadataReference)MetadataReference.CreateFromFile(p))
+            .ToList();
 
         CSharpCompilation compilation = CSharpCompilation.Create(
             "GoldenTestAssembly",
@@ -639,6 +648,17 @@ public sealed class GoldenCodeGenRegressionTests
             compilation,
             out Compilation outputCompilation,
             out var diagnostics
+        );
+
+        // Goldens are shipped as .g.cs text excluded from this project's compilation — the
+        // only place their generated bodies are compiled is here. Assert no binding errors so
+        // an emitter regression cannot land as a golden that merely "looks" stable (#255).
+        var genErrors = outputCompilation
+            .GetDiagnostics()
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .ToList();
+        Assert.Empty(
+            genErrors.Select(d => $"{d.Id}: {d.Location.GetLineSpan().StartLinePosition.Line}")
         );
 
         return (diagnostics, outputCompilation.SyntaxTrees.ToList());

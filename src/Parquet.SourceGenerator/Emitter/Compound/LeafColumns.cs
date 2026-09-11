@@ -37,6 +37,13 @@ internal sealed class LeafColumn
     /// <summary>Per ancestor (outermost first): whether it is a C# value type (never writes def 0).</summary>
     public bool[] AncestorIsValueType { get; set; } = [];
 
+    /// <summary>
+    /// Per chain step: the step is a value-type struct member declared <c>T?</c>. Such a step
+    /// still writes through <c>.Value</c> after the presence test (a local of type <c>T?</c>
+    /// never flow-sugars into member access), unlike a reference step.
+    /// </summary>
+    public bool[] AncestorNullableValueStep { get; set; } = [];
+
     /// <summary>Per ancestor (outermost first): def ≥ threshold ⇔ that ancestor exists in the row.</summary>
     public int[] AncestorPresenceThresholds { get; set; } = [];
 
@@ -218,6 +225,7 @@ internal sealed class EmissionPlan
                 schemaPrefix: [],
                 depth: 0,
                 valueTypes: [prop.CompoundIsValueType],
+                nullableValueSteps: [prop.IsNullable && prop.CompoundIsValueType],
                 memberPrefix: [prop.Name],
                 columns,
                 nodes
@@ -240,6 +248,7 @@ internal sealed class EmissionPlan
         int[] schemaPrefix,
         int depth,
         bool[] valueTypes,
+        bool[] nullableValueSteps,
         string[] memberPrefix,
         List<LeafColumn> columns,
         List<StructNode> nodes
@@ -259,6 +268,7 @@ internal sealed class EmissionPlan
                     ClrType = child.TypeName.TrimEnd('?'),
                     IsValueType = child.CompoundIsValueType,
                     MemberName = child.Name,
+                    MemberAnnotatedNullable = child.IsNullable,
                     ParentId = node.Id,
                     // This node occupies ancestor position `depth + 1` in every
                     // descendant leaf's thresholds array (the parent holds `depth`).
@@ -273,6 +283,7 @@ internal sealed class EmissionPlan
                     childPath,
                     depth + 1,
                     [.. valueTypes, child.CompoundIsValueType],
+                    [.. nullableValueSteps, child.IsNullable && child.CompoundIsValueType],
                     chain,
                     columns,
                     nodes
@@ -301,6 +312,7 @@ internal sealed class EmissionPlan
                 MaxDef = maxDef,
                 MemberChain = chain,
                 AncestorIsValueType = valueTypes,
+                AncestorNullableValueStep = nullableValueSteps,
                 AncestorPresenceThresholds = thresholds,
             };
             columns.Add(column);
