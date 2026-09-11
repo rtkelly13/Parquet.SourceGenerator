@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
 using Microsoft.CodeAnalysis;
@@ -140,6 +141,17 @@ public static class TargetParser
         return GetTargetModelCore(typeSymbol, syntax, apiLevel, compoundKinds);
     }
 
+    // CA1502 baseline exception, #251. Measured cyclomatic complexity 38 against a threshold of
+    // 25 (CodeMetricsConfig.txt). This is a grandfathered violation, not an approved shape:
+    // the recommended maximum is 7 and this method is 5x that. It is suppressed by name so
+    // that the exception is countable and removable rather than hidden behind a threshold
+    // raised to fit it. Deleting this attribute is the definition of done for the refactor;
+    // do not add a third one. See docs/21-CODE-METRICS.md.
+    [SuppressMessage(
+        "Microsoft.Maintainability",
+        "CA1502:AvoidExcessiveComplexity",
+        Justification = "Grandfathered at cyclomatic complexity 38 by #251; tracked for refactor."
+    )]
     private static TargetParserResult GetTargetModelCore(
         INamedTypeSymbol typeSymbol,
         TypeDeclarationSyntax? typeDeclaration,
@@ -354,6 +366,17 @@ public static class TargetParser
     /// path, the depth counter) is carried by the caller's locals, which is exactly the scoping
     /// duplicate-name and cycle rules need: names collide per group, cycles are path-relative.
     /// </remarks>
+    // CA1502 baseline exception, #251. Measured cyclomatic complexity 105 against a threshold of
+    // 25 (CodeMetricsConfig.txt). This is a grandfathered violation, not an approved shape:
+    // the recommended maximum is 7 and this method is 15x that. It is suppressed by name so
+    // that the exception is countable and removable rather than hidden behind a threshold
+    // raised to fit it. Deleting this attribute is the definition of done for the refactor;
+    // do not add a third one. See docs/21-CODE-METRICS.md.
+    [SuppressMessage(
+        "Microsoft.Maintainability",
+        "CA1502:AvoidExcessiveComplexity",
+        Justification = "Grandfathered at cyclomatic complexity 105 by #251; tracked for refactor."
+    )]
     private static void CollectMembers(
         INamedTypeSymbol declaringType,
         string className,

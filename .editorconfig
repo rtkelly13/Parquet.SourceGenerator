@@ -89,3 +89,25 @@ dotnet_diagnostic.category-Meziantou.severity = none
 dotnet_diagnostic.category-Meziantou.severity = none
 
 
+
+# --------------------------------------------------------------------------------------------
+# Code metrics gates (#251, docs/21-CODE-METRICS.md).
+#
+# Scoped to src/ deliberately. Test, benchmark, sample and tooling code is measured by nothing
+# here: a table-driven test method with forty cases is not a maintainability problem, and gating
+# it would train everyone to suppress the rule.
+#
+# `warning`, not `error`, matches the repository's stance in Directory.Build.props: warnings are
+# not errors in local builds, and CI passes `-warnaserror` explicitly. These therefore fail CI
+# exactly like every other analyzer rule here.
+#
+# Thresholds live in CodeMetricsConfig.txt at the repository root (an AdditionalFile on each src
+# project), not here, because that is the only file these rules read.
+# --------------------------------------------------------------------------------------------
+[src/**.cs]
+# Cyclomatic complexity per method.
+dotnet_diagnostic.CA1502.severity = warning
+# Maintainability index.
+dotnet_diagnostic.CA1505.severity = warning
+# Class coupling.
+dotnet_diagnostic.CA1506.severity = warning

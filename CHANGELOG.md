@@ -10,6 +10,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 Changes since `0.0.3`; this section becomes the next release entry when one is cut.
 
+### Added
+- **Code metrics baselines and a complexity ratchet** (`metrics/*.metrics.txt`,
+  `docs/21-CODE-METRICS.md`). Roslyn's maintainability index, cyclomatic complexity, class
+  coupling, inheritance depth and line counts are now recorded per namespace, type and member for
+  the hand-written code under `src/`, checked in as a deterministic ordinal text artifact, and
+  gated in CI on **drift** rather than on absolute values — the `*.api.txt` pattern applied to
+  quality. `CA1502` / `CA1505` / `CA1506` are enabled for `src/` with thresholds pinned in
+  `CodeMetricsConfig.txt`. Refresh with `UPDATE_GOLDEN_FILES=true dotnet run scripts/CodeMetrics.cs`
+  or `/update-golden`. The recorded evidence: `CodeEmitter` is 2,536 source lines at cyclomatic
+  complexity 144, and `TargetParser.CollectMembers` carries a cyclomatic complexity of **105** in
+  one 463-line method — fifteen times the recommended maximum, and the worst maintainability index
+  in the repository at 14.
+
 ---
 
 ## [0.0.4] - 2026-09-11

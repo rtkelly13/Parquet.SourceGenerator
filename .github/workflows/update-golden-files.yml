@@ -69,10 +69,14 @@ jobs:
           ref: ${{ steps.pr_info.outputs.branch }}
           fetch-depth: 0
 
-      - name: Setup .NET 8 SDK
+      # 10.0.x is required by the file-based `dotnet run scripts/*.cs` apps (the metrics
+      # regeneration below); 8.0.x is what the solution builds against.
+      - name: Setup .NET SDK
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: |
+            8.0.x
+            10.0.x
 
       - name: Restore dependencies
         run: dotnet restore Parquet.SourceGenertor.sln
@@ -83,6 +87,11 @@ jobs:
             --configuration Release \
             --filter "FullyQualifiedName~GoldenCodeGenRegressionTests"
 
+      # docs/21-CODE-METRICS.md. Same refresh verb, same commit, so a change that moves both the
+      # emitted surface and the maintainability of the code that emits it lands as one diff.
+      - name: Regenerate Code Metrics Baselines
+        run: UPDATE_GOLDEN_FILES=true dotnet run scripts/CodeMetrics.cs
+
       - name: Commit & Push Updated Golden Files to Branch
         id: git_status
         env:
@@ -90,9 +99,9 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add test/Parquet.SourceGenerator.Tests/GoldenFiles/
+          git add test/Parquet.SourceGenerator.Tests/GoldenFiles/ metrics/
           if ! git diff --cached --quiet; then
-            git commit -m "test(generator): update source-controlled golden generated code and API baselines"
+            git commit -m "test(generator): update golden generated code, API baselines and code metrics"
             git push origin "$BRANCH"
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
           else
