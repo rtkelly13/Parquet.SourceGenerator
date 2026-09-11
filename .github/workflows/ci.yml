@@ -72,6 +72,9 @@ jobs:
       - name: Verify Benchmark Data LFS Hydration & Provenance Integrity
         run: dotnet run scripts/VerifyProvenance.cs
 
+      - name: Verify Changelog Structure
+        run: dotnet run scripts/ParseChangelog.cs
+
       - name: Setup Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
