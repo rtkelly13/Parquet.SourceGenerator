@@ -1,8 +1,8 @@
 # Code metrics thresholds for the hand-written code under src/ (docs/21-CODE-METRICS.md, #251).
 #
 # Read by the CA1502 / CA1505 / CA1506 analyzers (enabled at `warning` for [src/**.cs] in
-# .editorconfig; CI's `-warnaserror` promotes them), and re-enforced independently by
-# scripts/CodeMetrics.cs so that a typo here cannot silently open a hole.
+# .editorconfig; CI's `-warnaserror` promotes them), and validated by scripts/CodeMetrics.cs on every CI
+# run, so that a typo here cannot silently open a hole.
 #
 # THIS IS A RATCHET. These numbers come down as the code improves. They are never raised to
 # accommodate new code: a violation is a conversation about the code, not about the number.
@@ -12,8 +12,8 @@
 #
 # WARNING — the only valid SymbolKind spellings are the ones below. An unrecognised entry (e.g.
 # `NamedType` instead of `Type`) makes the analyzers stop reporting ENTIRELY AND SILENTLY: no
-# CA1509 diagnostic is produced. That failure mode is why scripts/CodeMetrics.cs enforces these
-# same numbers from its own computation.
+# CA1509 diagnostic is produced. That failure mode is why scripts/CodeMetrics.cs refuses
+# to run at all when this file does not parse.
 
 # Cyclomatic complexity per method. 25 is the .NET default, pinned here so an SDK update cannot
 # move the gate. Mark Seemann's recommended maximum is 7 (Miller's 7 +/- 2); this is 3.6x that,
