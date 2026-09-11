@@ -113,10 +113,7 @@ internal static class CompoundMapping
         string member = col.MemberChain[level];
         builder.AppendLine($"{prefix}var {local} = {curExpr}.{member};");
 
-        bool nullableValueStep =
-            level < col.AncestorNullableValueStep.Length && col.AncestorNullableValueStep[level];
-
-        if (col.AncestorIsValueType[level] && !nullableValueStep)
+        if (!col.StepHasNullTest[level])
         {
             // A required C# struct member can never be null: its rung is always present.
             EmitLadder(builder, col, local, level + 1, indexVar, prefix);
@@ -127,11 +124,11 @@ internal static class CompoundMapping
         builder.AppendLine($"{prefix}if ({local} is not null)");
         builder.AppendLine($"{prefix}{{");
         // A Nullable<T> local never flow-sugars into member access; unwrap explicitly.
-        string bodyExpr = nullableValueStep ? $"{local}.Value" : local;
+        string bodyExpr = col.StepValueUnwrap[level] ? $"{local}.Value" : local;
         EmitLadder(builder, col, bodyExpr, level + 1, indexVar, prefix + "    ");
         builder.AppendLine($"{prefix}}}");
         builder.AppendLine($"{prefix}else {{");
-        builder.AppendLine($"{prefix}    {defWriteOuter} = {level};");
+        builder.AppendLine($"{prefix}    {defWriteOuter} = {col.StepDefBase[level]};");
         builder.AppendLine($"{prefix}}}");
     }
 
@@ -200,7 +197,7 @@ internal static class CompoundMapping
         builder.AppendLine($"{prefix}if (lm_{n} is null)");
         builder.AppendLine($"{prefix}{{");
         GrowLevels(builder, n, prefix + "    ");
-        builder.AppendLine($"{prefix}    defLevels_{n}[posCount_{n}] = 0;");
+        builder.AppendLine($"{prefix}    defLevels_{n}[posCount_{n}] = {col.StepDefBase[0]};");
         builder.AppendLine($"{prefix}    repLevels_{n}[posCount_{n}] = 0;");
         builder.AppendLine($"{prefix}    posCount_{n}++;");
         builder.AppendLine($"{prefix}}}");

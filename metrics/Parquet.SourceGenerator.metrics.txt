@@ -5,7 +5,7 @@
 # MI maintainability index 0-100 (higher is better), CC cyclomatic complexity,
 # CL class coupling, DIT depth of inheritance, SLOC source lines, ELOC executable lines.
 # Ordinal-sorted. MI is compared with a +/-2 tolerance; every other metric exactly.
-A:Parquet.SourceGenerator | MI=71 CC=994 CL=119 DIT=1 SLOC=10326 ELOC=3824
+A:Parquet.SourceGenerator | MI=72 CC=996 CL=120 DIT=1 SLOC=10340 ELOC=3829
 M:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.CanEmit(Parquet.SourceGenerator.Models.TargetClassModel) | MI=97 CC=1 CL=2 DIT=- SLOC=5 ELOC=1
 M:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitBinary(System.Text.StringBuilder, Parquet.SourceGenerator.Models.PropertyModel, Parquet.SourceGenerator.Emitter.Components.ArrowLeafMapping, string, string, int) | MI=48 CC=3 CL=3 DIT=- SLOC=59 ELOC=30
 M:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitColumn(System.Text.StringBuilder, Parquet.SourceGenerator.Models.PropertyModel, int) | MI=58 CC=6 CL=6 DIT=- SLOC=39 ELOC=11
@@ -136,8 +136,8 @@ M:Parquet.SourceGenerator.Emitter.Compound.CompoundBuffers.GetPackedType(Parquet
 M:Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.EmitArrayMaterialization(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel, string, string, string, string, string, string) | MI=56 CC=2 CL=2 DIT=- SLOC=30 ELOC=13
 M:Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.EmitCompoundExtraction(System.Text.StringBuilder, Parquet.SourceGenerator.Emitter.Compound.LeafColumn, string, string, string) | MI=91 CC=1 CL=2 DIT=- SLOC=11 ELOC=1
 M:Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.EmitCompoundReconstruction(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel, string, string) | MI=43 CC=15 CL=10 DIT=- SLOC=82 ELOC=32
-M:Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.EmitLadder(System.Text.StringBuilder, Parquet.SourceGenerator.Emitter.Compound.LeafColumn, string, int, string, string) | MI=44 CC=7 CL=3 DIT=- SLOC=70 ELOC=34
-M:Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.EmitListExtraction(System.Text.StringBuilder, Parquet.SourceGenerator.Emitter.Compound.LeafColumn, string, string) | MI=43 CC=2 CL=3 DIT=- SLOC=63 ELOC=41
+M:Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.EmitLadder(System.Text.StringBuilder, Parquet.SourceGenerator.Emitter.Compound.LeafColumn, string, int, string, string) | MI=45 CC=5 CL=3 DIT=- SLOC=67 ELOC=33
+M:Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.EmitListExtraction(System.Text.StringBuilder, Parquet.SourceGenerator.Emitter.Compound.LeafColumn, string, string) | MI=43 CC=2 CL=3 DIT=- SLOC=65 ELOC=41
 M:Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.EmitListLanes(System.Text.StringBuilder, Parquet.SourceGenerator.Emitter.Compound.EmissionPlan, string, string) | MI=50 CC=7 CL=6 DIT=- SLOC=54 ELOC=21
 M:Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.EmitRootMemberAssignments(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel, string, string, string) | MI=47 CC=11 CL=11 DIT=- SLOC=55 ELOC=23
 M:Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.GetCompoundLeafReadExpression(Parquet.SourceGenerator.Models.PropertyModel, string) | MI=74 CC=4 CL=3 DIT=- SLOC=20 ELOC=3
@@ -152,21 +152,15 @@ M:Parquet.SourceGenerator.Emitter.Compound.EmissionPlan.ColumnSlotByProperty.get
 M:Parquet.SourceGenerator.Emitter.Compound.EmissionPlan.ColumnSlotByProperty.set | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
 M:Parquet.SourceGenerator.Emitter.Compound.EmissionPlan.Columns.get | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
 M:Parquet.SourceGenerator.Emitter.Compound.EmissionPlan.Columns.set | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
-M:Parquet.SourceGenerator.Emitter.Compound.EmissionPlan.For(Parquet.SourceGenerator.Models.TargetClassModel) | MI=46 CC=7 CL=8 DIT=- SLOC=93 ELOC=23
+M:Parquet.SourceGenerator.Emitter.Compound.EmissionPlan.For(Parquet.SourceGenerator.Models.TargetClassModel) | MI=46 CC=7 CL=9 DIT=- SLOC=93 ELOC=23
 M:Parquet.SourceGenerator.Emitter.Compound.EmissionPlan.HasCompound.get | MI=81 CC=2 CL=4 DIT=- SLOC=1 ELOC=2
 M:Parquet.SourceGenerator.Emitter.Compound.EmissionPlan.Nodes.get | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
 M:Parquet.SourceGenerator.Emitter.Compound.EmissionPlan.Nodes.set | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
 M:Parquet.SourceGenerator.Emitter.Compound.EmissionPlan.NodesInReconstructionOrder() | MI=88 CC=2 CL=2 DIT=- SLOC=7 ELOC=1
 M:Parquet.SourceGenerator.Emitter.Compound.EmissionPlan.RootNodeByProperty.get | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
 M:Parquet.SourceGenerator.Emitter.Compound.EmissionPlan.RootNodeByProperty.set | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
-M:Parquet.SourceGenerator.Emitter.Compound.EmissionPlan.WalkStruct(Parquet.SourceGenerator.Models.PropertyModel, Parquet.SourceGenerator.Emitter.Compound.StructNode, int, int[], int, bool[], bool[], string[], System.Collections.Generic.List<Parquet.SourceGenerator.Emitter.Compound.LeafColumn>, System.Collections.Generic.List<Parquet.SourceGenerator.Emitter.Compound.StructNode>) | MI=47 CC=11 CL=6 DIT=- SLOC=92 ELOC=22
+M:Parquet.SourceGenerator.Emitter.Compound.EmissionPlan.WalkStruct(Parquet.SourceGenerator.Models.PropertyModel, Parquet.SourceGenerator.Emitter.Compound.StructNode, int, int[], int, bool[], bool[], string[], System.Collections.Generic.List<Parquet.SourceGenerator.Emitter.Compound.LeafColumn>, System.Collections.Generic.List<Parquet.SourceGenerator.Emitter.Compound.StructNode>) | MI=44 CC=12 CL=7 DIT=- SLOC=98 ELOC=27
 M:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.AncestorCount.get | MI=96 CC=1 CL=0 DIT=- SLOC=1 ELOC=1
-M:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.AncestorIsValueType.get | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
-M:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.AncestorIsValueType.set | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
-M:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.AncestorNullableValueStep.get | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
-M:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.AncestorNullableValueStep.set | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
-M:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.AncestorPresenceThresholds.get | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
-M:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.AncestorPresenceThresholds.set | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
 M:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.IsCompound.get | MI=92 CC=1 CL=0 DIT=- SLOC=1 ELOC=1
 M:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.IsListLeaf.get | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
 M:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.IsListLeaf.set | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
@@ -194,6 +188,14 @@ M:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.SchemaPath.get | MI=100 CC
 M:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.SchemaPath.set | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
 M:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.Slot.get | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
 M:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.Slot.set | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
+M:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.StepDefBase.get | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
+M:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.StepDefBase.set | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
+M:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.StepHasNullTest.get | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
+M:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.StepHasNullTest.set | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
+M:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.StepKinds.get | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
+M:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.StepKinds.set | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
+M:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.StepValueUnwrap.get | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
+M:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.StepValueUnwrap.set | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
 M:Parquet.SourceGenerator.Emitter.Compound.StructNode.ArrayElementType.get | MI=94 CC=2 CL=0 DIT=- SLOC=1 ELOC=1
 M:Parquet.SourceGenerator.Emitter.Compound.StructNode.ArrayVar.get | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=1
 M:Parquet.SourceGenerator.Emitter.Compound.StructNode.ChildIds.get | MI=100 CC=1 CL=1 DIT=- SLOC=1 ELOC=0
@@ -214,7 +216,7 @@ M:Parquet.SourceGenerator.Emitter.Compound.StructNode.ParentId.get | MI=100 CC=1
 M:Parquet.SourceGenerator.Emitter.Compound.StructNode.ParentId.set | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
 M:Parquet.SourceGenerator.Emitter.Compound.StructNode.PresenceLeaf.get | MI=100 CC=1 CL=1 DIT=- SLOC=1 ELOC=0
 M:Parquet.SourceGenerator.Emitter.Compound.StructNode.PresenceLeaf.set | MI=100 CC=1 CL=1 DIT=- SLOC=1 ELOC=0
-M:Parquet.SourceGenerator.Emitter.Compound.StructNode.PresenceThreshold.get | MI=93 CC=1 CL=1 DIT=- SLOC=1 ELOC=1
+M:Parquet.SourceGenerator.Emitter.Compound.StructNode.PresenceThreshold.get | MI=91 CC=1 CL=1 DIT=- SLOC=1 ELOC=1
 M:Parquet.SourceGenerator.Emitter.ReadBuilderComponent.Emit(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel) | MI=62 CC=2 CL=4 DIT=- SLOC=19 ELOC=12
 M:Parquet.SourceGenerator.Emitter.ReadBuilderComponent.EmitEntryPoint(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel) | MI=57 CC=1 CL=2 DIT=- SLOC=30 ELOC=15
 M:Parquet.SourceGenerator.Emitter.ReadBuilderComponent.EmitFilteredSource(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel) | MI=40 CC=1 CL=3 DIT=- SLOC=109 ELOC=57
@@ -314,7 +316,7 @@ N:Parquet.SourceGenerator.Diagnostics | MI=83 CC=0 CL=2 DIT=1 SLOC=226 ELOC=4
 N:Parquet.SourceGenerator.Emitter | MI=56 CC=270 CL=37 DIT=1 SLOC=4735 ELOC=2315
 N:Parquet.SourceGenerator.Emitter.Columnar | MI=57 CC=42 CL=13 DIT=1 SLOC=528 ELOC=164
 N:Parquet.SourceGenerator.Emitter.Components | MI=66 CC=156 CL=15 DIT=1 SLOC=1545 ELOC=551
-N:Parquet.SourceGenerator.Emitter.Compound | MI=69 CC=197 CL=19 DIT=1 SLOC=1130 ELOC=377
+N:Parquet.SourceGenerator.Emitter.Compound | MI=73 CC=199 CL=20 DIT=1 SLOC=1144 ELOC=382
 N:Parquet.SourceGenerator.Models | MI=86 CC=69 CL=23 DIT=1 SLOC=488 ELOC=75
 N:Parquet.SourceGenerator.Parser | MI=84 CC=245 CL=62 DIT=1 SLOC=1674 ELOC=307
 N:System.Runtime.CompilerServices | MI=100 CC=0 CL=0 DIT=1 SLOC=0 ELOC=0
@@ -333,9 +335,6 @@ P:Parquet.SourceGenerator.Emitter.Compound.EmissionPlan.HasCompound | MI=81 CC=4
 P:Parquet.SourceGenerator.Emitter.Compound.EmissionPlan.Nodes | MI=100 CC=2 CL=1 DIT=- SLOC=1 ELOC=1
 P:Parquet.SourceGenerator.Emitter.Compound.EmissionPlan.RootNodeByProperty | MI=100 CC=2 CL=0 DIT=- SLOC=2 ELOC=1
 P:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.AncestorCount | MI=96 CC=2 CL=0 DIT=- SLOC=1 ELOC=2
-P:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.AncestorIsValueType | MI=100 CC=2 CL=0 DIT=- SLOC=2 ELOC=1
-P:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.AncestorNullableValueStep | MI=100 CC=2 CL=0 DIT=- SLOC=6 ELOC=1
-P:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.AncestorPresenceThresholds | MI=100 CC=2 CL=0 DIT=- SLOC=2 ELOC=1
 P:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.IsCompound | MI=92 CC=2 CL=0 DIT=- SLOC=1 ELOC=2
 P:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.IsListLeaf | MI=100 CC=2 CL=0 DIT=- SLOC=2 ELOC=0
 P:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.Leaf | MI=100 CC=2 CL=1 DIT=- SLOC=1 ELOC=1
@@ -351,6 +350,10 @@ P:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.RootPropertyIndex | MI=100
 P:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.SchemaAccessor | MI=70 CC=3 CL=0 DIT=- SLOC=15 ELOC=5
 P:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.SchemaPath | MI=100 CC=2 CL=0 DIT=- SLOC=5 ELOC=1
 P:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.Slot | MI=100 CC=2 CL=0 DIT=- SLOC=1 ELOC=0
+P:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.StepDefBase | MI=100 CC=2 CL=0 DIT=- SLOC=2 ELOC=1
+P:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.StepHasNullTest | MI=100 CC=2 CL=0 DIT=- SLOC=2 ELOC=1
+P:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.StepKinds | MI=100 CC=2 CL=1 DIT=- SLOC=2 ELOC=1
+P:Parquet.SourceGenerator.Emitter.Compound.LeafColumn.StepValueUnwrap | MI=100 CC=2 CL=0 DIT=- SLOC=2 ELOC=1
 P:Parquet.SourceGenerator.Emitter.Compound.StructNode.ArrayElementType | MI=94 CC=4 CL=0 DIT=- SLOC=2 ELOC=2
 P:Parquet.SourceGenerator.Emitter.Compound.StructNode.ArrayVar | MI=100 CC=2 CL=0 DIT=- SLOC=1 ELOC=2
 P:Parquet.SourceGenerator.Emitter.Compound.StructNode.ChildIds | MI=100 CC=1 CL=1 DIT=- SLOC=2 ELOC=1
@@ -363,7 +366,7 @@ P:Parquet.SourceGenerator.Emitter.Compound.StructNode.MemberAnnotatedNullable | 
 P:Parquet.SourceGenerator.Emitter.Compound.StructNode.MemberName | MI=100 CC=2 CL=0 DIT=- SLOC=2 ELOC=1
 P:Parquet.SourceGenerator.Emitter.Compound.StructNode.ParentId | MI=100 CC=2 CL=0 DIT=- SLOC=2 ELOC=0
 P:Parquet.SourceGenerator.Emitter.Compound.StructNode.PresenceLeaf | MI=100 CC=2 CL=1 DIT=- SLOC=2 ELOC=0
-P:Parquet.SourceGenerator.Emitter.Compound.StructNode.PresenceThreshold | MI=93 CC=2 CL=1 DIT=- SLOC=1 ELOC=2
+P:Parquet.SourceGenerator.Emitter.Compound.StructNode.PresenceThreshold | MI=91 CC=2 CL=1 DIT=- SLOC=1 ELOC=2
 P:Parquet.SourceGenerator.Emitter.SortableColumn.KeyType | MI=100 CC=2 CL=0 DIT=- SLOC=2 ELOC=1
 P:Parquet.SourceGenerator.Emitter.SortableColumn.Property | MI=100 CC=2 CL=1 DIT=- SLOC=1 ELOC=1
 P:Parquet.SourceGenerator.Emitter.SortableColumn.Slot | MI=100 CC=2 CL=0 DIT=- SLOC=2 ELOC=0
@@ -412,12 +415,13 @@ T:Parquet.SourceGenerator.Emitter.Components.PropertyMappingComponent | MI=57 CC
 T:Parquet.SourceGenerator.Emitter.Components.RowGroupLayoutComponent | MI=51 CC=4 CL=1 DIT=1 SLOC=69 ELOC=39
 T:Parquet.SourceGenerator.Emitter.Components.SchemaComponent | MI=50 CC=14 CL=7 DIT=1 SLOC=259 ELOC=110
 T:Parquet.SourceGenerator.Emitter.Components.StringDeduplicatorComponent | MI=39 CC=7 CL=8 DIT=1 SLOC=326 ELOC=223
+T:Parquet.SourceGenerator.Emitter.Compound.ChainStepKind | MI=100 CC=1 CL=0 DIT=1 SLOC=14 ELOC=0
 T:Parquet.SourceGenerator.Emitter.Compound.CompoundBuffers | MI=55 CC=33 CL=8 DIT=1 SLOC=235 ELOC=79
-T:Parquet.SourceGenerator.Emitter.Compound.CompoundMapping | MI=52 CC=57 CL=15 DIT=1 SLOC=469 ELOC=191
+T:Parquet.SourceGenerator.Emitter.Compound.CompoundMapping | MI=52 CC=55 CL=15 DIT=1 SLOC=468 ELOC=190
 T:Parquet.SourceGenerator.Emitter.Compound.CompoundSchema | MI=62 CC=10 CL=10 DIT=1 SLOC=81 ELOC=25
-T:Parquet.SourceGenerator.Emitter.Compound.EmissionPlan | MI=62 CC=32 CL=11 DIT=1 SLOC=213 ELOC=54
-T:Parquet.SourceGenerator.Emitter.Compound.LeafColumn | MI=89 CC=39 CL=2 DIT=1 SLOC=82 ELOC=18
-T:Parquet.SourceGenerator.Emitter.Compound.StructNode | MI=93 CC=26 CL=2 DIT=1 SLOC=40 ELOC=10
+T:Parquet.SourceGenerator.Emitter.Compound.EmissionPlan | MI=61 CC=33 CL=12 DIT=1 SLOC=219 ELOC=59
+T:Parquet.SourceGenerator.Emitter.Compound.LeafColumn | MI=89 CC=41 CL=3 DIT=1 SLOC=76 ELOC=19
+T:Parquet.SourceGenerator.Emitter.Compound.StructNode | MI=92 CC=26 CL=2 DIT=1 SLOC=40 ELOC=10
 T:Parquet.SourceGenerator.Emitter.ReadBuilderComponent | MI=55 CC=17 CL=4 DIT=1 SLOC=448 ELOC=195
 T:Parquet.SourceGenerator.Emitter.RowGroupPruningComponent | MI=61 CC=38 CL=11 DIT=1 SLOC=353 ELOC=141
 T:Parquet.SourceGenerator.Emitter.SortableColumn | MI=97 CC=6 CL=1 DIT=1 SLOC=15 ELOC=2
