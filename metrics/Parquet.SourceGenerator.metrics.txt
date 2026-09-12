@@ -5,7 +5,7 @@
 # MI maintainability index 0-100 (higher is better), CC cyclomatic complexity,
 # CL class coupling, DIT depth of inheritance, SLOC source lines, ELOC executable lines.
 # Ordinal-sorted. MI is compared with a +/-2 tolerance; every other metric exactly.
-A:Parquet.SourceGenerator | MI=75 CC=1007 CL=125 DIT=1 SLOC=10734 ELOC=3876
+A:Parquet.SourceGenerator | MI=75 CC=1007 CL=125 DIT=1 SLOC=10750 ELOC=3876
 M:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.CanEmit(Parquet.SourceGenerator.Models.TargetClassModel) | MI=97 CC=1 CL=2 DIT=- SLOC=5 ELOC=1
 M:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitBinary(System.Text.StringBuilder, Parquet.SourceGenerator.Models.PropertyModel, Parquet.SourceGenerator.Emitter.Components.ArrowLeafMapping, string, string, int) | MI=48 CC=3 CL=3 DIT=- SLOC=59 ELOC=30
 M:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitColumn(System.Text.StringBuilder, Parquet.SourceGenerator.Models.PropertyModel, int) | MI=58 CC=6 CL=6 DIT=- SLOC=39 ELOC=11
@@ -235,7 +235,7 @@ M:Parquet.SourceGenerator.Emitter.ReadBuilderComponent.EmitWithOptions(System.Te
 M:Parquet.SourceGenerator.Emitter.ReadBuilderComponent.EntryPointName(Parquet.SourceGenerator.Models.TargetClassModel) | MI=91 CC=1 CL=1 DIT=- SLOC=2 ELOC=1
 M:Parquet.SourceGenerator.Emitter.ReadBuilderComponent.ExtensionsName(Parquet.SourceGenerator.Models.TargetClassModel) | MI=91 CC=1 CL=1 DIT=- SLOC=2 ELOC=1
 M:Parquet.SourceGenerator.Emitter.RowGroupPruningComponent.EligibleColumns(Parquet.SourceGenerator.Models.TargetClassModel) | MI=61 CC=8 CL=10 DIT=- SLOC=20 ELOC=9
-M:Parquet.SourceGenerator.Emitter.RowGroupPruningComponent.EmitAcceptRowGroup(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel) | MI=40 CC=7 CL=5 DIT=- SLOC=91 ELOC=49
+M:Parquet.SourceGenerator.Emitter.RowGroupPruningComponent.EmitAcceptRowGroup(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel) | MI=40 CC=7 CL=5 DIT=- SLOC=99 ELOC=49
 M:Parquet.SourceGenerator.Emitter.RowGroupPruningComponent.EmitLoopGuard(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel, string, string, string) | MI=71 CC=2 CL=2 DIT=- SLOC=18 ELOC=4
 M:Parquet.SourceGenerator.Emitter.RowGroupPruningComponent.EmitMetadataStruct(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel) | MI=43 CC=5 CL=5 DIT=- SLOC=78 ELOC=42
 M:Parquet.SourceGenerator.Emitter.RowGroupPruningComponent.EmitSelectionCheck(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel, string) | MI=84 CC=2 CL=2 DIT=- SLOC=11 ELOC=2
@@ -255,7 +255,7 @@ M:Parquet.SourceGenerator.Emitter.SortableColumn.Property.set | MI=100 CC=1 CL=1
 M:Parquet.SourceGenerator.Emitter.SortableColumn.Slot.get | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
 M:Parquet.SourceGenerator.Emitter.SortableColumn.Slot.set | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
 M:Parquet.SourceGenerator.Emitter.SortedRowGroupPruningComponent.EmitLookupOverloads(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel, System.Collections.Generic.List<Parquet.SourceGenerator.Emitter.SortableColumn>) | MI=48 CC=2 CL=5 DIT=- SLOC=77 ELOC=30
-M:Parquet.SourceGenerator.Emitter.SortedRowGroupPruningComponent.EmitPruningHelpers(System.Text.StringBuilder) | MI=27 CC=1 CL=1 DIT=- SLOC=206 ELOC=152
+M:Parquet.SourceGenerator.Emitter.SortedRowGroupPruningComponent.EmitPruningHelpers(System.Text.StringBuilder) | MI=27 CC=1 CL=1 DIT=- SLOC=214 ELOC=152
 M:Parquet.SourceGenerator.Emitter.SortedRowGroupPruningComponent.SortableColumns(Parquet.SourceGenerator.Models.TargetClassModel) | MI=57 CC=8 CL=8 DIT=- SLOC=45 ELOC=12
 M:Parquet.SourceGenerator.Models.DiagnosticInfo.DiagnosticInfo(Microsoft.CodeAnalysis.DiagnosticDescriptor, Microsoft.CodeAnalysis.Location, string[]) | MI=100 CC=1 CL=3 DIT=- SLOC=47 ELOC=0
 M:Parquet.SourceGenerator.Models.DiagnosticInfo.Equals(Parquet.SourceGenerator.Models.DiagnosticInfo) | MI=66 CC=6 CL=2 DIT=- SLOC=18 ELOC=6
@@ -340,7 +340,7 @@ M:Parquet.SourceGenerator.Parser.TargetParser.ValidateTargetDeclaration(Microsof
 M:Parquet.SourceGenerator.Parser.TargetParserResult.TargetParserResult(Parquet.SourceGenerator.Models.TargetClassModel, Parquet.SourceGenerator.Models.EquatableArray<Parquet.SourceGenerator.Models.DiagnosticInfo>) | MI=100 CC=1 CL=3 DIT=- SLOC=7 ELOC=0
 N:Parquet.SourceGenerator | MI=59 CC=15 CL=35 DIT=1 SLOC=0 ELOC=31
 N:Parquet.SourceGenerator.Diagnostics | MI=83 CC=0 CL=2 DIT=1 SLOC=226 ELOC=4
-N:Parquet.SourceGenerator.Emitter | MI=56 CC=270 CL=37 DIT=1 SLOC=4735 ELOC=2315
+N:Parquet.SourceGenerator.Emitter | MI=56 CC=270 CL=37 DIT=1 SLOC=4751 ELOC=2315
 N:Parquet.SourceGenerator.Emitter.Columnar | MI=57 CC=42 CL=13 DIT=1 SLOC=528 ELOC=164
 N:Parquet.SourceGenerator.Emitter.Components | MI=66 CC=156 CL=15 DIT=1 SLOC=1545 ELOC=551
 N:Parquet.SourceGenerator.Emitter.Compound | MI=72 CC=222 CL=21 DIT=1 SLOC=1326 ELOC=452
@@ -466,9 +466,9 @@ T:Parquet.SourceGenerator.Emitter.Compound.EmissionPlan | MI=59 CC=36 CL=12 DIT=
 T:Parquet.SourceGenerator.Emitter.Compound.LeafColumn | MI=87 CC=45 CL=3 DIT=1 SLOC=96 ELOC=23
 T:Parquet.SourceGenerator.Emitter.Compound.StructNode | MI=92 CC=26 CL=2 DIT=1 SLOC=40 ELOC=10
 T:Parquet.SourceGenerator.Emitter.ReadBuilderComponent | MI=55 CC=17 CL=4 DIT=1 SLOC=448 ELOC=195
-T:Parquet.SourceGenerator.Emitter.RowGroupPruningComponent | MI=61 CC=38 CL=11 DIT=1 SLOC=353 ELOC=141
+T:Parquet.SourceGenerator.Emitter.RowGroupPruningComponent | MI=61 CC=38 CL=11 DIT=1 SLOC=361 ELOC=141
 T:Parquet.SourceGenerator.Emitter.SortableColumn | MI=97 CC=6 CL=1 DIT=1 SLOC=15 ELOC=2
-T:Parquet.SourceGenerator.Emitter.SortedRowGroupPruningComponent | MI=37 CC=11 CL=9 DIT=1 SLOC=343 ELOC=194
+T:Parquet.SourceGenerator.Emitter.SortedRowGroupPruningComponent | MI=37 CC=11 CL=9 DIT=1 SLOC=351 ELOC=194
 T:Parquet.SourceGenerator.Models.ColumnEncoding | MI=93 CC=1 CL=0 DIT=1 SLOC=17 ELOC=2
 T:Parquet.SourceGenerator.Models.DiagnosticInfo | MI=82 CC=11 CL=6 DIT=1 SLOC=47 ELOC=12
 T:Parquet.SourceGenerator.Models.EquatableArray<T> | MI=83 CC=25 CL=10 DIT=1 SLOC=98 ELOC=20

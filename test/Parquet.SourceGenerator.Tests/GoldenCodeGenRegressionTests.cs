@@ -642,6 +642,73 @@ public sealed class GoldenCodeGenRegressionTests
         AssertGoldenMatch("PocoOrderParquetExtensions.g.cs", generated);
     }
 
+    [Fact]
+    public void GoldenMasterSortedAndPrunableModel()
+    {
+        // #264 prerequisite: ONE model carrying both row-group pruning mechanisms at
+        // once. Until now no golden did — the combination that #205 and #203 deferred
+        // was measured by nothing and reviewed by no diff. SortedEvent in
+        // SortedRowGroupPruningTests.cs proves the merged runtime works, but it emits
+        // no checked-in baseline; this closes the coverage gap the convergence needs
+        // before it can report its own ELOC_PER_MEMBER claim.
+        //
+        // The column choices straddle the two eligibility sets deliberately:
+        //   Sequence   (long)          — in BOTH sets: the one column the shared
+        //                                footer read must serve twice
+        //   ShippedAt  (DateTime)      — sortable, never projected into the zone map
+        //                                (statistics are physical epoch values)
+        //   WeightGrams(int)           — projected for predicates, not opted in as a key
+        //   Carrier    (string?)       — projected, and can never be a sort key
+        //                                (BYTE_ARRAY order vs culture-sensitive compare)
+        string source = """
+            using Parquet.SourceGenerator;
+            using System;
+
+            namespace SampleDomain.Models;
+
+            [ParquetSerializable]
+            public partial class SortedShipment
+            {
+                [ParquetSortKey]
+                public long Sequence { get; set; }
+                [ParquetSortKey]
+                public System.DateTime ShippedAt { get; set; }
+                public int WeightGrams { get; set; }
+                public string? Carrier { get; set; }
+            }
+            """;
+
+        var (diagnostics, outputTrees) = RunGenerator(source);
+        Assert.DoesNotContain(diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+        Assert.DoesNotContain(diagnostics, d => d.Descriptor.Id == "PARQ014");
+
+        string generated = outputTrees[outputTrees.Count - 1].ToString();
+        // Predicate pushdown surface.
+        Assert.Contains("RowGroupMetadata", generated);
+        Assert.Contains("bool AcceptRowGroup(", generated);
+        Assert.Contains("ParquetColumnStatistics<long> Sequence { get; }", generated);
+        Assert.Contains("ParquetColumnStatistics<int> WeightGrams { get; }", generated);
+        Assert.Contains("ParquetColumnStatistics<string> Carrier { get; }", generated);
+
+        // Sorted-lookup surface, one pair per key column, over the shared core.
+        Assert.Contains("bool TryPruneSortedRowGroups<", generated);
+        Assert.Contains("ReadPrunedRangeAsync<", generated);
+        Assert.Contains("ReadParquetBySequenceAsync(", generated);
+        Assert.Contains("ReadParquetByShippedAtAsync(", generated);
+
+        // Eligibility boundaries held where they should: a DateTime key is searched but
+        // never projected; a string is projected but can never be searched. A golden
+        // that starts disagreeing with this is a silent API-surface move.
+        Assert.DoesNotContain(
+            "ParquetColumnStatistics<System.DateTime> ShippedAt",
+            generated,
+            StringComparison.Ordinal
+        );
+        Assert.DoesNotContain("ReadParquetByCarrierAsync(", generated, StringComparison.Ordinal);
+
+        AssertGoldenMatch("SortedShipmentParquetExtensions.g.cs", generated);
+    }
+
     private static (
         IReadOnlyList<Diagnostic> Diagnostics,
         IReadOnlyList<SyntaxTree> OutputTrees

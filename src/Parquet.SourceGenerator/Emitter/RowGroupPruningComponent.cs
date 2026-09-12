@@ -192,6 +192,14 @@ internal static class RowGroupPruningComponent
     /// Emits the guard method: projects one row group's column-chunk statistics onto the model's
     /// types and asks the caller's predicate whether the group can hold a matching row.
     /// </summary>
+    /// <remarks>
+    /// Constraint recorded per #264 (from closed #209's lesson): any future row-group PREFETCH
+    /// (overlapped read-ahead of group pages) MUST consult this emitted <c>AcceptRowGroup</c>
+    /// decision before decoding a group, or it silently pulls every skipped group back into the
+    /// page cache and undoes the pruning win it was meant to compose with. Same rule applies to
+    /// <see cref="SortedRowGroupPruningComponent"/>'s pruned-range core. A revival of #209 that
+    /// ignores this turns pushdown into pure overhead.
+    /// </remarks>
     public static void EmitAcceptRowGroup(StringBuilder builder, TargetClassModel model)
     {
         if (!IsEnabled(model))

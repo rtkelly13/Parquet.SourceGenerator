@@ -82,6 +82,14 @@ internal static class SortedRowGroupPruningComponent
     /// <summary>
     /// Emits the model-independent statistics comparison and binary-search pruning helpers.
     /// </summary>
+    /// <remarks>
+    /// Convergence target of #264: <c>TryPruneSortedRowGroups</c> is a second independent read
+    /// of the same footer statistics <see cref="RowGroupPruningComponent.EmitAcceptRowGroup"/>
+    /// projects, for models that opt into both mechanisms. Keep the conservative posture
+    /// identical when they merge: missing statistics disable pruning here exactly as a chunk
+    /// with no usable zone map disables it there. Prefetching must consult either decision
+    /// before decoding a group (see the constraint recorded on <c>EmitAcceptRowGroup</c>).
+    /// </remarks>
     public static void EmitPruningHelpers(StringBuilder builder)
     {
         builder.AppendLine("    /// <summary>");

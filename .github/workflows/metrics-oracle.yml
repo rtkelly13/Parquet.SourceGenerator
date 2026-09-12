@@ -56,6 +56,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          export MSYS_NO_PATHCONV=1
           "$RUNNER_TEMP/pkg/Microsoft.CodeAnalysis.Metrics.$METRICS_VERSION/Metrics/Metrics.exe" \
             /project:"src/Parquet.SourceGenerator/Parquet.SourceGenerator.csproj" \
             /project:"src/Parquet.SourceGenerator.Legacy/Parquet.SourceGenerator.Legacy.csproj" \
@@ -66,6 +67,7 @@ jobs:
         shell: bash
         run: |
           set -uo pipefail
+          export MSYS_NO_PATHCONV=1
           status=0
           for pair in \
             "Parquet.SourceGenerator:metrics/Parquet.SourceGenerator.metrics.txt:Parquet.SourceGenerator.csproj" \
