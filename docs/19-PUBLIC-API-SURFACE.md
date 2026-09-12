@@ -162,6 +162,12 @@ The split argument is not discarded, only deferred, because it predicts a real c
 has two homes again — the condition #218 existed to remove, arriving from the other direction.
 Tracked as **#241**, blocked on #217, to be recorded here as an amendment to D1.
 
+**Amendment to D1 (settled per #241):**
+Parallelism configuration settles on **Option B**: `.Parallel()` on the builder takes no degree argument
+and reads `ParquetSerializerOptions.MaxDegreeOfParallelism` (configured via `.WithOptions(...)`).
+This preserves the universal single-home principle established in #239 and prevents duplicate knobs.
+
+
 ### D2 — Axes become members, not name segments *(#217)*
 
 A generated entry point returning a builder struct:
