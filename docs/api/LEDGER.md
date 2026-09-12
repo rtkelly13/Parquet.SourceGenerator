@@ -16,6 +16,17 @@ The rule, the three surfaces and the author process are in
 
 <!-- Add new entries directly below this line, newest first. -->
 
+### 2026-09-12 — `SortedShipmentParquetExtensions` catalogued golden model (#264)
+
+- **Surface:** emitted
+- **Semver:** generated-shape
+- **Issue:** [#264](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/264)
+- **Rationale:** Adds **75** emitted members by cataloguing one new combined driver model
+  (`SortedShipment`, a prunable and sorted-key model) alongside the existing golden models.
+  Demonstrates that models carrying both `[ParquetSortKey]` and prunable columns receive both
+  the predicate pushdown zone-map struct and the sorted lookup overloads over the shared statistics hook.
+
+
 ### 2026-09-11 — `PocoOrderParquetExtensions` catalogued golden model (#176 M3b-2)
 
 - **Surface:** emitted

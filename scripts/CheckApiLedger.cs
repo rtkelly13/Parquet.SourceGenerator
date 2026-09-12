@@ -110,6 +110,7 @@ if (range is null)
 Console.WriteLine($"Comparing catalogues against {range}");
 
 var addedCatalogueLines = new List<(string File, string Line)>();
+var removedCatalogueLines = new List<(string File, string Line)>();
 foreach (string pathspec in catalogueGlobs)
 {
     string diff = Git($"diff --unified=0 --no-color {range} -- \"{pathspec}\"");
@@ -119,6 +120,10 @@ foreach (string pathspec in catalogueGlobs)
         if (line.StartsWith("+++ b/", StringComparison.Ordinal))
         {
             currentFile = line.Substring("+++ b/".Length).Trim();
+        }
+        else if (line.StartsWith("--- a/", StringComparison.Ordinal) && currentFile.Length == 0)
+        {
+            currentFile = line.Substring("--- a/".Length).Trim();
         }
         else if (
             line.StartsWith("+", StringComparison.Ordinal)
@@ -135,6 +140,21 @@ foreach (string pathspec in catalogueGlobs)
 
             addedCatalogueLines.Add((currentFile, content));
         }
+        else if (
+            line.StartsWith("-", StringComparison.Ordinal)
+            && !line.StartsWith("---", StringComparison.Ordinal)
+        )
+        {
+            string content = line.Substring(1).Trim();
+
+            // Blank lines, the `#nullable enable` header and catalogue comments are not signatures.
+            if (content.Length == 0 || content[0] == '#')
+            {
+                continue;
+            }
+
+            removedCatalogueLines.Add((currentFile, content));
+        }
     }
 }
 
@@ -145,9 +165,15 @@ addedCatalogueLines = addedCatalogueLines
     .ThenBy(entry => entry.Line, StringComparer.Ordinal)
     .ToList();
 
-if (addedCatalogueLines.Count == 0)
+removedCatalogueLines = removedCatalogueLines
+    .Distinct()
+    .OrderBy(entry => entry.File, StringComparer.Ordinal)
+    .ThenBy(entry => entry.Line, StringComparer.Ordinal)
+    .ToList();
+
+if (addedCatalogueLines.Count == 0 && removedCatalogueLines.Count == 0)
 {
-    Console.WriteLine("No governed catalogue gained a signature in this change.");
+    Console.WriteLine("No governed catalogue gained or lost a signature in this change.");
     return failures == 0 ? 0 : 1;
 }
 
@@ -156,20 +182,25 @@ int addedLedgerEntries = Git($"diff --unified=0 --no-color {range} -- \"{LedgerP
     .Count(line => line.StartsWith("+### ", StringComparison.Ordinal));
 
 Console.WriteLine(
-    $"{addedCatalogueLines.Count} catalogue signature(s) added; "
+    $"{addedCatalogueLines.Count} signature(s) added, {removedCatalogueLines.Count} signature(s) removed; "
         + $"{addedLedgerEntries} ledger entr{(addedLedgerEntries == 1 ? "y" : "ies")} added."
 );
 
 if (addedLedgerEntries == 0)
 {
     failures++;
+    int totalChanged = addedCatalogueLines.Count + removedCatalogueLines.Count;
     Console.Error.WriteLine(
-        $"::error file={LedgerPath}::{addedCatalogueLines.Count} signature(s) were added to a "
+        $"::error file={LedgerPath}::{totalChanged} signature(s) changed in a "
             + $"governed API catalogue with no new entry in {LedgerPath}."
     );
-    foreach ((string file, string line) in addedCatalogueLines.Take(25))
+    foreach ((string file, string line) in addedCatalogueLines.Take(15))
     {
         Console.Error.WriteLine($"    + {file}: {line}");
+    }
+    foreach ((string file, string line) in removedCatalogueLines.Take(15))
+    {
+        Console.Error.WriteLine($"    - {file}: {line}");
     }
 
     if (addedCatalogueLines.Count > 25)

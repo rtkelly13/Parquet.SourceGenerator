@@ -8,114 +8,115 @@ Welcome to the **Parquet.SourceGenerator** documentation repository. This folder
 
 ---
 
-## 📚 Documentation Index
+## 📚 Documentation Portal
+
+The documentation is organized into three distinct tiers based on audience and intent:
+- **[Guides](#-guides)** — Task-oriented, consumer-facing documentation for adopting and using the generator.
+- **[Reference](#-reference)** — Technical specifications, API surface contracts, compiler diagnostics, and compatibility matrices.
+- **[Internals & Engineering Spikes](#-internals--engineering-spikes)** — Contributor deep-dives, compiler pipeline architecture, benchmarking machinery, and deterministic quality gates.
+
+---
+
+### 🚀 Guides
+
+1. **[02 - API Design & Attributes](./02-API-DESIGN-AND-ATTRIBUTES.md)**
+   - Annotating target classes with `[ParquetSerializable]`, `[ParquetColumn]`, and `[ParquetIgnore]`.
+   - Data annotations, custom decimal precision/scale, and timestamp units.
+
+2. **[19 - Public API Surface & Fluent Builder](./19-PUBLIC-API-SURFACE.md)**
+   - Modern fluent read and write builder semantics: `PersonParquet.From(stream)...` and `PersonParquet.Write(items)...`.
+   - Structural explanation of the source, shape, execution, and pushdown axes.
+
+3. **[10 - Native AOT & Type System Guide](./10-NATIVE-AOT-GUIDE.md)**
+   - First-class Native AOT compatibility, zero reflection, and trim analysis.
+   - CoreCLR runtime mechanics and Native Directives (`rd.xml`).
+
+4. **[15 - Nested Types & Compound Models](./15-NESTED-TYPES-SPIKE-FINDINGS.md)**
+   - Serializing nested POCOs, struct fields, and collections (`List<T>`, arrays) without runtime reflection.
+
+5. **[Performance Benchmarks & Baselines](./BENCHMARKS.md)**
+   - BenchmarkDotNet performance numbers, zero-boxing verification, and memory savings over reflection serializers.
+
+---
+
+### 📖 Reference
+
+1. **[18 - API Change Contract & Governance](./18-API-CHANGE-CONTRACT.md)**
+   - The API change contract governing emitted, package, and internal seam surfaces.
+   - Reviewing change rationales in the [API Change Ledger](./api/LEDGER.md).
+
+2. **[13 - Compiler Diagnostics Reference](./13-COMPILER-DIAGNOSTICS.md)**
+   - Complete index of compiler diagnostics (`PARQ001` through `PARQ014`).
+   - Descriptions, error explanations, and remediation steps.
+
+3. **[14 - Parquet Compatibility Matrix](./14-COMPATIBILITY-MATRIX.md)**
+   - Interoperability guarantees with PyArrow, DuckDB, and Apache Parquet CLI.
+   - Encodings, compression codecs, and logical type mappings.
+
+4. **[16 - Version & Schema Evolution](./16-VERSION-AND-SCHEMA-EVOLUTION.md)**
+   - Backwards/forwards compatibility across Parquet.Net versions and evolving consumer schemas.
+
+5. **[07 - Known Limitations & Upstream Dependencies](./07-KNOWN-LIMITATIONS.md)**
+   - Audited gaps, edge-case type limitations, and tracked upstream Parquet.Net issues.
+
+---
+
+### 🔬 Internals & Engineering Spikes
 
 1. **[01 - Vision & Architecture](./01-VISION-AND-ARCHITECTURE.md)**
-   - Problem statement & rationale (Reflection overhead, Native AOT limitations in standard `Parquet.Net`).
-   - Architectural goals & core design principles.
-   - High-level design diagram and memory/performance profile expectations.
+   - High-throughput zero-reflection design and project philosophy.
 
-2. **[02 - API Design & Attributes](./02-API-DESIGN-AND-ATTRIBUTES.md)**
-   - Public code-generator attributes (`[ParquetSerializable]`, `[ParquetColumn]`, `[ParquetIgnore]`, etc.).
-   - Generated code API contracts (`TypeParquetSerializer`, `Schema`, `WriteAsync`, `ReadAsync`).
-   - Developer ergonomics and code examples.
+2. **[03 - Incremental Generator Pipeline](./03-INCREMENTAL-GENERATOR-PIPELINE.md)**
+   - Roslyn 4.0 `IIncrementalGenerator` caching pipeline and syntax provider architecture.
 
-3. **[03 - Incremental Generator Pipeline](./03-INCREMENTAL-GENERATOR-PIPELINE.md)**
-   - Roslyn `IIncrementalGenerator` implementation architecture.
-   - Syntax provider filtering, semantic symbol extraction, and equatable models.
-   - Code generation builders and Roslyn Diagnostic Descriptors (`PARQ001` to `PARQ099`).
+3. **[04 - Roadmap & Contributing](./04-ROADMAP-AND-CONTRIBUTING.md)**
+   - Project lifecycle, release cadence, and contributing guidelines.
 
-4. **[04 - Roadmap & Open Source Blueprint](./04-ROADMAP-AND-CONTRIBUTING.md)**
-   - Multi-phase implementation roadmap (Phase 1 MVP to Phase 5 Native AOT & Benchmarks).
-   - Testing strategy (Unit tests with `GeneratorDriver`, integration tests, snapshooting with `Verify`).
-   - CI/CD workflow, NuGet packaging, and contribution rules.
+4. **[05 - Testing Machinery & Strategy](./05-TESTING-STRATEGY-AND-BENCHMARKS.md)**
+   - Multi-tier testing suite: golden regression testing, IL bytecode verification, and interop oracles.
 
-5. **[05 - Testing Machinery & Benchmarking Strategy](./05-TESTING-STRATEGY-AND-BENCHMARKS.md)**
-   - Roslyn Generator Unit & Snapshot testing (`Verify.SourceGenerators`).
-   - Incremental caching verification (`TrackIncrementalSteps`).
-   - Binary data roundtrip testing with `Parquet.Net`.
-   - Native AOT & trim validation strategy.
-   - BenchmarkDotNet performance benchmarking setup.
+5. **[06 - Test Data Specification](./06-TEST-DATA-SPECIFICATION.md)**
+   - Deterministic test fixture corpus and SHA-256 provenance manifests.
 
-6. **[Performance Benchmarks & Baseline Reports](./BENCHMARKS.md)**
-   - Automated BenchmarkDotNet performance metrics.
-   - Speedup ratios and memory allocation savings vs `ParquetSerializer` v6.
-   - Automated CI benchmark update workflow.
+6. **[08 - IL Interrogation & Bytecode Verification](./08-IL-INTERROGATION.md)**
+   - Automated zero-boxing assertions and disassembly triage using `ilspycmd` and `dotnet-inspect`.
 
-7. **[06 - Test Data Specification & Symmetrical Benchmarking](./06-TEST-DATA-SPECIFICATION.md)**
-   - Deterministic test dataset matrix (01 through 05).
-   - Mathematical row generation formulas and null rules.
-   - Python (`PyArrow` via `uv`) and C# (`Parquet.Net` via `dotnet run`) dataset generation tooling.
-   - Cryptographic hash-based regression suite and bit-for-bit determinism validation.
+7. **[09 - Memory Triage with dotnet-dump](./09-PERFORMANCE-TRIAGE-DOTNET-DUMP.md)**
+   - SOS memory triage, Large Object Heap analysis, and memory leak triage.
 
+8. **[11 - Performance Optimization Findings](./11-PERFORMANCE-OPTIMIZATION-FINDINGS.md)**
+   - Empirical analysis of branchless null extraction, SIMD vectorization, and L1 span caches.
 
-8. **[07 - Known Limitations & Remediation Plan](./07-KNOWN-LIMITATIONS.md)**
-   - Audited gaps between intended design and observed behaviour, with severity markers.
-   - Parquet.Net version/TFM matrix and what a net472-capable backend actually requires.
-   - Sequenced remediation order; items are marked ✅ as they are closed.
+9. **[12 - Buffer Reuse & Extraction Strategies](./12-BUFFER-REUSE-AND-EXTRACTION-STRATEGIES.md)**
+   - ArrayPool buffer recycling, progressive buffer returns, and cold-pool vs warm-pool heap dynamics.
 
-9. **[08 - IL Interrogation & Performance Verification](./08-IL-INTERROGATION.md)**
-   - Intermediate Language (IL) disassembly and decompilation workflow with `ilspycmd` and `dotnet-inspect`.
-   - Automated boxing detection (`box`), devirtualization checks, and branch diffing.
-
-10. **[09 - Performance & Memory Triage with dotnet-dump](./09-PERFORMANCE-TRIAGE-DOTNET-DUMP.md)**
-   - Managed memory dump capture and automated SOS triage analysis.
-   - Diagnosing heap allocations, buffer leaks, Large Object Heap (LOH), and Pinned Object Heap (POH).
-
-11. **[10 - Native AOT & Type System Guide](./10-NATIVE-AOT-GUIDE.md)**
-    - Comprehensive supported types matrix and Native AOT runtime behavior.
-    - Deep-dive into `Nullable<T>` value type mechanics, CoreCLR `TypeUnifier.WithVerifiedTypeHandle`, and code-sharing limits.
-    - Analysis of the Parquet.Net 6.1.0 `ReadOnlyMemory<T>` shift and resolution via Runtime Directives (`rd.xml`).
-
-12. **[11 - Performance Optimization Findings & Baseline Analysis](./11-PERFORMANCE-OPTIMIZATION-FINDINGS.md)**
-    - Empirical performance and IL boxing baseline across generated serializers.
-    - Evaluation of zero-boxing string serialization mechanisms and L1 string deduplicator cache efficiency.
-
-13. **[12 - Buffer Reuse & Column Extraction Strategies](./12-BUFFER-REUSE-AND-EXTRACTION-STRATEGIES.md)**
-    - Empirical evaluation of Row-Oriented Single Pass vs Column-Pipelined extraction.
-    - CPU cache spatial locality vs multi-pass traversal analysis.
-    - Eager progressive buffer return mechanics and single `try / finally` exception safety.
-
-14. **[13 - Compiler Diagnostics Reference](./13-COMPILER-DIAGNOSTICS.md)**
-     - Complete catalog of compiler diagnostic codes (`PARQ001`–`PARQ011`).
-     - Severity, rationale, and remediation examples for every rule.
-
-15. **[14 - Parquet Compatibility Matrix](./14-COMPATIBILITY-MATRIX.md)**
-     - Supported generated model types and schema shapes.
-     - Modern and classic Parquet.Net product boundaries.
-     - Backward, forward, schema-evolution, and semantic compatibility definitions.
-
-16. **[15 - Nested Types: M0 Spike Findings](./15-NESTED-TYPES-SPIKE-FINDINGS.md)**
-     - Empirically verified def/rep level conventions for structs, lists, and maps.
-     - Parquet.Net 6.1.0 and 4.25.0 nested API traps that shape the #176 emitter design.
-
-17. **[16 - Version And Schema-Evolution Matrix](./16-VERSION-AND-SCHEMA-EVOLUTION.md)**
+10. **[16 - Version And Schema-Evolution Matrix](./16-VERSION-AND-SCHEMA-EVOLUTION.md)**
      - Schema-evolution contract: reordering, extra columns, absent optional and required columns.
      - Producer/consumer/version matrix across Parquet.Net, PyArrow and DuckDB, and the recorded report.
      - Cross-version interoperability between the modern and classic packages.
 
-18. **[17 - Generated Public API Baselines](./17-GENERATED-API-BASELINES.md)**
+11. **[17 - Generated Public API Baselines](./17-GENERATED-API-BASELINES.md)**
      - The `.api.txt` signature-only baseline emitted next to every golden file, and its grammar.
      - Why it borrows the `PublicAPI.Shipped.txt` grammar, and the two deliberate deviations.
      - Deterministic ordinal ordering, the `UPDATE_GOLDEN_FILES` refresh path, and the CI gate.
 
-19. **[18 - The API Change Contract](./18-API-CHANGE-CONTRACT.md)**
+12. **[18 - The API Change Contract](./18-API-CHANGE-CONTRACT.md)**
      - The rule: nothing enters a governed surface without a catalogue line *and* a ledger entry.
      - The three surfaces (emitted / shipped package / internal seams) and their build gates
        `PARQAPI001`, `RS0016` and `PARQAPI002`.
      - Semver buckets, the pre-1.0 stance, the `**Unapproved-by-design:**` escape hatch, and the
        four-step author process.
 
-20. **[19 - Public API Surface & Naming Grammar](./19-PUBLIC-API-SURFACE.md)**
+13. **[19 - Public API Surface & Naming Grammar](./19-PUBLIC-API-SURFACE.md)**
      - The four-axis read grid — source × shape × execution × pushdown — and which cells exist.
      - Eight catalogued surface defects, each checkable against the `*.api.txt` baselines.
      - The options-vs-parameters rule (D1), the naming grammar, and the fate of the flat methods.
 
-21. **[20 - Unified Pushdown & the Generated/Shipped Boundary](./20-UNIFIED-PUSHDOWN-API.md)**
+14. **[20 - Unified Pushdown & the Generated/Shipped Boundary](./20-UNIFIED-PUSHDOWN-API.md)**
      - One inspectable filter replacing four pushdown mechanisms; capability declared by attribute, not at the call site.
      - What stays generated, what ships, and the measurements that decide it.
 
-22. **[21 - Code Metrics Baselines & The Complexity Ratchet](./21-CODE-METRICS.md)**
+15. **[21 - Code Metrics Baselines & The Complexity Ratchet](./21-CODE-METRICS.md)**
      - Checked-in Roslyn metrics baselines under `metrics/`, gated on drift rather than on absolute values.
      - What the Maintainability Index does *not* tell you, and why `CA1502` is calibrated below the
        cited guidance, with the history of its two named exceptions (#263 deleted both).
@@ -123,14 +124,14 @@ Welcome to the **Parquet.SourceGenerator** documentation repository. This folder
        well-decomposed methods), and the former `TargetParser.CollectMembers` at cyclomatic
        complexity 105 — decomposed in #263, worst method now 25.
 
-23. **[22 - Generated Code Metrics](./22-GENERATED-CODE-METRICS.md)**
+16. **[22 - Generated Code Metrics](./22-GENERATED-CODE-METRICS.md)**
      - The same mechanism turned on the *emitted* code: a `*.metrics.txt` beside every `*.api.txt`.
      - Which metrics carry signal for generated code and which do not — the Maintainability Index
        is reported but not gated, with the measurement that says why.
      - `ELOC_PER_MEMBER`, the size-per-capability ratio: 10 executable lines per emitted member for
        flat models, 33 for row-level lists.
 
-24. **[23 - Duplication Measurement & The Drift Gate](./23-DUPLICATION.md)**
+17. **[23 - Duplication Measurement & The Drift Gate](./23-DUPLICATION.md)**
      - Layer 3 of #251: token-level duplication across `src/`, checked in as `metrics/duplication.txt`
        and gated on drift — the `*.api.txt` grammar again.
      - Calibrated against the repo's demonstrated failure: the tool names the historical
@@ -139,7 +140,7 @@ Welcome to the **Parquet.SourceGenerator** documentation repository. This folder
      - Emitted code is out of scope by design — generated output repeating itself is the design,
        not a defect.
 
-25. **[24 - The Metrics Oracle](./24-METRICS-ORACLE.md)**
+18. **[24 - The Metrics Oracle](./24-METRICS-ORACLE.md)**
      - Nightly `windows-latest` job running Microsoft's own `Metrics.exe` against the layer-1
        baselines — the independent check on the bespoke computation that gates everything else.
      - Type-level agreement gated (MI ±2, the rest exact); assembly totals reported but never
@@ -148,7 +149,7 @@ Welcome to the **Parquet.SourceGenerator** documentation repository. This folder
      - Disagreement opens a GitHub issue rather than leaving a red schedule: failing nightlies
        get muted; issues get acted on.
 
-26. **[25 - The Call Graph](./25-CALL-GRAPH.md)**
+19. **[25 - The Call Graph](./25-CALL-GRAPH.md)**
      - The #251 family's structural view: connectivity as a gated artifact — drift on a
        checked-in method-level edge list, catalogued cycles, a fan-out ratchet, and a
        layering rule (components must not call the emitter hub) that would have caught the
@@ -156,7 +157,7 @@ Welcome to the **Parquet.SourceGenerator** documentation repository. This folder
      - The honest half: what the static approximation cannot see (delegates, virtuals), and
        why the unresolved count is a headline number rather than a footnote.
 
-27. **[26 - Mutation Testing the Behavioural Suite](./26-MUTATION-TESTING.md)**
+20. **[26 - Mutation Testing the Behavioural Suite](./26-MUTATION-TESTING.md)**
      - Layer 4 of #251: would a test notice if a line were *wrong*, not just executed? Stryker,
        run nightly. The design is the exclusion — golden-file / API-baseline / metrics / IL-shape
        suites are left out because they kill every mutation trivially and report a flattering lie.
