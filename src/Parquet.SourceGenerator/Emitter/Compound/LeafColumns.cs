@@ -5,6 +5,16 @@ using Parquet.SourceGenerator.Models;
 
 namespace Parquet.SourceGenerator.Emitter.Compound;
 
+/// <summary>What a leaf column's member chain step contributes to the def ladder.</summary>
+internal enum ChainStepKind
+{
+    /// <summary>A struct member: one optional Parquet group; no null test when required in C#.</summary>
+    Struct,
+
+    /// <summary>A list or array member: presence rung + element-slot rung (M3a: root lists only).</summary>
+    List,
+}
+
 /// <summary>
 /// One leaf column of the flattened emission plan. A flat property produces exactly one column
 /// whose <see cref="Slot"/> equals its property index and whose <see cref="SchemaPath"/> is
@@ -34,18 +44,17 @@ internal sealed class LeafColumn
     /// <summary>C# member chain from the row item to the value ("Ship", "City").</summary>
     public string[] MemberChain { get; set; } = [];
 
-    /// <summary>Per ancestor (outermost first): whether it is a C# value type (never writes def 0).</summary>
-    public bool[] AncestorIsValueType { get; set; } = [];
+    /// <summary>Per chain step: what kind of level the step introduces.</summary>
+    public ChainStepKind[] StepKinds { get; set; } = [];
 
-    /// <summary>
-    /// Per chain step: the step is a value-type struct member declared <c>T?</c>. Such a step
-    /// still writes through <c>.Value</c> after the presence test (a local of type <c>T?</c>
-    /// never flow-sugars into member access), unlike a reference step.
-    /// </summary>
-    public bool[] AncestorNullableValueStep { get; set; } = [];
+    /// <summary>Per chain step: the definition level written when this step is absent.</summary>
+    public int[] StepDefBase { get; set; } = [];
 
-    /// <summary>Per ancestor (outermost first): def ≥ threshold ⇔ that ancestor exists in the row.</summary>
-    public int[] AncestorPresenceThresholds { get; set; } = [];
+    /// <summary>Per chain step: whether the C# value can be null (a lift test is emitted).</summary>
+    public bool[] StepHasNullTest { get; set; } = [];
+
+    /// <summary>Per chain step: after the null test, member access goes through <c>.Value</c>.</summary>
+    public bool[] StepValueUnwrap { get; set; } = [];
 
     public int AncestorCount => SchemaPath.Length;
     public bool IsCompound => SchemaPath.Length > 0;
@@ -123,7 +132,7 @@ internal sealed class StructNode
     /// <summary>First DFS leaf under this node, used for the presence check.</summary>
     public LeafColumn? PresenceLeaf { get; set; }
 
-    public int PresenceThreshold => PresenceLeaf!.AncestorPresenceThresholds[Depth];
+    public int PresenceThreshold => PresenceLeaf!.StepDefBase[Depth] + 1;
 
     /// <summary>Element type of the per-row object array (value-type nodes cannot hold nulls).</summary>
     public string ArrayElementType => IsValueType ? ClrType : $"{ClrType}?";
@@ -173,8 +182,10 @@ internal sealed class EmissionPlan
                         SchemaPath = [],
                         MaxDef = 2 + (element.IsNullable ? 1 : 0),
                         MemberChain = [prop.Name],
-                        AncestorIsValueType = [],
-                        AncestorPresenceThresholds = [],
+                        StepKinds = [ChainStepKind.List],
+                        StepDefBase = [0],
+                        StepHasNullTest = [true],
+                        StepValueUnwrap = [false],
                         IsListLeaf = true,
                         ListPresenceRung = 1,
                         ListElementRung = 2,
@@ -198,8 +209,6 @@ internal sealed class EmissionPlan
                         SchemaPath = [],
                         MaxDef = prop.IsNullable ? 1 : 0,
                         MemberChain = [prop.Name],
-                        AncestorIsValueType = [],
-                        AncestorPresenceThresholds = [],
                     }
                 );
                 continue;
@@ -296,11 +305,16 @@ internal sealed class EmissionPlan
             // carries when that ancestor exists and everything below it is absent.
             int ancestors = childPath.Length;
             int maxDef = ancestors + (child.IsNullable ? 1 : 0);
-            var thresholds = new int[ancestors];
+            var kinds = new ChainStepKind[ancestors];
+            var defBases = new int[ancestors];
+            var hasNullTests = new bool[ancestors];
+            var valueUnwraps = new bool[ancestors];
             for (int a = 0; a < ancestors; a++)
             {
-                int rungsBelow = (ancestors - 1 - a) + (child.IsNullable ? 1 : 0);
-                thresholds[a] = maxDef - rungsBelow;
+                kinds[a] = ChainStepKind.Struct;
+                defBases[a] = a;
+                hasNullTests[a] = !valueTypes[a] || nullableValueSteps[a];
+                valueUnwraps[a] = valueTypes[a] && nullableValueSteps[a];
             }
 
             var column = new LeafColumn
@@ -311,9 +325,10 @@ internal sealed class EmissionPlan
                 SchemaPath = childPath,
                 MaxDef = maxDef,
                 MemberChain = chain,
-                AncestorIsValueType = valueTypes,
-                AncestorNullableValueStep = nullableValueSteps,
-                AncestorPresenceThresholds = thresholds,
+                StepKinds = kinds,
+                StepDefBase = defBases,
+                StepHasNullTest = hasNullTests,
+                StepValueUnwrap = valueUnwraps,
             };
             columns.Add(column);
             node.Leaves.Add(column);
