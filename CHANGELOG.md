@@ -35,6 +35,15 @@ Changes since `0.0.4`; this section becomes the next release entry when one is c
   1,148-line method at cyclomatic complexity **97** — within 8% of the worst hand-written method in
   the repository. Compiling each golden file in order to measure it also found that the emitted
   writer does not compile for a nullable value-type compound member (#255).
+- **Duplication measurement with a drift gate** (`metrics/duplication.txt`,
+  `docs/23-DUPLICATION.md`, layer 3 of #251). Token-level clones across the hand-written sources —
+  identifier-blind, literal-sensitive, 16-token windows extended along diagonal alignments, spans
+  of 40+ tokens reported per method pair — checked in with the `*.api.txt` grammar and gated on
+  drift in CI. Emitted code is excluded by design (repetition in generated output is the design,
+  not a defect). The detector was calibrated against the repo's demonstrated failure before
+  adoption: it names the historical `ResolveSchemaField` copies and all three read paths that
+  broke on #196. Current state, reported as the number the refactor case rests on: **93 clusters,
+  12,034 duplicated tokens**, worst pair `EmitReadArrayAsync` ↔ `EmitReadAsync` at 180 tokens.
 
 ### Changed
 - **`CHANGELOG.md` is now the release authority (#248).** `scripts/ParseChangelog.cs` validates the
@@ -44,6 +53,16 @@ Changes since `0.0.4`; this section becomes the next release entry when one is c
   version to a `build` job (full verification battery) and a `publish` job (NuGet push plus a
   GitHub release whose body is the changelog section). A version that is not described in the
   changelog cannot be published.
+- **`TargetParser.CollectMembers` decomposed (#263).** The generator's front door — every
+  `[ParquetSerializable]` type in every consumer's compilation passes through it — measured
+  cyclomatic complexity **105** across 463 lines with 11 parameters. It is now a `MemberScope` /
+  `MemberSink` pipeline of small methods, one per attribute family, rule, and model shape:
+  `CollectMember` itself is CC 15 and the largest fragment 21, `GetTargetModelCore` (CC 38, the
+  other grandfathered method) is 16, and no method in the repository exceeds the pre-existing
+  worst of 25. Both `[SuppressMessage]` grandfather clauses are deleted, the class-coupling
+  method gate has eight points of headroom where it had zero, and the maintainability floor moved
+  14 → 27. Behaviour-preserving by construction: every golden file and emitted-API baseline is
+  byte-identical.
 
 ---
 
