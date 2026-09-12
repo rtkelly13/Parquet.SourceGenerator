@@ -148,6 +148,14 @@ Welcome to the **Parquet.SourceGenerator** documentation repository. This folder
      - Disagreement opens a GitHub issue rather than leaving a red schedule: failing nightlies
        get muted; issues get acted on.
 
+26. **[25 - The Call Graph](./25-CALL-GRAPH.md)**
+     - The #251 family's structural view: connectivity as a gated artifact — drift on a
+       checked-in method-level edge list, catalogued cycles, a fan-out ratchet, and a
+       layering rule (components must not call the emitter hub) that would have caught the
+       `ResolveSchemaField` divergence as it happened.
+     - The honest half: what the static approximation cannot see (delegates, virtuals), and
+       why the unresolved count is a headline number rather than a footnote.
+
 ---
 
 ## ⚡ Quick Summary of Intent

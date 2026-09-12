@@ -357,3 +357,6 @@ MigrationBackup/
 temp/
 .temp/
 
+# Call-graph run summary (written by scripts/CallGraph.cs each run; the CI
+# step summary shows it — the baseline files are the tracked artifact)
+graph/callgraph-summary.md

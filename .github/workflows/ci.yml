@@ -171,6 +171,20 @@ jobs:
           fi
           exit $status
 
+      # #252: the call graph — structure as a gated artifact. Edge drift, declared
+      # cycles (graph/callgraph.allowlist.txt), the fan-out ratchet, and the
+      # components-must-not-call-the-hub layering rule. docs/25-CALL-GRAPH.md states
+      # what the static approximation cannot see; the unresolved count rides in the
+      # baseline header so the blind spot is measured, not hidden.
+      - name: Verify Call-Graph Baselines
+        run: |
+          status=0
+          dotnet run scripts/CallGraph.cs || status=$?
+          if [ -f graph/callgraph-summary.md ]; then
+            cat graph/callgraph-summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit $status
+
       # Dataset hash integrity is a gate on the COMMITTED bytes, so it must run
       # before any generated compatibility datasets are created. The pinned
       # hashes in test/data/fixture-manifest.json match the checked-in files only.
