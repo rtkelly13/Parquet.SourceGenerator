@@ -937,11 +937,7 @@ public static class TargetParser
         // stays unfiltered so parser tests and later milestones can build whole trees.
         bool pipelineScopedDial =
             (scope.CompoundKinds & (CompoundKinds.List | CompoundKinds.Map)) == CompoundKinds.List;
-        if (
-            compoundKind == PropertyKind.List
-            && pipelineScopedDial
-            && scope.CompoundDepth > 0
-        )
+        if (compoundKind == PropertyKind.List && pipelineScopedDial && scope.CompoundDepth > 0)
             return CompoundOutcome.NotRepresentable;
 
         PropertyModel? compoundModel = BuildCompoundModel(
@@ -1097,6 +1093,7 @@ public static class TargetParser
     /// <summary>
     /// Whether the consuming emitter can currently express this compound kind
     /// (the <see cref="CompoundKinds"/> milestone dial, #176).
+    /// </summary>
     /// <summary>
     /// M3b stack 2 scope for row-level lists under the pipeline dial: leaf elements (M3a) or
     /// reference-POCO elements whose collectable members are all leaves. Value-type elements,
