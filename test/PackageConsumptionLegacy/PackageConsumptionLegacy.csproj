@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <!--
-    Deliberately NOT part of Parquet.SourceGenertor.sln.
+    Deliberately NOT part of Parquet.SourceGenerator.slnx.
 
     Consumes Parquet.SourceGenerator.Legacy as a NuGet package built into ../../artifacts.
     Exercises Parquet.Net 4.25.0 across .NET 8, .NET 9, and .NET Framework 4.7.2.

@@ -62,7 +62,7 @@ jobs:
           echo "::notice::Fuzzing with PARQUET_FUZZ_SEED=$seed PARQUET_FUZZ_CASES=$cases"
 
       - name: Restore
-        run: dotnet restore Parquet.SourceGenertor.sln
+        run: dotnet restore Parquet.SourceGenerator.slnx
 
       - name: Run Property-Based Suite On Broad Seeds
         env:

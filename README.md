@@ -371,7 +371,7 @@ To build from source:
 ```bash
 git clone https://github.com/rtkelly13/Parquet.SourceGenerator.git
 cd Parquet.SourceGenerator
-dotnet build Parquet.SourceGenerator.sln --configuration Release
+dotnet build Parquet.SourceGenerator.slnx --configuration Release
 ```
 
 ---

@@ -95,11 +95,11 @@ jobs:
         run: dotnet run scripts/VerifyProvenance.cs
 
       - name: Restore dependencies
-        run: dotnet restore Parquet.SourceGenertor.sln
+        run: dotnet restore Parquet.SourceGenerator.slnx
 
       - name: Build Solution (Release)
         run: |
-          dotnet build Parquet.SourceGenertor.sln --configuration Release --no-restore \
+          dotnet build Parquet.SourceGenerator.slnx --configuration Release --no-restore \
             -warnaserror -p:Version=${{ needs.prepare.outputs.version }}
 
       # Dataset hash integrity gates the COMMITTED bytes, so it must run before any
@@ -109,7 +109,7 @@ jobs:
       # pinned Parquet.Net, whose hashes do not match the manifest, which is why the
       # release job failed tests that ci.yml passed.
       - name: Verify Checked-In Dataset Hash Integrity (pre-regeneration)
-        run: dotnet test Parquet.SourceGenertor.sln --configuration Release --no-build --filter "Category=DatasetIntegrity" --verbosity normal
+        run: dotnet test Parquet.SourceGenerator.slnx --configuration Release --no-build --filter "Category=DatasetIntegrity" --verbosity normal
 
       - name: Generate Python Test Datasets (PyArrow v1 & v2)
         env:
@@ -122,7 +122,7 @@ jobs:
         run: dotnet run --project test/Parquet.SourceGenerator.CLI/Parquet.SourceGenerator.CLI.csproj
 
       - name: Run Tests
-        run: dotnet test Parquet.SourceGenertor.sln --configuration Release --no-build
+        run: dotnet test Parquet.SourceGenerator.slnx --configuration Release --no-build
 
       - name: Execute Sample (CoreCLR)
         run: dotnet run --project samples/Parquet.SourceGenerator.SampleAot/Parquet.SourceGenerator.SampleAot.csproj --configuration Release
@@ -150,7 +150,7 @@ jobs:
 
       - name: Pack All Packages
         run: |
-          dotnet pack Parquet.SourceGenertor.sln --configuration Release --no-build \
+          dotnet pack Parquet.SourceGenerator.slnx --configuration Release --no-build \
             --output ./artifacts -p:Version=${{ needs.prepare.outputs.version }}
 
       - name: Verify Package Layout

@@ -198,7 +198,7 @@ public sealed record FuzzCase
     /// <summary>Renders the shell command that replays exactly this case.</summary>
     public string ReproCommand() =>
         $"PARQUET_FUZZ_SEED={Seed.ToString(CultureInfo.InvariantCulture)} PARQUET_FUZZ_CASES=1 "
-        + "dotnet test Parquet.SourceGenertor.sln -c Release --filter FullyQualifiedName~PropertyBased";
+        + "dotnet test Parquet.SourceGenerator.slnx -c Release --filter FullyQualifiedName~PropertyBased";
 
     /// <summary>Serialises the case to the on-disk regression fixture format.</summary>
     public string ToJson() =>

@@ -201,7 +201,7 @@ Four steps.
    Fill in *Alternatives considered* — that is the field with a reader in a year's time.
 4. **Verify.**
    ```bash
-   dotnet build Parquet.SourceGenertor.sln --configuration Release -warnaserror
+   dotnet build Parquet.SourceGenerator.slnx --configuration Release -warnaserror
    dotnet run scripts/CheckApiLedger.cs -- --base main
    ```
 
