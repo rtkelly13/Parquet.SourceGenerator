@@ -44,6 +44,27 @@ Changes since `0.0.4`; this section becomes the next release entry when one is c
   adoption: it names the historical `ResolveSchemaField` copies and all three read paths that
   broke on #196. Current state, reported as the number the refactor case rests on: **93 clusters,
   12,034 duplicated tokens**, worst pair `EmitReadArrayAsync` ↔ `EmitReadAsync` at 180 tokens.
+- **Metrics oracle — `Metrics.exe` cross-checks the bespoke computation**
+  (`.github/workflows/metrics-oracle.yml`, `scripts/MetricsOracleCompare.cs`,
+  `docs/24-METRICS-ORACLE.md`, #254). A nightly `windows-latest` job runs Microsoft's own
+  (Windows-only) metrics tool over both generator projects and compares it, type by type,
+  against the layer-1 baselines: MI within ±2, CC/CL/SLOC exact. Assembly totals are
+  reported but not gated — enumeration scope differs between the tools, and a tolerance
+  there would paper over real drift. Any disagreement fails the job and opens or updates a
+  `metrics-oracle` issue, because a red schedule gets muted and an issue gets acted on.
+  The check `CodeMetrics.cs` could never run on itself.
+- **Deterministic call-graph artifact with cycle, fan-out and layering gates**
+  (`scripts/CallGraph.cs`, `graph/*.callgraph.txt`, `graph/callgraph.allowlist.txt`,
+  `docs/callgraph.md`, `docs/callgraph-generated.md`, `docs/25-CALL-GRAPH.md`, #252).
+  This repo's defects have been graph defects — #252 makes the graph an artifact: static
+  edges per method as an ordinal baseline gated on drift, no multi-node cycle without a
+  catalogued reason (today's entire cycle inventory is the #176 compound parser and the
+  definition-ladder emitter — tree recursion, `SELF`/`SCC` lines with the argument written
+  down), a fan-out ratchet (28 today), and a layering rule that would have caught the
+  `ResolveSchemaField` divergence as it happened: components must not call back into the
+  emitter hub. Measured shape: 211 nodes / 356 edges / depth 6. The honesty clause is part
+  of the artifact: delegates and virtual dispatch are invisible to it, and the unresolved
+  call-site count rides in the baseline header.
 
 ### Changed
 - **`CHANGELOG.md` is now the release authority (#248).** `scripts/ParseChangelog.cs` validates the
