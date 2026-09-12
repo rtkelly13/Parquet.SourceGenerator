@@ -932,18 +932,12 @@ public static class TargetParser
         if (!IsCompoundKindEmittable(compoundKind, scope.CompoundKinds))
             return CompoundOutcome.NotRepresentable;
 
-        // M3a emission scope: the v6 pipeline dial (Struct|List, no Map) means specifically
-        // row-level lists with leaf elements — lists of POCOs and lists nested in structs reject
-        // with PARQ006 until M3b. The full-capability dial (maps present ⇒ every model the parser
-        // can build) stays unfiltered, which keeps parser tests and M3b+ emitters able to see
-        // whole trees.
+        // M3b scope under the v6 pipeline dial (Struct|List, no Map): row-level lists only;
+        // element shapes are screened against the built model below. The full-capability dial
+        // stays unfiltered so parser tests and later milestones can build whole trees.
         bool pipelineScopedDial =
             (scope.CompoundKinds & (CompoundKinds.List | CompoundKinds.Map)) == CompoundKinds.List;
-        if (
-            compoundKind == PropertyKind.List
-            && pipelineScopedDial
-            && (scope.CompoundDepth > 0 || !ListElementIsLeaf(underlyingType))
-        )
+        if (compoundKind == PropertyKind.List && pipelineScopedDial && scope.CompoundDepth > 0)
             return CompoundOutcome.NotRepresentable;
 
         PropertyModel? compoundModel = BuildCompoundModel(
@@ -969,6 +963,17 @@ public static class TargetParser
 
         if (compoundModel is null)
             return CompoundOutcome.NotRepresentable;
+
+        if (
+            compoundKind == PropertyKind.List
+            && pipelineScopedDial
+            && !ListElementShapeSupported(compoundModel)
+        )
+        {
+            // Decline shapes the current stacks defer: value-type elements or compound
+            // children inside list elements.
+            return CompoundOutcome.NotRepresentable;
+        }
 
         // Rule PARQ014: a compound member has no row-group statistics of its own.
         ReportIneligibleSortKey(
@@ -1089,18 +1094,24 @@ public static class TargetParser
     /// Whether the consuming emitter can currently express this compound kind
     /// (the <see cref="CompoundKinds"/> milestone dial, #176).
     /// </summary>
-    private static bool ListElementIsLeaf(ITypeSymbol listType)
+    /// <summary>
+    /// M3b stack 2 scope for row-level lists under the pipeline dial: leaf elements (M3a) or
+    /// reference-POCO elements whose collectable members are all leaves. Value-type elements,
+    /// compound children inside elements, and lists inside compounds live in later stacks;
+    /// the parser builds the full tree under its test dial regardless.
+    /// </summary>
+    private static bool ListElementShapeSupported(PropertyModel listModel)
     {
-        ITypeSymbol element = listType is IArrayTypeSymbol array
-            ? array.ElementType
-            : ((INamedTypeSymbol)listType).TypeArguments[0];
-        ITypeSymbol probe = element;
-        if (
-            element is INamedTypeSymbol { IsGenericType: true } ng
-            && ng.ConstructedFrom.SpecialType == SpecialType.System_Nullable_T
-        )
-            probe = ng.TypeArguments[0];
-        return TryClassifyKind(probe, element, out _);
+        if (listModel.Element is not { Kind: PropertyKind.Struct } element)
+            return true;
+        if (element.CompoundIsValueType)
+            return false;
+        foreach (PropertyModel child in element.Children)
+        {
+            if (child.Kind is PropertyKind.Struct or PropertyKind.List or PropertyKind.Map)
+                return false;
+        }
+        return true;
     }
 
     private static bool IsCompoundKindEmittable(PropertyKind kind, CompoundKinds allowed) =>

@@ -5,7 +5,7 @@
 # MI maintainability index 0-100 (higher is better), CC cyclomatic complexity,
 # CL class coupling, DIT depth of inheritance, SLOC source lines, ELOC executable lines.
 # Ordinal-sorted. MI is compared with a +/-2 tolerance; every other metric exactly.
-A:Parquet.SourceGenerator.Legacy | MI=80 CC=497 CL=104 DIT=1 SLOC=4934 ELOC=1279
+A:Parquet.SourceGenerator.Legacy | MI=80 CC=500 CL=104 DIT=1 SLOC=4945 ELOC=1282
 M:Parquet.SourceGenerator.Emitter.Components.ArrowLeafMapping.ArrowArrayType.get | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
 M:Parquet.SourceGenerator.Emitter.Components.ArrowLeafMapping.ArrowArrayType.set | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
 M:Parquet.SourceGenerator.Emitter.Components.ArrowLeafMapping.ArrowTypeId.get | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
@@ -136,7 +136,7 @@ M:Parquet.SourceGenerator.Parser.TargetParser.IsCompoundKindEmittable(Parquet.So
 M:Parquet.SourceGenerator.Parser.TargetParser.IsNullableColumn(Microsoft.CodeAnalysis.ITypeSymbol) | MI=88 CC=4 CL=2 DIT=- SLOC=28 ELOC=1
 M:Parquet.SourceGenerator.Parser.TargetParser.IsReachableFromGeneratedCode(Microsoft.CodeAnalysis.Accessibility) | MI=89 CC=3 CL=1 DIT=- SLOC=11 ELOC=1
 M:Parquet.SourceGenerator.Parser.TargetParser.IsSupportedOnClassicApi(Microsoft.CodeAnalysis.ITypeSymbol) | MI=90 CC=1 CL=4 DIT=- SLOC=7 ELOC=1
-M:Parquet.SourceGenerator.Parser.TargetParser.ListElementIsLeaf(Microsoft.CodeAnalysis.ITypeSymbol) | MI=71 CC=4 CL=6 DIT=- SLOC=17 ELOC=4
+M:Parquet.SourceGenerator.Parser.TargetParser.ListElementShapeSupported(Parquet.SourceGenerator.Models.PropertyModel) | MI=70 CC=5 CL=3 DIT=- SLOC=23 ELOC=5
 M:Parquet.SourceGenerator.Parser.TargetParser.MatchesAttributeName(Microsoft.CodeAnalysis.INamedTypeSymbol, string[], string[]) | MI=71 CC=6 CL=3 DIT=- SLOC=13 ELOC=4
 M:Parquet.SourceGenerator.Parser.TargetParser.MemberScope.MemberScope(string, Microsoft.CodeAnalysis.Location, Parquet.SourceGenerator.Parser.ParquetApiLevel, Parquet.SourceGenerator.Parser.CompoundKinds, System.Collections.Generic.List<Parquet.SourceGenerator.Models.DiagnosticInfo>, System.Collections.Generic.HashSet<Microsoft.CodeAnalysis.INamedTypeSymbol>, int) | MI=100 CC=1 CL=7 DIT=- SLOC=15 ELOC=0
 M:Parquet.SourceGenerator.Parser.TargetParser.MemberSink.Properties.get | MI=100 CC=1 CL=2 DIT=- SLOC=1 ELOC=0
@@ -150,7 +150,7 @@ M:Parquet.SourceGenerator.Parser.TargetParser.ReportIneligibleSortKey(bool, Parq
 M:Parquet.SourceGenerator.Parser.TargetParser.ReportNonPublicColumn(Microsoft.CodeAnalysis.ISymbol, Parquet.SourceGenerator.Parser.TargetParser.MemberScope, Microsoft.CodeAnalysis.Location) | MI=80 CC=2 CL=7 DIT=- SLOC=17 ELOC=2
 M:Parquet.SourceGenerator.Parser.TargetParser.TryClassifyCompound(Microsoft.CodeAnalysis.ITypeSymbol, out Parquet.SourceGenerator.Models.PropertyKind) | MI=53 CC=10 CL=10 DIT=- SLOC=51 ELOC=17
 M:Parquet.SourceGenerator.Parser.TargetParser.TryClassifyKind(Microsoft.CodeAnalysis.ITypeSymbol, Microsoft.CodeAnalysis.ITypeSymbol, out Parquet.SourceGenerator.Models.PropertyKind) | MI=59 CC=9 CL=8 DIT=- SLOC=60 ELOC=10
-M:Parquet.SourceGenerator.Parser.TargetParser.TryCollectCompoundMember(Microsoft.CodeAnalysis.ISymbol, Microsoft.CodeAnalysis.ITypeSymbol, Microsoft.CodeAnalysis.ITypeSymbol, Parquet.SourceGenerator.Parser.TargetParser.ColumnOptions, bool, Microsoft.CodeAnalysis.Location, Parquet.SourceGenerator.Parser.TargetParser.MemberScope, Parquet.SourceGenerator.Parser.TargetParser.MemberSink) | MI=57 CC=9 CL=15 DIT=- SLOC=78 ELOC=10
+M:Parquet.SourceGenerator.Parser.TargetParser.TryCollectCompoundMember(Microsoft.CodeAnalysis.ISymbol, Microsoft.CodeAnalysis.ITypeSymbol, Microsoft.CodeAnalysis.ITypeSymbol, Parquet.SourceGenerator.Parser.TargetParser.ColumnOptions, bool, Microsoft.CodeAnalysis.Location, Parquet.SourceGenerator.Parser.TargetParser.MemberScope, Parquet.SourceGenerator.Parser.TargetParser.MemberSink) | MI=55 CC=11 CL=15 DIT=- SLOC=83 ELOC=12
 M:Parquet.SourceGenerator.Parser.TargetParser.UnwrapNullable(Microsoft.CodeAnalysis.ITypeSymbol) | MI=72 CC=3 CL=5 DIT=- SLOC=16 ELOC=4
 M:Parquet.SourceGenerator.Parser.TargetParser.ValidateTargetDeclaration(Microsoft.CodeAnalysis.INamedTypeSymbol, Microsoft.CodeAnalysis.CSharp.Syntax.TypeDeclarationSyntax, System.Collections.Generic.List<Parquet.SourceGenerator.Models.DiagnosticInfo>) | MI=55 CC=11 CL=19 DIT=- SLOC=68 ELOC=12
 M:Parquet.SourceGenerator.Parser.TargetParserResult.TargetParserResult(Parquet.SourceGenerator.Models.TargetClassModel, Parquet.SourceGenerator.Models.EquatableArray<Parquet.SourceGenerator.Models.DiagnosticInfo>) | MI=100 CC=1 CL=3 DIT=- SLOC=7 ELOC=0
@@ -159,7 +159,7 @@ N:Parquet.SourceGenerator.Emitter.Components | MI=66 CC=156 CL=15 DIT=1 SLOC=154
 N:Parquet.SourceGenerator.Legacy | MI=64 CC=7 CL=25 DIT=1 SLOC=54 ELOC=14
 N:Parquet.SourceGenerator.Legacy.Emitter | MI=51 CC=35 CL=10 DIT=1 SLOC=746 ELOC=354
 N:Parquet.SourceGenerator.Models | MI=86 CC=69 CL=23 DIT=1 SLOC=488 ELOC=75
-N:Parquet.SourceGenerator.Parser | MI=93 CC=230 CL=67 DIT=1 SLOC=1875 ELOC=281
+N:Parquet.SourceGenerator.Parser | MI=93 CC=233 CL=67 DIT=1 SLOC=1886 ELOC=284
 N:System.Runtime.CompilerServices | MI=100 CC=0 CL=0 DIT=1 SLOC=0 ELOC=0
 P:Parquet.SourceGenerator.Emitter.Components.ArrowLeafMapping.ArrowArrayType | MI=100 CC=2 CL=0 DIT=- SLOC=2 ELOC=1
 P:Parquet.SourceGenerator.Emitter.Components.ArrowLeafMapping.ArrowTypeId | MI=100 CC=2 CL=0 DIT=- SLOC=2 ELOC=1
@@ -237,7 +237,7 @@ T:Parquet.SourceGenerator.Models.SortKeyEligibility | MI=68 CC=15 CL=8 DIT=1 SLO
 T:Parquet.SourceGenerator.Models.TargetClassModel | MI=84 CC=3 CL=3 DIT=1 SLOC=46 ELOC=12
 T:Parquet.SourceGenerator.Parser.CompoundKinds | MI=90 CC=1 CL=1 DIT=1 SLOC=28 ELOC=4
 T:Parquet.SourceGenerator.Parser.ParquetApiLevel | MI=93 CC=1 CL=0 DIT=1 SLOC=22 ELOC=2
-T:Parquet.SourceGenerator.Parser.TargetParser | MI=62 CC=220 CL=66 DIT=1 SLOC=1811 ELOC=273
+T:Parquet.SourceGenerator.Parser.TargetParser | MI=62 CC=223 CL=66 DIT=1 SLOC=1822 ELOC=276
 T:Parquet.SourceGenerator.Parser.TargetParser.ColumnOptions | MI=100 CC=1 CL=1 DIT=1 SLOC=11 ELOC=0
 T:Parquet.SourceGenerator.Parser.TargetParser.CompoundOutcome | MI=100 CC=1 CL=0 DIT=1 SLOC=12 ELOC=0
 T:Parquet.SourceGenerator.Parser.TargetParser.MemberScope | MI=100 CC=1 CL=7 DIT=1 SLOC=15 ELOC=0

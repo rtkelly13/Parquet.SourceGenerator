@@ -54,7 +54,7 @@ public sealed class GeneratedCodeMetricsBaselineTests
     {
         // A zero-length theory silently passes, which would turn every assertion below into a
         // no-op the first time the directory layout moved.
-        Assert.Equal(5, GoldenSourceFiles().Count);
+        Assert.Equal(6, GoldenSourceFiles().Count);
     }
 
     [Theory]

@@ -63,6 +63,10 @@ internal sealed class LeafColumn
     public bool IsListLeaf { get; set; }
 
     /// <summary>List members: def ≥ this rung ⇔ the list exists (empty counts as existing).</summary>
+    /// <summary>Set when the list element is an attributed reference POCO: one lane column
+    /// per element leaf, all sharing one reconstructed List&lt;element&gt; per row.</summary>
+    public PropertyModel? ListElementStruct { get; set; }
+
     public int ListPresenceRung { get; set; }
 
     /// <summary>List members: def ≥ this rung ⇔ an element occupies this entry.</summary>
@@ -86,7 +90,18 @@ internal sealed class LeafColumn
         get
         {
             if (IsListLeaf)
-                return $"((global::Parquet.Schema.DataField)((global::Parquet.Schema.ListField)Schema.Fields[{RootPropertyIndex}]).Item)";
+            {
+                string listCur =
+                    $"((global::Parquet.Schema.ListField)Schema.Fields[{RootPropertyIndex}]).Item";
+                for (int i = 0; i < SchemaPath.Length; i++)
+                {
+                    listCur =
+                        $"((global::Parquet.Schema.StructField){listCur}).Fields[{SchemaPath[i]}]";
+                }
+                return SchemaPath.Length == 0
+                    ? $"((global::Parquet.Schema.DataField){listCur})"
+                    : $"(global::Parquet.Schema.DataField){listCur}";
+            }
             string cur = $"Schema.Fields[{RootPropertyIndex}]";
             for (int i = 0; i < SchemaPath.Length; i++)
             {
@@ -173,27 +188,67 @@ internal sealed class EmissionPlan
                 rootNodeByProperty[root] = -1;
                 columnSlotByProperty[root] = columns.Count;
                 PropertyModel element = prop.Element!;
-                columns.Add(
-                    new LeafColumn
-                    {
-                        Slot = columns.Count,
-                        Leaf = element,
-                        RootPropertyIndex = root,
-                        SchemaPath = [],
-                        MaxDef = 2 + (element.IsNullable ? 1 : 0),
-                        MemberChain = [prop.Name],
-                        StepKinds = [ChainStepKind.List],
-                        StepDefBase = [0],
-                        StepHasNullTest = [true],
-                        StepValueUnwrap = [false],
-                        IsListLeaf = true,
-                        ListPresenceRung = 1,
-                        ListElementRung = 2,
-                        MemberAnnotatedNullable = prop.IsNullable,
-                        ListMemberName = prop.Name,
-                        ListMemberIsArray = prop.TypeName.EndsWith("[]", StringComparison.Ordinal),
-                    }
-                );
+                if (element.Kind != PropertyKind.Struct)
+                {
+                    columns.Add(
+                        new LeafColumn
+                        {
+                            Slot = columns.Count,
+                            Leaf = element,
+                            RootPropertyIndex = root,
+                            SchemaPath = [],
+                            MaxDef = 2 + (element.IsNullable ? 1 : 0),
+                            MemberChain = [prop.Name],
+                            StepKinds = [ChainStepKind.List],
+                            StepDefBase = [0],
+                            StepHasNullTest = [true],
+                            StepValueUnwrap = [false],
+                            IsListLeaf = true,
+                            ListPresenceRung = 1,
+                            ListElementRung = 2,
+                            MemberAnnotatedNullable = prop.IsNullable,
+                            ListMemberName = prop.Name,
+                            ListMemberIsArray = prop.TypeName.EndsWith(
+                                "[]",
+                                StringComparison.Ordinal
+                            ),
+                        }
+                    );
+                    continue;
+                }
+
+                // M3b stack 2: List<POCO> — one lane column per element leaf. The element
+                // struct group (always optional per docs/15 §2.4) contributes the rung at
+                // StepDefBase[1]; an element-null entry carries that def.
+                for (int c = 0; c < element.Children.Length; c++)
+                {
+                    PropertyModel child = element.Children[c];
+                    columns.Add(
+                        new LeafColumn
+                        {
+                            Slot = columns.Count,
+                            Leaf = child,
+                            RootPropertyIndex = root,
+                            SchemaPath = [c],
+                            MaxDef = 3 + (child.IsNullable ? 1 : 0),
+                            MemberChain = [prop.Name, child.Name],
+                            StepKinds = [ChainStepKind.List, ChainStepKind.Struct],
+                            StepDefBase = [0, 2],
+                            StepHasNullTest = [true, true],
+                            StepValueUnwrap = [false, false],
+                            IsListLeaf = true,
+                            ListElementStruct = element,
+                            ListPresenceRung = 1,
+                            ListElementRung = 2,
+                            MemberAnnotatedNullable = prop.IsNullable,
+                            ListMemberName = prop.Name,
+                            ListMemberIsArray = prop.TypeName.EndsWith(
+                                "[]",
+                                StringComparison.Ordinal
+                            ),
+                        }
+                    );
+                }
                 continue;
             }
             if (prop.Kind != PropertyKind.Struct)
