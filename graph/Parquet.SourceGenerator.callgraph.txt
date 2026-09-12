@@ -6,7 +6,7 @@
 #        components-must-not-call-the-emitter-hub layering.
 # Unresolved call sites (delegates, virtuals, framework): measured in the
 # header below so the blind spot is visible, never silently absent.
-# stats: nodes=211 edges=356 call-sites=3253 unresolved=2827
+# stats: nodes=215 edges=362 call-sites=3304 unresolved=2870
 E:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.CanEmit/(TargetClassModel) | Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.IsSupported/(TargetClassModel)
 E:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitColumn/(StringBuilder,PropertyModel,int) | Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitBinary/(StringBuilder,PropertyModel,ArrowLeafMapping,string,string,int)
 E:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitColumn/(StringBuilder,PropertyModel,int) | Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitConvertRequired/(StringBuilder,ArrowLeafMapping,string,string,int)
@@ -234,12 +234,19 @@ E:Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.EmitCompoundReconstru
 E:Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.EmitCompoundReconstruction/(StringBuilder,TargetClassModel,string,string) | Parquet.SourceGenerator.Emitter.Compound.EmissionPlan.NodesInReconstructionOrder/()
 E:Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.EmitLadder/(StringBuilder,LeafColumn,string,int,string,string) | Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.EmitLadder/(StringBuilder,LeafColumn,string,int,string,string)
 E:Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.EmitLadder/(StringBuilder,LeafColumn,string,int,string,string) | Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.GetCompoundLeafWriteExpression/(PropertyModel,string)
+E:Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.EmitLeafListLane/(StringBuilder,LeafColumn,string,string) | Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.GetCompoundLeafReadExpression/(PropertyModel,string)
+E:Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.EmitLeafListLane/(StringBuilder,LeafColumn,string,string) | Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.ListTypeOf/(LeafColumn,PropertyModel)
+E:Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.EmitListElementField/(StringBuilder,LeafColumn,string) | Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.GetCompoundLeafWriteExpression/(PropertyModel,string)
+E:Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.EmitListElementField/(StringBuilder,LeafColumn,string) | Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.GrowValues/(StringBuilder,LeafColumn,string)
+E:Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.EmitListExtraction/(StringBuilder,LeafColumn,string,string) | Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.EmitListElementField/(StringBuilder,LeafColumn,string)
 E:Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.EmitListExtraction/(StringBuilder,LeafColumn,string,string) | Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.GetCompoundLeafWriteExpression/(PropertyModel,string)
 E:Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.EmitListExtraction/(StringBuilder,LeafColumn,string,string) | Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.GrowLevels/(StringBuilder,int,string)
 E:Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.EmitListExtraction/(StringBuilder,LeafColumn,string,string) | Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.GrowValues/(StringBuilder,LeafColumn,string)
-E:Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.EmitListLanes/(StringBuilder,EmissionPlan,string,string) | Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.GetCompoundLeafReadExpression/(PropertyModel,string)
+E:Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.EmitListLanes/(StringBuilder,EmissionPlan,string,string) | Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.EmitLeafListLane/(StringBuilder,LeafColumn,string,string)
+E:Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.EmitListLanes/(StringBuilder,EmissionPlan,string,string) | Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.EmitStructListLane/(StringBuilder,LeafColumn,List<LeafColumn>,string,string)
 E:Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.EmitRootMemberAssignments/(StringBuilder,TargetClassModel,string,string,string) | Parquet.SourceGenerator.Emitter.Components.PropertyMappingComponent.GetReadExpression/(PropertyModel,string)
 E:Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.EmitRootMemberAssignments/(StringBuilder,TargetClassModel,string,string,string) | Parquet.SourceGenerator.Emitter.Compound.EmissionPlan.For/(TargetClassModel)
+E:Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.EmitStructListLane/(StringBuilder,LeafColumn,List<LeafColumn>,string,string) | Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.GetCompoundLeafReadExpression/(PropertyModel,string)
 E:Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.GetCompoundLeafReadExpression/(PropertyModel,string) | Parquet.SourceGenerator.Emitter.Components.PropertyMappingComponent.GetReadExpression/(PropertyModel,string)
 E:Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.GetCompoundLeafWriteExpression/(PropertyModel,string) | Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.ValueNullableWrapper/(PropertyModel)
 E:Parquet.SourceGenerator.Emitter.Compound.CompoundSchema.EmitSchema/(StringBuilder,TargetClassModel) | Parquet.SourceGenerator.Emitter.Compound.CompoundSchema.GetFieldCreationExpression/(PropertyModel,string)
@@ -348,7 +355,6 @@ E:Parquet.SourceGenerator.Parser.TargetParser.GetTargetModelCore/(INamedTypeSymb
 E:Parquet.SourceGenerator.Parser.TargetParser.HasAttribute/(ISymbol,string[],string[]) | Parquet.SourceGenerator.Parser.TargetParser.FindAttribute/(ISymbol,string[],string[])
 E:Parquet.SourceGenerator.Parser.TargetParser.HasParameterlessConstructor/(INamedTypeSymbol) | Parquet.SourceGenerator.Parser.TargetParser.IsReachableFromGeneratedCode/(Accessibility)
 E:Parquet.SourceGenerator.Parser.TargetParser.IsAssignable/(ISymbol) | Parquet.SourceGenerator.Parser.TargetParser.IsReachableFromGeneratedCode/(Accessibility)
-E:Parquet.SourceGenerator.Parser.TargetParser.ListElementIsLeaf/(ITypeSymbol) | Parquet.SourceGenerator.Parser.TargetParser.TryClassifyKind/(ITypeSymbol,ITypeSymbol,PropertyKind)
 E:Parquet.SourceGenerator.Parser.TargetParser.ReadColumnOptions/(ISymbol) | Parquet.SourceGenerator.Parser.TargetParser.FindAttribute/(ISymbol,string[],string[])
 E:Parquet.SourceGenerator.Parser.TargetParser.ReadColumnOptions/(ISymbol) | Parquet.SourceGenerator.Parser.TargetParser.HasAttribute/(ISymbol,string[],string[])
 E:Parquet.SourceGenerator.Parser.TargetParser.ReadDecimalOptions/(ISymbol,MemberScope,Location) | Parquet.SourceGenerator.Parser.TargetParser.FindAttribute/(ISymbol,string[],string[])
@@ -357,7 +363,7 @@ E:Parquet.SourceGenerator.Parser.TargetParser.ReportIneligibleSortKey/(bool,Prop
 E:Parquet.SourceGenerator.Parser.TargetParser.ReportNonPublicColumn/(ISymbol,MemberScope,Location) | Parquet.SourceGenerator.Parser.TargetParser.HasAttribute/(ISymbol,string[],string[])
 E:Parquet.SourceGenerator.Parser.TargetParser.TryCollectCompoundMember/(ISymbol,ITypeSymbol,ITypeSymbol,ColumnOptions,bool,Location,MemberScope,MemberSink) | Parquet.SourceGenerator.Parser.TargetParser.BuildCompoundModel/(PropertyKind,ITypeSymbol,string,ITypeSymbol,string,int,bool,ParquetApiLevel,string,Location,List<DiagnosticInfo>,HashSet<INamedTypeSymbol>,int,CompoundKinds,bool)
 E:Parquet.SourceGenerator.Parser.TargetParser.TryCollectCompoundMember/(ISymbol,ITypeSymbol,ITypeSymbol,ColumnOptions,bool,Location,MemberScope,MemberSink) | Parquet.SourceGenerator.Parser.TargetParser.IsCompoundKindEmittable/(PropertyKind,CompoundKinds)
-E:Parquet.SourceGenerator.Parser.TargetParser.TryCollectCompoundMember/(ISymbol,ITypeSymbol,ITypeSymbol,ColumnOptions,bool,Location,MemberScope,MemberSink) | Parquet.SourceGenerator.Parser.TargetParser.ListElementIsLeaf/(ITypeSymbol)
+E:Parquet.SourceGenerator.Parser.TargetParser.TryCollectCompoundMember/(ISymbol,ITypeSymbol,ITypeSymbol,ColumnOptions,bool,Location,MemberScope,MemberSink) | Parquet.SourceGenerator.Parser.TargetParser.ListElementShapeSupported/(PropertyModel)
 E:Parquet.SourceGenerator.Parser.TargetParser.TryCollectCompoundMember/(ISymbol,ITypeSymbol,ITypeSymbol,ColumnOptions,bool,Location,MemberScope,MemberSink) | Parquet.SourceGenerator.Parser.TargetParser.ReportIneligibleSortKey/(bool,PropertyModel,ISymbol,string,Location,List<DiagnosticInfo>)
 E:Parquet.SourceGenerator.Parser.TargetParser.TryCollectCompoundMember/(ISymbol,ITypeSymbol,ITypeSymbol,ColumnOptions,bool,Location,MemberScope,MemberSink) | Parquet.SourceGenerator.Parser.TargetParser.TryClassifyCompound/(ITypeSymbol,PropertyKind)
 E:Parquet.SourceGenerator.Parser.TargetParser.UnwrapNullable/(ITypeSymbol) | Parquet.SourceGenerator.Parser.TargetParser.IsNullableColumn/(ITypeSymbol)

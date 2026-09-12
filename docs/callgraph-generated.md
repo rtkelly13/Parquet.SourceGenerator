@@ -55,6 +55,19 @@ graph TD
     tsampledomainmodelsordereventparquetstreamsource_049 -->|3| tsampledomainmodelsordereventparquetextensions_047
 ```
 
+## PocoOrderParquetExtensions.g
+
+```mermaid
+graph TD
+    tsampledomainmodelspocoorderparquetextensions_046["SampleDomain.Models.PocoOrderParquetExtensions"]
+    tsampledomainmodelspocoorderparquetmemorysource_048["SampleDomain.Models.PocoOrderParquetMemorySource"]
+    tsampledomainmodelspocoorderparquetparallelsource_050["SampleDomain.Models.PocoOrderParquetParallelSource"]
+    tsampledomainmodelspocoorderparquetstreamsource_048["SampleDomain.Models.PocoOrderParquetStreamSource"]
+    tsampledomainmodelspocoorderparquetmemorysource_048 -->|2| tsampledomainmodelspocoorderparquetextensions_046
+    tsampledomainmodelspocoorderparquetparallelsource_050 -->|2| tsampledomainmodelspocoorderparquetextensions_046
+    tsampledomainmodelspocoorderparquetstreamsource_048 -->|2| tsampledomainmodelspocoorderparquetextensions_046
+```
+
 ## ScalarMetricParquetExtensions.g
 
 ```mermaid
