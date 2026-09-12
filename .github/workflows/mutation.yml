@@ -1,0 +1,135 @@
+name: Mutation Testing (nightly)
+
+# #261, layer 4 of #251: does a mutated line of the generator still get caught by a
+# failing TEST, or only by a text diff? Coverage says a line executed; mutation testing
+# says a test would have noticed if the line were wrong — and per the issue, Stryker
+# runs here with the snapshot-style suites (golden files, API/metrics baselines, IL
+# shape) EXCLUDED, because those "kill" any mutation trivially and would report a
+# flattering lie. The exclusion and its reasoning live in stryker-config.json and
+# docs/26-MUTATION-TESTING.md; read them before touching the filter.
+#
+# Reporting follows #189's lesson: a scheduled job that merely fails gets muted, so
+# this one never gates on the score. It maintains ONE PR (mutation/headline branch),
+# refreshing its body nightly; humans merge or close, Stryker only informs. Thresholds
+# are unset until the baseline number is established (issue AC: no floor picked in
+# advance). Runs nightly, never per-PR: a full mutation sweep is far too slow for
+# review feedback.
+
+on:
+  schedule:
+    - cron: '30 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: mutation-nightly
+  cancel-in-progress: false
+
+jobs:
+  mutate:
+    name: Stryker.NET over the behavioural suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Restore local tools
+        run: dotnet tool restore --disable-parallel
+
+      - name: Restore solution dependencies
+        run: dotnet restore Parquet.SourceGenertor.sln
+
+      - name: Build (Release, no generators-in-the-way of test discovery)
+        run: dotnet build Parquet.SourceGenertor.sln --configuration Release --no-restore
+
+      - name: Stryker — the generator (parser + emitters)
+        run: |
+          set -euo pipefail
+          before=$(ls -1d StrykerOutput/*/ 2>/dev/null | sort)
+          dotnet tool run dotnet-stryker -- \
+            -p Parquet.SourceGenerator.csproj \
+            --log-to-file
+          after=$(ls -1d StrykerOutput/*/ | sort)
+          newdir=$(comm -13 <(printf '%s\n' "$before") <(printf '%s\n' "$after") | head -1)
+          echo "GENERATOR_REPORT=$newdir/reports/mutation-report.json" >> "$GITHUB_ENV"
+        timeout-minutes: 100
+
+      - name: Stryker — shipped runtime helpers (Attributes)
+        run: |
+          set -euo pipefail
+          before=$(ls -1d StrykerOutput/*/ 2>/dev/null | sort)
+          dotnet tool run dotnet-stryker -- \
+            -p Parquet.SourceGenerator.Attributes.csproj \
+            --log-to-file
+          after=$(ls -1d StrykerOutput/*/ | sort)
+          newdir=$(comm -13 <(printf '%s\n' "$before") <(printf '%s\n' "$after") | head -1)
+          echo "ATTRIBUTES_REPORT=$newdir/reports/mutation-report.json" >> "$GITHUB_ENV"
+        timeout-minutes: 45
+
+      - name: Summarize reports
+        run: |
+          set -euo pipefail
+          : > mutation-headline.md
+          dotnet run scripts/MutationSummary.cs -- \
+            --report "$ATTRIBUTES_REPORT" \
+            --label "Parquet.SourceGenerator.Attributes (shipped helpers)" \
+            --out mutation-headline.md --append
+          dotnet run scripts/MutationSummary.cs -- \
+            --report "$GENERATOR_REPORT" \
+            --label "Parquet.SourceGenerator (parser + emitters)" \
+            --out mutation-headline.md --append
+          test -s mutation-headline.md
+
+      - name: Refresh the mutation headline PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          branch="mutation/headline"
+          mkdir -p docs
+          {
+            echo "# Mutation testing headline — latest nightly run"
+            echo
+            echo "Score computed over the behavioural suite only (snapshot-style tests"
+            echo "excluded — see docs/26-MUTATION-TESTING.md before reading a number)."
+            echo
+            echo "_Updated nightly from the [mutation workflow]($RUN_URL)._"
+            echo
+            cat mutation-headline.md
+          } > docs/MUTATION-HEADLINE.md
+          git checkout -B "$branch"
+          git add docs/MUTATION-HEADLINE.md
+          git commit -m "chore(mutation): nightly mutation score refresh"
+          git push -f -u origin "$branch"
+          existing=$(gh pr list --repo "$REPO" --head "$branch" --state open --json number --jq '.[0].number // empty')
+          body="Nightly mutation score over the **behavioural suite only** — golden-file, API-baseline, metrics-baseline and IL-shape tests are deliberately excluded (they kill every mutation trivially; the score would be a flattering lie). Full reasoning: docs/26-MUTATION-TESTING.md. The floor is intentionally unset until this baseline is established (#261 AC); merge or close — this PR is a report, not a request."
+          if [ -n "$existing" ]; then
+            gh pr edit "$existing" --repo "$REPO" --body "$body"
+          else
+            gh pr create --repo "$REPO" --base main --head "$branch" \
+              --title "chore(mutation): nightly mutation testing baseline (#261)" \
+              --body "$body"
+          fi
+
+      - name: Upload raw Stryker reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: stryker-reports
+          path: StrykerOutput/**/reports/*.json
+          if-no-files-found: warn
