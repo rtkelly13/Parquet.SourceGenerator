@@ -16,26 +16,23 @@ git clone https://github.com/rtkelly13/Parquet.SourceGenerator.git
 cd Parquet.SourceGenerator
 ```
 
-> The solution file is named `Parquet.SourceGenertor.sln` — the typo is historical and kept so
-> existing clones keep working.
-
 ---
 
 ## 🧪 Building & Testing
 
 ### 1. Build Solution
 ```bash
-dotnet build Parquet.SourceGenertor.sln --configuration Release
+dotnet build Parquet.SourceGenerator.slnx --configuration Release
 ```
 
 ### 2. Run Test Suite
 ```bash
-dotnet test Parquet.SourceGenertor.sln --configuration Release
+dotnet test Parquet.SourceGenerator.slnx --configuration Release
 ```
 
 ### 3. Run Test Suite with Code Coverage
 ```bash
-dotnet test --collect:"XPlat Code Coverage" Parquet.SourceGenertor.sln
+dotnet test --collect:"XPlat Code Coverage" Parquet.SourceGenerator.slnx
 ```
 
 ### 4. Run the AOT sample

@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <!--
-    Deliberately NOT part of Parquet.SourceGenertor.sln.
+    Deliberately NOT part of Parquet.SourceGenerator.slnx.
 
     It consumes Parquet.SourceGenerator as a NuGet package at a version that only exists once
     `dotnet pack` has produced it into ../../artifacts. Including it in the solution would make

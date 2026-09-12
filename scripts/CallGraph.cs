@@ -448,7 +448,7 @@ static string? FindRepoRoot()
         dir = dir.Parent
     )
     {
-        if (File.Exists(Path.Combine(dir.FullName, "Parquet.SourceGenertor.sln")))
+        if (File.Exists(Path.Combine(dir.FullName, "Parquet.SourceGenerator.slnx")))
             return dir.FullName;
     }
     return null;

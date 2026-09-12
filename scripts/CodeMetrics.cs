@@ -367,7 +367,7 @@ static string FindRepositoryRoot()
 {
     var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
     while (
-        dir is not null && !File.Exists(Path.Combine(dir.FullName, "Parquet.SourceGenertor.sln"))
+        dir is not null && !File.Exists(Path.Combine(dir.FullName, "Parquet.SourceGenerator.slnx"))
     )
     {
         dir = dir.Parent;

@@ -82,7 +82,7 @@ jobs:
             10.0.x
 
       - name: Restore dependencies
-        run: dotnet restore Parquet.SourceGenertor.sln
+        run: dotnet restore Parquet.SourceGenerator.slnx
 
       - name: Regenerate Golden Files And API Baselines
         run: |

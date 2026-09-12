@@ -1,0 +1,27 @@
+<Solution>
+    <Configurations>
+        <Platform Name="Any CPU" />
+        <Platform Name="x64" />
+        <Platform Name="x86" />
+    </Configurations>
+    <Folder Name="/benchmarks/">
+        <Project Path="benchmarks/Parquet.SourceGenerator.Benchmarks/Parquet.SourceGenerator.Benchmarks.csproj" />
+    </Folder>
+    <Folder Name="/samples/">
+        <Project Path="samples/Parquet.SourceGenerator.SampleAot/Parquet.SourceGenerator.SampleAot.csproj" />
+    </Folder>
+    <Folder Name="/src/">
+        <Project Path="src/Parquet.SourceGenerator.Attributes/Parquet.SourceGenerator.Attributes.csproj" />
+        <Project Path="src/Parquet.SourceGenerator.Legacy/Parquet.SourceGenerator.Legacy.csproj" />
+        <Project Path="src/Parquet.SourceGenerator/Parquet.SourceGenerator.csproj" />
+    </Folder>
+    <Folder Name="/test/">
+        <Project Path="test/Parquet.SourceGenerator.AotTest/Parquet.SourceGenerator.AotTest.csproj" />
+        <Project Path="test/Parquet.SourceGenerator.CLI/Parquet.SourceGenerator.CLI.csproj" />
+        <Project Path="test/Parquet.SourceGenerator.Tests/Parquet.SourceGenerator.Tests.csproj" />
+    </Folder>
+    <Folder Name="/tools/">
+        <Project Path="tools/BenchmarkSummaryGenerator/BenchmarkSummaryGenerator.csproj" />
+        <Project Path="tools/Parquet.SourceGenerator.ApiGates/Parquet.SourceGenerator.ApiGates.csproj" />
+    </Folder>
+</Solution>

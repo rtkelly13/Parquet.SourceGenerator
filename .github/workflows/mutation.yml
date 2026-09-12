@@ -48,10 +48,10 @@ jobs:
         run: dotnet tool restore --disable-parallel
 
       - name: Restore solution dependencies
-        run: dotnet restore Parquet.SourceGenertor.sln
+        run: dotnet restore Parquet.SourceGenerator.slnx
 
       - name: Build (Release, no generators-in-the-way of test discovery)
-        run: dotnet build Parquet.SourceGenertor.sln --configuration Release --no-restore
+        run: dotnet build Parquet.SourceGenerator.slnx --configuration Release --no-restore
 
       - name: Stryker — the generator (parser + emitters)
         run: |

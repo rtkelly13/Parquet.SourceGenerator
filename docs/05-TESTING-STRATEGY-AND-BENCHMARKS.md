@@ -152,7 +152,7 @@ derived from it, so printing a seed is enough to replay a failure anywhere:
 
 ```bash
 PARQUET_FUZZ_SEED=4354685581836845355 PARQUET_FUZZ_CASES=1 \
-  dotnet test Parquet.SourceGenertor.sln -c Release --filter FullyQualifiedName~PropertyBased
+  dotnet test Parquet.SourceGenerator.slnx -c Release --filter FullyQualifiedName~PropertyBased
 ```
 
 Randomness comes from `FuzzRandom` (SplitMix64), not `System.Random`, because a reproducible seed is
