@@ -1,0 +1,14 @@
+{
+  "stryker-config": {
+    "test-case-filter": "FullyQualifiedName!~GoldenCodeGenRegressionTests&FullyQualifiedName!~GeneratedApiBaselineTests&FullyQualifiedName!~GeneratedCodeMetricsBaselineTests&FullyQualifiedName!~IlInterrogationTests&Category!=ExternalInterop&Category!=DatasetIntegrity",
+    "solution": "Parquet.SourceGenertor.sln",
+    "test-projects": [
+      "test/Parquet.SourceGenerator.Tests/Parquet.SourceGenerator.Tests.csproj"
+    ],
+    "reporters": [
+      "json"
+    ],
+    "disable-bail": true,
+    "concurrency": 4
+  }
+}

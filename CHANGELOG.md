@@ -65,6 +65,18 @@ Changes since `0.0.4`; this section becomes the next release entry when one is c
   emitter hub. Measured shape: 211 nodes / 356 edges / depth 6. The honesty clause is part
   of the artifact: delegates and virtual dispatch are invisible to it, and the unresolved
   call-site count rides in the baseline header.
+- **Mutation testing for the behavioural suite** (`stryker-config.json`,
+  `.github/workflows/mutation.yml`, `scripts/MutationSummary.cs`,
+  `docs/26-MUTATION-TESTING.md`, layer 4 of #251). Stryker.NET runs nightly and answers the
+  question coverage cannot: would a test notice if a line were *wrong*? The defining decision
+  is what it leaves out — the golden-file, API-baseline, metrics-baseline and IL-shape suites
+  are excluded, because they assert the *text/shape* of emitted output and would "kill" every
+  mutation trivially, reporting a flattering ~100% that proves nothing about semantic coverage.
+  Round-trip, property-based (#198), diagnostic and compile-check tests stay in. It reports
+  through a single PR refreshed nightly (the #189 lesson: a red schedule gets muted, a
+  reviewable PR gets acted on), and the score is recomputed with an explicit denominator.
+  **No threshold is set** — the first night establishes the baseline; a floor picked before the
+  number is known is vacuous or permanently red.
 
 ### Changed
 - **`CHANGELOG.md` is now the release authority (#248).** `scripts/ParseChangelog.cs` validates the

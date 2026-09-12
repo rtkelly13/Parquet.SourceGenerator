@@ -156,6 +156,12 @@ Welcome to the **Parquet.SourceGenerator** documentation repository. This folder
      - The honest half: what the static approximation cannot see (delegates, virtuals), and
        why the unresolved count is a headline number rather than a footnote.
 
+27. **[26 - Mutation Testing the Behavioural Suite](./26-MUTATION-TESTING.md)**
+     - Layer 4 of #251: would a test notice if a line were *wrong*, not just executed? Stryker,
+       run nightly. The design is the exclusion — golden-file / API-baseline / metrics / IL-shape
+       suites are left out because they kill every mutation trivially and report a flattering lie.
+     - Reports through one refreshed PR, never a red build; no threshold until the baseline exists.
+
 ---
 
 ## ⚡ Quick Summary of Intent
