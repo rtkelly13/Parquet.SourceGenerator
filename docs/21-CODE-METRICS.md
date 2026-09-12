@@ -101,6 +101,12 @@ still true of the latest release (5.6.0).
 library. `scripts/CodeMetrics.cs` is therefore that tool, cross-platform, with a diff-friendly
 renderer in place of XML.
 
+"But cannot run on the current runner" is not "cannot be in CI": #254 added a nightly
+`windows-latest` job that runs `Metrics.exe` itself and cross-checks it, type by type, against
+the baselines this page gates. The division of labour: **the cross-platform computation is the
+per-PR gate** (fast feedback, same OS as the rest of CI), **Microsoft's binary is the oracle**
+("is our ruler accurate?" is a nightly question). See [24 — The Metrics Oracle](./24-METRICS-ORACLE.md).
+
 ## Refreshing
 
 One command, the same verb as every other checked-in artifact in this repository:

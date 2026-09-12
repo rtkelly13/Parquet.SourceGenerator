@@ -44,6 +44,15 @@ Changes since `0.0.4`; this section becomes the next release entry when one is c
   adoption: it names the historical `ResolveSchemaField` copies and all three read paths that
   broke on #196. Current state, reported as the number the refactor case rests on: **93 clusters,
   12,034 duplicated tokens**, worst pair `EmitReadArrayAsync` ↔ `EmitReadAsync` at 180 tokens.
+- **Metrics oracle — `Metrics.exe` cross-checks the bespoke computation**
+  (`.github/workflows/metrics-oracle.yml`, `scripts/MetricsOracleCompare.cs`,
+  `docs/24-METRICS-ORACLE.md`, #254). A nightly `windows-latest` job runs Microsoft's own
+  (Windows-only) metrics tool over both generator projects and compares it, type by type,
+  against the layer-1 baselines: MI within ±2, CC/CL/SLOC exact. Assembly totals are
+  reported but not gated — enumeration scope differs between the tools, and a tolerance
+  there would paper over real drift. Any disagreement fails the job and opens or updates a
+  `metrics-oracle` issue, because a red schedule gets muted and an issue gets acted on.
+  The check `CodeMetrics.cs` could never run on itself.
 
 ### Changed
 - **`CHANGELOG.md` is now the release authority (#248).** `scripts/ParseChangelog.cs` validates the

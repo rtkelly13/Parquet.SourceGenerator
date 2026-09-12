@@ -139,6 +139,15 @@ Welcome to the **Parquet.SourceGenerator** documentation repository. This folder
      - Emitted code is out of scope by design — generated output repeating itself is the design,
        not a defect.
 
+25. **[24 - The Metrics Oracle](./24-METRICS-ORACLE.md)**
+     - Nightly `windows-latest` job running Microsoft's own `Metrics.exe` against the layer-1
+       baselines — the independent check on the bespoke computation that gates everything else.
+     - Type-level agreement gated (MI ±2, the rest exact); assembly totals reported but never
+       gated, because the two tools differ in enumeration scope before they could differ in
+       arithmetic.
+     - Disagreement opens a GitHub issue rather than leaving a red schedule: failing nightlies
+       get muted; issues get acted on.
+
 ---
 
 ## ⚡ Quick Summary of Intent
