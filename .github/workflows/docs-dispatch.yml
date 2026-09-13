@@ -1,0 +1,34 @@
+name: Dispatch Documentation Portal Rebuild
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - 'test/**/GoldenFiles/**'
+      - 'metrics/**'
+      - 'README.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dispatch:
+    name: dispatch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger docs.ryankelly.dev repository dispatch
+        env:
+          GH_TOKEN: ${{ secrets.DOCS_DISPATCH_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::notice::DOCS_DISPATCH_TOKEN secret is not set; skipping cross-repo dispatch."
+            exit 0
+          fi
+          echo "Dispatching docs_update event to rtkelly13/docs.ryankelly.dev..."
+          gh api repos/rtkelly13/docs.ryankelly.dev/dispatches \
+            -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -f event_type=docs_update
