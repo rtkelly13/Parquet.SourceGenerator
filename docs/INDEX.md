@@ -163,6 +163,10 @@ The documentation is organized into three distinct tiers based on audience and i
        suites are left out because they kill every mutation trivially and report a flattering lie.
      - Reports through one refreshed PR, never a red build; no threshold until the baseline exists.
 
+21. **[27 - Architectural Peer Study: Protobuf & Serialization Engines](./27-ARCHITECTURAL-PEER-STUDY-PROTOBUF.md)**
+     - Comparative analysis of Google.Protobuf, protobuf-net, and Parquet.SourceGenerator.
+     - Architectural trade-offs, where PSG leads, peer mechanisms worth stealing (ABI matrix, corpus sweeps, defensive DoS limits), and why runtime engine seams are rejected.
+
 ---
 
 ## ⚡ Quick Summary of Intent
