@@ -164,6 +164,7 @@ To enable Native AOT:
 
 ## 🔗 Links & Resources
 
+* [Documentation Portal](https://docs.ryankelly.dev/parquet-sourcegenerator)
 * [GitHub Repository](https://github.com/rtkelly13/Parquet.SourceGenerator)
 * [Design Documentation](https://github.com/rtkelly13/Parquet.SourceGenerator/blob/main/docs/INDEX.md)
 * [Contributing Guide](https://github.com/rtkelly13/Parquet.SourceGenerator/blob/main/CONTRIBUTING.md)

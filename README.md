@@ -3,6 +3,7 @@
 # Parquet.SourceGenerator
 
 [![Build & E2E Status](https://github.com/rtkelly13/Parquet.SourceGenerator/actions/workflows/ci.yml/badge.svg)](https://github.com/rtkelly13/Parquet.SourceGenerator/actions/workflows/ci.yml)
+[![Documentation](https://img.shields.io/badge/docs-docs.ryankelly.dev-blue.svg)](https://docs.ryankelly.dev/parquet-sourcegenerator)
 [![NuGet](https://img.shields.io/nuget/v/Parquet.SourceGenerator.svg)](https://www.nuget.org/packages/Parquet.SourceGenerator)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/rtkelly13/Parquet.SourceGenerator/blob/main/LICENSE)
 
@@ -341,6 +342,8 @@ OrderEventParquetExtensions.WriteParquetRowGroupAsync(writer, recordBatch);
 ---
 
 ## 📖 Documentation Hub
+
+> 🌐 **Interactive Documentation & API Catalog**: Visit [docs.ryankelly.dev/parquet-sourcegenerator](https://docs.ryankelly.dev/parquet-sourcegenerator) for interactive guides, live search, architecture diagrams, and full generated API symbol catalogs.
 
 | Document | Topic |
 |:--- |:--- |
