@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -77,36 +78,36 @@ public sealed class TestDataIntegrationTests
     public async Task ReadParquetAsyncDeserializesPyArrowV1Dataset()
     {
         string filePath = Path.Combine(TestDataRoot, "v1", "01_small_flat_primitives.parquet");
-        Assert.True(System.IO.File.Exists(filePath), $"File not found: {filePath}");
+        System.IO.File.Exists(filePath).ShouldBeTrue($"File not found: {filePath}");
 
         using var stream = System.IO.File.OpenRead(filePath);
         var records = await TestUserRecordParquetExtensions.ReadParquetAsync(stream);
 
-        Assert.Equal(100, records.Count);
-        Assert.Equal(0, records[0].Id);
-        Assert.Equal("user_0", records[0].Name);
-        Assert.Equal(0.0, records[0].Score);
-        Assert.True(records[0].IsActive);
-        Assert.Equal(1700000000000L, records[0].CreatedAtMs);
+        records.Count.ShouldBe(100);
+        records[0].Id.ShouldBe(0);
+        records[0].Name.ShouldBe("user_0");
+        records[0].Score.ShouldBe(0.0);
+        records[0].IsActive.ShouldBeTrue();
+        records[0].CreatedAtMs.ShouldBe(1700000000000L);
 
-        Assert.Equal(99, records[99].Id);
-        Assert.Equal("user_99", records[99].Name);
-        Assert.False(records[99].IsActive);
+        records[99].Id.ShouldBe(99);
+        records[99].Name.ShouldBe("user_99");
+        records[99].IsActive.ShouldBeFalse();
     }
 
     [Fact]
     public async Task ReadParquetAsyncDeserializesPyArrowV2Dataset()
     {
         string filePath = Path.Combine(TestDataRoot, "v2", "01_small_flat_primitives.parquet");
-        Assert.True(System.IO.File.Exists(filePath), $"File not found: {filePath}");
+        System.IO.File.Exists(filePath).ShouldBeTrue($"File not found: {filePath}");
 
         using var stream = System.IO.File.OpenRead(filePath);
         var records = await TestUserRecordParquetExtensions.ReadParquetAsync(stream);
 
-        Assert.Equal(100, records.Count);
-        Assert.Equal(50, records[50].Id);
-        Assert.Equal("user_50", records[50].Name);
-        Assert.True(records[50].IsActive);
+        records.Count.ShouldBe(100);
+        records[50].Id.ShouldBe(50);
+        records[50].Name.ShouldBe("user_50");
+        records[50].IsActive.ShouldBeTrue();
     }
 
     [Fact]
@@ -117,15 +118,15 @@ public sealed class TestDataIntegrationTests
             "v3",
             "01_small_flat_primitives.parquet"
         );
-        Assert.True(System.IO.File.Exists(filePath), $"File not found: {filePath}");
+        System.IO.File.Exists(filePath).ShouldBeTrue($"File not found: {filePath}");
 
         using var stream = System.IO.File.OpenRead(filePath);
         var records = await TestUserRecordParquetExtensions.ReadParquetAsync(stream);
 
-        Assert.Equal(100, records.Count);
-        Assert.Equal(10, records[10].Id);
-        Assert.Equal("user_10", records[10].Name);
-        Assert.True(records[10].IsActive);
+        records.Count.ShouldBe(100);
+        records[10].Id.ShouldBe(10);
+        records[10].Name.ShouldBe("user_10");
+        records[10].IsActive.ShouldBeTrue();
     }
 
     [Fact]
@@ -136,31 +137,31 @@ public sealed class TestDataIntegrationTests
             "v3",
             "02_medium_nullable_types.parquet"
         );
-        Assert.True(System.IO.File.Exists(filePath), $"File not found: {filePath}");
+        System.IO.File.Exists(filePath).ShouldBeTrue($"File not found: {filePath}");
 
         using var stream = System.IO.File.OpenRead(filePath);
         var records = await TestNullableRecordParquetExtensions.ReadParquetAsync(stream);
 
-        Assert.Equal(10000, records.Count);
-        Assert.Null(records[0].NullableInt);
-        Assert.Null(records[0].NullableString);
+        records.Count.ShouldBe(10000);
+        records[0].NullableInt.ShouldBeNull();
+        records[0].NullableString.ShouldBeNull();
 
-        Assert.Equal(10, records[1].NullableInt);
-        Assert.Equal("str_val_1", records[1].NullableString);
+        records[1].NullableInt.ShouldBe(10);
+        records[1].NullableString.ShouldBe("str_val_1");
     }
 
     [Fact]
     public async Task ReadParquetAsyncDeserializesLargeScaleDataset()
     {
         string filePath = Path.Combine(TestDataCSharpRoot, "v3", "05_large_scale_flat.parquet");
-        Assert.True(System.IO.File.Exists(filePath), $"File not found: {filePath}");
+        System.IO.File.Exists(filePath).ShouldBeTrue($"File not found: {filePath}");
 
         using var stream = System.IO.File.OpenRead(filePath);
         var records = await TestLargeFlatRecordParquetExtensions.ReadParquetAsync(stream);
 
-        Assert.Equal(100000, records.Count);
-        Assert.Equal(0L, records[0].Id);
-        Assert.Equal(99999L, records[99999].Id);
-        Assert.Equal(699993, records[99999].ValA);
+        records.Count.ShouldBe(100000);
+        records[0].Id.ShouldBe(0L);
+        records[99999].Id.ShouldBe(99999L);
+        records[99999].ValA.ShouldBe(699993);
     }
 }

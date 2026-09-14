@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -9,11 +10,8 @@ public sealed class VectorizedColumnTransformsTests
     [Fact]
     public void ConstantsMatchExpectedValues()
     {
-        Assert.Equal(DateTime.UnixEpoch.Ticks, VectorizedColumnTransforms.UnixEpochTicks);
-        Assert.Equal(
-            DateTime.UnixEpoch.Ticks | (1L << 62),
-            VectorizedColumnTransforms.UtcEpochConstant
-        );
+        VectorizedColumnTransforms.UnixEpochTicks.ShouldBe(DateTime.UnixEpoch.Ticks);
+        VectorizedColumnTransforms.UtcEpochConstant.ShouldBe(DateTime.UnixEpoch.Ticks | (1L << 62));
     }
 
     [Theory]
@@ -48,9 +46,9 @@ public sealed class VectorizedColumnTransformsTests
         for (int i = 0; i < count; i++)
         {
             long expectedTicks = VectorizedColumnTransforms.UnixEpochTicks + input[i] * 10L;
-            Assert.Equal(expectedTicks, ticksDst[i]);
-            Assert.Equal(DateTimeKind.Utc, dtDst[i].Kind);
-            Assert.Equal(expectedTicks, dtDst[i].Ticks);
+            ticksDst[i].ShouldBe(expectedTicks);
+            dtDst[i].Kind.ShouldBe(DateTimeKind.Utc);
+            dtDst[i].Ticks.ShouldBe(expectedTicks);
         }
 
         // Roundtrip: ticks -> epoch microseconds
@@ -58,7 +56,7 @@ public sealed class VectorizedColumnTransformsTests
         VectorizedColumnTransforms.ConvertTicksToEpochMicroseconds(ticksDst, roundtripMicros);
         for (int i = 0; i < count; i++)
         {
-            Assert.Equal(input[i], roundtripMicros[i]);
+            roundtripMicros[i].ShouldBe(input[i]);
         }
 
         // Roundtrip: DateTime -> epoch microseconds
@@ -66,7 +64,7 @@ public sealed class VectorizedColumnTransformsTests
         VectorizedColumnTransforms.ConvertDateTimeToEpochMicroseconds(dtDst, roundtripDtMicros);
         for (int i = 0; i < count; i++)
         {
-            Assert.Equal(input[i], roundtripDtMicros[i]);
+            roundtripDtMicros[i].ShouldBe(input[i]);
         }
     }
 
@@ -95,9 +93,9 @@ public sealed class VectorizedColumnTransformsTests
         for (int i = 0; i < count; i++)
         {
             long expectedTicks = VectorizedColumnTransforms.UnixEpochTicks + input[i] * 10_000L;
-            Assert.Equal(expectedTicks, ticksDst[i]);
-            Assert.Equal(DateTimeKind.Utc, dtDst[i].Kind);
-            Assert.Equal(expectedTicks, dtDst[i].Ticks);
+            ticksDst[i].ShouldBe(expectedTicks);
+            dtDst[i].Kind.ShouldBe(DateTimeKind.Utc);
+            dtDst[i].Ticks.ShouldBe(expectedTicks);
         }
 
         // Roundtrip: ticks -> epoch milliseconds
@@ -105,7 +103,7 @@ public sealed class VectorizedColumnTransformsTests
         VectorizedColumnTransforms.ConvertTicksToEpochMilliseconds(ticksDst, roundtripMillis);
         for (int i = 0; i < count; i++)
         {
-            Assert.Equal(input[i], roundtripMillis[i]);
+            roundtripMillis[i].ShouldBe(input[i]);
         }
 
         // Roundtrip: DateTime -> epoch milliseconds
@@ -113,7 +111,7 @@ public sealed class VectorizedColumnTransformsTests
         VectorizedColumnTransforms.ConvertDateTimeToEpochMilliseconds(dtDst, roundtripDtMillis);
         for (int i = 0; i < count; i++)
         {
-            Assert.Equal(input[i], roundtripDtMillis[i]);
+            roundtripDtMillis[i].ShouldBe(input[i]);
         }
     }
 
@@ -124,31 +122,31 @@ public sealed class VectorizedColumnTransformsTests
         var shortTicks = new long[9];
         var shortDt = new DateTime[9];
 
-        Assert.Throws<ArgumentException>(() =>
+        Should.Throw<ArgumentException>(() =>
             VectorizedColumnTransforms.ConvertEpochMicrosecondsToTicks(src, shortTicks)
         );
-        Assert.Throws<ArgumentException>(() =>
+        Should.Throw<ArgumentException>(() =>
             VectorizedColumnTransforms.ConvertEpochMicrosecondsToDateTime(src, shortDt)
         );
-        Assert.Throws<ArgumentException>(() =>
+        Should.Throw<ArgumentException>(() =>
             VectorizedColumnTransforms.ConvertEpochMillisecondsToTicks(src, shortTicks)
         );
-        Assert.Throws<ArgumentException>(() =>
+        Should.Throw<ArgumentException>(() =>
             VectorizedColumnTransforms.ConvertEpochMillisecondsToDateTime(src, shortDt)
         );
-        Assert.Throws<ArgumentException>(() =>
+        Should.Throw<ArgumentException>(() =>
             VectorizedColumnTransforms.ConvertTicksToEpochMicroseconds(src, shortTicks)
         );
-        Assert.Throws<ArgumentException>(() =>
+        Should.Throw<ArgumentException>(() =>
             VectorizedColumnTransforms.ConvertTicksToEpochMilliseconds(src, shortTicks)
         );
-        Assert.Throws<ArgumentException>(() =>
+        Should.Throw<ArgumentException>(() =>
             VectorizedColumnTransforms.ConvertDateTimeToEpochMicroseconds(
                 new DateTime[10],
                 shortTicks
             )
         );
-        Assert.Throws<ArgumentException>(() =>
+        Should.Throw<ArgumentException>(() =>
             VectorizedColumnTransforms.ConvertDateTimeToEpochMilliseconds(
                 new DateTime[10],
                 shortTicks
@@ -182,7 +180,7 @@ public sealed class VectorizedColumnTransformsTests
 
         for (int i = 0; i < count; i++)
         {
-            Assert.Equal(input[i] * factor, destination[i]);
+            destination[i].ShouldBe(input[i] * factor);
         }
     }
 
@@ -213,17 +211,17 @@ public sealed class VectorizedColumnTransformsTests
 
         for (int i = 0; i < count; i++)
         {
-            Assert.Equal(input[i] * factor, destination[i]);
+            destination[i].ShouldBe(input[i] * factor);
         }
     }
 
     [Fact]
     public void MultiplyScaleShortDestinationThrowsArgumentException()
     {
-        Assert.Throws<ArgumentException>(() =>
+        Should.Throw<ArgumentException>(() =>
             VectorizedColumnTransforms.MultiplyScale(new double[10], 2.0, new double[9])
         );
-        Assert.Throws<ArgumentException>(() =>
+        Should.Throw<ArgumentException>(() =>
             VectorizedColumnTransforms.MultiplyScale(new float[10], 2.0f, new float[9])
         );
     }
@@ -254,7 +252,7 @@ public sealed class VectorizedColumnTransformsTests
 
         for (int i = 0; i < count; i++)
         {
-            Assert.Equal((long)input[i], destination[i]);
+            destination[i].ShouldBe((long)input[i]);
         }
     }
 
@@ -285,7 +283,7 @@ public sealed class VectorizedColumnTransformsTests
 
         for (int i = 0; i < count; i++)
         {
-            Assert.Equal((int)input[i], destination[i]);
+            destination[i].ShouldBe((int)input[i]);
         }
     }
 
@@ -314,7 +312,7 @@ public sealed class VectorizedColumnTransformsTests
 
         for (int i = 0; i < count; i++)
         {
-            Assert.Equal((int)input[i], destination[i]);
+            destination[i].ShouldBe((int)input[i]);
         }
     }
 
@@ -341,7 +339,7 @@ public sealed class VectorizedColumnTransformsTests
 
         for (int i = 0; i < count; i++)
         {
-            Assert.Equal((int)input[i], destination[i]);
+            destination[i].ShouldBe((int)input[i]);
         }
     }
 
@@ -368,59 +366,59 @@ public sealed class VectorizedColumnTransformsTests
 
         for (int i = 0; i < count; i++)
         {
-            Assert.Equal((short)input[i], destination[i]);
+            destination[i].ShouldBe((short)input[i]);
         }
     }
 
     [Fact]
     public void WideningAndNarrowingShortDestinationThrowsArgumentException()
     {
-        Assert.Throws<ArgumentException>(() =>
+        Should.Throw<ArgumentException>(() =>
             VectorizedColumnTransforms.Widen(new int[10], new long[9])
         );
-        Assert.Throws<ArgumentException>(() =>
+        Should.Throw<ArgumentException>(() =>
             VectorizedColumnTransforms.Widen(new short[10], new int[9])
         );
-        Assert.Throws<ArgumentException>(() =>
+        Should.Throw<ArgumentException>(() =>
             VectorizedColumnTransforms.Widen(new byte[10], new int[9])
         );
-        Assert.Throws<ArgumentException>(() =>
+        Should.Throw<ArgumentException>(() =>
             VectorizedColumnTransforms.Narrow(new long[10], new int[9])
         );
-        Assert.Throws<ArgumentException>(() =>
+        Should.Throw<ArgumentException>(() =>
             VectorizedColumnTransforms.Narrow(new int[10], new short[9])
         );
-        Assert.Throws<ArgumentException>(() =>
+        Should.Throw<ArgumentException>(() =>
             VectorizedColumnTransforms.ConvertEpochMicrosecondsToTicks(new long[10], new long[9])
         );
-        Assert.Throws<ArgumentException>(() =>
+        Should.Throw<ArgumentException>(() =>
             VectorizedColumnTransforms.ConvertEpochMicrosecondsToDateTime(
                 new long[10],
                 new DateTime[9]
             )
         );
-        Assert.Throws<ArgumentException>(() =>
+        Should.Throw<ArgumentException>(() =>
             VectorizedColumnTransforms.ConvertTicksToEpochMicroseconds(new long[10], new long[9])
         );
-        Assert.Throws<ArgumentException>(() =>
+        Should.Throw<ArgumentException>(() =>
             VectorizedColumnTransforms.ConvertDateTimeToEpochMicroseconds(
                 new DateTime[10],
                 new long[9]
             )
         );
-        Assert.Throws<ArgumentException>(() =>
+        Should.Throw<ArgumentException>(() =>
             VectorizedColumnTransforms.ConvertEpochMillisecondsToTicks(new long[10], new long[9])
         );
-        Assert.Throws<ArgumentException>(() =>
+        Should.Throw<ArgumentException>(() =>
             VectorizedColumnTransforms.ConvertEpochMillisecondsToDateTime(
                 new long[10],
                 new DateTime[9]
             )
         );
-        Assert.Throws<ArgumentException>(() =>
+        Should.Throw<ArgumentException>(() =>
             VectorizedColumnTransforms.ConvertTicksToEpochMilliseconds(new long[10], new long[9])
         );
-        Assert.Throws<ArgumentException>(() =>
+        Should.Throw<ArgumentException>(() =>
             VectorizedColumnTransforms.ConvertDateTimeToEpochMilliseconds(
                 new DateTime[10],
                 new long[9]

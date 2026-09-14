@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Parquet;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -78,15 +79,15 @@ public class StreamingChunkLifecycleTests
         stream.Position = 0;
         await using (var reader = await ParquetReader.CreateAsync(stream))
         {
-            Assert.Equal(4, reader.RowGroupCount);
+            reader.RowGroupCount.ShouldBe(4);
             using var rg0 = reader.OpenRowGroupReader(0);
-            Assert.Equal(5, rg0.RowCount);
+            rg0.RowCount.ShouldBe(5);
             using var rg1 = reader.OpenRowGroupReader(1);
-            Assert.Equal(5, rg1.RowCount);
+            rg1.RowCount.ShouldBe(5);
             using var rg2 = reader.OpenRowGroupReader(2);
-            Assert.Equal(5, rg2.RowCount);
+            rg2.RowCount.ShouldBe(5);
             using var rg3 = reader.OpenRowGroupReader(3);
-            Assert.Equal(2, rg3.RowCount);
+            rg3.RowCount.ShouldBe(2);
         }
 
         // 2. Sequential Read
@@ -142,11 +143,11 @@ public class StreamingChunkLifecycleTests
         stream.Position = 0;
         await using (var reader = await ParquetReader.CreateAsync(stream))
         {
-            Assert.Equal(4, reader.RowGroupCount);
+            reader.RowGroupCount.ShouldBe(4);
             for (int r = 0; r < 4; r++)
             {
                 using var rg = reader.OpenRowGroupReader(r);
-                Assert.Equal(5, rg.RowCount);
+                rg.RowCount.ShouldBe(5);
             }
         }
 
@@ -185,13 +186,13 @@ public class StreamingChunkLifecycleTests
         stream.Position = 0;
         await using (var reader = await ParquetReader.CreateAsync(stream))
         {
-            Assert.Equal(3, reader.RowGroupCount);
+            reader.RowGroupCount.ShouldBe(3);
             using var rg0 = reader.OpenRowGroupReader(0);
-            Assert.Equal(5, rg0.RowCount);
+            rg0.RowCount.ShouldBe(5);
             using var rg1 = reader.OpenRowGroupReader(1);
-            Assert.Equal(5, rg1.RowCount);
+            rg1.RowCount.ShouldBe(5);
             using var rg2 = reader.OpenRowGroupReader(2);
-            Assert.Equal(1, rg2.RowCount);
+            rg2.RowCount.ShouldBe(1);
         }
 
         stream.Position = 0;
@@ -212,13 +213,13 @@ public class StreamingChunkLifecycleTests
         stream.Position = 0;
         await using (var reader = await ParquetReader.CreateAsync(stream))
         {
-            Assert.Equal(0, reader.RowGroupCount);
+            reader.RowGroupCount.ShouldBe(0);
         }
 
         stream.Position = 0;
         List<StreamingChunkModel> readBack =
             await StreamingChunkModelParquetExtensions.ReadParquetAsync(stream);
-        Assert.Empty(readBack);
+        readBack.ShouldBeEmpty();
     }
 
     [Fact]
@@ -236,11 +237,11 @@ public class StreamingChunkLifecycleTests
         stream.Position = 0;
         await using (var reader = await ParquetReader.CreateAsync(stream))
         {
-            Assert.Equal(2, reader.RowGroupCount);
+            reader.RowGroupCount.ShouldBe(2);
             using var rg0 = reader.OpenRowGroupReader(0);
-            Assert.Equal(5, rg0.RowCount);
+            rg0.RowCount.ShouldBe(5);
             using var rg1 = reader.OpenRowGroupReader(1);
-            Assert.Equal(2, rg1.RowCount);
+            rg1.RowCount.ShouldBe(2);
         }
 
         // Verify roundtrip read
@@ -251,17 +252,17 @@ public class StreamingChunkLifecycleTests
         AssertEqualLists(items, results);
 
         // Specifically assert the remainder items did not leak stale buffer contents
-        Assert.Equal(string.Empty, results[5].Text);
-        Assert.Null(results[5].OptionalText);
-        Assert.Empty(results[5].Data);
-        Assert.Equal(Guid.Empty, results[5].GuidVal);
-        Assert.Equal(0m, results[5].Amount);
+        results[5].Text.ShouldBe(string.Empty);
+        results[5].OptionalText.ShouldBeNull();
+        results[5].Data.ShouldBeEmpty();
+        results[5].GuidVal.ShouldBe(Guid.Empty);
+        results[5].Amount.ShouldBe(0m);
 
-        Assert.Equal(string.Empty, results[6].Text);
-        Assert.Null(results[6].OptionalText);
-        Assert.Empty(results[6].Data);
-        Assert.Equal(Guid.Empty, results[6].GuidVal);
-        Assert.Equal(0m, results[6].Amount);
+        results[6].Text.ShouldBe(string.Empty);
+        results[6].OptionalText.ShouldBeNull();
+        results[6].Data.ShouldBeEmpty();
+        results[6].GuidVal.ShouldBe(Guid.Empty);
+        results[6].Amount.ShouldBe(0m);
     }
 
     private static void AssertEqualLists(
@@ -269,15 +270,15 @@ public class StreamingChunkLifecycleTests
         List<StreamingChunkModel> actual
     )
     {
-        Assert.Equal(expected.Count, actual.Count);
+        actual.Count.ShouldBe(expected.Count);
         for (int i = 0; i < expected.Count; i++)
         {
-            Assert.Equal(expected[i].Id, actual[i].Id);
-            Assert.Equal(expected[i].Text, actual[i].Text);
-            Assert.Equal(expected[i].OptionalText, actual[i].OptionalText);
-            Assert.Equal(expected[i].Data, actual[i].Data);
-            Assert.Equal(expected[i].GuidVal, actual[i].GuidVal);
-            Assert.Equal(expected[i].Amount, actual[i].Amount);
+            actual[i].Id.ShouldBe(expected[i].Id);
+            actual[i].Text.ShouldBe(expected[i].Text);
+            actual[i].OptionalText.ShouldBe(expected[i].OptionalText);
+            actual[i].Data.ShouldBe(expected[i].Data);
+            actual[i].GuidVal.ShouldBe(expected[i].GuidVal);
+            actual[i].Amount.ShouldBe(expected[i].Amount);
         }
     }
 

@@ -2,6 +2,7 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Text;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -131,8 +132,8 @@ public sealed class Utf8StringDeduplicatorPrototypeTests
     public void EmptySpanReturnsEmptyStringWithoutTouchingTheTable()
     {
         using var cache = new Utf8StringDeduplicator(16);
-        Assert.Same(string.Empty, cache.GetOrAdd(ReadOnlySpan<byte>.Empty));
-        Assert.Same(string.Empty, cache.GetOrAdd(Array.Empty<byte>()));
+        cache.GetOrAdd(ReadOnlySpan<byte>.Empty).ShouldBeSameAs(string.Empty);
+        cache.GetOrAdd(Array.Empty<byte>()).ShouldBeSameAs(string.Empty);
     }
 
     [Fact]
@@ -145,8 +146,8 @@ public sealed class Utf8StringDeduplicatorPrototypeTests
         string first = cache.GetOrAdd(a);
         string second = cache.GetOrAdd(b);
 
-        Assert.Equal("Self-emp-not-inc", first);
-        Assert.Same(first, second);
+        first.ShouldBe("Self-emp-not-inc");
+        second.ShouldBeSameAs(first);
     }
 
     [Fact]
@@ -159,10 +160,10 @@ public sealed class Utf8StringDeduplicatorPrototypeTests
         string a = cache.GetOrAdd(withNul);
         string b = cache.GetOrAdd(withoutNul);
 
-        Assert.Equal(3, a.Length);
-        Assert.Equal('\0', a[1]);
-        Assert.Equal("ab", b);
-        Assert.NotSame(a, b);
+        a.Length.ShouldBe(3);
+        a[1].ShouldBe('\0');
+        b.ShouldBe("ab");
+        b.ShouldNotBeSameAs(a);
     }
 
     [Fact]
@@ -177,15 +178,15 @@ public sealed class Utf8StringDeduplicatorPrototypeTests
         string b = cache.GetOrAdd(truncatedSequence);
         string c = cache.GetOrAdd(overlong);
 
-        Assert.Equal(Encoding.UTF8.GetString(loneContinuation), a);
-        Assert.Equal(Encoding.UTF8.GetString(truncatedSequence), b);
-        Assert.Equal(Encoding.UTF8.GetString(overlong), c);
+        a.ShouldBe(Encoding.UTF8.GetString(loneContinuation));
+        b.ShouldBe(Encoding.UTF8.GetString(truncatedSequence));
+        c.ShouldBe(Encoding.UTF8.GetString(overlong));
 
         // Distinct invalid byte sequences can decode to the same replacement text, but the
         // cache keys on bytes so each keeps its own entry and none is confused for another.
-        Assert.Same(a, cache.GetOrAdd(loneContinuation));
-        Assert.Same(b, cache.GetOrAdd(truncatedSequence));
-        Assert.Same(c, cache.GetOrAdd(overlong));
+        cache.GetOrAdd(loneContinuation).ShouldBeSameAs(a);
+        cache.GetOrAdd(truncatedSequence).ShouldBeSameAs(b);
+        cache.GetOrAdd(overlong).ShouldBeSameAs(c);
     }
 
     [Fact]
@@ -198,10 +199,10 @@ public sealed class Utf8StringDeduplicatorPrototypeTests
         string a = cache.GetOrAdd(left);
         string b = cache.GetOrAdd(right);
 
-        Assert.EndsWith("A", a, StringComparison.Ordinal);
-        Assert.EndsWith("B", b, StringComparison.Ordinal);
-        Assert.Same(a, cache.GetOrAdd(left));
-        Assert.Same(b, cache.GetOrAdd(right));
+        a.ShouldEndWith("A", Case.Sensitive);
+        b.ShouldEndWith("B", Case.Sensitive);
+        cache.GetOrAdd(left).ShouldBeSameAs(a);
+        cache.GetOrAdd(right).ShouldBeSameAs(b);
     }
 
     [Fact]
@@ -230,14 +231,14 @@ public sealed class Utf8StringDeduplicatorPrototypeTests
             }
         }
 
-        Assert.Equal(64, colliding.Count);
+        colliding.Count.ShouldBe(64);
 
         using var cache = new Utf8StringDeduplicator(Capacity);
         for (int round = 0; round < 4; round++)
         {
             foreach (byte[] value in colliding)
             {
-                Assert.Equal(Encoding.UTF8.GetString(value), cache.GetOrAdd(value));
+                cache.GetOrAdd(value).ShouldBe(Encoding.UTF8.GetString(value));
             }
         }
     }
@@ -270,7 +271,7 @@ public sealed class Utf8StringDeduplicatorPrototypeTests
         }
 
         long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-        Assert.Equal(0, allocated);
+        allocated.ShouldBe(0);
     }
 
     private static uint Fnv1a(ReadOnlySpan<byte> utf8)

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -61,12 +62,10 @@ public sealed class SerializerOptionsTests
         long snappy = await WriteAndMeasureAsync(ParquetCompressionMethod.Snappy);
         long gzip = await WriteAndMeasureAsync(ParquetCompressionMethod.Gzip);
 
-        Assert.True(
-            snappy < uncompressed / 2,
+        (snappy < uncompressed / 2).ShouldBeTrue(
             $"Snappy ({snappy} bytes) should be well under half of uncompressed ({uncompressed} bytes)"
         );
-        Assert.True(
-            gzip < uncompressed / 2,
+        (gzip < uncompressed / 2).ShouldBeTrue(
             $"Gzip ({gzip} bytes) should be well under half of uncompressed ({uncompressed} bytes)"
         );
     }
@@ -104,9 +103,9 @@ public sealed class SerializerOptionsTests
             List<CompressibleRecord> read =
                 await CompressibleRecordParquetExtensions.ReadParquetAsync(stream);
 
-            Assert.Equal(2, read.Count);
-            Assert.Equal("first", read[0].Payload);
-            Assert.Equal("second", read[1].Payload);
+            read.Count.ShouldBe(2);
+            read[0].Payload.ShouldBe("first");
+            read[1].Payload.ShouldBe("second");
         }
     }
 
@@ -118,7 +117,7 @@ public sealed class SerializerOptionsTests
         // coarser, and the sub-millisecond part was lost on the way back. A timestamp carrying
         // microseconds that milliseconds cannot represent is what distinguishes the two.
         var captured = new DateTime(2026, 8, 5, 12, 34, 56, DateTimeKind.Utc).AddTicks(7_890);
-        Assert.NotEqual(0, captured.Ticks % TimeSpan.TicksPerMillisecond);
+        (captured.Ticks % TimeSpan.TicksPerMillisecond).ShouldNotBe(0);
 
         var written = new List<MicrosecondRecord>
         {
@@ -133,18 +132,18 @@ public sealed class SerializerOptionsTests
             stream
         );
 
-        Assert.Single(read);
+        read.ShouldHaveSingleItem();
 
         // Truncated to whole microseconds, which is the precision actually being requested.
         long expectedMicros = captured.Ticks / (TimeSpan.TicksPerMillisecond / 1000);
         long actualMicros = read[0].CapturedAt.Ticks / (TimeSpan.TicksPerMillisecond / 1000);
-        Assert.Equal(expectedMicros, actualMicros);
+        actualMicros.ShouldBe(expectedMicros);
 
         // And the value is genuinely finer than millisecond resolution would allow.
         DateTime millisecondTruncated = new DateTime(
             captured.Ticks - (captured.Ticks % TimeSpan.TicksPerMillisecond),
             DateTimeKind.Utc
         );
-        Assert.NotEqual(millisecondTruncated, read[0].CapturedAt);
+        read[0].CapturedAt.ShouldNotBe(millisecondTruncated);
     }
 }

@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -63,17 +64,17 @@ public sealed class SpanStringDeduplicationTests
             NotDeduplicating
         );
 
-        Assert.Equal(items.Count, deduplicated.Count);
-        Assert.Equal(items.Count, plain.Count);
+        deduplicated.Count.ShouldBe(items.Count);
+        plain.Count.ShouldBe(items.Count);
 
         for (int i = 0; i < items.Count; i++)
         {
-            Assert.Equal(items[i].RequiredCategory, deduplicated[i].RequiredCategory);
-            Assert.Equal(items[i].OptionalCategory, deduplicated[i].OptionalCategory);
+            deduplicated[i].RequiredCategory.ShouldBe(items[i].RequiredCategory);
+            deduplicated[i].OptionalCategory.ShouldBe(items[i].OptionalCategory);
 
             // The deduplicating path must agree with the plain path value for value.
-            Assert.Equal(plain[i].RequiredCategory, deduplicated[i].RequiredCategory);
-            Assert.Equal(plain[i].OptionalCategory, deduplicated[i].OptionalCategory);
+            deduplicated[i].RequiredCategory.ShouldBe(plain[i].RequiredCategory);
+            deduplicated[i].OptionalCategory.ShouldBe(plain[i].OptionalCategory);
         }
     }
 
@@ -113,8 +114,8 @@ public sealed class SpanStringDeduplicationTests
         );
 
         // An empty string must never be conflated with a null.
-        Assert.Null(read[0].OptionalCategory);
-        Assert.Equal(string.Empty, read[1].OptionalCategory);
+        read[0].OptionalCategory.ShouldBeNull();
+        read[1].OptionalCategory.ShouldBe(string.Empty);
     }
 
     [Fact]
@@ -144,9 +145,9 @@ public sealed class SpanStringDeduplicationTests
         );
 
         // A NUL must terminate nothing: full length has to be preserved.
-        Assert.Equal(withNul.Length, read[0].RequiredCategory.Length);
-        Assert.Equal(withNul, read[0].RequiredCategory);
-        Assert.Equal(onlyNuls, read[1].RequiredCategory);
+        read[0].RequiredCategory.Length.ShouldBe(withNul.Length);
+        read[0].RequiredCategory.ShouldBe(withNul);
+        read[1].RequiredCategory.ShouldBe(onlyNuls);
     }
 
     [Fact]
@@ -187,12 +188,12 @@ public sealed class SpanStringDeduplicationTests
         );
 
         // Two values sharing a 200,000-character prefix must not be conflated.
-        Assert.Equal(veryLong, read[0].RequiredCategory);
-        Assert.Equal(almostVeryLong, read[1].RequiredCategory);
-        Assert.NotEqual(read[0].RequiredCategory, read[1].RequiredCategory);
+        read[0].RequiredCategory.ShouldBe(veryLong);
+        read[1].RequiredCategory.ShouldBe(almostVeryLong);
+        read[1].RequiredCategory.ShouldNotBe(read[0].RequiredCategory);
 
         // The repeated long value should still be deduplicated to a single instance.
-        Assert.Same(read[0].RequiredCategory, read[2].RequiredCategory);
+        read[2].RequiredCategory.ShouldBeSameAs(read[0].RequiredCategory);
     }
 
     [Fact]
@@ -219,7 +220,7 @@ public sealed class SpanStringDeduplicationTests
             }
         }
 
-        Assert.Equal(40, colliding.Count);
+        colliding.Count.ShouldBe(40);
 
         var items = new List<SpanDedupRecord>();
         for (int i = 0; i < 400; i++)
@@ -265,13 +266,13 @@ public sealed class SpanStringDeduplicationTests
         var distinctRequired = read.Select(r => r.RequiredCategory)
             .Distinct(ReferenceEqualityComparer.Instance)
             .Count();
-        Assert.Equal(2, distinctRequired);
+        distinctRequired.ShouldBe(2);
 
         var distinctOptional = read.Where(r => r.OptionalCategory is not null)
             .Select(r => (object)r.OptionalCategory!)
             .Distinct(ReferenceEqualityComparer.Instance)
             .Count();
-        Assert.Equal(1, distinctOptional);
+        distinctOptional.ShouldBe(1);
     }
 
     [Fact]
@@ -314,30 +315,29 @@ public sealed class SpanStringDeduplicationTests
             NotDeduplicating
         );
 
-        Assert.Equal(items.Count, deduplicatedRead.Count);
-        Assert.Equal(items.Count, plainRead.Count);
+        deduplicatedRead.Count.ShouldBe(items.Count);
+        plainRead.Count.ShouldBe(items.Count);
 
         // 8 distinct required + 5 distinct optional values, however many rows carry them.
         int deduplicatedInstances = CountDistinctInstances(deduplicatedRead);
-        Assert.Equal(13, deduplicatedInstances);
+        deduplicatedInstances.ShouldBe(13);
 
         // Without deduplication every row holds its own instance, so the count tracks rows.
         int plainInstances = CountDistinctInstances(plainRead);
-        Assert.True(
-            plainInstances > deduplicatedInstances * 100,
+        (plainInstances > deduplicatedInstances * 100).ShouldBeTrue(
             $"Expected the plain read to hold far more string instances; got {plainInstances:N0} "
                 + $"versus {deduplicatedInstances:N0} deduplicated."
         );
 
         // Values must still be correct, not merely shared.
-        Assert.Equal(
-            items.Select(i => i.RequiredCategory).ToList(),
-            deduplicatedRead.Select(r => r.RequiredCategory).ToList()
-        );
-        Assert.Equal(
-            items.Select(i => i.OptionalCategory).ToList(),
-            deduplicatedRead.Select(r => r.OptionalCategory).ToList()
-        );
+        deduplicatedRead
+            .Select(r => r.RequiredCategory)
+            .ToList()
+            .ShouldBe(items.Select(i => i.RequiredCategory).ToList());
+        deduplicatedRead
+            .Select(r => r.OptionalCategory)
+            .ToList()
+            .ShouldBe(items.Select(i => i.OptionalCategory).ToList());
 
         static int CountDistinctInstances(List<SpanDedupRecord> rows)
         {

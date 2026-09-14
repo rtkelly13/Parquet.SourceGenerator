@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Parquet.SourceGenerator.Emitter;
 using Parquet.SourceGenerator.Models;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -179,19 +180,19 @@ public sealed class ColumnarHandoffTests
         List<ColumnarHandoffModel> fromColumns =
             await ColumnarHandoffModelParquetExtensions.ReadParquetAsync(columnarStream);
 
-        Assert.Equal(RowCount, fromColumns.Count);
-        Assert.Equal(fromRows.Count, fromColumns.Count);
+        fromColumns.Count.ShouldBe(RowCount);
+        fromColumns.Count.ShouldBe(fromRows.Count);
         for (int i = 0; i < fromRows.Count; i++)
         {
-            Assert.Equal(fromRows[i].Id, fromColumns[i].Id);
-            Assert.Equal(fromRows[i].Name, fromColumns[i].Name);
-            Assert.Equal(fromRows[i].Score, fromColumns[i].Score);
-            Assert.Equal(fromRows[i].OptionalScore, fromColumns[i].OptionalScore);
-            Assert.Equal(fromRows[i].Flag, fromColumns[i].Flag);
-            Assert.Equal(fromRows[i].CorrelationId, fromColumns[i].CorrelationId);
-            Assert.Equal(fromRows[i].CreatedAt, fromColumns[i].CreatedAt);
-            Assert.Equal(fromRows[i].OptionalCount, fromColumns[i].OptionalCount);
-            Assert.Equal(fromRows[i].Payload, fromColumns[i].Payload);
+            fromColumns[i].Id.ShouldBe(fromRows[i].Id);
+            fromColumns[i].Name.ShouldBe(fromRows[i].Name);
+            fromColumns[i].Score.ShouldBe(fromRows[i].Score);
+            fromColumns[i].OptionalScore.ShouldBe(fromRows[i].OptionalScore);
+            fromColumns[i].Flag.ShouldBe(fromRows[i].Flag);
+            fromColumns[i].CorrelationId.ShouldBe(fromRows[i].CorrelationId);
+            fromColumns[i].CreatedAt.ShouldBe(fromRows[i].CreatedAt);
+            fromColumns[i].OptionalCount.ShouldBe(fromRows[i].OptionalCount);
+            fromColumns[i].Payload.ShouldBe(fromRows[i].Payload);
         }
     }
 
@@ -209,7 +210,7 @@ public sealed class ColumnarHandoffTests
         // The columnar path reaches the same encoder with the same buffers, so the file bytes are
         // the same too. This is a stronger statement than value equality: it says the hand-off is
         // not merely equivalent but literally the same write.
-        Assert.Equal(rowStream.ToArray(), columnarStream.ToArray());
+        columnarStream.ToArray().ShouldBe(rowStream.ToArray());
     }
 
     [Fact]
@@ -245,7 +246,7 @@ public sealed class ColumnarHandoffTests
             );
         }
 
-        Assert.Equal(batchStream.ToArray(), positionalStream.ToArray());
+        positionalStream.ToArray().ShouldBe(batchStream.ToArray());
     }
 
     [Fact]
@@ -275,12 +276,12 @@ public sealed class ColumnarHandoffTests
         List<ColumnarHandoffModel> read =
             await ColumnarHandoffModelParquetExtensions.ReadParquetAsync(stream);
 
-        Assert.Equal(shortCount, read.Count);
+        read.Count.ShouldBe(shortCount);
         for (int i = 0; i < shortCount; i++)
         {
-            Assert.Equal(rows[i].Id, read[i].Id);
-            Assert.Equal(rows[i].OptionalScore, read[i].OptionalScore);
-            Assert.Equal(rows[i].OptionalCount, read[i].OptionalCount);
+            read[i].Id.ShouldBe(rows[i].Id);
+            read[i].OptionalScore.ShouldBe(rows[i].OptionalScore);
+            read[i].OptionalCount.ShouldBe(rows[i].OptionalCount);
         }
     }
 
@@ -295,7 +296,7 @@ public sealed class ColumnarHandoffTests
         List<ColumnarHandoffModel> read =
             await ColumnarHandoffModelParquetExtensions.ReadParquetAsync(stream);
 
-        Assert.Empty(read);
+        read.ShouldBeEmpty();
     }
 
     [Fact]
@@ -306,10 +307,10 @@ public sealed class ColumnarHandoffTests
         batch.Score = batch.Score.Slice(0, RowCount - 1);
 
         using var stream = new MemoryStream();
-        ArgumentException error = await Assert.ThrowsAsync<ArgumentException>(async () =>
+        ArgumentException error = await Should.ThrowAsync<ArgumentException>(async () =>
             await batch.WriteParquetAsync(stream)
         );
-        Assert.Contains("Score", error.Message, StringComparison.Ordinal);
+        error.Message.ShouldContain("Score");
     }
 
     [Fact]
@@ -323,11 +324,11 @@ public sealed class ColumnarHandoffTests
         );
 
         using var stream = new MemoryStream();
-        ArgumentException error = await Assert.ThrowsAsync<ArgumentException>(async () =>
+        ArgumentException error = await Should.ThrowAsync<ArgumentException>(async () =>
             await batch.WriteParquetAsync(stream)
         );
-        Assert.Contains("OptionalScore", error.Message, StringComparison.Ordinal);
-        Assert.Contains("definition levels", error.Message, StringComparison.Ordinal);
+        error.Message.ShouldContain("OptionalScore");
+        error.Message.ShouldContain("definition levels");
     }
 
     [Fact]
@@ -335,7 +336,7 @@ public sealed class ColumnarHandoffTests
     {
         var batch = new ColumnarHandoffModelColumnarBatch { RowCount = -1 };
         using var stream = new MemoryStream();
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () =>
+        await Should.ThrowAsync<ArgumentOutOfRangeException>(async () =>
             await batch.WriteParquetAsync(stream)
         );
     }
@@ -360,8 +361,8 @@ public sealed class ColumnarHandoffTests
             stream
         );
 
-        Assert.Equal(DenseA, read.Select(r => r.A).ToArray());
-        Assert.Equal(DenseB, read.Select(r => r.B).ToArray());
+        read.Select(r => r.A).ToArray().ShouldBe(DenseA);
+        read.Select(r => r.B).ToArray().ShouldBe(DenseB);
     }
 
     [Fact]
@@ -385,8 +386,8 @@ public sealed class ColumnarHandoffTests
         stream.Position = 0;
         List<ColumnarHandoffModel> read =
             await ColumnarHandoffModelParquetExtensions.ReadParquetAsync(stream);
-        Assert.Equal(RowCount * 2, read.Count);
-        Assert.Equal(rows[7].Name, read[RowCount + 7].Name);
+        read.Count.ShouldBe(RowCount * 2);
+        read[RowCount + 7].Name.ShouldBe(rows[7].Name);
     }
 
     // ──────────────────────────────────────────────────────────
@@ -449,11 +450,11 @@ public sealed class ColumnarHandoffTests
         string columnar = ExtractColumnarRegion(source);
 
         // The whole point of the hand-off: caller-owned buffers reach Parquet.Net untouched.
-        Assert.DoesNotContain("ArrayPool", columnar, StringComparison.Ordinal);
-        Assert.DoesNotContain(".Rent(", columnar, StringComparison.Ordinal);
+        columnar.ShouldNotContain("ArrayPool");
+        columnar.ShouldNotContain(".Rent(");
         // ...and nothing is copied into a scratch array either.
-        Assert.DoesNotContain(".CopyTo(", columnar, StringComparison.Ordinal);
-        Assert.DoesNotContain("new long[", columnar, StringComparison.Ordinal);
+        columnar.ShouldNotContain(".CopyTo(");
+        columnar.ShouldNotContain("new long[");
     }
 
     [Fact]
@@ -461,26 +462,10 @@ public sealed class ColumnarHandoffTests
     {
         string source = EmitFlatSource();
 
-        Assert.Contains(
-            "public global::System.ReadOnlyMemory<double> Weight;",
-            source,
-            StringComparison.Ordinal
-        );
-        Assert.Contains(
-            "public global::System.ReadOnlyMemory<int> WeightDefinitionLevels;",
-            source,
-            StringComparison.Ordinal
-        );
-        Assert.Contains(
-            "global::System.ReadOnlyMemory<double> weight,",
-            source,
-            StringComparison.Ordinal
-        );
-        Assert.Contains(
-            "global::System.ReadOnlyMemory<int> weightDefinitionLevels,",
-            source,
-            StringComparison.Ordinal
-        );
+        source.ShouldContain("public global::System.ReadOnlyMemory<double> Weight;");
+        source.ShouldContain("public global::System.ReadOnlyMemory<int> WeightDefinitionLevels;");
+        source.ShouldContain("global::System.ReadOnlyMemory<double> weight,");
+        source.ShouldContain("global::System.ReadOnlyMemory<int> weightDefinitionLevels,");
     }
 
     [Fact]
@@ -524,12 +509,8 @@ public sealed class ColumnarHandoffTests
 
         // Struct/list members carry a definition ladder a caller cannot express as flat buffers,
         // so those models keep the row-oriented API only (documented limitation of #137).
-        Assert.DoesNotContain("ColumnarBatch", source, StringComparison.Ordinal);
-        Assert.DoesNotContain(
-            "WriteParquetRowGroupColumnarAsync",
-            source,
-            StringComparison.Ordinal
-        );
+        source.ShouldNotContain("ColumnarBatch");
+        source.ShouldNotContain("WriteParquetRowGroupColumnarAsync");
     }
 
     private static string ExtractColumnarRegion(string source)
@@ -538,9 +519,9 @@ public sealed class ColumnarHandoffTests
             "Writes one row group directly from caller-owned column buffers",
             StringComparison.Ordinal
         );
-        Assert.True(start >= 0, "columnar writer was not emitted");
+        (start >= 0).ShouldBeTrue("columnar writer was not emitted");
         int end = source.IndexOf("Asynchronously serializes all", start, StringComparison.Ordinal);
-        Assert.True(end > start, "could not find the end of the columnar region");
+        (end > start).ShouldBeTrue("could not find the end of the columnar region");
         return source.Substring(start, end - start);
     }
 }

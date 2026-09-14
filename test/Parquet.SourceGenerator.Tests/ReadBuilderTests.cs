@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -60,10 +61,10 @@ public sealed class ReadBuilderTests
             streamed.Add(item);
         }
 
-        Assert.Equal(120, list.Count);
-        Assert.Equal(Enumerable.Range(1, 120), list.Select(r => r.Id));
-        Assert.Equal(list, array);
-        Assert.Equal(list, streamed);
+        list.Count.ShouldBe(120);
+        list.Select(r => r.Id).ShouldBe(Enumerable.Range(1, 120));
+        array.ShouldBe(list);
+        streamed.ShouldBe(list);
     }
 
     [Fact]
@@ -79,8 +80,8 @@ public sealed class ReadBuilderTests
             .Parallel()
             .ToArrayAsync();
 
-        Assert.Equal(120, sequential.Count);
-        Assert.Equal(sequential, parallel);
+        sequential.Count.ShouldBe(120);
+        parallel.ShouldBe(sequential);
     }
 
     [Fact]
@@ -94,7 +95,7 @@ public sealed class ReadBuilderTests
             .WithOptions(options)
             .ToListAsync();
 
-        Assert.Equal(60, read.Count);
+        read.Count.ShouldBe(60);
     }
 
     [Fact]
@@ -118,9 +119,9 @@ public sealed class ReadBuilderTests
             .Where(m => m.Id.Min >= 100)
             .ToListAsync();
 
-        Assert.NotEmpty(fromStream);
-        Assert.Equal(fromStream, fromMemory);
-        Assert.All(fromStream, r => Assert.True(r.Id >= 100 - RowsPerGroup));
+        fromStream.ShouldNotBeEmpty();
+        fromMemory.ShouldBe(fromStream);
+        fromStream.ShouldAllBe(r => r.Id >= 100 - RowsPerGroup);
     }
 
     [Fact]
@@ -149,8 +150,8 @@ public sealed class ReadBuilderTests
             streamed.Add(item);
         }
 
-        Assert.Equal(list, array);
-        Assert.Equal(list, streamed);
+        array.ShouldBe(list);
+        streamed.ShouldBe(list);
     }
 
     [Fact]
@@ -166,11 +167,10 @@ public sealed class ReadBuilderTests
             }
         )
         {
-            Assert.True(type.IsValueType, $"{type.Name} should be a struct.");
-            Assert.True(
-                type.GetCustomAttributes().Any(a => a.GetType().Name == "IsReadOnlyAttribute"),
-                $"{type.Name} should be readonly."
-            );
+            type.IsValueType.ShouldBeTrue($"{type.Name} should be a struct.");
+            type.GetCustomAttributes()
+                .Any(a => a.GetType().Name == "IsReadOnlyAttribute")
+                .ShouldBeTrue($"{type.Name} should be readonly.");
         }
     }
 
@@ -181,9 +181,10 @@ public sealed class ReadBuilderTests
         // on Parallel() would give the knob two homes again — the condition #218 existed to remove.
         // #241 decides whether it moves here now the builder exists; until then the absence is
         // deliberate, and this test keeps it from being "fixed" by accident.
-        Assert.Empty(
-            typeof(BuilderOrderParquetMemorySource).GetMethod("Parallel")!.GetParameters()
-        );
+        typeof(BuilderOrderParquetMemorySource)
+            .GetMethod("Parallel")!
+            .GetParameters()
+            .ShouldBeEmpty();
     }
 
     [Fact]
@@ -193,24 +194,24 @@ public sealed class ReadBuilderTests
         // reader accepts a predicate. Those cells are absent from the type rather than present and
         // throwing, so calling one is a compile error instead of a runtime surprise. Asserting the
         // absence keeps a future refactor from quietly reintroducing a throwing member.
-        Assert.Null(typeof(BuilderOrderParquetStreamSource).GetMethod("Parallel"));
-        Assert.Null(typeof(BuilderOrderParquetFilteredSource).GetMethod("Parallel"));
-        Assert.Null(typeof(BuilderOrderParquetParallelSource).GetMethod("Where"));
+        typeof(BuilderOrderParquetStreamSource).GetMethod("Parallel").ShouldBeNull();
+        typeof(BuilderOrderParquetFilteredSource).GetMethod("Parallel").ShouldBeNull();
+        typeof(BuilderOrderParquetParallelSource).GetMethod("Where").ShouldBeNull();
 
         // Nor is there a parallel streaming or columnar-batch reader to delegate to.
-        Assert.Null(typeof(BuilderOrderParquetParallelSource).GetMethod("AsAsyncEnumerable"));
-        Assert.Null(typeof(BuilderOrderParquetParallelSource).GetMethod("Batches"));
-        Assert.Null(typeof(BuilderOrderParquetFilteredSource).GetMethod("Batches"));
+        typeof(BuilderOrderParquetParallelSource).GetMethod("AsAsyncEnumerable").ShouldBeNull();
+        typeof(BuilderOrderParquetParallelSource).GetMethod("Batches").ShouldBeNull();
+        typeof(BuilderOrderParquetFilteredSource).GetMethod("Batches").ShouldBeNull();
     }
 
     [Fact]
     public void NullArgumentsAreRejected()
     {
-        Assert.Throws<ArgumentNullException>(() => BuilderOrderParquet.From((Stream)null!));
+        Should.Throw<ArgumentNullException>(() => BuilderOrderParquet.From((Stream)null!));
         using var stream = new MemoryStream();
-        Assert.Throws<ArgumentNullException>(() =>
+        Should.Throw<ArgumentNullException>(() =>
             BuilderOrderParquet.From(stream).WithOptions(null!)
         );
-        Assert.Throws<ArgumentNullException>(() => BuilderOrderParquet.From(stream).Where(null!));
+        Should.Throw<ArgumentNullException>(() => BuilderOrderParquet.From(stream).Where(null!));
     }
 }

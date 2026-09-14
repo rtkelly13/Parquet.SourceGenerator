@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -85,34 +86,34 @@ public sealed class StringDeduplicationTests
             options
         );
 
-        Assert.Equal(200, results.Length);
+        results.Length.ShouldBe(200);
 
         // Find items in the same category
         var electronics1 = results[0];
         var electronics2 = results[2];
-        Assert.Equal("Electronics", electronics1.Category);
-        Assert.Equal("Electronics", electronics2.Category);
-        Assert.True(
-            object.ReferenceEquals(electronics1.Category, electronics2.Category),
+        electronics1.Category.ShouldBe("Electronics");
+        electronics2.Category.ShouldBe("Electronics");
+        electronics1.Category.ShouldBeSameAs(
+            electronics2.Category,
             "Identical strings should share reference equality when DeduplicateStrings = true"
         );
 
         var clothing1 = results[1];
         var clothing2 = results[3];
-        Assert.Equal("Clothing", clothing1.Category);
-        Assert.Equal("Clothing", clothing2.Category);
-        Assert.True(
-            object.ReferenceEquals(clothing1.Category, clothing2.Category),
+        clothing1.Category.ShouldBe("Clothing");
+        clothing2.Category.ShouldBe("Clothing");
+        clothing1.Category.ShouldBeSameAs(
+            clothing2.Category,
             "Identical strings should share reference equality when DeduplicateStrings = true"
         );
 
         // Nullable strings
         var sale1 = results[0];
         var sale2 = results[6];
-        Assert.Equal("OnSale", sale1.Tag);
-        Assert.Equal("OnSale", sale2.Tag);
-        Assert.True(
-            object.ReferenceEquals(sale1.Tag, sale2.Tag),
+        sale1.Tag.ShouldBe("OnSale");
+        sale2.Tag.ShouldBe("OnSale");
+        sale1.Tag.ShouldBeSameAs(
+            sale2.Tag,
             "Nullable identical strings should share reference equality when DeduplicateStrings = true"
         );
     }
@@ -128,13 +129,13 @@ public sealed class StringDeduplicationTests
             options
         );
 
-        Assert.Equal(200, results.Length);
+        results.Length.ShouldBe(200);
 
         var electronics1 = results[0];
         var electronics2 = results[2];
-        Assert.Equal(electronics1.Category, electronics2.Category);
-        Assert.False(
-            object.ReferenceEquals(electronics1.Category, electronics2.Category),
+        electronics2.Category.ShouldBe(electronics1.Category);
+        electronics2.Category.ShouldNotBeSameAs(
+            electronics1.Category,
             "Without deduplication, Parquet.Net emits distinct allocated string instances"
         );
     }
@@ -151,22 +152,22 @@ public sealed class StringDeduplicationTests
             options
         );
 
-        Assert.Equal(200, results.Length);
+        results.Length.ShouldBe(200);
 
         // Department has [ParquetColumn(Deduplicate = true)]
         var dept1 = results[0];
         var dept2 = results[2];
-        Assert.Equal("Engineering", dept1.Department);
-        Assert.Equal("Engineering", dept2.Department);
-        Assert.True(
-            object.ReferenceEquals(dept1.Department, dept2.Department),
+        dept1.Department.ShouldBe("Engineering");
+        dept2.Department.ShouldBe("Engineering");
+        dept1.Department.ShouldBeSameAs(
+            dept2.Department,
             "Column decorated with [ParquetColumn(Deduplicate = true)] MUST be deduplicated even if global option is false"
         );
 
         // Notes does NOT have Deduplicate = true, so with global option = false, strings remain separate instances
-        Assert.Equal(dept1.Notes, dept2.Notes);
-        Assert.False(
-            object.ReferenceEquals(dept1.Notes, dept2.Notes),
+        dept2.Notes.ShouldBe(dept1.Notes);
+        dept2.Notes.ShouldNotBeSameAs(
+            dept1.Notes,
             "Undecorated column should NOT be deduplicated when global option is false"
         );
     }
@@ -187,11 +188,12 @@ public sealed class StringDeduplicationTests
             items.Add(item);
         }
 
-        Assert.Equal(100, items.Count);
-        Assert.True(
-            object.ReferenceEquals(items[0].Category, items[2].Category),
-            "Streaming reader should deduplicate strings across row group items"
-        );
+        items.Count.ShouldBe(100);
+        items[0]
+            .Category.ShouldBeSameAs(
+                items[2].Category,
+                "Streaming reader should deduplicate strings across row group items"
+            );
     }
 
     [Fact]
@@ -209,10 +211,11 @@ public sealed class StringDeduplicationTests
             options
         );
 
-        Assert.Equal(100, results.Length);
-        Assert.True(
-            object.ReferenceEquals(results[0].Category, results[2].Category),
-            "Parallel reader should deduplicate strings within workers"
-        );
+        results.Length.ShouldBe(100);
+        results[0]
+            .Category.ShouldBeSameAs(
+                results[2].Category,
+                "Parallel reader should deduplicate strings within workers"
+            );
     }
 }
