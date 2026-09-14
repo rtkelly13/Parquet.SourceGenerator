@@ -81,3 +81,18 @@ graph TD
     tsampledomainmodelsscalarmetricparquetstreamsource_051 -->|3| tsampledomainmodelsscalarmetricparquetextensions_049
 ```
 
+## SortedShipmentParquetExtensions.g
+
+```mermaid
+graph TD
+    tsampledomainmodelssortedshipmentparquetextensions_051["SampleDomain.Models.SortedShipmentParquetExtensions"]
+    tsampledomainmodelssortedshipmentparquetextensionsstringdeduplicator_070["SampleDomain.Models.SortedShipmentParquetExtensions.StringDeduplicator"]
+    tsampledomainmodelssortedshipmentparquetmemorysource_053["SampleDomain.Models.SortedShipmentParquetMemorySource"]
+    tsampledomainmodelssortedshipmentparquetparallelsource_055["SampleDomain.Models.SortedShipmentParquetParallelSource"]
+    tsampledomainmodelssortedshipmentparquetstreamsource_053["SampleDomain.Models.SortedShipmentParquetStreamSource"]
+    tsampledomainmodelssortedshipmentparquetextensions_051 -->|8| tsampledomainmodelssortedshipmentparquetextensionsstringdeduplicator_070
+    tsampledomainmodelssortedshipmentparquetmemorysource_053 -->|3| tsampledomainmodelssortedshipmentparquetextensions_051
+    tsampledomainmodelssortedshipmentparquetparallelsource_055 -->|2| tsampledomainmodelssortedshipmentparquetextensions_051
+    tsampledomainmodelssortedshipmentparquetstreamsource_053 -->|3| tsampledomainmodelssortedshipmentparquetextensions_051
+```
+

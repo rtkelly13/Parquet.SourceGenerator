@@ -16,7 +16,7 @@ M:SampleDomain.Models.ListOrderParquetExtensions.AcceptRowGroup(System.Func<Samp
 M:SampleDomain.Models.ListOrderParquetExtensions.BuildFormatOptions(Parquet.SourceGenerator.ParquetSerializerOptions) | MI=59 CC=5 CL=11 DIT=- SLOC=64 ELOC=10
 M:SampleDomain.Models.ListOrderParquetExtensions.CreateBufferStream(System.ReadOnlyMemory<byte>) | MI=87 CC=2 CL=4 DIT=- SLOC=13 ELOC=1
 M:SampleDomain.Models.ListOrderParquetExtensions.GetFieldDepth(Parquet.Schema.Field) | MI=60 CC=6 CL=6 DIT=- SLOC=22 ELOC=11
-M:SampleDomain.Models.ListOrderParquetExtensions.ReadBufferSequentialArrayAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=15 CC=60 CL=25 DIT=- SLOC=224 ELOC=177
+M:SampleDomain.Models.ListOrderParquetExtensions.ReadBufferSequentialArrayAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=16 CC=60 CL=25 DIT=- SLOC=224 ELOC=177
 M:SampleDomain.Models.ListOrderParquetExtensions.ReadParquetArrayAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.ListOrderRowGroupMetadata, bool>) | MI=14 CC=66 CL=26 DIT=- SLOC=252 ELOC=189
 M:SampleDomain.Models.ListOrderParquetExtensions.ReadParquetArrayAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=76 CC=1 CL=4 DIT=- SLOC=10 ELOC=3
 M:SampleDomain.Models.ListOrderParquetExtensions.ReadParquetAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.ListOrderRowGroupMetadata, bool>) | MI=14 CC=66 CL=28 DIT=- SLOC=275 ELOC=193

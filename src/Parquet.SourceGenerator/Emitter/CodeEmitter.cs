@@ -56,10 +56,7 @@ public static class CodeEmitter
             builder.AppendLine();
         }
 
-        EmitBuildFormatOptions(builder, model);
-        builder.AppendLine();
-
-        EmitValidateReader(builder);
+        EmitFormatOptionsAndValidation(builder, model);
         builder.AppendLine();
 
         if (StringDeduplicatorComponent.HasStringProperties(model))
@@ -192,6 +189,16 @@ public static class CodeEmitter
     // ──────────────────────────────────────────────────────────
     //  FORMAT OPTIONS & PRIMITIVES
     // ──────────────────────────────────────────────────────────
+
+    private static void EmitFormatOptionsAndValidation(
+        StringBuilder builder,
+        TargetClassModel model
+    )
+    {
+        EmitBuildFormatOptions(builder, model);
+        builder.AppendLine();
+        EmitValidateReader(builder);
+    }
 
     private static void EmitBuildFormatOptions(StringBuilder builder, TargetClassModel model)
     {
