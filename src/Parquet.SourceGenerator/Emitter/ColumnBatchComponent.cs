@@ -207,8 +207,13 @@ internal static class ColumnBatchComponent
             "        await using var reader = await global::Parquet.ParquetReader.CreateAsync("
         );
         builder.AppendLine("            stream,");
-        builder.AppendLine("            BuildFormatOptions(options),");
-        builder.AppendLine("            cancellationToken: cancellationToken);");
+        builder.AppendLine(
+            "            BuildFormatOptions(options),"
+        );
+        builder.AppendLine(
+            "            cancellationToken: cancellationToken);"
+        );
+        builder.AppendLine("        ValidateReader(reader, options);");
         builder.AppendLine("        var fileFields = reader.Schema.DataFields;");
         builder.AppendLine();
         builder.AppendLine(
@@ -228,7 +233,11 @@ internal static class ColumnBatchComponent
         builder.AppendLine("        {");
         builder.AppendLine("            cancellationToken.ThrowIfCancellationRequested();");
         builder.AppendLine("            using var groupReader = reader.OpenRowGroupReader(r);");
-        builder.AppendLine("            int rowCount = (int)groupReader.RowCount;");
+        builder.AppendLine("            int rowCount = checked((int)groupReader.RowCount);");
+        builder.AppendLine("            if (rowCount < 0 || rowCount > options.MaxAllocationValues)");
+        builder.AppendLine("            {");
+        builder.AppendLine("                throw new global::System.IO.InvalidDataException($\"Row group {r} row count {rowCount} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.\");");
+        builder.AppendLine("            }");
         builder.AppendLine();
 
         BufferPoolComponent.EmitRentals(builder, model, "rowCount", indent: "            ");

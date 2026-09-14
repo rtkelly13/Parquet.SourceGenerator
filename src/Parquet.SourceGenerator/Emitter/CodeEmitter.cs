@@ -59,6 +59,9 @@ public static class CodeEmitter
         EmitBuildFormatOptions(builder, model);
         builder.AppendLine();
 
+        EmitValidateReader(builder);
+        builder.AppendLine();
+
         if (StringDeduplicatorComponent.HasStringProperties(model))
         {
             StringDeduplicatorComponent.EmitStringDeduplicator(builder);
@@ -318,6 +321,55 @@ public static class CodeEmitter
         builder.AppendLine();
         builder.AppendLine("        return formatOptions;");
         builder.AppendLine("    }");
+
+    private static void EmitValidateReader(StringBuilder builder)
+    {
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine("    /// Validates the ParquetReader against configured defensive security bounds.");
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    private static void ValidateReader(");
+        builder.AppendLine("        global::Parquet.ParquetReader reader,");
+        builder.AppendLine("        global::Parquet.SourceGenerator.ParquetSerializerOptions options)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        int rowGroupCount = reader.RowGroupCount;");
+        builder.AppendLine("        if (rowGroupCount < 0 || rowGroupCount > options.MaxRowGroupCount)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            throw new global::System.IO.InvalidDataException($\"Row group count {rowGroupCount} is invalid or exceeds maximum allowed {options.MaxRowGroupCount}.\");");
+        builder.AppendLine("        }");
+        builder.AppendLine("        int maxDepth = 0;");
+        builder.AppendLine("        foreach (var field in reader.Schema.Fields)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            int d = GetFieldDepth(field);");
+        builder.AppendLine("            if (d > maxDepth) maxDepth = d;");
+        builder.AppendLine("        }");
+        builder.AppendLine("        if (maxDepth > options.MaxNestingDepth)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            throw new global::System.IO.InvalidDataException($\"Schema nesting depth {maxDepth} exceeds maximum allowed {options.MaxNestingDepth}.\");");
+        builder.AppendLine("        }");
+        builder.AppendLine("    }");
+        builder.AppendLine();
+        builder.AppendLine("    private static int GetFieldDepth(global::Parquet.Schema.Field field)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        if (field is global::Parquet.Schema.StructField sf)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            int max = 0;");
+        builder.AppendLine("            foreach (var child in sf.Fields)");
+        builder.AppendLine("            {");
+        builder.AppendLine("                int d = GetFieldDepth(child);");
+        builder.AppendLine("                if (d > max) max = d;");
+        builder.AppendLine("            }");
+        builder.AppendLine("            return 1 + max;");
+        builder.AppendLine("        }");
+        builder.AppendLine("        if (field is global::Parquet.Schema.ListField lf)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            return 1 + GetFieldDepth(lf.Item);");
+        builder.AppendLine("        }");
+        builder.AppendLine("        if (field is global::Parquet.Schema.MapField mf)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            return 1 + global::System.Math.Max(GetFieldDepth(mf.Key), GetFieldDepth(mf.Value));");
+        builder.AppendLine("        }");
+        builder.AppendLine("        return 1;");
+        builder.AppendLine("    }");
     }
 
     private static string GetWritePrimitiveCall(
@@ -460,6 +512,14 @@ public static class CodeEmitter
             builder.AppendLine(
                 $"{indent}var entries_{col.Slot} = checked((int)groupReader.GetMetadata({fieldAccess}).MetaData.NumValues);"
             );
+            builder.AppendLine(
+                $"{indent}if (entries_{col.Slot} < 0 || entries_{col.Slot} > options.MaxAllocationValues)"
+            );
+            builder.AppendLine($"{indent}{{");
+            builder.AppendLine(
+                $"{indent}    throw new global::System.IO.InvalidDataException($\"Column '{col.Leaf.Name}' NumValues ({{entries_{col.Slot}}}) is invalid or exceeds maximum allowed {{options.MaxAllocationValues}}.\");"
+            );
+            builder.AppendLine($"{indent}}}");
             builder.AppendLine($"{indent}if (entries_{col.Slot} > defLevels_{col.Slot}.Length)");
             builder.AppendLine($"{indent}{{");
             builder.AppendLine(
@@ -1049,6 +1109,7 @@ public static class CodeEmitter
         builder.AppendLine("            stream,");
         builder.AppendLine("            BuildFormatOptions(options),");
         builder.AppendLine("            cancellationToken: cancellationToken);");
+        builder.AppendLine("        ValidateReader(reader, options);");
         builder.AppendLine("        var fileFields = reader.Schema.DataFields;");
         builder.AppendLine();
 
@@ -1087,7 +1148,13 @@ public static class CodeEmitter
         builder.AppendLine("            cancellationToken.ThrowIfCancellationRequested();");
         RowGroupPruningComponent.EmitSelectionCheck(builder, model, "            ");
         builder.AppendLine("            using var groupReader = reader.OpenRowGroupReader(r);");
-        builder.AppendLine("            int rowCount = (int)groupReader.RowCount;");
+        builder.AppendLine("            int rowCount = checked((int)groupReader.RowCount);");
+        builder.AppendLine("            if (rowCount < 0 || rowCount > options.MaxAllocationValues)");
+        builder.AppendLine("            {");
+        builder.AppendLine(
+            "                throw new global::System.IO.InvalidDataException($\"Row group {r} row count {rowCount} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.\");"
+        );
+        builder.AppendLine("            }");
         builder.AppendLine();
 
         EmitRentalsFor(builder, model, "rowCount", indent: "            ");
@@ -1240,6 +1307,7 @@ public static class CodeEmitter
         builder.AppendLine("            stream,");
         builder.AppendLine("            BuildFormatOptions(options),");
         builder.AppendLine("            cancellationToken: cancellationToken);");
+        builder.AppendLine("        ValidateReader(reader, options);");
         builder.AppendLine("        var fileFields = reader.Schema.DataFields;");
         builder.AppendLine();
 
@@ -1267,7 +1335,13 @@ public static class CodeEmitter
         builder.AppendLine("            cancellationToken.ThrowIfCancellationRequested();");
         RowGroupPruningComponent.EmitSelectionCheck(builder, model, "            ");
         builder.AppendLine("            using var groupReader = reader.OpenRowGroupReader(r);");
-        builder.AppendLine("            int rowCount = (int)groupReader.RowCount;");
+        builder.AppendLine("            int rowCount = checked((int)groupReader.RowCount);");
+        builder.AppendLine("            if (rowCount < 0 || rowCount > options.MaxAllocationValues)");
+        builder.AppendLine("            {");
+        builder.AppendLine(
+            "                throw new global::System.IO.InvalidDataException($\"Row group {r} row count {rowCount} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.\");"
+        );
+        builder.AppendLine("            }");
         builder.AppendLine();
 
         EmitRentalsFor(builder, model, "rowCount", indent: "            ");
@@ -1338,6 +1412,7 @@ public static class CodeEmitter
         builder.AppendLine("            stream,");
         builder.AppendLine("            BuildFormatOptions(options),");
         builder.AppendLine("            cancellationToken: cancellationToken);");
+        builder.AppendLine("        ValidateReader(reader, options);");
         builder.AppendLine("        var fileFields = reader.Schema.DataFields;");
         builder.AppendLine();
 
@@ -1360,7 +1435,13 @@ public static class CodeEmitter
         builder.AppendLine("        {");
         builder.AppendLine("            cancellationToken.ThrowIfCancellationRequested();");
         builder.AppendLine("            using var groupReader = reader.OpenRowGroupReader(r);");
-        builder.AppendLine("            int rowCount = (int)groupReader.RowCount;");
+        builder.AppendLine("            int rowCount = checked((int)groupReader.RowCount);");
+        builder.AppendLine("            if (rowCount < 0 || rowCount > options.MaxAllocationValues)");
+        builder.AppendLine("            {");
+        builder.AppendLine(
+            "                throw new global::System.IO.InvalidDataException($\"Row group {r} row count {rowCount} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.\");"
+        );
+        builder.AppendLine("            }");
         RowGroupPruningComponent.EmitLoopGuard(builder, model, "            ");
         builder.AppendLine();
 
@@ -1570,6 +1651,7 @@ public static class CodeEmitter
         builder.AppendLine("            stream,");
         builder.AppendLine("            BuildFormatOptions(options),");
         builder.AppendLine("            cancellationToken: cancellationToken);");
+        builder.AppendLine("        ValidateReader(reader, options);");
         builder.AppendLine("        var fileFields = reader.Schema.DataFields;");
         builder.AppendLine();
         builder.AppendLine(
@@ -1628,7 +1710,11 @@ public static class CodeEmitter
         builder.AppendLine("        {");
         builder.AppendLine("            cancellationToken.ThrowIfCancellationRequested();");
         builder.AppendLine("            using var groupReader = reader.OpenRowGroupReader(r);");
-        builder.AppendLine("            int rowCount = (int)groupReader.RowCount;");
+        builder.AppendLine("            int rowCount = checked((int)groupReader.RowCount);");
+        builder.AppendLine("            if (rowCount < 0 || rowCount > options.MaxAllocationValues)");
+        builder.AppendLine("            {");
+        builder.AppendLine("                throw new global::System.IO.InvalidDataException($\"Row group {r} row count {rowCount} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.\");");
+        builder.AppendLine("            }");
         builder.AppendLine();
 
         EmitRentalsFor(builder, model, "rowCount", indent: "            ");
@@ -1710,6 +1796,7 @@ public static class CodeEmitter
         builder.AppendLine("            stream,");
         builder.AppendLine("            BuildFormatOptions(options),");
         builder.AppendLine("            cancellationToken: cancellationToken);");
+        builder.AppendLine("        ValidateReader(reader, options);");
         builder.AppendLine("        int rowGroupCount = reader.RowGroupCount;");
         builder.AppendLine(
             $"        if (rowGroupCount == 0) return global::System.Array.Empty<{model.ClassName}>();"
@@ -1721,7 +1808,8 @@ public static class CodeEmitter
             "totalRows",
             "maxRowCount",
             "rowGroupCount",
-            declareRowGroupCount: false
+            declareRowGroupCount: false,
+            optionsVar: "options"
         );
         builder.AppendLine();
         builder.AppendLine($"        var results = new {model.ClassName}[totalRows];");
@@ -1748,7 +1836,11 @@ public static class CodeEmitter
         builder.AppendLine("            {");
         builder.AppendLine("                cancellationToken.ThrowIfCancellationRequested();");
         builder.AppendLine("                using var groupReader = reader.OpenRowGroupReader(r);");
-        builder.AppendLine("                int rowCount = (int)groupReader.RowCount;");
+        builder.AppendLine("                int rowCount = checked((int)groupReader.RowCount);");
+        builder.AppendLine("                if (rowCount < 0 || rowCount > options.MaxAllocationValues)");
+        builder.AppendLine("                {");
+        builder.AppendLine("                    throw new global::System.IO.InvalidDataException($\"Row group {r} row count {rowCount} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.\");");
+        builder.AppendLine("                }");
         builder.AppendLine("                if (rowCount == 0) continue;");
         builder.AppendLine();
 
@@ -1837,23 +1929,30 @@ public static class CodeEmitter
         builder.AppendLine("            stream,");
         builder.AppendLine("            BuildFormatOptions(options),");
         builder.AppendLine("            cancellationToken: cancellationToken);");
+        builder.AppendLine("        ValidateReader(reader, options);");
         builder.AppendLine("        int rgCount = reader.RowGroupCount;");
         builder.AppendLine(
             $"        if (rgCount == 0) return global::System.Array.Empty<{model.ClassName}>();"
         );
         builder.AppendLine();
-        builder.AppendLine(
-            "        int totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);"
-        );
-        builder.AppendLine($"        var resultArray = new {model.ClassName}[totalRows];");
+        builder.AppendLine("        long totalRowsLong = 0;");
         builder.AppendLine("        var rowOffsets = new int[rgCount];");
-        builder.AppendLine("        int currentOffset = 0;");
         builder.AppendLine("        for (int r = 0; r < rgCount; r++)");
         builder.AppendLine("        {");
-        builder.AppendLine("            rowOffsets[r] = currentOffset;");
-        builder.AppendLine("            currentOffset += (int)reader.RowGroups[r].RowCount;");
+        builder.AppendLine("            long rcLong = reader.RowGroups[r].RowCount;");
+        builder.AppendLine("            if (rcLong < 0 || rcLong > options.MaxAllocationValues)");
+        builder.AppendLine("            {");
+        builder.AppendLine("                throw new global::System.IO.InvalidDataException($\"Row group {r} row count {rcLong} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.\");");
+        builder.AppendLine("            }");
+        builder.AppendLine("            rowOffsets[r] = checked((int)totalRowsLong);");
+        builder.AppendLine("            totalRowsLong = checked(totalRowsLong + rcLong);");
         builder.AppendLine("        }");
-        builder.AppendLine();
+        builder.AppendLine("        if (totalRowsLong > options.MaxAllocationValues)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            throw new global::System.IO.InvalidDataException($\"Total row count {totalRowsLong} exceeds maximum allowed {options.MaxAllocationValues}.\");");
+        builder.AppendLine("        }");
+        builder.AppendLine("        int totalRows = checked((int)totalRowsLong);");
+        builder.AppendLine($"        var resultArray = new {model.ClassName}[totalRows];");
         builder.AppendLine("        var fileFields = reader.Schema.DataFields;");
         builder.AppendLine();
         if (model.Properties.Length > 0)
@@ -1875,7 +1974,11 @@ public static class CodeEmitter
         builder.AppendLine("        {");
         builder.AppendLine("            cancellationToken.ThrowIfCancellationRequested();");
         builder.AppendLine("            using var groupReader = reader.OpenRowGroupReader(r);");
-        builder.AppendLine("            int rowCount = (int)groupReader.RowCount;");
+        builder.AppendLine("            int rowCount = checked((int)groupReader.RowCount);");
+        builder.AppendLine("            if (rowCount < 0 || rowCount > options.MaxAllocationValues)");
+        builder.AppendLine("            {");
+        builder.AppendLine("                throw new global::System.IO.InvalidDataException($\"Row group {r} row count {rowCount} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.\");");
+        builder.AppendLine("            }");
         builder.AppendLine("            int startIdx = rowOffsets[r];");
         builder.AppendLine();
         EmitRentalsFor(builder, model, "rowCount", indent: "            ");
@@ -1980,6 +2083,7 @@ public static class CodeEmitter
         builder.AppendLine("                probeStream,");
         builder.AppendLine("                formatOptions,");
         builder.AppendLine("                cancellationToken: cancellationToken);");
+        builder.AppendLine("            ValidateReader(probe, options);");
         RowGroupLayoutComponent.EmitIndexedLayoutProbe(
             builder,
             "probe",
@@ -1988,7 +2092,8 @@ public static class CodeEmitter
             "totalRows",
             "maxRowGroupSize",
             declareVariables: false,
-            indent: "            "
+            indent: "            ",
+            optionsVar: "options"
         );
         builder.AppendLine("        }");
         builder.AppendLine();
@@ -2029,10 +2134,7 @@ public static class CodeEmitter
         builder.AppendLine("                cursor,");
         builder.AppendLine("                rowGroupCount,");
         builder.AppendLine("                maxRowGroupSize,");
-        if (StringDeduplicatorComponent.HasStringProperties(model))
-        {
-            builder.AppendLine("                options.DeduplicateStrings,");
-        }
+        builder.AppendLine("                options,");
         builder.AppendLine("                linkedCts,");
         builder.AppendLine("                workerToken);");
         builder.AppendLine("        }");
@@ -2051,10 +2153,7 @@ public static class CodeEmitter
         builder.AppendLine("                        cursor,");
         builder.AppendLine("                        rowGroupCount,");
         builder.AppendLine("                        maxRowGroupSize,");
-        if (StringDeduplicatorComponent.HasStringProperties(model))
-        {
-            builder.AppendLine("                        options.DeduplicateStrings,");
-        }
+        builder.AppendLine("                        options,");
         builder.AppendLine("                        linkedCts,");
         builder.AppendLine("                        workerToken),");
         builder.AppendLine("                    workerToken);");
@@ -2132,6 +2231,7 @@ public static class CodeEmitter
         builder.AppendLine("        int[] cursor,");
         builder.AppendLine("        int rowGroupCount,");
         builder.AppendLine("        int maxRowGroupSize,");
+        builder.AppendLine("        global::Parquet.SourceGenerator.ParquetSerializerOptions options,");
         if (StringDeduplicatorComponent.HasStringProperties(model))
         {
             builder.AppendLine("        bool deduplicateStrings,");
@@ -2148,6 +2248,7 @@ public static class CodeEmitter
         builder.AppendLine("                stream,");
         builder.AppendLine("                formatOptions,");
         builder.AppendLine("                cancellationToken: cancellationToken);");
+        builder.AppendLine("            ValidateReader(reader, options);");
         builder.AppendLine();
         builder.AppendLine("            var fileFields = reader.Schema.DataFields;");
         builder.AppendLine();
@@ -2186,7 +2287,11 @@ public static class CodeEmitter
         builder.AppendLine(
             "                    using var groupReader = reader.OpenRowGroupReader(r);"
         );
-        builder.AppendLine("                    int rowCount = (int)groupReader.RowCount;");
+        builder.AppendLine("                    int rowCount = checked((int)groupReader.RowCount);");
+        builder.AppendLine("                    if (rowCount < 0 || rowCount > options.MaxAllocationValues)");
+        builder.AppendLine("                    {");
+        builder.AppendLine("                        throw new global::System.IO.InvalidDataException($\"Row group {r} row count {rowCount} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.\");");
+        builder.AppendLine("                    }");
         builder.AppendLine("                    int startIdx = rowOffsets[r];");
         builder.AppendLine();
         foreach (LeafColumn col in EmissionPlan.For(model).Columns)
