@@ -146,13 +146,38 @@ internal static class RowGroupPruningComponent
             return;
         }
 
+        builder.AppendLine("        int rowGroupCount = reader.RowGroupCount;");
+        builder.AppendLine(
+            "        if (rowGroupCount < 0 || rowGroupCount > options.MaxRowGroupCount)"
+        );
+        builder.AppendLine("        {");
+        builder.AppendLine(
+            "            throw new global::System.IO.InvalidDataException($\"Row group count {rowGroupCount} is invalid or exceeds maximum allowed {options.MaxRowGroupCount}.\");"
+        );
+        builder.AppendLine("        }");
         builder.AppendLine($"        int {totalRowsVar};");
         builder.AppendLine("        bool[]? selectedGroups = null;");
         builder.AppendLine("        if (predicate == null)");
         builder.AppendLine("        {");
+        builder.AppendLine("            long sumRows = 0;");
+        builder.AppendLine("            for (int r = 0; r < rowGroupCount; r++)");
+        builder.AppendLine("            {");
+        builder.AppendLine("                long rc = reader.RowGroups[r].RowCount;");
+        builder.AppendLine("                if (rc < 0 || rc > options.MaxAllocationValues)");
+        builder.AppendLine("                {");
         builder.AppendLine(
-            $"            {totalRowsVar} = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);"
+            "                    throw new global::System.IO.InvalidDataException($\"Row group {r} row count {rc} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.\");"
         );
+        builder.AppendLine("                }");
+        builder.AppendLine("                sumRows = checked(sumRows + rc);");
+        builder.AppendLine("            }");
+        builder.AppendLine("            if (sumRows > options.MaxAllocationValues)");
+        builder.AppendLine("            {");
+        builder.AppendLine(
+            "                throw new global::System.IO.InvalidDataException($\"Total row count {sumRows} exceeds maximum allowed {options.MaxAllocationValues}.\");"
+        );
+        builder.AppendLine("            }");
+        builder.AppendLine($"            {totalRowsVar} = checked((int)sumRows);");
         builder.AppendLine("        }");
         builder.AppendLine("        else");
         builder.AppendLine("        {");
@@ -162,17 +187,31 @@ internal static class RowGroupPruningComponent
         builder.AppendLine(
             "            // whose pages are ever read, and the result is sized to exactly their rows."
         );
-        builder.AppendLine("            selectedGroups = new bool[reader.RowGroupCount];");
-        builder.AppendLine($"            {totalRowsVar} = 0;");
-        builder.AppendLine("            for (int r = 0; r < reader.RowGroupCount; r++)");
+        builder.AppendLine("            selectedGroups = new bool[rowGroupCount];");
+        builder.AppendLine("            long sumRows = 0;");
+        builder.AppendLine("            for (int r = 0; r < rowGroupCount; r++)");
         builder.AppendLine("            {");
         builder.AppendLine("                using var probeReader = reader.OpenRowGroupReader(r);");
         builder.AppendLine(
             $"                if (!AcceptRowGroup(predicate, probeReader, r{FieldArguments(model)})) continue;"
         );
+        builder.AppendLine("                long rc = probeReader.RowCount;");
+        builder.AppendLine("                if (rc < 0 || rc > options.MaxAllocationValues)");
+        builder.AppendLine("                {");
+        builder.AppendLine(
+            "                    throw new global::System.IO.InvalidDataException($\"Row group {r} row count {rc} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.\");"
+        );
+        builder.AppendLine("                }");
         builder.AppendLine("                selectedGroups[r] = true;");
-        builder.AppendLine($"                {totalRowsVar} += (int)probeReader.RowCount;");
+        builder.AppendLine("                sumRows = checked(sumRows + rc);");
         builder.AppendLine("            }");
+        builder.AppendLine("            if (sumRows > options.MaxAllocationValues)");
+        builder.AppendLine("            {");
+        builder.AppendLine(
+            "                throw new global::System.IO.InvalidDataException($\"Total matching row count {sumRows} exceeds maximum allowed {options.MaxAllocationValues}.\");"
+        );
+        builder.AppendLine("            }");
+        builder.AppendLine($"            {totalRowsVar} = checked((int)sumRows);");
         builder.AppendLine("        }");
     }
 

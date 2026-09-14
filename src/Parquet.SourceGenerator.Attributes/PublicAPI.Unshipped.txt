@@ -16,6 +16,12 @@ Parquet.SourceGenerator.ParquetSerializerOptions.DictionaryEncodingSampleSize.ge
 Parquet.SourceGenerator.ParquetSerializerOptions.DictionaryEncodingSampleSize.set -> void
 Parquet.SourceGenerator.ParquetSerializerOptions.DictionaryEncodingThreshold.get -> double?
 Parquet.SourceGenerator.ParquetSerializerOptions.DictionaryEncodingThreshold.set -> void
+Parquet.SourceGenerator.ParquetSerializerOptions.MaxAllocationValues.get -> int
+Parquet.SourceGenerator.ParquetSerializerOptions.MaxAllocationValues.set -> void
+Parquet.SourceGenerator.ParquetSerializerOptions.MaxNestingDepth.get -> int
+Parquet.SourceGenerator.ParquetSerializerOptions.MaxNestingDepth.set -> void
+Parquet.SourceGenerator.ParquetSerializerOptions.MaxRowGroupCount.get -> int
+Parquet.SourceGenerator.ParquetSerializerOptions.MaxRowGroupCount.set -> void
 Parquet.SourceGenerator.VectorizedColumnTransforms
 static Parquet.SourceGenerator.NullableColumnExtractor.CompactInPlace<T>(System.Span<T> values, System.ReadOnlySpan<byte> presence) -> int
 static Parquet.SourceGenerator.NullableColumnExtractor.CountPresent(System.ReadOnlySpan<byte> presence) -> int
