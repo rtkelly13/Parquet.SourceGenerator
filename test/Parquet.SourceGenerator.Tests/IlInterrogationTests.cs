@@ -13,9 +13,30 @@ public class IlInterrogationTests
     [Trait("Category", "Integration")]
     public async Task ScriptInterrogateILRunsAndReportsZeroBoxing()
     {
-        string currentDir = AppContext.BaseDirectory;
-        string? repoRoot = null;
-        var dir = new DirectoryInfo(currentDir);
+        string repoRoot = FindRepoRoot();
+        var psi = CreateProcessStartInfo(repoRoot);
+
+        using var process = Process.Start(psi);
+        Assert.NotNull(process);
+
+        var stdoutTask = process.StandardOutput.ReadToEndAsync();
+        var stderrTask = process.StandardError.ReadToEndAsync();
+        await process.WaitForExitAsync();
+
+        string stdout = await stdoutTask;
+        string stderr = await stderrTask;
+
+        Assert.True(
+            process.ExitCode == 0,
+            $"InterrogateIL.cs failed with exit code {process.ExitCode}.\nStdout:\n{stdout}\nStderr:\n{stderr}"
+        );
+        Assert.Contains("IL interrogation completed successfully!", stdout);
+        Assert.DoesNotContain("boxing operation(s) ('box') detected", stderr);
+    }
+
+    private static string FindRepoRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir != null)
         {
             if (
@@ -24,24 +45,23 @@ public class IlInterrogationTests
                 )
             )
             {
-                repoRoot = dir.FullName;
-                break;
+                return dir.FullName;
             }
             dir = dir.Parent;
         }
+        throw new DirectoryNotFoundException(
+            "Could not find repository root containing scripts/InterrogateIL.cs"
+        );
+    }
 
-        Assert.NotNull(repoRoot);
-
+    private static ProcessStartInfo CreateProcessStartInfo(string repoRoot)
+    {
         string homeDotnetDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             ".dotnet"
         );
         string homeDotnet = Path.Combine(homeDotnetDir, "dotnet");
-        string dotnetHost = "dotnet";
-        if (global::System.IO.File.Exists(homeDotnet))
-        {
-            dotnetHost = homeDotnet;
-        }
+        string dotnetHost = global::System.IO.File.Exists(homeDotnet) ? homeDotnet : "dotnet";
 
         string cliReleaseDll = Path.Combine(
             repoRoot,
@@ -98,21 +118,6 @@ public class IlInterrogationTests
                 + Environment.GetEnvironmentVariable("PATH");
         }
 
-        using var process = Process.Start(psi);
-        Assert.NotNull(process);
-
-        var stdoutTask = process.StandardOutput.ReadToEndAsync();
-        var stderrTask = process.StandardError.ReadToEndAsync();
-        await process.WaitForExitAsync();
-
-        string stdout = await stdoutTask;
-        string stderr = await stderrTask;
-
-        Assert.True(
-            process.ExitCode == 0,
-            $"InterrogateIL.cs failed with exit code {process.ExitCode}.\nStdout:\n{stdout}\nStderr:\n{stderr}"
-        );
-        Assert.Contains("IL interrogation completed successfully!", stdout);
-        Assert.DoesNotContain("boxing operation(s) ('box') detected", stderr);
+        return psi;
     }
 }

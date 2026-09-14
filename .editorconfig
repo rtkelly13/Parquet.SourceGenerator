@@ -81,9 +81,17 @@ dotnet_diagnostic.MA0026.severity = none # To-do comments
 dotnet_diagnostic.MA0048.severity = none # File name must match type name
 dotnet_diagnostic.MA0051.severity = none # Method is too long
 
-# Disable analyzer in test projects
+# Test projects analyzer configuration
 [test/**.cs]
-dotnet_diagnostic.category-Meziantou.severity = none
+# xUnit quality analyzers
+dotnet_diagnostic.xUnit1000.severity = warning
+dotnet_diagnostic.xUnit1004.severity = warning
+dotnet_diagnostic.xUnit1013.severity = warning
+dotnet_diagnostic.xUnit1026.severity = warning
+dotnet_diagnostic.xUnit2000.severity = warning
+dotnet_diagnostic.xUnit2004.severity = warning
+dotnet_diagnostic.xUnit2013.severity = warning
+dotnet_diagnostic.xUnit2017.severity = warning
 
 [samples/**.cs]
 dotnet_diagnostic.category-Meziantou.severity = none

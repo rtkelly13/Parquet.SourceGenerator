@@ -20,107 +20,76 @@ public sealed class ParserAndEmitterTests
     private static readonly int[] SampleArray2 = new[] { 1, 2, 3 };
     private static readonly int[] SampleArray3 = new[] { 1, 2, 4 };
 
+    private static PropertyModel Prop(
+        string name,
+        string parquetColumnName,
+        string typeName,
+        int order,
+        PropertyKind kind = PropertyKind.Primitive,
+        bool isNullable = false,
+        string? timestampUnit = null,
+        string? enumUnderlyingTypeName = null,
+        int? decimalPrecision = null,
+        int? decimalScale = null,
+        ColumnEncoding encoding = ColumnEncoding.Default
+    ) =>
+        new(
+            name,
+            parquetColumnName,
+            typeName,
+            timestampUnit,
+            enumUnderlyingTypeName,
+            order,
+            decimalPrecision,
+            decimalScale,
+            kind,
+            isNullable,
+            Encoding: encoding
+        );
+
     [Fact]
     public void CodeEmitterGeneratesValidSourceForComplexModel()
     {
         var properties = new[]
         {
-            new PropertyModel(
-                "Id",
-                "id",
-                "int",
-                null,
-                null,
-                1,
-                null,
-                null,
-                PropertyKind.Primitive,
-                false
-            ),
-            new PropertyModel(
-                "Name",
-                "name",
-                "string?",
-                null,
-                null,
-                2,
-                null,
-                null,
-                PropertyKind.Primitive,
-                true
-            ),
-            new PropertyModel(
+            Prop("Id", "id", "int", 1),
+            Prop("Name", "name", "string?", 2, isNullable: true),
+            Prop(
                 "Price",
                 "price",
                 "decimal",
-                null,
-                null,
                 3,
-                18,
-                4,
                 PropertyKind.Decimal,
-                false
+                decimalPrecision: 18,
+                decimalScale: 4
             ),
-            new PropertyModel(
+            Prop(
                 "CreatedAt",
                 "created_at",
                 "System.DateTime",
-                "Microseconds",
-                null,
                 4,
-                null,
-                null,
                 PropertyKind.DateTime,
-                false
+                timestampUnit: "Microseconds"
             ),
-            new PropertyModel(
-                "Duration",
-                "duration",
-                "System.TimeSpan",
-                null,
-                null,
-                5,
-                null,
-                null,
-                PropertyKind.TimeSpan,
-                false
-            ),
-            new PropertyModel(
+            Prop("Duration", "duration", "System.TimeSpan", 5, PropertyKind.TimeSpan),
+            Prop(
                 "CorrelationId",
                 "correlation_id",
                 "System.Guid",
-                null,
-                null,
                 6,
-                null,
-                null,
                 PropertyKind.Guid,
-                true
+                isNullable: true
             ),
-            new PropertyModel(
+            Prop(
                 "Status",
                 "status",
                 "Parquet.SourceGenerator.Tests.EventStatus",
-                null,
-                "int",
                 7,
-                null,
-                null,
                 PropertyKind.Enum,
-                true
+                isNullable: true,
+                enumUnderlyingTypeName: "int"
             ),
-            new PropertyModel(
-                "Data",
-                "data",
-                "byte[]",
-                null,
-                null,
-                8,
-                null,
-                null,
-                PropertyKind.ByteArray,
-                true
-            ),
+            Prop("Data", "data", "byte[]", 8, PropertyKind.ByteArray, isNullable: true),
         };
 
         var model = new TargetClassModel(
@@ -204,59 +173,15 @@ public sealed class ParserAndEmitterTests
     [Fact]
     public void PropertyModelEncodingEqualityAndCodeEmission()
     {
-        var propDefault = new PropertyModel(
-            "Id",
-            "id",
-            "int",
-            null,
-            null,
-            1,
-            null,
-            null,
-            PropertyKind.Primitive,
-            false
-        );
-
-        var propDelta = new PropertyModel(
-            "Id",
-            "id",
-            "int",
-            null,
-            null,
-            1,
-            null,
-            null,
-            PropertyKind.Primitive,
-            false,
-            Encoding: ColumnEncoding.DeltaBinaryPacked
-        );
-
-        var propDictionary = new PropertyModel(
-            "Tag",
-            "tag",
-            "string",
-            null,
-            null,
-            2,
-            null,
-            null,
-            PropertyKind.Primitive,
-            false,
-            Encoding: ColumnEncoding.Dictionary
-        );
-
-        var propByteSplit = new PropertyModel(
+        var propDefault = Prop("Id", "id", "int", 1);
+        var propDelta = Prop("Id", "id", "int", 1, encoding: ColumnEncoding.DeltaBinaryPacked);
+        var propDictionary = Prop("Tag", "tag", "string", 2, encoding: ColumnEncoding.Dictionary);
+        var propByteSplit = Prop(
             "Value",
             "value",
             "double",
-            null,
-            null,
             3,
-            null,
-            null,
-            PropertyKind.Primitive,
-            false,
-            Encoding: ColumnEncoding.ByteSplitStream
+            encoding: ColumnEncoding.ByteSplitStream
         );
 
         Assert.Equal(ColumnEncoding.Default, propDefault.Encoding);
