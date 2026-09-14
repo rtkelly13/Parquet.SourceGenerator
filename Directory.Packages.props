@@ -31,6 +31,7 @@
         <PackageVersion Include="coverlet.collector" Version="6.0.4" />
         <PackageVersion Include="FsCheck.Xunit" Version="3.4.0" />
         <PackageVersion Include="Shouldly" Version="4.3.0" />
+        <PackageVersion Include="Bogus" Version="35.6.5" />
         <PackageVersion Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="3.3.4" />
 
         <!-- Benchmarks & Tooling Dependencies -->
