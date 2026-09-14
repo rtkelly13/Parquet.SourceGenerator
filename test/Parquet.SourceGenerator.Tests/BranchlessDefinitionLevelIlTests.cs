@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -102,7 +103,7 @@ public sealed class BranchlessDefinitionLevelIlTests
     private static int CountConditionalBranches(MethodInfo method)
     {
         MethodBody? body = method.GetMethodBody();
-        Assert.NotNull(body);
+        body.ShouldNotBeNull();
         byte[] il = body!.GetILAsByteArray() ?? Array.Empty<byte>();
 
         int conditional = 0;
@@ -163,7 +164,7 @@ public sealed class BranchlessDefinitionLevelIlTests
             FindLocalFunction(typeof(SixNullableColumnRecordParquetExtensions), localFunctionName)
         );
 
-        Assert.Equal(one, six);
+        six.ShouldBe(one);
     }
 
     [Theory]
@@ -176,6 +177,6 @@ public sealed class BranchlessDefinitionLevelIlTests
         );
 
         // The `for (int i = 0; i < count; i++)` control edge, and nothing per column.
-        Assert.Equal(1, branches);
+        branches.ShouldBe(1);
     }
 }

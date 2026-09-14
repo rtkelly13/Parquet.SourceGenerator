@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -52,19 +53,19 @@ public sealed class BlittableStructTests
         // Read into List
         ms.Position = 0;
         var readList = await SingleLongStructParquetExtensions.ReadParquetAsync(ms);
-        Assert.Equal(count, readList.Count);
+        readList.Count.ShouldBe(count);
         for (int i = 0; i < count; i++)
         {
-            Assert.Equal(i * 42L, readList[i].Value);
+            readList[i].Value.ShouldBe(i * 42L);
         }
 
         // Read into Array
         ms.Position = 0;
         var readArray = await SingleLongStructParquetExtensions.ReadParquetArrayAsync(ms);
-        Assert.Equal(count, readArray.Length);
+        readArray.Length.ShouldBe(count);
         for (int i = 0; i < count; i++)
         {
-            Assert.Equal(i * 42L, readArray[i].Value);
+            readArray[i].Value.ShouldBe(i * 42L);
         }
 
         // Write from Array and Parallel Read
@@ -75,17 +76,17 @@ public sealed class BlittableStructTests
         var parallelArray = await SingleLongStructParquetExtensions.ReadParquetParallelArrayAsync(
             bytes
         );
-        Assert.Equal(count, parallelArray.Length);
+        parallelArray.Length.ShouldBe(count);
         for (int i = 0; i < count; i++)
         {
-            Assert.Equal(i * 42L, parallelArray[i].Value);
+            parallelArray[i].Value.ShouldBe(i * 42L);
         }
 
         var parallelList = await SingleLongStructParquetExtensions.ReadParquetParallelAsync(bytes);
-        Assert.Equal(count, parallelList.Count);
+        parallelList.Count.ShouldBe(count);
         for (int i = 0; i < count; i++)
         {
-            Assert.Equal(i * 42L, parallelList[i].Value);
+            parallelList[i].Value.ShouldBe(i * 42L);
         }
     }
 
@@ -104,20 +105,20 @@ public sealed class BlittableStructTests
 
         ms.Position = 0;
         var readArray = await SingleDoubleStructParquetExtensions.ReadParquetArrayAsync(ms);
-        Assert.Equal(count, readArray.Length);
+        readArray.Length.ShouldBe(count);
         for (int i = 0; i < count; i++)
         {
-            Assert.Equal(i * 3.14159, readArray[i].Value, precision: 5);
+            readArray[i].Value.ShouldBe(i * 3.14159, 0.00001);
         }
 
         // Parallel read
         var parallelArray = await SingleDoubleStructParquetExtensions.ReadParquetParallelArrayAsync(
             ms.ToArray()
         );
-        Assert.Equal(count, parallelArray.Length);
+        parallelArray.Length.ShouldBe(count);
         for (int i = 0; i < count; i++)
         {
-            Assert.Equal(i * 3.14159, parallelArray[i].Value, precision: 5);
+            parallelArray[i].Value.ShouldBe(i * 3.14159, 0.00001);
         }
     }
 
@@ -143,24 +144,24 @@ public sealed class BlittableStructTests
 
         ms.Position = 0;
         var readArray = await Point3DStructParquetExtensions.ReadParquetArrayAsync(ms);
-        Assert.Equal(count, readArray.Length);
+        readArray.Length.ShouldBe(count);
         for (int i = 0; i < count; i++)
         {
-            Assert.Equal(i * 1.1, readArray[i].X, precision: 5);
-            Assert.Equal(i * 2.2, readArray[i].Y, precision: 5);
-            Assert.Equal(i * 3.3, readArray[i].Z, precision: 5);
+            readArray[i].X.ShouldBe(i * 1.1, 0.00001);
+            readArray[i].Y.ShouldBe(i * 2.2, 0.00001);
+            readArray[i].Z.ShouldBe(i * 3.3, 0.00001);
         }
 
         var bytes = ms.ToArray();
         var parallelRead = await Point3DStructParquetExtensions.ReadParquetParallelArrayAsync(
             bytes
         );
-        Assert.Equal(count, parallelRead.Length);
+        parallelRead.Length.ShouldBe(count);
         for (int i = 0; i < count; i++)
         {
-            Assert.Equal(i * 1.1, parallelRead[i].X, precision: 5);
-            Assert.Equal(i * 2.2, parallelRead[i].Y, precision: 5);
-            Assert.Equal(i * 3.3, parallelRead[i].Z, precision: 5);
+            parallelRead[i].X.ShouldBe(i * 1.1, 0.00001);
+            parallelRead[i].Y.ShouldBe(i * 2.2, 0.00001);
+            parallelRead[i].Z.ShouldBe(i * 3.3, 0.00001);
         }
     }
 }

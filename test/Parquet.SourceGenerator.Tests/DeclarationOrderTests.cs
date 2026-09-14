@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -32,8 +33,8 @@ public sealed class DeclarationOrderTests
         List<DeclarationOrderModel> read =
             await DeclarationOrderModelParquetExtensions.ReadParquetAsync(stream);
 
-        Assert.Single(read);
-        Assert.Equal("last_letter", read[0].Zzz);
-        Assert.Equal(42, read[0].Aaa);
+        read.ShouldHaveSingleItem();
+        read[0].Zzz.ShouldBe("last_letter");
+        read[0].Aaa.ShouldBe(42);
     }
 }

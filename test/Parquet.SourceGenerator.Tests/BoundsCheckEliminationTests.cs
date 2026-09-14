@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using Parquet.SourceGenerator;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -120,8 +121,8 @@ public sealed class BoundsCheckEliminationTests
     private static (int ForbiddenCount, int UnsafeAddCalls) Inspect(MethodInfo method)
     {
         MethodBody? body = method.GetMethodBody();
-        Assert.NotNull(body);
-        byte[] il = body!.GetILAsByteArray() ?? Array.Empty<byte>();
+        body.ShouldNotBeNull();
+        byte[] il = body.GetILAsByteArray() ?? Array.Empty<byte>();
 
         int forbidden = 0;
         int unsafeAddCalls = 0;
@@ -212,8 +213,8 @@ public sealed class BoundsCheckEliminationTests
     {
         var methods = FindLocalFunctions("ExtractSpan", "ExtractArray").ToList();
 
-        Assert.Contains(methods, m => m.Name.Contains("g__ExtractSpan", StringComparison.Ordinal));
-        Assert.Contains(methods, m => m.Name.Contains("g__ExtractArray", StringComparison.Ordinal));
+        methods.ShouldContain(m => m.Name.Contains("g__ExtractSpan", StringComparison.Ordinal));
+        methods.ShouldContain(m => m.Name.Contains("g__ExtractArray", StringComparison.Ordinal));
     }
 
     [Theory]
@@ -221,16 +222,13 @@ public sealed class BoundsCheckEliminationTests
     [InlineData("ExtractArray")]
     public void ExtractionLoopEmitsZeroBoundsCheckedElementAccesses(string localFunctionName)
     {
-        MethodInfo method = Assert.Single(
-            FindLocalFunctions(localFunctionName),
-            m => m.Name.Contains("g__" + localFunctionName, StringComparison.Ordinal)
-        );
+        MethodInfo method = FindLocalFunctions(localFunctionName)
+            .Single(m => m.Name.Contains("g__" + localFunctionName, StringComparison.Ordinal));
 
         (int forbidden, int unsafeAddCalls) = Inspect(method);
 
-        Assert.Equal(0, forbidden);
-        Assert.True(
-            unsafeAddCalls > 0,
+        forbidden.ShouldBe(0);
+        (unsafeAddCalls > 0).ShouldBeTrue(
             $"{localFunctionName} should address elements via Unsafe.Add but no calls were found."
         );
     }

@@ -1,4 +1,5 @@
 using System;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -10,20 +11,20 @@ public sealed class AttributesTests
     {
         var options = ParquetSerializerOptions.Default;
 
-        Assert.NotNull(options);
-        Assert.Equal(50_000, options.RowGroupSize);
-        Assert.Equal(-1, options.MaxDegreeOfParallelism);
-        Assert.Equal(ParquetCompressionMethod.Snappy, options.CompressionMethod);
-        Assert.Null(options.CompressionLevel);
-        Assert.False(options.DeduplicateStrings);
-        Assert.Null(options.DictionaryEncodingThreshold);
-        Assert.Null(options.DictionaryEncodingSampleSize);
-        Assert.NotNull(options.ColumnEncodingHints);
-        Assert.Empty(options.ColumnEncodingHints);
+        options.ShouldNotBeNull();
+        options.RowGroupSize.ShouldBe(50_000);
+        options.MaxDegreeOfParallelism.ShouldBe(-1);
+        options.CompressionMethod.ShouldBe(ParquetCompressionMethod.Snappy);
+        options.CompressionLevel.ShouldBeNull();
+        options.DeduplicateStrings.ShouldBeFalse();
+        options.DictionaryEncodingThreshold.ShouldBeNull();
+        options.DictionaryEncodingSampleSize.ShouldBeNull();
+        options.ColumnEncodingHints.ShouldNotBeNull();
+        options.ColumnEncodingHints.ShouldBeEmpty();
 
         // Default returns a fresh instance each time to prevent accidental mutation of shared state
         var options2 = ParquetSerializerOptions.Default;
-        Assert.NotSame(options, options2);
+        options.ShouldNotBeSameAs(options2);
     }
 
     [Fact]
@@ -41,18 +42,15 @@ public sealed class AttributesTests
             ColumnEncodingHints = { ["test_col"] = ParquetColumnEncoding.DeltaBinaryPacked },
         };
 
-        Assert.Equal(10_000, options.RowGroupSize);
-        Assert.Equal(4, options.MaxDegreeOfParallelism);
-        Assert.Equal(ParquetCompressionMethod.Zstd, options.CompressionMethod);
-        Assert.Equal(ParquetCompressionLevel.SmallestSize, options.CompressionLevel);
-        Assert.True(options.DeduplicateStrings);
-        Assert.Equal(0.5, options.DictionaryEncodingThreshold);
-        Assert.Equal(500, options.DictionaryEncodingSampleSize);
-        Assert.Single(options.ColumnEncodingHints);
-        Assert.Equal(
-            ParquetColumnEncoding.DeltaBinaryPacked,
-            options.ColumnEncodingHints["test_col"]
-        );
+        options.RowGroupSize.ShouldBe(10_000);
+        options.MaxDegreeOfParallelism.ShouldBe(4);
+        options.CompressionMethod.ShouldBe(ParquetCompressionMethod.Zstd);
+        options.CompressionLevel.ShouldBe(ParquetCompressionLevel.SmallestSize);
+        options.DeduplicateStrings.ShouldBeTrue();
+        options.DictionaryEncodingThreshold.ShouldBe(0.5);
+        options.DictionaryEncodingSampleSize.ShouldBe(500);
+        options.ColumnEncodingHints.Count.ShouldBe(1);
+        options.ColumnEncodingHints["test_col"].ShouldBe(ParquetColumnEncoding.DeltaBinaryPacked);
     }
 
     [Theory]
@@ -62,7 +60,7 @@ public sealed class AttributesTests
     [InlineData(ParquetColumnEncoding.ByteSplitStream)]
     public void ParquetColumnEncodingEnumValuesAreValid(ParquetColumnEncoding encoding)
     {
-        Assert.True(Enum.IsDefined(encoding));
+        Enum.IsDefined(encoding).ShouldBeTrue();
     }
 
     [Theory]
@@ -74,7 +72,7 @@ public sealed class AttributesTests
     [InlineData(ParquetCompressionMethod.Zstd)]
     public void ParquetCompressionMethodEnumValuesAreValid(ParquetCompressionMethod method)
     {
-        Assert.True(Enum.IsDefined(method));
+        Enum.IsDefined(method).ShouldBeTrue();
     }
 
     [Theory]
@@ -84,7 +82,7 @@ public sealed class AttributesTests
     [InlineData(ParquetCompressionLevel.SmallestSize)]
     public void ParquetCompressionLevelEnumValuesAreValid(ParquetCompressionLevel level)
     {
-        Assert.True(Enum.IsDefined(level));
+        Enum.IsDefined(level).ShouldBeTrue();
     }
 
     [Fact]
@@ -96,9 +94,9 @@ public sealed class AttributesTests
             Encoding = ParquetColumnEncoding.DeltaBinaryPacked,
         };
 
-        Assert.Equal("test_col", attr.Name);
-        Assert.Equal(42, attr.Order);
-        Assert.Equal(ParquetColumnEncoding.DeltaBinaryPacked, attr.Encoding);
+        attr.Name.ShouldBe("test_col");
+        attr.Order.ShouldBe(42);
+        attr.Encoding.ShouldBe(ParquetColumnEncoding.DeltaBinaryPacked);
     }
 
     [Fact]
@@ -106,31 +104,31 @@ public sealed class AttributesTests
     {
         var attr = new ParquetDecimalAttribute(18, 4);
 
-        Assert.Equal(18, attr.Precision);
-        Assert.Equal(4, attr.Scale);
+        attr.Precision.ShouldBe(18);
+        attr.Scale.ShouldBe(4);
     }
 
     [Fact]
     public void ParquetTimestampAttributeStoresProperties()
     {
         var attrMs = new ParquetTimestampAttribute(ParquetTimestampUnit.Milliseconds);
-        Assert.Equal(ParquetTimestampUnit.Milliseconds, attrMs.Unit);
+        attrMs.Unit.ShouldBe(ParquetTimestampUnit.Milliseconds);
 
         var attrUs = new ParquetTimestampAttribute(ParquetTimestampUnit.Microseconds);
-        Assert.Equal(ParquetTimestampUnit.Microseconds, attrUs.Unit);
+        attrUs.Unit.ShouldBe(ParquetTimestampUnit.Microseconds);
     }
 
     [Fact]
     public void ParquetIgnoreAttributeCanBeInstantiated()
     {
         var attr = new ParquetIgnoreAttribute();
-        Assert.NotNull(attr);
+        attr.ShouldNotBeNull();
     }
 
     [Fact]
     public void ParquetSerializableAttributeCanBeInstantiated()
     {
         var defaultAttr = new ParquetSerializableAttribute();
-        Assert.NotNull(defaultAttr);
+        defaultAttr.ShouldNotBeNull();
     }
 }

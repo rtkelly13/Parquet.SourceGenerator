@@ -1,4 +1,5 @@
 using System.Threading.Tasks;
+using Shouldly;
 using Xunit;
 
 // Two [ParquetSerializable] types sharing a class name in different namespaces — an Order in Sales
@@ -37,12 +38,12 @@ namespace Parquet.SourceGenerator.Tests
         [Fact]
         public void SameClassNameInDifferentNamespacesBothGenerate()
         {
-            Assert.Single(Sales.SharedNameParquetExtensions.Schema.Fields);
-            Assert.Single(Billing.SharedNameParquetExtensions.Schema.Fields);
+            Sales.SharedNameParquetExtensions.Schema.Fields.Count.ShouldBe(1);
+            Billing.SharedNameParquetExtensions.Schema.Fields.Count.ShouldBe(1);
 
             // Each got its own schema rather than one overwriting the other.
-            Assert.Equal("order_id", Sales.SharedNameParquetExtensions.Schema.Fields[0].Name);
-            Assert.Equal("invoice_id", Billing.SharedNameParquetExtensions.Schema.Fields[0].Name);
+            Sales.SharedNameParquetExtensions.Schema.Fields[0].Name.ShouldBe("order_id");
+            Billing.SharedNameParquetExtensions.Schema.Fields[0].Name.ShouldBe("invoice_id");
         }
 
         [Fact]
@@ -72,8 +73,8 @@ namespace Parquet.SourceGenerator.Tests
             billingStream.Position = 0;
             var billing = await Billing.SharedNameParquetExtensions.ReadParquetAsync(billingStream);
 
-            Assert.Equal(42, sales[0].OrderId);
-            Assert.Equal(99, billing[0].InvoiceId);
+            sales[0].OrderId.ShouldBe(42);
+            billing[0].InvoiceId.ShouldBe(99);
         }
     }
 }

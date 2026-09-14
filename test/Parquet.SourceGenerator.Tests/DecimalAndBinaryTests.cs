@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -46,12 +47,12 @@ public sealed class DecimalAndBinaryTests
 
         List<MoneyRecord> read = await MoneyRecordParquetExtensions.ReadParquetAsync(stream);
 
-        Assert.Equal(3, read.Count);
+        read.Count.ShouldBe(3);
         // Scale 4 is declared, so all three values are representable exactly; anything lost here is
         // a precision bug rather than a rounding artifact.
-        Assert.Equal(12345.6789m, read[0].Amount);
-        Assert.Equal(-0.0001m, read[1].Amount);
-        Assert.Equal(0m, read[2].Amount);
+        read[0].Amount.ShouldBe(12345.6789m);
+        read[1].Amount.ShouldBe(-0.0001m);
+        read[2].Amount.ShouldBe(0m);
     }
 
     [Fact]
@@ -69,10 +70,10 @@ public sealed class DecimalAndBinaryTests
 
         List<MoneyRecord> read = await MoneyRecordParquetExtensions.ReadParquetAsync(stream);
 
-        Assert.Equal(2, read.Count);
+        read.Count.ShouldBe(2);
         // High bytes and 0x00 are the values most likely to be mangled by an accidental
         // string conversion somewhere in the pipeline.
-        Assert.Equal(new byte[] { 0x00, 0x7F, 0x80, 0xFF }, read[0].Blob);
-        Assert.Empty(read[1].Blob);
+        read[0].Blob.ShouldBe(new byte[] { 0x00, 0x7F, 0x80, 0xFF });
+        read[1].Blob.ShouldBeEmpty();
     }
 }

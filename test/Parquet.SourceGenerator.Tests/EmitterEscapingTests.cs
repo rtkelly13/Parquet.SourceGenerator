@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -40,9 +41,9 @@ public sealed class EmitterEscapingTests
             names.Add(field.Name);
         }
 
-        Assert.Contains("he said \"hi\"", names);
-        Assert.Contains(@"back\slash", names);
-        Assert.Contains("tab\tseparated", names);
+        names.ShouldContain("he said \"hi\"");
+        names.ShouldContain(@"back\slash");
+        names.ShouldContain("tab\tseparated");
     }
 
     [Fact]
@@ -66,9 +67,9 @@ public sealed class EmitterEscapingTests
             stream
         );
 
-        Assert.Single(read);
-        Assert.Equal(7, read[0].Quoted);
-        Assert.Equal(9, read[0].Backslash);
-        Assert.Equal(11, read[0].Tabbed);
+        read.ShouldHaveSingleItem();
+        read[0].Quoted.ShouldBe(7);
+        read[0].Backslash.ShouldBe(9);
+        read[0].Tabbed.ShouldBe(11);
     }
 }
