@@ -167,6 +167,21 @@ public sealed class ParquetSerializerOptions
     public IDictionary<string, ParquetColumnEncoding> ColumnEncodingHints { get; } =
         new Dictionary<string, ParquetColumnEncoding>(StringComparer.Ordinal);
 
+    /// <summary>
+    /// Gets or sets the maximum number of values permitted in a single column chunk allocation or total collection size (default is 10,000,000).
+    /// </summary>
+    public int MaxAllocationValues { get; set; } = 10_000_000;
+
+    /// <summary>
+    /// Gets or sets the maximum number of row groups permitted in a single Parquet file (default is 100,000).
+    /// </summary>
+    public int MaxRowGroupCount { get; set; } = 100_000;
+
+    /// <summary>
+    /// Gets or sets the maximum compound schema nesting depth permitted (default is 64).
+    /// </summary>
+    public int MaxNestingDepth { get; set; } = 64;
+
     // UseMicrosecondTimestamps has been removed. It could never have worked: the schema is emitted
     // at compile time into a `static readonly ParquetSchema Schema`, so no runtime flag can change
     // a column's encoding. Per-property [ParquetTimestamp(ParquetTimestampUnit.Microseconds)] is

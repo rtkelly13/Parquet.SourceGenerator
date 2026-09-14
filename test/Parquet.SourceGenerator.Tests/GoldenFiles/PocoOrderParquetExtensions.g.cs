@@ -153,6 +153,53 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
     }
 
     /// <summary>
+    /// Validates the ParquetReader against configured defensive security bounds.
+    /// </summary>
+    private static void ValidateReader(
+        global::Parquet.ParquetReader reader,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions options)
+    {
+        int rowGroupCount = reader.RowGroupCount;
+        if (rowGroupCount < 0 || rowGroupCount > options.MaxRowGroupCount)
+        {
+            throw new global::System.IO.InvalidDataException($"Row group count {rowGroupCount} is invalid or exceeds maximum allowed {options.MaxRowGroupCount}.");
+        }
+        int maxDepth = 0;
+        foreach (var field in reader.Schema.Fields)
+        {
+            int d = GetFieldDepth(field);
+            if (d > maxDepth) maxDepth = d;
+        }
+        if (maxDepth > options.MaxNestingDepth)
+        {
+            throw new global::System.IO.InvalidDataException($"Schema nesting depth {maxDepth} exceeds maximum allowed {options.MaxNestingDepth}.");
+        }
+    }
+
+    private static int GetFieldDepth(global::Parquet.Schema.Field field)
+    {
+        if (field is global::Parquet.Schema.StructField sf)
+        {
+            int max = 0;
+            foreach (var child in sf.Fields)
+            {
+                int d = GetFieldDepth(child);
+                if (d > max) max = d;
+            }
+            return 1 + max;
+        }
+        if (field is global::Parquet.Schema.ListField lf)
+        {
+            return 1 + GetFieldDepth(lf.Item);
+        }
+        if (field is global::Parquet.Schema.MapField mf)
+        {
+            return 1 + global::System.Math.Max(GetFieldDepth(mf.Key), GetFieldDepth(mf.Value));
+        }
+        return 1;
+    }
+
+    /// <summary>
     /// Writes a single row group chunk using Parquet.Net low-level primitives for maximum speed and Native AOT compatibility.
     /// </summary>
     public static async global::System.Threading.Tasks.Task WriteParquetRowGroupAsync(
@@ -2715,6 +2762,7 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
             stream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
+        ValidateReader(reader, options);
         var fileFields = reader.Schema.DataFields;
 
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
@@ -2726,25 +2774,54 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
         var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName, out _);
         var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName, out _);
 
+        int rowGroupCount = reader.RowGroupCount;
+        if (rowGroupCount < 0 || rowGroupCount > options.MaxRowGroupCount)
+        {
+            throw new global::System.IO.InvalidDataException($"Row group count {rowGroupCount} is invalid or exceeds maximum allowed {options.MaxRowGroupCount}.");
+        }
         int totalRows;
         bool[]? selectedGroups = null;
         if (predicate == null)
         {
-            totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);
+            long sumRows = 0;
+            for (int r = 0; r < rowGroupCount; r++)
+            {
+                long rc = reader.RowGroups[r].RowCount;
+                if (rc < 0 || rc > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Row group {r} row count {rc} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
+                sumRows = checked(sumRows + rc);
+            }
+            if (sumRows > options.MaxAllocationValues)
+            {
+                throw new global::System.IO.InvalidDataException($"Total row count {sumRows} exceeds maximum allowed {options.MaxAllocationValues}.");
+            }
+            totalRows = checked((int)sumRows);
         }
         else
         {
             // Zone-map pre-pass: footer statistics only. Surviving groups are the only ones
             // whose pages are ever read, and the result is sized to exactly their rows.
-            selectedGroups = new bool[reader.RowGroupCount];
-            totalRows = 0;
-            for (int r = 0; r < reader.RowGroupCount; r++)
+            selectedGroups = new bool[rowGroupCount];
+            long sumRows = 0;
+            for (int r = 0; r < rowGroupCount; r++)
             {
                 using var probeReader = reader.OpenRowGroupReader(r);
                 if (!AcceptRowGroup(predicate, probeReader, r, field_0)) continue;
+                long rc = probeReader.RowCount;
+                if (rc < 0 || rc > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Row group {r} row count {rc} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 selectedGroups[r] = true;
-                totalRows += (int)probeReader.RowCount;
+                sumRows = checked(sumRows + rc);
             }
+            if (sumRows > options.MaxAllocationValues)
+            {
+                throw new global::System.IO.InvalidDataException($"Total matching row count {sumRows} exceeds maximum allowed {options.MaxAllocationValues}.");
+            }
+            totalRows = checked((int)sumRows);
         }
 #if NET8_0_OR_GREATER
         var results = new global::System.Collections.Generic.List<PocoOrder>(totalRows);
@@ -2759,7 +2836,11 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
             cancellationToken.ThrowIfCancellationRequested();
             if (selectedGroups != null && !selectedGroups[r]) continue;
             using var groupReader = reader.OpenRowGroupReader(r);
-            int rowCount = (int)groupReader.RowCount;
+            int rowCount = checked((int)groupReader.RowCount);
+            if (rowCount < 0 || rowCount > options.MaxAllocationValues)
+            {
+                throw new global::System.IO.InvalidDataException($"Row group {r} row count {rowCount} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+            }
 
             var buffer_0 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
             var buffer_1 = global::System.Buffers.ArrayPool<global::System.ReadOnlyMemory<char>>.Shared.Rent(rowCount);
@@ -2788,6 +2869,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(buffer_0, 0, rowCount),
                     cancellationToken: cancellationToken);
                 var entries_1 = checked((int)groupReader.GetMetadata(field_1).MetaData.NumValues);
+                if (entries_1 < 0 || entries_1 > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column 'City' NumValues ({entries_1}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 if (entries_1 > defLevels_1.Length)
                 {
                     var ndL_1 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_1);
@@ -2807,6 +2892,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(repLevels_1, 0, entries_1),
                     cancellationToken);
                 var entries_2 = checked((int)groupReader.GetMetadata(field_2).MetaData.NumValues);
+                if (entries_2 < 0 || entries_2 > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column 'Zip' NumValues ({entries_2}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 if (entries_2 > defLevels_2.Length)
                 {
                     var ndL_2 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_2);
@@ -2826,6 +2915,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(repLevels_2, 0, entries_2),
                     cancellationToken);
                 var entries_3 = checked((int)groupReader.GetMetadata(field_3).MetaData.NumValues);
+                if (entries_3 < 0 || entries_3 > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column 'Node' NumValues ({entries_3}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 if (entries_3 > defLevels_3.Length)
                 {
                     var ndL_3 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_3);
@@ -2845,6 +2938,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(repLevels_3, 0, entries_3),
                     cancellationToken);
                 var entries_4 = checked((int)groupReader.GetMetadata(field_4).MetaData.NumValues);
+                if (entries_4 < 0 || entries_4 > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column 'City' NumValues ({entries_4}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 if (entries_4 > defLevels_4.Length)
                 {
                     var ndL_4 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_4);
@@ -2864,6 +2961,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(repLevels_4, 0, entries_4),
                     cancellationToken);
                 var entries_5 = checked((int)groupReader.GetMetadata(field_5).MetaData.NumValues);
+                if (entries_5 < 0 || entries_5 > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column 'Zip' NumValues ({entries_5}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 if (entries_5 > defLevels_5.Length)
                 {
                     var ndL_5 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_5);
@@ -2883,6 +2984,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(repLevels_5, 0, entries_5),
                     cancellationToken);
                 var entries_6 = checked((int)groupReader.GetMetadata(field_6).MetaData.NumValues);
+                if (entries_6 < 0 || entries_6 > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column 'Node' NumValues ({entries_6}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 if (entries_6 > defLevels_6.Length)
                 {
                     var ndL_6 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_6);
@@ -2909,13 +3014,17 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                 int vc_3 = 0;
                 for (int p_1 = 0; p_1 < entries_1; p_1++)
                 {
-                    if (repLevels_1[p_1] == 0) { if (st_1) lane_1[rc_1++] = bk_1; st_1 = true; bk_1 = null; }
+                    if (repLevels_1[p_1] == 0) { if (st_1) { if (rc_1 >= lane_1.Length) throw new global::System.IO.InvalidDataException("Repetition levels in column 'City' produced more rows than row group capacity (" + lane_1.Length + ")."); lane_1[rc_1++] = bk_1; } st_1 = true; bk_1 = null; }
                     int dv_1 = defLevels_1[p_1];
+                    if (dv_1 < 0 || dv_1 > 4) throw new global::System.IO.InvalidDataException("Illegal definition level " + dv_1 + " in column 'City' (max: 4).");
                     if (dv_1 == 1) bk_1 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                     else if (dv_1 >= 2) {
                         bk_1 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                         if (dv_1 == 2) bk_1.Add(null!);
                         else {
+                            if (defLevels_1[p_1] >= 4 && vc_1 >= entries_1) throw new global::System.IO.InvalidDataException("Definition levels in column 'City' exceeded values count (" + entries_1 + ").");
+                            if (defLevels_2[p_1] >= 4 && vc_2 >= entries_2) throw new global::System.IO.InvalidDataException("Definition levels in column 'Zip' exceeded values count (" + entries_2 + ").");
+                            if (defLevels_3[p_1] >= 3 && vc_3 >= entries_3) throw new global::System.IO.InvalidDataException("Definition levels in column 'Node' exceeded values count (" + entries_3 + ").");
                             bk_1.Add(new global::SampleDomain.Models.PitStop
                             {
                                 City = defLevels_1[p_1] >= 4 ? buffer_1[vc_1++].ToString() : null!,
@@ -2925,7 +3034,7 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                         }
                     }
                 }
-                if (st_1) lane_1[rc_1++] = bk_1;
+                if (st_1) { if (rc_1 >= lane_1.Length) throw new global::System.IO.InvalidDataException("Repetition levels in column 'City' produced more rows than row group capacity (" + lane_1.Length + ")."); lane_1[rc_1++] = bk_1; }
                 _ = rc_1;
                 var lane_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>?[rowCount];
                 global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>? bk_4 = null; int rc_4 = 0; bool st_4 = false;
@@ -2934,13 +3043,17 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                 int vc_6 = 0;
                 for (int p_4 = 0; p_4 < entries_4; p_4++)
                 {
-                    if (repLevels_4[p_4] == 0) { if (st_4) lane_4[rc_4++] = bk_4; st_4 = true; bk_4 = null; }
+                    if (repLevels_4[p_4] == 0) { if (st_4) { if (rc_4 >= lane_4.Length) throw new global::System.IO.InvalidDataException("Repetition levels in column 'City' produced more rows than row group capacity (" + lane_4.Length + ")."); lane_4[rc_4++] = bk_4; } st_4 = true; bk_4 = null; }
                     int dv_4 = defLevels_4[p_4];
+                    if (dv_4 < 0 || dv_4 > 4) throw new global::System.IO.InvalidDataException("Illegal definition level " + dv_4 + " in column 'City' (max: 4).");
                     if (dv_4 == 1) bk_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                     else if (dv_4 >= 2) {
                         bk_4 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                         if (dv_4 == 2) bk_4.Add(null!);
                         else {
+                            if (defLevels_4[p_4] >= 4 && vc_4 >= entries_4) throw new global::System.IO.InvalidDataException("Definition levels in column 'City' exceeded values count (" + entries_4 + ").");
+                            if (defLevels_5[p_4] >= 4 && vc_5 >= entries_5) throw new global::System.IO.InvalidDataException("Definition levels in column 'Zip' exceeded values count (" + entries_5 + ").");
+                            if (defLevels_6[p_4] >= 3 && vc_6 >= entries_6) throw new global::System.IO.InvalidDataException("Definition levels in column 'Node' exceeded values count (" + entries_6 + ").");
                             bk_4.Add(new global::SampleDomain.Models.PitStop
                             {
                                 City = defLevels_4[p_4] >= 4 ? buffer_4[vc_4++].ToString() : null!,
@@ -2950,7 +3063,7 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                         }
                     }
                 }
-                if (st_4) lane_4[rc_4++] = bk_4;
+                if (st_4) { if (rc_4 >= lane_4.Length) throw new global::System.IO.InvalidDataException("Repetition levels in column 'City' produced more rows than row group capacity (" + lane_4.Length + ")."); lane_4[rc_4++] = bk_4; }
                 _ = rc_4;
 #if NET8_0_OR_GREATER
                 void PopulateSpan()
@@ -3025,6 +3138,7 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
             stream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
+        ValidateReader(reader, options);
         var fileFields = reader.Schema.DataFields;
 
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
@@ -3036,25 +3150,54 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
         var field_5 = ResolveSchemaField(fileFields, 5, _field_5, ref fieldsByName, out _);
         var field_6 = ResolveSchemaField(fileFields, 6, _field_6, ref fieldsByName, out _);
 
+        int rowGroupCount = reader.RowGroupCount;
+        if (rowGroupCount < 0 || rowGroupCount > options.MaxRowGroupCount)
+        {
+            throw new global::System.IO.InvalidDataException($"Row group count {rowGroupCount} is invalid or exceeds maximum allowed {options.MaxRowGroupCount}.");
+        }
         int totalRows;
         bool[]? selectedGroups = null;
         if (predicate == null)
         {
-            totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);
+            long sumRows = 0;
+            for (int r = 0; r < rowGroupCount; r++)
+            {
+                long rc = reader.RowGroups[r].RowCount;
+                if (rc < 0 || rc > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Row group {r} row count {rc} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
+                sumRows = checked(sumRows + rc);
+            }
+            if (sumRows > options.MaxAllocationValues)
+            {
+                throw new global::System.IO.InvalidDataException($"Total row count {sumRows} exceeds maximum allowed {options.MaxAllocationValues}.");
+            }
+            totalRows = checked((int)sumRows);
         }
         else
         {
             // Zone-map pre-pass: footer statistics only. Surviving groups are the only ones
             // whose pages are ever read, and the result is sized to exactly their rows.
-            selectedGroups = new bool[reader.RowGroupCount];
-            totalRows = 0;
-            for (int r = 0; r < reader.RowGroupCount; r++)
+            selectedGroups = new bool[rowGroupCount];
+            long sumRows = 0;
+            for (int r = 0; r < rowGroupCount; r++)
             {
                 using var probeReader = reader.OpenRowGroupReader(r);
                 if (!AcceptRowGroup(predicate, probeReader, r, field_0)) continue;
+                long rc = probeReader.RowCount;
+                if (rc < 0 || rc > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Row group {r} row count {rc} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 selectedGroups[r] = true;
-                totalRows += (int)probeReader.RowCount;
+                sumRows = checked(sumRows + rc);
             }
+            if (sumRows > options.MaxAllocationValues)
+            {
+                throw new global::System.IO.InvalidDataException($"Total matching row count {sumRows} exceeds maximum allowed {options.MaxAllocationValues}.");
+            }
+            totalRows = checked((int)sumRows);
         }
         var results = new PocoOrder[totalRows];
         int currentOffset = 0;
@@ -3064,7 +3207,11 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
             cancellationToken.ThrowIfCancellationRequested();
             if (selectedGroups != null && !selectedGroups[r]) continue;
             using var groupReader = reader.OpenRowGroupReader(r);
-            int rowCount = (int)groupReader.RowCount;
+            int rowCount = checked((int)groupReader.RowCount);
+            if (rowCount < 0 || rowCount > options.MaxAllocationValues)
+            {
+                throw new global::System.IO.InvalidDataException($"Row group {r} row count {rowCount} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+            }
 
             var buffer_0 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
             var buffer_1 = global::System.Buffers.ArrayPool<global::System.ReadOnlyMemory<char>>.Shared.Rent(rowCount);
@@ -3093,6 +3240,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(buffer_0, 0, rowCount),
                     cancellationToken: cancellationToken);
                 var entries_1 = checked((int)groupReader.GetMetadata(field_1).MetaData.NumValues);
+                if (entries_1 < 0 || entries_1 > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column 'City' NumValues ({entries_1}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 if (entries_1 > defLevels_1.Length)
                 {
                     var ndL_1 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_1);
@@ -3112,6 +3263,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(repLevels_1, 0, entries_1),
                     cancellationToken);
                 var entries_2 = checked((int)groupReader.GetMetadata(field_2).MetaData.NumValues);
+                if (entries_2 < 0 || entries_2 > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column 'Zip' NumValues ({entries_2}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 if (entries_2 > defLevels_2.Length)
                 {
                     var ndL_2 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_2);
@@ -3131,6 +3286,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(repLevels_2, 0, entries_2),
                     cancellationToken);
                 var entries_3 = checked((int)groupReader.GetMetadata(field_3).MetaData.NumValues);
+                if (entries_3 < 0 || entries_3 > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column 'Node' NumValues ({entries_3}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 if (entries_3 > defLevels_3.Length)
                 {
                     var ndL_3 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_3);
@@ -3150,6 +3309,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(repLevels_3, 0, entries_3),
                     cancellationToken);
                 var entries_4 = checked((int)groupReader.GetMetadata(field_4).MetaData.NumValues);
+                if (entries_4 < 0 || entries_4 > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column 'City' NumValues ({entries_4}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 if (entries_4 > defLevels_4.Length)
                 {
                     var ndL_4 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_4);
@@ -3169,6 +3332,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(repLevels_4, 0, entries_4),
                     cancellationToken);
                 var entries_5 = checked((int)groupReader.GetMetadata(field_5).MetaData.NumValues);
+                if (entries_5 < 0 || entries_5 > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column 'Zip' NumValues ({entries_5}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 if (entries_5 > defLevels_5.Length)
                 {
                     var ndL_5 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_5);
@@ -3188,6 +3355,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(repLevels_5, 0, entries_5),
                     cancellationToken);
                 var entries_6 = checked((int)groupReader.GetMetadata(field_6).MetaData.NumValues);
+                if (entries_6 < 0 || entries_6 > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column 'Node' NumValues ({entries_6}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 if (entries_6 > defLevels_6.Length)
                 {
                     var ndL_6 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_6);
@@ -3214,13 +3385,17 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                 int vc_3 = 0;
                 for (int p_1 = 0; p_1 < entries_1; p_1++)
                 {
-                    if (repLevels_1[p_1] == 0) { if (st_1) lane_1[rc_1++] = bk_1; st_1 = true; bk_1 = null; }
+                    if (repLevels_1[p_1] == 0) { if (st_1) { if (rc_1 >= lane_1.Length) throw new global::System.IO.InvalidDataException("Repetition levels in column 'City' produced more rows than row group capacity (" + lane_1.Length + ")."); lane_1[rc_1++] = bk_1; } st_1 = true; bk_1 = null; }
                     int dv_1 = defLevels_1[p_1];
+                    if (dv_1 < 0 || dv_1 > 4) throw new global::System.IO.InvalidDataException("Illegal definition level " + dv_1 + " in column 'City' (max: 4).");
                     if (dv_1 == 1) bk_1 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                     else if (dv_1 >= 2) {
                         bk_1 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                         if (dv_1 == 2) bk_1.Add(null!);
                         else {
+                            if (defLevels_1[p_1] >= 4 && vc_1 >= entries_1) throw new global::System.IO.InvalidDataException("Definition levels in column 'City' exceeded values count (" + entries_1 + ").");
+                            if (defLevels_2[p_1] >= 4 && vc_2 >= entries_2) throw new global::System.IO.InvalidDataException("Definition levels in column 'Zip' exceeded values count (" + entries_2 + ").");
+                            if (defLevels_3[p_1] >= 3 && vc_3 >= entries_3) throw new global::System.IO.InvalidDataException("Definition levels in column 'Node' exceeded values count (" + entries_3 + ").");
                             bk_1.Add(new global::SampleDomain.Models.PitStop
                             {
                                 City = defLevels_1[p_1] >= 4 ? buffer_1[vc_1++].ToString() : null!,
@@ -3230,7 +3405,7 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                         }
                     }
                 }
-                if (st_1) lane_1[rc_1++] = bk_1;
+                if (st_1) { if (rc_1 >= lane_1.Length) throw new global::System.IO.InvalidDataException("Repetition levels in column 'City' produced more rows than row group capacity (" + lane_1.Length + ")."); lane_1[rc_1++] = bk_1; }
                 _ = rc_1;
                 var lane_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>?[rowCount];
                 global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>? bk_4 = null; int rc_4 = 0; bool st_4 = false;
@@ -3239,13 +3414,17 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                 int vc_6 = 0;
                 for (int p_4 = 0; p_4 < entries_4; p_4++)
                 {
-                    if (repLevels_4[p_4] == 0) { if (st_4) lane_4[rc_4++] = bk_4; st_4 = true; bk_4 = null; }
+                    if (repLevels_4[p_4] == 0) { if (st_4) { if (rc_4 >= lane_4.Length) throw new global::System.IO.InvalidDataException("Repetition levels in column 'City' produced more rows than row group capacity (" + lane_4.Length + ")."); lane_4[rc_4++] = bk_4; } st_4 = true; bk_4 = null; }
                     int dv_4 = defLevels_4[p_4];
+                    if (dv_4 < 0 || dv_4 > 4) throw new global::System.IO.InvalidDataException("Illegal definition level " + dv_4 + " in column 'City' (max: 4).");
                     if (dv_4 == 1) bk_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                     else if (dv_4 >= 2) {
                         bk_4 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                         if (dv_4 == 2) bk_4.Add(null!);
                         else {
+                            if (defLevels_4[p_4] >= 4 && vc_4 >= entries_4) throw new global::System.IO.InvalidDataException("Definition levels in column 'City' exceeded values count (" + entries_4 + ").");
+                            if (defLevels_5[p_4] >= 4 && vc_5 >= entries_5) throw new global::System.IO.InvalidDataException("Definition levels in column 'Zip' exceeded values count (" + entries_5 + ").");
+                            if (defLevels_6[p_4] >= 3 && vc_6 >= entries_6) throw new global::System.IO.InvalidDataException("Definition levels in column 'Node' exceeded values count (" + entries_6 + ").");
                             bk_4.Add(new global::SampleDomain.Models.PitStop
                             {
                                 City = defLevels_4[p_4] >= 4 ? buffer_4[vc_4++].ToString() : null!,
@@ -3255,7 +3434,7 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                         }
                     }
                 }
-                if (st_4) lane_4[rc_4++] = bk_4;
+                if (st_4) { if (rc_4 >= lane_4.Length) throw new global::System.IO.InvalidDataException("Repetition levels in column 'City' produced more rows than row group capacity (" + lane_4.Length + ")."); lane_4[rc_4++] = bk_4; }
                 _ = rc_4;
                 for (int i = 0; i < rowCount; i++)
                 {
@@ -3323,19 +3502,28 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
             stream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
+        ValidateReader(reader, options);
         int rgCount = reader.RowGroupCount;
         if (rgCount == 0) return global::System.Array.Empty<PocoOrder>();
 
-        int totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);
-        var resultArray = new PocoOrder[totalRows];
+        long totalRowsLong = 0;
         var rowOffsets = new int[rgCount];
-        int currentOffset = 0;
         for (int r = 0; r < rgCount; r++)
         {
-            rowOffsets[r] = currentOffset;
-            currentOffset += (int)reader.RowGroups[r].RowCount;
+            long rcLong = reader.RowGroups[r].RowCount;
+            if (rcLong < 0 || rcLong > options.MaxAllocationValues)
+            {
+                throw new global::System.IO.InvalidDataException($"Row group {r} row count {rcLong} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+            }
+            rowOffsets[r] = checked((int)totalRowsLong);
+            totalRowsLong = checked(totalRowsLong + rcLong);
         }
-
+        if (totalRowsLong > options.MaxAllocationValues)
+        {
+            throw new global::System.IO.InvalidDataException($"Total row count {totalRowsLong} exceeds maximum allowed {options.MaxAllocationValues}.");
+        }
+        int totalRows = checked((int)totalRowsLong);
+        var resultArray = new PocoOrder[totalRows];
         var fileFields = reader.Schema.DataFields;
 
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
@@ -3351,7 +3539,11 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
         {
             cancellationToken.ThrowIfCancellationRequested();
             using var groupReader = reader.OpenRowGroupReader(r);
-            int rowCount = (int)groupReader.RowCount;
+            int rowCount = checked((int)groupReader.RowCount);
+            if (rowCount < 0 || rowCount > options.MaxAllocationValues)
+            {
+                throw new global::System.IO.InvalidDataException($"Row group {r} row count {rowCount} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+            }
             int startIdx = rowOffsets[r];
 
             var buffer_0 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
@@ -3381,6 +3573,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(buffer_0, 0, rowCount),
                     cancellationToken: cancellationToken);
                 var entries_1 = checked((int)groupReader.GetMetadata(field_1).MetaData.NumValues);
+                if (entries_1 < 0 || entries_1 > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column 'City' NumValues ({entries_1}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 if (entries_1 > defLevels_1.Length)
                 {
                     var ndL_1 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_1);
@@ -3400,6 +3596,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(repLevels_1, 0, entries_1),
                     cancellationToken);
                 var entries_2 = checked((int)groupReader.GetMetadata(field_2).MetaData.NumValues);
+                if (entries_2 < 0 || entries_2 > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column 'Zip' NumValues ({entries_2}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 if (entries_2 > defLevels_2.Length)
                 {
                     var ndL_2 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_2);
@@ -3419,6 +3619,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(repLevels_2, 0, entries_2),
                     cancellationToken);
                 var entries_3 = checked((int)groupReader.GetMetadata(field_3).MetaData.NumValues);
+                if (entries_3 < 0 || entries_3 > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column 'Node' NumValues ({entries_3}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 if (entries_3 > defLevels_3.Length)
                 {
                     var ndL_3 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_3);
@@ -3438,6 +3642,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(repLevels_3, 0, entries_3),
                     cancellationToken);
                 var entries_4 = checked((int)groupReader.GetMetadata(field_4).MetaData.NumValues);
+                if (entries_4 < 0 || entries_4 > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column 'City' NumValues ({entries_4}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 if (entries_4 > defLevels_4.Length)
                 {
                     var ndL_4 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_4);
@@ -3457,6 +3665,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(repLevels_4, 0, entries_4),
                     cancellationToken);
                 var entries_5 = checked((int)groupReader.GetMetadata(field_5).MetaData.NumValues);
+                if (entries_5 < 0 || entries_5 > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column 'Zip' NumValues ({entries_5}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 if (entries_5 > defLevels_5.Length)
                 {
                     var ndL_5 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_5);
@@ -3476,6 +3688,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(repLevels_5, 0, entries_5),
                     cancellationToken);
                 var entries_6 = checked((int)groupReader.GetMetadata(field_6).MetaData.NumValues);
+                if (entries_6 < 0 || entries_6 > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column 'Node' NumValues ({entries_6}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 if (entries_6 > defLevels_6.Length)
                 {
                     var ndL_6 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_6);
@@ -3502,13 +3718,17 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                 int vc_3 = 0;
                 for (int p_1 = 0; p_1 < entries_1; p_1++)
                 {
-                    if (repLevels_1[p_1] == 0) { if (st_1) lane_1[rc_1++] = bk_1; st_1 = true; bk_1 = null; }
+                    if (repLevels_1[p_1] == 0) { if (st_1) { if (rc_1 >= lane_1.Length) throw new global::System.IO.InvalidDataException("Repetition levels in column 'City' produced more rows than row group capacity (" + lane_1.Length + ")."); lane_1[rc_1++] = bk_1; } st_1 = true; bk_1 = null; }
                     int dv_1 = defLevels_1[p_1];
+                    if (dv_1 < 0 || dv_1 > 4) throw new global::System.IO.InvalidDataException("Illegal definition level " + dv_1 + " in column 'City' (max: 4).");
                     if (dv_1 == 1) bk_1 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                     else if (dv_1 >= 2) {
                         bk_1 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                         if (dv_1 == 2) bk_1.Add(null!);
                         else {
+                            if (defLevels_1[p_1] >= 4 && vc_1 >= entries_1) throw new global::System.IO.InvalidDataException("Definition levels in column 'City' exceeded values count (" + entries_1 + ").");
+                            if (defLevels_2[p_1] >= 4 && vc_2 >= entries_2) throw new global::System.IO.InvalidDataException("Definition levels in column 'Zip' exceeded values count (" + entries_2 + ").");
+                            if (defLevels_3[p_1] >= 3 && vc_3 >= entries_3) throw new global::System.IO.InvalidDataException("Definition levels in column 'Node' exceeded values count (" + entries_3 + ").");
                             bk_1.Add(new global::SampleDomain.Models.PitStop
                             {
                                 City = defLevels_1[p_1] >= 4 ? buffer_1[vc_1++].ToString() : null!,
@@ -3518,7 +3738,7 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                         }
                     }
                 }
-                if (st_1) lane_1[rc_1++] = bk_1;
+                if (st_1) { if (rc_1 >= lane_1.Length) throw new global::System.IO.InvalidDataException("Repetition levels in column 'City' produced more rows than row group capacity (" + lane_1.Length + ")."); lane_1[rc_1++] = bk_1; }
                 _ = rc_1;
                 var lane_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>?[rowCount];
                 global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>? bk_4 = null; int rc_4 = 0; bool st_4 = false;
@@ -3527,13 +3747,17 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                 int vc_6 = 0;
                 for (int p_4 = 0; p_4 < entries_4; p_4++)
                 {
-                    if (repLevels_4[p_4] == 0) { if (st_4) lane_4[rc_4++] = bk_4; st_4 = true; bk_4 = null; }
+                    if (repLevels_4[p_4] == 0) { if (st_4) { if (rc_4 >= lane_4.Length) throw new global::System.IO.InvalidDataException("Repetition levels in column 'City' produced more rows than row group capacity (" + lane_4.Length + ")."); lane_4[rc_4++] = bk_4; } st_4 = true; bk_4 = null; }
                     int dv_4 = defLevels_4[p_4];
+                    if (dv_4 < 0 || dv_4 > 4) throw new global::System.IO.InvalidDataException("Illegal definition level " + dv_4 + " in column 'City' (max: 4).");
                     if (dv_4 == 1) bk_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                     else if (dv_4 >= 2) {
                         bk_4 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                         if (dv_4 == 2) bk_4.Add(null!);
                         else {
+                            if (defLevels_4[p_4] >= 4 && vc_4 >= entries_4) throw new global::System.IO.InvalidDataException("Definition levels in column 'City' exceeded values count (" + entries_4 + ").");
+                            if (defLevels_5[p_4] >= 4 && vc_5 >= entries_5) throw new global::System.IO.InvalidDataException("Definition levels in column 'Zip' exceeded values count (" + entries_5 + ").");
+                            if (defLevels_6[p_4] >= 3 && vc_6 >= entries_6) throw new global::System.IO.InvalidDataException("Definition levels in column 'Node' exceeded values count (" + entries_6 + ").");
                             bk_4.Add(new global::SampleDomain.Models.PitStop
                             {
                                 City = defLevels_4[p_4] >= 4 ? buffer_4[vc_4++].ToString() : null!,
@@ -3543,7 +3767,7 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                         }
                     }
                 }
-                if (st_4) lane_4[rc_4++] = bk_4;
+                if (st_4) { if (rc_4 >= lane_4.Length) throw new global::System.IO.InvalidDataException("Repetition levels in column 'City' produced more rows than row group capacity (" + lane_4.Length + ")."); lane_4[rc_4++] = bk_4; }
                 _ = rc_4;
                 for (int i = 0; i < rowCount; i++)
                 {
@@ -3613,6 +3837,7 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
             stream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
+        ValidateReader(reader, options);
         var fileFields = reader.Schema.DataFields;
 
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
@@ -3628,7 +3853,11 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
         {
             cancellationToken.ThrowIfCancellationRequested();
             using var groupReader = reader.OpenRowGroupReader(r);
-            int rowCount = (int)groupReader.RowCount;
+            int rowCount = checked((int)groupReader.RowCount);
+            if (rowCount < 0 || rowCount > options.MaxAllocationValues)
+            {
+                throw new global::System.IO.InvalidDataException($"Row group {r} row count {rowCount} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+            }
             if (!AcceptRowGroup(predicate, groupReader, r, field_0)) continue;
 
             var buffer_0 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
@@ -3657,6 +3886,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(buffer_0, 0, rowCount),
                     cancellationToken: cancellationToken);
                 var entries_1 = checked((int)groupReader.GetMetadata(field_1).MetaData.NumValues);
+                if (entries_1 < 0 || entries_1 > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column 'City' NumValues ({entries_1}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 if (entries_1 > defLevels_1.Length)
                 {
                     var ndL_1 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_1);
@@ -3676,6 +3909,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(repLevels_1, 0, entries_1),
                     cancellationToken);
                 var entries_2 = checked((int)groupReader.GetMetadata(field_2).MetaData.NumValues);
+                if (entries_2 < 0 || entries_2 > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column 'Zip' NumValues ({entries_2}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 if (entries_2 > defLevels_2.Length)
                 {
                     var ndL_2 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_2);
@@ -3695,6 +3932,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(repLevels_2, 0, entries_2),
                     cancellationToken);
                 var entries_3 = checked((int)groupReader.GetMetadata(field_3).MetaData.NumValues);
+                if (entries_3 < 0 || entries_3 > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column 'Node' NumValues ({entries_3}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 if (entries_3 > defLevels_3.Length)
                 {
                     var ndL_3 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_3);
@@ -3714,6 +3955,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(repLevels_3, 0, entries_3),
                     cancellationToken);
                 var entries_4 = checked((int)groupReader.GetMetadata(field_4).MetaData.NumValues);
+                if (entries_4 < 0 || entries_4 > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column 'City' NumValues ({entries_4}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 if (entries_4 > defLevels_4.Length)
                 {
                     var ndL_4 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_4);
@@ -3733,6 +3978,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(repLevels_4, 0, entries_4),
                     cancellationToken);
                 var entries_5 = checked((int)groupReader.GetMetadata(field_5).MetaData.NumValues);
+                if (entries_5 < 0 || entries_5 > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column 'Zip' NumValues ({entries_5}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 if (entries_5 > defLevels_5.Length)
                 {
                     var ndL_5 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_5);
@@ -3752,6 +4001,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(repLevels_5, 0, entries_5),
                     cancellationToken);
                 var entries_6 = checked((int)groupReader.GetMetadata(field_6).MetaData.NumValues);
+                if (entries_6 < 0 || entries_6 > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column 'Node' NumValues ({entries_6}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 if (entries_6 > defLevels_6.Length)
                 {
                     var ndL_6 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_6);
@@ -3778,13 +4031,17 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     int vc_3 = 0;
                     for (int p_1 = 0; p_1 < entries_1; p_1++)
                     {
-                        if (repLevels_1[p_1] == 0) { if (st_1) lane_1[rc_1++] = bk_1; st_1 = true; bk_1 = null; }
+                        if (repLevels_1[p_1] == 0) { if (st_1) { if (rc_1 >= lane_1.Length) throw new global::System.IO.InvalidDataException("Repetition levels in column 'City' produced more rows than row group capacity (" + lane_1.Length + ")."); lane_1[rc_1++] = bk_1; } st_1 = true; bk_1 = null; }
                         int dv_1 = defLevels_1[p_1];
+                        if (dv_1 < 0 || dv_1 > 4) throw new global::System.IO.InvalidDataException("Illegal definition level " + dv_1 + " in column 'City' (max: 4).");
                         if (dv_1 == 1) bk_1 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                         else if (dv_1 >= 2) {
                             bk_1 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                             if (dv_1 == 2) bk_1.Add(null!);
                             else {
+                                if (defLevels_1[p_1] >= 4 && vc_1 >= entries_1) throw new global::System.IO.InvalidDataException("Definition levels in column 'City' exceeded values count (" + entries_1 + ").");
+                                if (defLevels_2[p_1] >= 4 && vc_2 >= entries_2) throw new global::System.IO.InvalidDataException("Definition levels in column 'Zip' exceeded values count (" + entries_2 + ").");
+                                if (defLevels_3[p_1] >= 3 && vc_3 >= entries_3) throw new global::System.IO.InvalidDataException("Definition levels in column 'Node' exceeded values count (" + entries_3 + ").");
                                 bk_1.Add(new global::SampleDomain.Models.PitStop
                                 {
                                     City = defLevels_1[p_1] >= 4 ? buffer_1[vc_1++].ToString() : null!,
@@ -3794,7 +4051,7 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                             }
                         }
                     }
-                    if (st_1) lane_1[rc_1++] = bk_1;
+                    if (st_1) { if (rc_1 >= lane_1.Length) throw new global::System.IO.InvalidDataException("Repetition levels in column 'City' produced more rows than row group capacity (" + lane_1.Length + ")."); lane_1[rc_1++] = bk_1; }
                     _ = rc_1;
                     var lane_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>?[rowCount];
                     global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>? bk_4 = null; int rc_4 = 0; bool st_4 = false;
@@ -3803,13 +4060,17 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     int vc_6 = 0;
                     for (int p_4 = 0; p_4 < entries_4; p_4++)
                     {
-                        if (repLevels_4[p_4] == 0) { if (st_4) lane_4[rc_4++] = bk_4; st_4 = true; bk_4 = null; }
+                        if (repLevels_4[p_4] == 0) { if (st_4) { if (rc_4 >= lane_4.Length) throw new global::System.IO.InvalidDataException("Repetition levels in column 'City' produced more rows than row group capacity (" + lane_4.Length + ")."); lane_4[rc_4++] = bk_4; } st_4 = true; bk_4 = null; }
                         int dv_4 = defLevels_4[p_4];
+                        if (dv_4 < 0 || dv_4 > 4) throw new global::System.IO.InvalidDataException("Illegal definition level " + dv_4 + " in column 'City' (max: 4).");
                         if (dv_4 == 1) bk_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                         else if (dv_4 >= 2) {
                             bk_4 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                             if (dv_4 == 2) bk_4.Add(null!);
                             else {
+                                if (defLevels_4[p_4] >= 4 && vc_4 >= entries_4) throw new global::System.IO.InvalidDataException("Definition levels in column 'City' exceeded values count (" + entries_4 + ").");
+                                if (defLevels_5[p_4] >= 4 && vc_5 >= entries_5) throw new global::System.IO.InvalidDataException("Definition levels in column 'Zip' exceeded values count (" + entries_5 + ").");
+                                if (defLevels_6[p_4] >= 3 && vc_6 >= entries_6) throw new global::System.IO.InvalidDataException("Definition levels in column 'Node' exceeded values count (" + entries_6 + ").");
                                 bk_4.Add(new global::SampleDomain.Models.PitStop
                                 {
                                     City = defLevels_4[p_4] >= 4 ? buffer_4[vc_4++].ToString() : null!,
@@ -3819,7 +4080,7 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                             }
                         }
                     }
-                    if (st_4) lane_4[rc_4++] = bk_4;
+                    if (st_4) { if (rc_4 >= lane_4.Length) throw new global::System.IO.InvalidDataException("Repetition levels in column 'City' produced more rows than row group capacity (" + lane_4.Length + ")."); lane_4[rc_4++] = bk_4; }
                     _ = rc_4;
                 for (int i = 0; i < rowCount; i++)
                 {
@@ -3906,17 +4167,32 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                 probeStream,
                 formatOptions,
                 cancellationToken: cancellationToken);
+            ValidateReader(probe, options);
             rowGroupCount = probe.RowGroupCount;
-            totalRows = 0;
+            if (rowGroupCount < 0 || rowGroupCount > options.MaxRowGroupCount)
+            {
+                throw new global::System.IO.InvalidDataException($"Row group count {rowGroupCount} is invalid or exceeds maximum allowed {options.MaxRowGroupCount}.");
+            }
+            long totalRowsLong = 0;
             maxRowGroupSize = 0;
             rowOffsets = new int[rowGroupCount];
             for (int r = 0; r < rowGroupCount; r++)
             {
-                int rc = (int)probe.RowGroups[r].RowCount;
-                rowOffsets[r] = totalRows;
-                totalRows += rc;
+                long rcLong = probe.RowGroups[r].RowCount;
+                if (rcLong < 0 || rcLong > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Row group {r} row count {rcLong} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
+                rowOffsets[r] = checked((int)totalRowsLong);
+                totalRowsLong = checked(totalRowsLong + rcLong);
+                int rc = (int)rcLong;
                 if (rc > maxRowGroupSize) maxRowGroupSize = rc;
             }
+            if (totalRowsLong > options.MaxAllocationValues)
+            {
+                throw new global::System.IO.InvalidDataException($"Total row count {totalRowsLong} exceeds maximum allowed {options.MaxAllocationValues}.");
+            }
+            totalRows = checked((int)totalRowsLong);
         }
 
         if (rowGroupCount == 0) return global::System.Array.Empty<PocoOrder>();
@@ -3944,6 +4220,7 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                 cursor,
                 rowGroupCount,
                 maxRowGroupSize,
+                options,
                 linkedCts,
                 workerToken);
         }
@@ -3960,6 +4237,7 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                         cursor,
                         rowGroupCount,
                         maxRowGroupSize,
+                        options,
                         linkedCts,
                         workerToken),
                     workerToken);
@@ -4008,6 +4286,7 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
         int[] cursor,
         int rowGroupCount,
         int maxRowGroupSize,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions options,
         global::System.Threading.CancellationTokenSource linkedCts,
         global::System.Threading.CancellationToken cancellationToken)
     {
@@ -4018,6 +4297,7 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                 stream,
                 formatOptions,
                 cancellationToken: cancellationToken);
+            ValidateReader(reader, options);
 
             var fileFields = reader.Schema.DataFields;
 
@@ -4059,7 +4339,11 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
 
                     cancellationToken.ThrowIfCancellationRequested();
                     using var groupReader = reader.OpenRowGroupReader(r);
-                    int rowCount = (int)groupReader.RowCount;
+                    int rowCount = checked((int)groupReader.RowCount);
+                    if (rowCount < 0 || rowCount > options.MaxAllocationValues)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Row group {r} row count {rowCount} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                    }
                     int startIdx = rowOffsets[r];
 
                     await groupReader.ReadAsync<int>(
@@ -4067,6 +4351,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                         new global::System.Memory<int>(buffer_0, 0, rowCount),
                         cancellationToken: cancellationToken);
                     var entries_1 = checked((int)groupReader.GetMetadata(field_1).MetaData.NumValues);
+                    if (entries_1 < 0 || entries_1 > options.MaxAllocationValues)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Column 'City' NumValues ({entries_1}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                    }
                     if (entries_1 > defLevels_1.Length)
                     {
                         var ndL_1 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_1);
@@ -4086,6 +4374,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                         new global::System.Memory<int>(repLevels_1, 0, entries_1),
                         cancellationToken);
                     var entries_2 = checked((int)groupReader.GetMetadata(field_2).MetaData.NumValues);
+                    if (entries_2 < 0 || entries_2 > options.MaxAllocationValues)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Column 'Zip' NumValues ({entries_2}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                    }
                     if (entries_2 > defLevels_2.Length)
                     {
                         var ndL_2 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_2);
@@ -4105,6 +4397,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                         new global::System.Memory<int>(repLevels_2, 0, entries_2),
                         cancellationToken);
                     var entries_3 = checked((int)groupReader.GetMetadata(field_3).MetaData.NumValues);
+                    if (entries_3 < 0 || entries_3 > options.MaxAllocationValues)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Column 'Node' NumValues ({entries_3}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                    }
                     if (entries_3 > defLevels_3.Length)
                     {
                         var ndL_3 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_3);
@@ -4124,6 +4420,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                         new global::System.Memory<int>(repLevels_3, 0, entries_3),
                         cancellationToken);
                     var entries_4 = checked((int)groupReader.GetMetadata(field_4).MetaData.NumValues);
+                    if (entries_4 < 0 || entries_4 > options.MaxAllocationValues)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Column 'City' NumValues ({entries_4}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                    }
                     if (entries_4 > defLevels_4.Length)
                     {
                         var ndL_4 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_4);
@@ -4143,6 +4443,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                         new global::System.Memory<int>(repLevels_4, 0, entries_4),
                         cancellationToken);
                     var entries_5 = checked((int)groupReader.GetMetadata(field_5).MetaData.NumValues);
+                    if (entries_5 < 0 || entries_5 > options.MaxAllocationValues)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Column 'Zip' NumValues ({entries_5}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                    }
                     if (entries_5 > defLevels_5.Length)
                     {
                         var ndL_5 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_5);
@@ -4162,6 +4466,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                         new global::System.Memory<int>(repLevels_5, 0, entries_5),
                         cancellationToken);
                     var entries_6 = checked((int)groupReader.GetMetadata(field_6).MetaData.NumValues);
+                    if (entries_6 < 0 || entries_6 > options.MaxAllocationValues)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Column 'Node' NumValues ({entries_6}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                    }
                     if (entries_6 > defLevels_6.Length)
                     {
                         var ndL_6 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_6);
@@ -4188,13 +4496,17 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     int vc_3 = 0;
                     for (int p_1 = 0; p_1 < entries_1; p_1++)
                     {
-                        if (repLevels_1[p_1] == 0) { if (st_1) lane_1[rc_1++] = bk_1; st_1 = true; bk_1 = null; }
+                        if (repLevels_1[p_1] == 0) { if (st_1) { if (rc_1 >= lane_1.Length) throw new global::System.IO.InvalidDataException("Repetition levels in column 'City' produced more rows than row group capacity (" + lane_1.Length + ")."); lane_1[rc_1++] = bk_1; } st_1 = true; bk_1 = null; }
                         int dv_1 = defLevels_1[p_1];
+                        if (dv_1 < 0 || dv_1 > 4) throw new global::System.IO.InvalidDataException("Illegal definition level " + dv_1 + " in column 'City' (max: 4).");
                         if (dv_1 == 1) bk_1 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                         else if (dv_1 >= 2) {
                             bk_1 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                             if (dv_1 == 2) bk_1.Add(null!);
                             else {
+                                if (defLevels_1[p_1] >= 4 && vc_1 >= entries_1) throw new global::System.IO.InvalidDataException("Definition levels in column 'City' exceeded values count (" + entries_1 + ").");
+                                if (defLevels_2[p_1] >= 4 && vc_2 >= entries_2) throw new global::System.IO.InvalidDataException("Definition levels in column 'Zip' exceeded values count (" + entries_2 + ").");
+                                if (defLevels_3[p_1] >= 3 && vc_3 >= entries_3) throw new global::System.IO.InvalidDataException("Definition levels in column 'Node' exceeded values count (" + entries_3 + ").");
                                 bk_1.Add(new global::SampleDomain.Models.PitStop
                                 {
                                     City = defLevels_1[p_1] >= 4 ? buffer_1[vc_1++].ToString() : null!,
@@ -4204,7 +4516,7 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                             }
                         }
                     }
-                    if (st_1) lane_1[rc_1++] = bk_1;
+                    if (st_1) { if (rc_1 >= lane_1.Length) throw new global::System.IO.InvalidDataException("Repetition levels in column 'City' produced more rows than row group capacity (" + lane_1.Length + ")."); lane_1[rc_1++] = bk_1; }
                     _ = rc_1;
                     var lane_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>?[rowCount];
                     global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>? bk_4 = null; int rc_4 = 0; bool st_4 = false;
@@ -4213,13 +4525,17 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     int vc_6 = 0;
                     for (int p_4 = 0; p_4 < entries_4; p_4++)
                     {
-                        if (repLevels_4[p_4] == 0) { if (st_4) lane_4[rc_4++] = bk_4; st_4 = true; bk_4 = null; }
+                        if (repLevels_4[p_4] == 0) { if (st_4) { if (rc_4 >= lane_4.Length) throw new global::System.IO.InvalidDataException("Repetition levels in column 'City' produced more rows than row group capacity (" + lane_4.Length + ")."); lane_4[rc_4++] = bk_4; } st_4 = true; bk_4 = null; }
                         int dv_4 = defLevels_4[p_4];
+                        if (dv_4 < 0 || dv_4 > 4) throw new global::System.IO.InvalidDataException("Illegal definition level " + dv_4 + " in column 'City' (max: 4).");
                         if (dv_4 == 1) bk_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                         else if (dv_4 >= 2) {
                             bk_4 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                             if (dv_4 == 2) bk_4.Add(null!);
                             else {
+                                if (defLevels_4[p_4] >= 4 && vc_4 >= entries_4) throw new global::System.IO.InvalidDataException("Definition levels in column 'City' exceeded values count (" + entries_4 + ").");
+                                if (defLevels_5[p_4] >= 4 && vc_5 >= entries_5) throw new global::System.IO.InvalidDataException("Definition levels in column 'Zip' exceeded values count (" + entries_5 + ").");
+                                if (defLevels_6[p_4] >= 3 && vc_6 >= entries_6) throw new global::System.IO.InvalidDataException("Definition levels in column 'Node' exceeded values count (" + entries_6 + ").");
                                 bk_4.Add(new global::SampleDomain.Models.PitStop
                                 {
                                     City = defLevels_4[p_4] >= 4 ? buffer_4[vc_4++].ToString() : null!,
@@ -4229,7 +4545,7 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                             }
                         }
                     }
-                    if (st_4) lane_4[rc_4++] = bk_4;
+                    if (st_4) { if (rc_4 >= lane_4.Length) throw new global::System.IO.InvalidDataException("Repetition levels in column 'City' produced more rows than row group capacity (" + lane_4.Length + ")."); lane_4[rc_4++] = bk_4; }
                     _ = rc_4;
                     for (int i = 0; i < rowCount; i++)
                     {
@@ -4286,17 +4602,32 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
             stream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
+        ValidateReader(reader, options);
         int rowGroupCount = reader.RowGroupCount;
         if (rowGroupCount == 0) return global::System.Array.Empty<PocoOrder>();
 
-        int totalRows = 0;
+        if (rowGroupCount < 0 || rowGroupCount > options.MaxRowGroupCount)
+        {
+            throw new global::System.IO.InvalidDataException($"Row group count {rowGroupCount} is invalid or exceeds maximum allowed {options.MaxRowGroupCount}.");
+        }
+        long totalRowsLong = 0;
         int maxRowCount = 0;
         for (int r = 0; r < rowGroupCount; r++)
         {
-            int rc = (int)reader.RowGroups[r].RowCount;
-            totalRows += rc;
+            long rcLong = reader.RowGroups[r].RowCount;
+            if (rcLong < 0 || rcLong > options.MaxAllocationValues)
+            {
+                throw new global::System.IO.InvalidDataException($"Row group {r} row count {rcLong} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+            }
+            totalRowsLong = checked(totalRowsLong + rcLong);
+            int rc = (int)rcLong;
             if (rc > maxRowCount) maxRowCount = rc;
         }
+        if (totalRowsLong > options.MaxAllocationValues)
+        {
+            throw new global::System.IO.InvalidDataException($"Total row count {totalRowsLong} exceeds maximum allowed {options.MaxAllocationValues}.");
+        }
+        int totalRows = checked((int)totalRowsLong);
 
         var results = new PocoOrder[totalRows];
         int currentOffset = 0;
@@ -4337,7 +4668,11 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 using var groupReader = reader.OpenRowGroupReader(r);
-                int rowCount = (int)groupReader.RowCount;
+                int rowCount = checked((int)groupReader.RowCount);
+                if (rowCount < 0 || rowCount > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Row group {r} row count {rowCount} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 if (rowCount == 0) continue;
 
                 await groupReader.ReadAsync<int>(
@@ -4345,6 +4680,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(buffer_0, 0, rowCount),
                     cancellationToken: cancellationToken);
                 var entries_1 = checked((int)groupReader.GetMetadata(field_1).MetaData.NumValues);
+                if (entries_1 < 0 || entries_1 > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column 'City' NumValues ({entries_1}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 if (entries_1 > defLevels_1.Length)
                 {
                     var ndL_1 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_1);
@@ -4364,6 +4703,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(repLevels_1, 0, entries_1),
                     cancellationToken);
                 var entries_2 = checked((int)groupReader.GetMetadata(field_2).MetaData.NumValues);
+                if (entries_2 < 0 || entries_2 > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column 'Zip' NumValues ({entries_2}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 if (entries_2 > defLevels_2.Length)
                 {
                     var ndL_2 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_2);
@@ -4383,6 +4726,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(repLevels_2, 0, entries_2),
                     cancellationToken);
                 var entries_3 = checked((int)groupReader.GetMetadata(field_3).MetaData.NumValues);
+                if (entries_3 < 0 || entries_3 > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column 'Node' NumValues ({entries_3}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 if (entries_3 > defLevels_3.Length)
                 {
                     var ndL_3 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_3);
@@ -4402,6 +4749,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(repLevels_3, 0, entries_3),
                     cancellationToken);
                 var entries_4 = checked((int)groupReader.GetMetadata(field_4).MetaData.NumValues);
+                if (entries_4 < 0 || entries_4 > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column 'City' NumValues ({entries_4}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 if (entries_4 > defLevels_4.Length)
                 {
                     var ndL_4 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_4);
@@ -4421,6 +4772,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(repLevels_4, 0, entries_4),
                     cancellationToken);
                 var entries_5 = checked((int)groupReader.GetMetadata(field_5).MetaData.NumValues);
+                if (entries_5 < 0 || entries_5 > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column 'Zip' NumValues ({entries_5}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 if (entries_5 > defLevels_5.Length)
                 {
                     var ndL_5 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_5);
@@ -4440,6 +4795,10 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                     new global::System.Memory<int>(repLevels_5, 0, entries_5),
                     cancellationToken);
                 var entries_6 = checked((int)groupReader.GetMetadata(field_6).MetaData.NumValues);
+                if (entries_6 < 0 || entries_6 > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column 'Node' NumValues ({entries_6}) is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 if (entries_6 > defLevels_6.Length)
                 {
                     var ndL_6 = global::System.Buffers.ArrayPool<int>.Shared.Rent(entries_6);
@@ -4466,13 +4825,17 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                 int vc_3 = 0;
                 for (int p_1 = 0; p_1 < entries_1; p_1++)
                 {
-                    if (repLevels_1[p_1] == 0) { if (st_1) lane_1[rc_1++] = bk_1; st_1 = true; bk_1 = null; }
+                    if (repLevels_1[p_1] == 0) { if (st_1) { if (rc_1 >= lane_1.Length) throw new global::System.IO.InvalidDataException("Repetition levels in column 'City' produced more rows than row group capacity (" + lane_1.Length + ")."); lane_1[rc_1++] = bk_1; } st_1 = true; bk_1 = null; }
                     int dv_1 = defLevels_1[p_1];
+                    if (dv_1 < 0 || dv_1 > 4) throw new global::System.IO.InvalidDataException("Illegal definition level " + dv_1 + " in column 'City' (max: 4).");
                     if (dv_1 == 1) bk_1 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                     else if (dv_1 >= 2) {
                         bk_1 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                         if (dv_1 == 2) bk_1.Add(null!);
                         else {
+                            if (defLevels_1[p_1] >= 4 && vc_1 >= entries_1) throw new global::System.IO.InvalidDataException("Definition levels in column 'City' exceeded values count (" + entries_1 + ").");
+                            if (defLevels_2[p_1] >= 4 && vc_2 >= entries_2) throw new global::System.IO.InvalidDataException("Definition levels in column 'Zip' exceeded values count (" + entries_2 + ").");
+                            if (defLevels_3[p_1] >= 3 && vc_3 >= entries_3) throw new global::System.IO.InvalidDataException("Definition levels in column 'Node' exceeded values count (" + entries_3 + ").");
                             bk_1.Add(new global::SampleDomain.Models.PitStop
                             {
                                 City = defLevels_1[p_1] >= 4 ? buffer_1[vc_1++].ToString() : null!,
@@ -4482,7 +4845,7 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                         }
                     }
                 }
-                if (st_1) lane_1[rc_1++] = bk_1;
+                if (st_1) { if (rc_1 >= lane_1.Length) throw new global::System.IO.InvalidDataException("Repetition levels in column 'City' produced more rows than row group capacity (" + lane_1.Length + ")."); lane_1[rc_1++] = bk_1; }
                 _ = rc_1;
                 var lane_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>?[rowCount];
                 global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>? bk_4 = null; int rc_4 = 0; bool st_4 = false;
@@ -4491,13 +4854,17 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                 int vc_6 = 0;
                 for (int p_4 = 0; p_4 < entries_4; p_4++)
                 {
-                    if (repLevels_4[p_4] == 0) { if (st_4) lane_4[rc_4++] = bk_4; st_4 = true; bk_4 = null; }
+                    if (repLevels_4[p_4] == 0) { if (st_4) { if (rc_4 >= lane_4.Length) throw new global::System.IO.InvalidDataException("Repetition levels in column 'City' produced more rows than row group capacity (" + lane_4.Length + ")."); lane_4[rc_4++] = bk_4; } st_4 = true; bk_4 = null; }
                     int dv_4 = defLevels_4[p_4];
+                    if (dv_4 < 0 || dv_4 > 4) throw new global::System.IO.InvalidDataException("Illegal definition level " + dv_4 + " in column 'City' (max: 4).");
                     if (dv_4 == 1) bk_4 = new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                     else if (dv_4 >= 2) {
                         bk_4 ??= new global::System.Collections.Generic.List<global::SampleDomain.Models.PitStop>();
                         if (dv_4 == 2) bk_4.Add(null!);
                         else {
+                            if (defLevels_4[p_4] >= 4 && vc_4 >= entries_4) throw new global::System.IO.InvalidDataException("Definition levels in column 'City' exceeded values count (" + entries_4 + ").");
+                            if (defLevels_5[p_4] >= 4 && vc_5 >= entries_5) throw new global::System.IO.InvalidDataException("Definition levels in column 'Zip' exceeded values count (" + entries_5 + ").");
+                            if (defLevels_6[p_4] >= 3 && vc_6 >= entries_6) throw new global::System.IO.InvalidDataException("Definition levels in column 'Node' exceeded values count (" + entries_6 + ").");
                             bk_4.Add(new global::SampleDomain.Models.PitStop
                             {
                                 City = defLevels_4[p_4] >= 4 ? buffer_4[vc_4++].ToString() : null!,
@@ -4507,7 +4874,7 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
                         }
                     }
                 }
-                if (st_4) lane_4[rc_4++] = bk_4;
+                if (st_4) { if (rc_4 >= lane_4.Length) throw new global::System.IO.InvalidDataException("Repetition levels in column 'City' produced more rows than row group capacity (" + lane_4.Length + ")."); lane_4[rc_4++] = bk_4; }
                 _ = rc_4;
                 for (int i = 0; i < rowCount; i++)
                 {

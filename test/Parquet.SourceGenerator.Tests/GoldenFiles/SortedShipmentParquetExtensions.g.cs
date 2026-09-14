@@ -140,6 +140,53 @@ public static partial class SortedShipmentParquetExtensions
     }
 
     /// <summary>
+    /// Validates the ParquetReader against configured defensive security bounds.
+    /// </summary>
+    private static void ValidateReader(
+        global::Parquet.ParquetReader reader,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions options)
+    {
+        int rowGroupCount = reader.RowGroupCount;
+        if (rowGroupCount < 0 || rowGroupCount > options.MaxRowGroupCount)
+        {
+            throw new global::System.IO.InvalidDataException($"Row group count {rowGroupCount} is invalid or exceeds maximum allowed {options.MaxRowGroupCount}.");
+        }
+        int maxDepth = 0;
+        foreach (var field in reader.Schema.Fields)
+        {
+            int d = GetFieldDepth(field);
+            if (d > maxDepth) maxDepth = d;
+        }
+        if (maxDepth > options.MaxNestingDepth)
+        {
+            throw new global::System.IO.InvalidDataException($"Schema nesting depth {maxDepth} exceeds maximum allowed {options.MaxNestingDepth}.");
+        }
+    }
+
+    private static int GetFieldDepth(global::Parquet.Schema.Field field)
+    {
+        if (field is global::Parquet.Schema.StructField sf)
+        {
+            int max = 0;
+            foreach (var child in sf.Fields)
+            {
+                int d = GetFieldDepth(child);
+                if (d > max) max = d;
+            }
+            return 1 + max;
+        }
+        if (field is global::Parquet.Schema.ListField lf)
+        {
+            return 1 + GetFieldDepth(lf.Item);
+        }
+        if (field is global::Parquet.Schema.MapField mf)
+        {
+            return 1 + global::System.Math.Max(GetFieldDepth(mf.Key), GetFieldDepth(mf.Value));
+        }
+        return 1;
+    }
+
+    /// <summary>
     /// Lightweight L1 string cache keyed directly on <see cref="global::System.ReadOnlySpan{T}"/>
     /// of <see cref="char"/>, backed by a pooled open-addressed table.
     /// A cache hit returns the previously materialized <see cref="string"/> instance without
@@ -705,6 +752,7 @@ public static partial class SortedShipmentParquetExtensions
             stream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
+        ValidateReader(reader, options);
         var fileFields = reader.Schema.DataFields;
 
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
@@ -713,25 +761,54 @@ public static partial class SortedShipmentParquetExtensions
         var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName, out _);
         var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName, out bool missing_3);
 
+        int rowGroupCount = reader.RowGroupCount;
+        if (rowGroupCount < 0 || rowGroupCount > options.MaxRowGroupCount)
+        {
+            throw new global::System.IO.InvalidDataException($"Row group count {rowGroupCount} is invalid or exceeds maximum allowed {options.MaxRowGroupCount}.");
+        }
         int totalRows;
         bool[]? selectedGroups = null;
         if (predicate == null)
         {
-            totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);
+            long sumRows = 0;
+            for (int r = 0; r < rowGroupCount; r++)
+            {
+                long rc = reader.RowGroups[r].RowCount;
+                if (rc < 0 || rc > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Row group {r} row count {rc} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
+                sumRows = checked(sumRows + rc);
+            }
+            if (sumRows > options.MaxAllocationValues)
+            {
+                throw new global::System.IO.InvalidDataException($"Total row count {sumRows} exceeds maximum allowed {options.MaxAllocationValues}.");
+            }
+            totalRows = checked((int)sumRows);
         }
         else
         {
             // Zone-map pre-pass: footer statistics only. Surviving groups are the only ones
             // whose pages are ever read, and the result is sized to exactly their rows.
-            selectedGroups = new bool[reader.RowGroupCount];
-            totalRows = 0;
-            for (int r = 0; r < reader.RowGroupCount; r++)
+            selectedGroups = new bool[rowGroupCount];
+            long sumRows = 0;
+            for (int r = 0; r < rowGroupCount; r++)
             {
                 using var probeReader = reader.OpenRowGroupReader(r);
                 if (!AcceptRowGroup(predicate, probeReader, r, field_0, field_2, field_3)) continue;
+                long rc = probeReader.RowCount;
+                if (rc < 0 || rc > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Row group {r} row count {rc} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 selectedGroups[r] = true;
-                totalRows += (int)probeReader.RowCount;
+                sumRows = checked(sumRows + rc);
             }
+            if (sumRows > options.MaxAllocationValues)
+            {
+                throw new global::System.IO.InvalidDataException($"Total matching row count {sumRows} exceeds maximum allowed {options.MaxAllocationValues}.");
+            }
+            totalRows = checked((int)sumRows);
         }
 #if NET8_0_OR_GREATER
         var results = new global::System.Collections.Generic.List<SortedShipment>(totalRows);
@@ -749,7 +826,11 @@ public static partial class SortedShipmentParquetExtensions
             cancellationToken.ThrowIfCancellationRequested();
             if (selectedGroups != null && !selectedGroups[r]) continue;
             using var groupReader = reader.OpenRowGroupReader(r);
-            int rowCount = (int)groupReader.RowCount;
+            int rowCount = checked((int)groupReader.RowCount);
+            if (rowCount < 0 || rowCount > options.MaxAllocationValues)
+            {
+                throw new global::System.IO.InvalidDataException($"Row group {r} row count {rowCount} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+            }
 
             var buffer_0 = global::System.Buffers.ArrayPool<long>.Shared.Rent(rowCount);
             var buffer_1 = global::System.Buffers.ArrayPool<global::System.DateTime>.Shared.Rent(rowCount);
@@ -858,6 +939,7 @@ public static partial class SortedShipmentParquetExtensions
             stream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
+        ValidateReader(reader, options);
         var fileFields = reader.Schema.DataFields;
 
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
@@ -866,25 +948,54 @@ public static partial class SortedShipmentParquetExtensions
         var field_2 = ResolveSchemaField(fileFields, 2, _field_2, ref fieldsByName, out _);
         var field_3 = ResolveSchemaField(fileFields, 3, _field_3, ref fieldsByName, out bool missing_3);
 
+        int rowGroupCount = reader.RowGroupCount;
+        if (rowGroupCount < 0 || rowGroupCount > options.MaxRowGroupCount)
+        {
+            throw new global::System.IO.InvalidDataException($"Row group count {rowGroupCount} is invalid or exceeds maximum allowed {options.MaxRowGroupCount}.");
+        }
         int totalRows;
         bool[]? selectedGroups = null;
         if (predicate == null)
         {
-            totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);
+            long sumRows = 0;
+            for (int r = 0; r < rowGroupCount; r++)
+            {
+                long rc = reader.RowGroups[r].RowCount;
+                if (rc < 0 || rc > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Row group {r} row count {rc} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
+                sumRows = checked(sumRows + rc);
+            }
+            if (sumRows > options.MaxAllocationValues)
+            {
+                throw new global::System.IO.InvalidDataException($"Total row count {sumRows} exceeds maximum allowed {options.MaxAllocationValues}.");
+            }
+            totalRows = checked((int)sumRows);
         }
         else
         {
             // Zone-map pre-pass: footer statistics only. Surviving groups are the only ones
             // whose pages are ever read, and the result is sized to exactly their rows.
-            selectedGroups = new bool[reader.RowGroupCount];
-            totalRows = 0;
-            for (int r = 0; r < reader.RowGroupCount; r++)
+            selectedGroups = new bool[rowGroupCount];
+            long sumRows = 0;
+            for (int r = 0; r < rowGroupCount; r++)
             {
                 using var probeReader = reader.OpenRowGroupReader(r);
                 if (!AcceptRowGroup(predicate, probeReader, r, field_0, field_2, field_3)) continue;
+                long rc = probeReader.RowCount;
+                if (rc < 0 || rc > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Row group {r} row count {rc} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 selectedGroups[r] = true;
-                totalRows += (int)probeReader.RowCount;
+                sumRows = checked(sumRows + rc);
             }
+            if (sumRows > options.MaxAllocationValues)
+            {
+                throw new global::System.IO.InvalidDataException($"Total matching row count {sumRows} exceeds maximum allowed {options.MaxAllocationValues}.");
+            }
+            totalRows = checked((int)sumRows);
         }
         var results = new SortedShipment[totalRows];
         int currentOffset = 0;
@@ -897,7 +1008,11 @@ public static partial class SortedShipmentParquetExtensions
             cancellationToken.ThrowIfCancellationRequested();
             if (selectedGroups != null && !selectedGroups[r]) continue;
             using var groupReader = reader.OpenRowGroupReader(r);
-            int rowCount = (int)groupReader.RowCount;
+            int rowCount = checked((int)groupReader.RowCount);
+            if (rowCount < 0 || rowCount > options.MaxAllocationValues)
+            {
+                throw new global::System.IO.InvalidDataException($"Row group {r} row count {rowCount} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+            }
 
             var buffer_0 = global::System.Buffers.ArrayPool<long>.Shared.Rent(rowCount);
             var buffer_1 = global::System.Buffers.ArrayPool<global::System.DateTime>.Shared.Rent(rowCount);
@@ -998,19 +1113,28 @@ public static partial class SortedShipmentParquetExtensions
             stream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
+        ValidateReader(reader, options);
         int rgCount = reader.RowGroupCount;
         if (rgCount == 0) return global::System.Array.Empty<SortedShipment>();
 
-        int totalRows = (int)global::System.Linq.Enumerable.Sum(reader.RowGroups, rg => rg.RowCount);
-        var resultArray = new SortedShipment[totalRows];
+        long totalRowsLong = 0;
         var rowOffsets = new int[rgCount];
-        int currentOffset = 0;
         for (int r = 0; r < rgCount; r++)
         {
-            rowOffsets[r] = currentOffset;
-            currentOffset += (int)reader.RowGroups[r].RowCount;
+            long rcLong = reader.RowGroups[r].RowCount;
+            if (rcLong < 0 || rcLong > options.MaxAllocationValues)
+            {
+                throw new global::System.IO.InvalidDataException($"Row group {r} row count {rcLong} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+            }
+            rowOffsets[r] = checked((int)totalRowsLong);
+            totalRowsLong = checked(totalRowsLong + rcLong);
         }
-
+        if (totalRowsLong > options.MaxAllocationValues)
+        {
+            throw new global::System.IO.InvalidDataException($"Total row count {totalRowsLong} exceeds maximum allowed {options.MaxAllocationValues}.");
+        }
+        int totalRows = checked((int)totalRowsLong);
+        var resultArray = new SortedShipment[totalRows];
         var fileFields = reader.Schema.DataFields;
 
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
@@ -1026,7 +1150,11 @@ public static partial class SortedShipmentParquetExtensions
         {
             cancellationToken.ThrowIfCancellationRequested();
             using var groupReader = reader.OpenRowGroupReader(r);
-            int rowCount = (int)groupReader.RowCount;
+            int rowCount = checked((int)groupReader.RowCount);
+            if (rowCount < 0 || rowCount > options.MaxAllocationValues)
+            {
+                throw new global::System.IO.InvalidDataException($"Row group {r} row count {rowCount} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+            }
             int startIdx = rowOffsets[r];
 
             var buffer_0 = global::System.Buffers.ArrayPool<long>.Shared.Rent(rowCount);
@@ -1130,6 +1258,7 @@ public static partial class SortedShipmentParquetExtensions
             stream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
+        ValidateReader(reader, options);
         var fileFields = reader.Schema.DataFields;
 
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
@@ -1145,7 +1274,11 @@ public static partial class SortedShipmentParquetExtensions
         {
             cancellationToken.ThrowIfCancellationRequested();
             using var groupReader = reader.OpenRowGroupReader(r);
-            int rowCount = (int)groupReader.RowCount;
+            int rowCount = checked((int)groupReader.RowCount);
+            if (rowCount < 0 || rowCount > options.MaxAllocationValues)
+            {
+                throw new global::System.IO.InvalidDataException($"Row group {r} row count {rowCount} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+            }
             if (!AcceptRowGroup(predicate, groupReader, r, field_0, field_2, field_3)) continue;
 
             var buffer_0 = global::System.Buffers.ArrayPool<long>.Shared.Rent(rowCount);
@@ -1265,17 +1398,32 @@ public static partial class SortedShipmentParquetExtensions
                 probeStream,
                 formatOptions,
                 cancellationToken: cancellationToken);
+            ValidateReader(probe, options);
             rowGroupCount = probe.RowGroupCount;
-            totalRows = 0;
+            if (rowGroupCount < 0 || rowGroupCount > options.MaxRowGroupCount)
+            {
+                throw new global::System.IO.InvalidDataException($"Row group count {rowGroupCount} is invalid or exceeds maximum allowed {options.MaxRowGroupCount}.");
+            }
+            long totalRowsLong = 0;
             maxRowGroupSize = 0;
             rowOffsets = new int[rowGroupCount];
             for (int r = 0; r < rowGroupCount; r++)
             {
-                int rc = (int)probe.RowGroups[r].RowCount;
-                rowOffsets[r] = totalRows;
-                totalRows += rc;
+                long rcLong = probe.RowGroups[r].RowCount;
+                if (rcLong < 0 || rcLong > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Row group {r} row count {rcLong} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
+                rowOffsets[r] = checked((int)totalRowsLong);
+                totalRowsLong = checked(totalRowsLong + rcLong);
+                int rc = (int)rcLong;
                 if (rc > maxRowGroupSize) maxRowGroupSize = rc;
             }
+            if (totalRowsLong > options.MaxAllocationValues)
+            {
+                throw new global::System.IO.InvalidDataException($"Total row count {totalRowsLong} exceeds maximum allowed {options.MaxAllocationValues}.");
+            }
+            totalRows = checked((int)totalRowsLong);
         }
 
         if (rowGroupCount == 0) return global::System.Array.Empty<SortedShipment>();
@@ -1303,7 +1451,7 @@ public static partial class SortedShipmentParquetExtensions
                 cursor,
                 rowGroupCount,
                 maxRowGroupSize,
-                options.DeduplicateStrings,
+                options,
                 linkedCts,
                 workerToken);
         }
@@ -1320,7 +1468,7 @@ public static partial class SortedShipmentParquetExtensions
                         cursor,
                         rowGroupCount,
                         maxRowGroupSize,
-                        options.DeduplicateStrings,
+                        options,
                         linkedCts,
                         workerToken),
                     workerToken);
@@ -1369,17 +1517,19 @@ public static partial class SortedShipmentParquetExtensions
         int[] cursor,
         int rowGroupCount,
         int maxRowGroupSize,
-        bool deduplicateStrings,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions options,
         global::System.Threading.CancellationTokenSource linkedCts,
         global::System.Threading.CancellationToken cancellationToken)
     {
         try
         {
+            bool deduplicateStrings = options.DeduplicateStrings;
             using var stream = CreateBufferStream(parquetBytes);
             await using var reader = await global::Parquet.ParquetReader.CreateAsync(
                 stream,
                 formatOptions,
                 cancellationToken: cancellationToken);
+            ValidateReader(reader, options);
 
             var fileFields = reader.Schema.DataFields;
 
@@ -1405,7 +1555,11 @@ public static partial class SortedShipmentParquetExtensions
 
                     cancellationToken.ThrowIfCancellationRequested();
                     using var groupReader = reader.OpenRowGroupReader(r);
-                    int rowCount = (int)groupReader.RowCount;
+                    int rowCount = checked((int)groupReader.RowCount);
+                    if (rowCount < 0 || rowCount > options.MaxAllocationValues)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Row group {r} row count {rowCount} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                    }
                     int startIdx = rowOffsets[r];
 
                     await groupReader.ReadAsync<long>(
@@ -1489,17 +1643,32 @@ public static partial class SortedShipmentParquetExtensions
             stream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
+        ValidateReader(reader, options);
         int rowGroupCount = reader.RowGroupCount;
         if (rowGroupCount == 0) return global::System.Array.Empty<SortedShipment>();
 
-        int totalRows = 0;
+        if (rowGroupCount < 0 || rowGroupCount > options.MaxRowGroupCount)
+        {
+            throw new global::System.IO.InvalidDataException($"Row group count {rowGroupCount} is invalid or exceeds maximum allowed {options.MaxRowGroupCount}.");
+        }
+        long totalRowsLong = 0;
         int maxRowCount = 0;
         for (int r = 0; r < rowGroupCount; r++)
         {
-            int rc = (int)reader.RowGroups[r].RowCount;
-            totalRows += rc;
+            long rcLong = reader.RowGroups[r].RowCount;
+            if (rcLong < 0 || rcLong > options.MaxAllocationValues)
+            {
+                throw new global::System.IO.InvalidDataException($"Row group {r} row count {rcLong} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+            }
+            totalRowsLong = checked(totalRowsLong + rcLong);
+            int rc = (int)rcLong;
             if (rc > maxRowCount) maxRowCount = rc;
         }
+        if (totalRowsLong > options.MaxAllocationValues)
+        {
+            throw new global::System.IO.InvalidDataException($"Total row count {totalRowsLong} exceeds maximum allowed {options.MaxAllocationValues}.");
+        }
+        int totalRows = checked((int)totalRowsLong);
 
         var results = new SortedShipment[totalRows];
         int currentOffset = 0;
@@ -1525,7 +1694,11 @@ public static partial class SortedShipmentParquetExtensions
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 using var groupReader = reader.OpenRowGroupReader(r);
-                int rowCount = (int)groupReader.RowCount;
+                int rowCount = checked((int)groupReader.RowCount);
+                if (rowCount < 0 || rowCount > options.MaxAllocationValues)
+                {
+                    throw new global::System.IO.InvalidDataException($"Row group {r} row count {rowCount} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+                }
                 if (rowCount == 0) continue;
 
                 await groupReader.ReadAsync<long>(
@@ -1700,6 +1873,7 @@ public static partial class SortedShipmentParquetExtensions
             stream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
+        ValidateReader(reader, options);
         var fileFields = reader.Schema.DataFields;
 
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
@@ -1715,7 +1889,11 @@ public static partial class SortedShipmentParquetExtensions
         {
             cancellationToken.ThrowIfCancellationRequested();
             using var groupReader = reader.OpenRowGroupReader(r);
-            int rowCount = (int)groupReader.RowCount;
+            int rowCount = checked((int)groupReader.RowCount);
+            if (rowCount < 0 || rowCount > options.MaxAllocationValues)
+            {
+                throw new global::System.IO.InvalidDataException($"Row group {r} row count {rowCount} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+            }
 
             var buffer_0 = global::System.Buffers.ArrayPool<long>.Shared.Rent(rowCount);
             var buffer_1 = global::System.Buffers.ArrayPool<global::System.DateTime>.Shared.Rent(rowCount);
@@ -2017,6 +2195,7 @@ public static partial class SortedShipmentParquetExtensions
             stream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
+        ValidateReader(reader, options);
         var fileFields = reader.Schema.DataFields;
 
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
@@ -2061,7 +2240,11 @@ public static partial class SortedShipmentParquetExtensions
         {
             cancellationToken.ThrowIfCancellationRequested();
             using var groupReader = reader.OpenRowGroupReader(r);
-            int rowCount = (int)groupReader.RowCount;
+            int rowCount = checked((int)groupReader.RowCount);
+            if (rowCount < 0 || rowCount > options.MaxAllocationValues)
+            {
+                throw new global::System.IO.InvalidDataException($"Row group {r} row count {rowCount} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.");
+            }
 
             var buffer_0 = global::System.Buffers.ArrayPool<long>.Shared.Rent(rowCount);
             var buffer_1 = global::System.Buffers.ArrayPool<global::System.DateTime>.Shared.Rent(rowCount);

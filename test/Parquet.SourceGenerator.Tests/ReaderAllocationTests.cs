@@ -42,7 +42,7 @@ public sealed class ReaderAllocationTests
         string source = CodeEmitter.EmitSource(model);
 
         // Sizing happens upfront from the summed row count, avoiding per-row-group reallocations.
-        Assert.Contains("int totalRows = (int)global::System.Linq.Enumerable.Sum", source);
+        Assert.Contains("int totalRows = checked((int)totalRowsLong);", source);
         Assert.Contains(
             "new global::System.Collections.Generic.List<TestEntity>(totalRows)",
             source

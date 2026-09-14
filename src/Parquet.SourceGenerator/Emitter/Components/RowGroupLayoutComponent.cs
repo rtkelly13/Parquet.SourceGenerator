@@ -17,21 +17,46 @@ internal static class RowGroupLayoutComponent
         string maxRowVar = "maxRowCount",
         string rowGroupCountVar = "rowGroupCount",
         bool declareRowGroupCount = true,
-        string indent = "        "
+        string indent = "        ",
+        string optionsVar = "options"
     )
     {
         if (declareRowGroupCount)
         {
             builder.AppendLine($"{indent}int {rowGroupCountVar} = {readerVar}.RowGroupCount;");
         }
-        builder.AppendLine($"{indent}int {rowCountVar} = 0;");
+        builder.AppendLine(
+            $"{indent}if ({rowGroupCountVar} < 0 || {rowGroupCountVar} > {optionsVar}.MaxRowGroupCount)"
+        );
+        builder.AppendLine($"{indent}{{");
+        builder.AppendLine(
+            $"{indent}    throw new global::System.IO.InvalidDataException($\"Row group count {{{rowGroupCountVar}}} is invalid or exceeds maximum allowed {{{optionsVar}.MaxRowGroupCount}}.\");"
+        );
+        builder.AppendLine($"{indent}}}");
+        builder.AppendLine($"{indent}long {rowCountVar}Long = 0;");
         builder.AppendLine($"{indent}int {maxRowVar} = 0;");
         builder.AppendLine($"{indent}for (int r = 0; r < {rowGroupCountVar}; r++)");
         builder.AppendLine($"{indent}{{");
-        builder.AppendLine($"{indent}    int rc = (int){readerVar}.RowGroups[r].RowCount;");
-        builder.AppendLine($"{indent}    {rowCountVar} += rc;");
+        builder.AppendLine($"{indent}    long rcLong = {readerVar}.RowGroups[r].RowCount;");
+        builder.AppendLine(
+            $"{indent}    if (rcLong < 0 || rcLong > {optionsVar}.MaxAllocationValues)"
+        );
+        builder.AppendLine($"{indent}    {{");
+        builder.AppendLine(
+            $"{indent}        throw new global::System.IO.InvalidDataException($\"Row group {{r}} row count {{rcLong}} is invalid or exceeds maximum allowed {{{optionsVar}.MaxAllocationValues}}.\");"
+        );
+        builder.AppendLine($"{indent}    }}");
+        builder.AppendLine($"{indent}    {rowCountVar}Long = checked({rowCountVar}Long + rcLong);");
+        builder.AppendLine($"{indent}    int rc = (int)rcLong;");
         builder.AppendLine($"{indent}    if (rc > {maxRowVar}) {maxRowVar} = rc;");
         builder.AppendLine($"{indent}}}");
+        builder.AppendLine($"{indent}if ({rowCountVar}Long > {optionsVar}.MaxAllocationValues)");
+        builder.AppendLine($"{indent}{{");
+        builder.AppendLine(
+            $"{indent}    throw new global::System.IO.InvalidDataException($\"Total row count {{{rowCountVar}Long}} exceeds maximum allowed {{{optionsVar}.MaxAllocationValues}}.\");"
+        );
+        builder.AppendLine($"{indent}}}");
+        builder.AppendLine($"{indent}int {rowCountVar} = checked((int){rowCountVar}Long);");
     }
 
     /// <summary>
@@ -45,29 +70,69 @@ internal static class RowGroupLayoutComponent
         string rowCountVar = "totalRows",
         string maxRowVar = "maxRowGroupSize",
         bool declareVariables = true,
-        string indent = "        "
+        string indent = "        ",
+        string optionsVar = "options"
     )
     {
         if (declareVariables)
         {
             builder.AppendLine($"{indent}int {rowGroupCountVar} = {readerVar}.RowGroupCount;");
-            builder.AppendLine($"{indent}int {rowCountVar} = 0;");
+            builder.AppendLine(
+                $"{indent}if ({rowGroupCountVar} < 0 || {rowGroupCountVar} > {optionsVar}.MaxRowGroupCount)"
+            );
+            builder.AppendLine($"{indent}{{");
+            builder.AppendLine(
+                $"{indent}    throw new global::System.IO.InvalidDataException($\"Row group count {{{rowGroupCountVar}}} is invalid or exceeds maximum allowed {{{optionsVar}.MaxRowGroupCount}}.\");"
+            );
+            builder.AppendLine($"{indent}}}");
+            builder.AppendLine($"{indent}long {rowCountVar}Long = 0;");
             builder.AppendLine($"{indent}int {maxRowVar} = 0;");
             builder.AppendLine($"{indent}var {offsetsVar} = new int[{rowGroupCountVar}];");
         }
         else
         {
             builder.AppendLine($"{indent}{rowGroupCountVar} = {readerVar}.RowGroupCount;");
-            builder.AppendLine($"{indent}{rowCountVar} = 0;");
+            builder.AppendLine(
+                $"{indent}if ({rowGroupCountVar} < 0 || {rowGroupCountVar} > {optionsVar}.MaxRowGroupCount)"
+            );
+            builder.AppendLine($"{indent}{{");
+            builder.AppendLine(
+                $"{indent}    throw new global::System.IO.InvalidDataException($\"Row group count {{{rowGroupCountVar}}} is invalid or exceeds maximum allowed {{{optionsVar}.MaxRowGroupCount}}.\");"
+            );
+            builder.AppendLine($"{indent}}}");
+            builder.AppendLine($"{indent}long {rowCountVar}Long = 0;");
             builder.AppendLine($"{indent}{maxRowVar} = 0;");
             builder.AppendLine($"{indent}{offsetsVar} = new int[{rowGroupCountVar}];");
         }
         builder.AppendLine($"{indent}for (int r = 0; r < {rowGroupCountVar}; r++)");
         builder.AppendLine($"{indent}{{");
-        builder.AppendLine($"{indent}    int rc = (int){readerVar}.RowGroups[r].RowCount;");
-        builder.AppendLine($"{indent}    {offsetsVar}[r] = {rowCountVar};");
-        builder.AppendLine($"{indent}    {rowCountVar} += rc;");
+        builder.AppendLine($"{indent}    long rcLong = {readerVar}.RowGroups[r].RowCount;");
+        builder.AppendLine(
+            $"{indent}    if (rcLong < 0 || rcLong > {optionsVar}.MaxAllocationValues)"
+        );
+        builder.AppendLine($"{indent}    {{");
+        builder.AppendLine(
+            $"{indent}        throw new global::System.IO.InvalidDataException($\"Row group {{r}} row count {{rcLong}} is invalid or exceeds maximum allowed {{{optionsVar}.MaxAllocationValues}}.\");"
+        );
+        builder.AppendLine($"{indent}    }}");
+        builder.AppendLine($"{indent}    {offsetsVar}[r] = checked((int){rowCountVar}Long);");
+        builder.AppendLine($"{indent}    {rowCountVar}Long = checked({rowCountVar}Long + rcLong);");
+        builder.AppendLine($"{indent}    int rc = (int)rcLong;");
         builder.AppendLine($"{indent}    if (rc > {maxRowVar}) {maxRowVar} = rc;");
         builder.AppendLine($"{indent}}}");
+        builder.AppendLine($"{indent}if ({rowCountVar}Long > {optionsVar}.MaxAllocationValues)");
+        builder.AppendLine($"{indent}{{");
+        builder.AppendLine(
+            $"{indent}    throw new global::System.IO.InvalidDataException($\"Total row count {{{rowCountVar}Long}} exceeds maximum allowed {{{optionsVar}.MaxAllocationValues}}.\");"
+        );
+        builder.AppendLine($"{indent}}}");
+        if (declareVariables)
+        {
+            builder.AppendLine($"{indent}int {rowCountVar} = checked((int){rowCountVar}Long);");
+        }
+        else
+        {
+            builder.AppendLine($"{indent}{rowCountVar} = checked((int){rowCountVar}Long);");
+        }
     }
 }

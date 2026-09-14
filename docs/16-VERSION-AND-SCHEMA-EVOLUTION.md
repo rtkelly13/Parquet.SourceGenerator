@@ -25,6 +25,8 @@ This is the contract. It is what the generated readers do, in every emitted entr
 | Column name matches but the type is incompatible | Underlying Parquet.Net read failure | The generator does not attempt type coercion or widening |
 | Model requires a column that exists only as a nested or repeated group | `InvalidDataException` naming the column | Nested shapes are outside the flat envelope; the reader rejects rather than half-reads them |
 | File carries unknown footer key/value metadata | Ignored | Producer metadata must not alter interpretation of a supported schema |
+| File exceeds defensive bounds (`MaxAllocationValues`, `MaxRowGroupCount`, `MaxNestingDepth`) | `InvalidDataException` naming the violated bound | Bounds are evaluated prior to allocation or recursion to prevent DoS attacks |
+| Malformed or corrupted repetition/definition levels | `InvalidDataException` describing stream corruption | Prevents buffer overruns and unhandled index exceptions on untrusted streams |
 
 Missing-optional-column handling is the behaviour this document introduced; before it, an absent
 optional column reached Parquet.Net as a column lookup for a field the file did not contain.

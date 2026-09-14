@@ -505,4 +505,21 @@ product was an `int`, when `reader.RowGroups[r].RowCount` answers from metadata.
 resolved *inside* the row-group loop, re-invoking the allocating `reader.Schema.GetDataFields()` on
 every iteration; resolution is a property of the file, so it now happens once.
 
+### 6.8 Defensive bounds & untrusted input limits (#287, #288) ✅
+
+Previously, generated readers assumed cooperative inputs: malicious or malformed files specifying
+inflated `RowGroupCount`, `RowCount`, or `NumValues` (e.g. `2_000_000_000`) could cause uncontrolled
+pre-allocations or `OutOfMemoryException` crashes before any data was read. Furthermore, deeply nested
+schemas could trigger recursion exhaustion, and corrupted Dremel definition/repetition level streams
+could trigger silent buffer overruns or unhandled runtime exceptions.
+
+`ParquetSerializerOptions` now exposes defensive bounds enforced before memory allocation or schema traversal:
+- `MaxAllocationValues` (default `10_000_000`): bounds total rows, row group sizes, and list column value allocations.
+- `MaxRowGroupCount` (default `100_000`): bounds row group header loops against DoS bombs.
+- `MaxNestingDepth` (default `64`): caps recursive schema field traversal.
+
+All emitted Dremel level extraction and rental loops enforce `checked` arithmetic, bounds on repetition level
+row advances (`rep == 0` bounded to row capacity), definition level limits (`0 <= dv <= maxDef`), and values
+buffer cursor bounds with clean `InvalidDataException` reporting and safe `ArrayPool` hygiene.
+
 ---

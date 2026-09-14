@@ -16,6 +16,18 @@ The rule, the three surfaces and the author process are in
 
 <!-- Add new entries directly below this line, newest first. -->
 
+### 2026-09-14 — `ParquetSerializerOptions` defensive bounds and DoS mitigation limits (#287)
+
+- **Surface:** unshipped
+- **Semver:** additive-minor
+- **Issue:** [#287](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/287)
+- **Rationale:** Adds `MaxAllocationValues`, `MaxRowGroupCount`, and `MaxNestingDepth`
+  configuration properties (get/set) to `ParquetSerializerOptions` to establish configurable
+  defensive resource limits against untrusted and malformed Parquet inputs, protecting consumers
+  from memory exhaustion (allocation bombs), unbounded row-group amplification, and recursive
+  schema recursion bombs.
+
+
 ### 2026-09-12 — `SortedShipmentParquetExtensions` catalogued golden model (#264)
 
 - **Surface:** emitted
