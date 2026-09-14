@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Parquet;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -44,10 +45,10 @@ public sealed class NullBypassReadTests
         await using (var reader = await ParquetReader.CreateAsync(new MemoryStream(parquet)))
         {
             using var rowGroup = reader.OpenRowGroupReader(0);
-            Assert.Equal(4, rowGroup.RowCount);
+            rowGroup.RowCount.ShouldBe(4);
             foreach (var field in reader.Schema.DataFields)
             {
-                Assert.Equal(4, rowGroup.GetStatistics(field)?.NullCount);
+                rowGroup.GetStatistics(field)?.NullCount.ShouldBe(4);
             }
         }
 
@@ -120,19 +121,18 @@ public sealed class NullBypassReadTests
         byte[] parquet = await WriteAsync(expected);
         List<NullBypassRecord> actual = await ReadSequentialAsync(parquet);
 
-        Assert.Equal(expected.Count, actual.Count);
+        actual.Count.ShouldBe(expected.Count);
         for (int i = 0; i < expected.Count; i++)
         {
-            Assert.Equal(expected[i].OptionalInt, actual[i].OptionalInt);
-            Assert.Equal(expected[i].OptionalString, actual[i].OptionalString);
-            Assert.Equal(expected[i].OptionalBytes, actual[i].OptionalBytes);
-            Assert.Equal(expected[i].OptionalGuid, actual[i].OptionalGuid);
-            Assert.Equal(
-                expected[i].OptionalDateTime?.Ticks / TimeSpan.TicksPerMillisecond,
-                actual[i].OptionalDateTime?.Ticks / TimeSpan.TicksPerMillisecond
+            actual[i].OptionalInt.ShouldBe(expected[i].OptionalInt);
+            actual[i].OptionalString.ShouldBe(expected[i].OptionalString);
+            actual[i].OptionalBytes.ShouldBe(expected[i].OptionalBytes);
+            actual[i].OptionalGuid.ShouldBe(expected[i].OptionalGuid);
+            (actual[i].OptionalDateTime?.Ticks / TimeSpan.TicksPerMillisecond).ShouldBe(
+                expected[i].OptionalDateTime?.Ticks / TimeSpan.TicksPerMillisecond
             );
-            Assert.Equal(expected[i].OptionalDuration, actual[i].OptionalDuration);
-            Assert.Equal(expected[i].OptionalStatus, actual[i].OptionalStatus);
+            actual[i].OptionalDuration.ShouldBe(expected[i].OptionalDuration);
+            actual[i].OptionalStatus.ShouldBe(expected[i].OptionalStatus);
         }
     }
 
@@ -155,13 +155,13 @@ public sealed class NullBypassReadTests
     {
         foreach (NullBypassRecord item in items)
         {
-            Assert.Null(item.OptionalInt);
-            Assert.Null(item.OptionalString);
-            Assert.Null(item.OptionalBytes);
-            Assert.Null(item.OptionalGuid);
-            Assert.Null(item.OptionalDateTime);
-            Assert.Null(item.OptionalDuration);
-            Assert.Null(item.OptionalStatus);
+            item.OptionalInt.ShouldBeNull();
+            item.OptionalString.ShouldBeNull();
+            item.OptionalBytes.ShouldBeNull();
+            item.OptionalGuid.ShouldBeNull();
+            item.OptionalDateTime.ShouldBeNull();
+            item.OptionalDuration.ShouldBeNull();
+            item.OptionalStatus.ShouldBeNull();
         }
     }
 }

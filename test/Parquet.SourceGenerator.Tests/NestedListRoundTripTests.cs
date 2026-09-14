@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Parquet.SourceGenerator;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -70,31 +71,31 @@ public sealed class NestedListRoundTripTests
         ms.Position = 0;
         var back = await ListRowParquetExtensions.ReadParquetAsync(ms);
 
-        Assert.Equal(4, back.Count);
-        Assert.Equal(expectedTags0, back[0].Tags!.ToArray());
-        Assert.Equal(expectedScores0, back[0].Scores!.ToArray());
-        Assert.Equal(new[] { g1, g2 }, back[0].Keys!);
-        Assert.Equal(expectedWhen0, back[0].When!.ToArray());
-        Assert.Equal(expectedBlobList, back[0].Blobs!.Select(b => b.ToArray()).ToArray());
+        back.Count.ShouldBe(4);
+        back[0].Tags!.ToArray().ShouldBe(expectedTags0);
+        back[0].Scores!.ToArray().ShouldBe(expectedScores0);
+        back[0].Keys!.ShouldBe(new[] { g1, g2 });
+        back[0].When!.ToArray().ShouldBe(expectedWhen0);
+        back[0].Blobs!.Select(b => b.ToArray()).ToArray().ShouldBe(expectedBlobList);
 
-        Assert.Empty(back[1].Tags!);
-        Assert.Empty(back[1].Scores!);
-        Assert.Empty(back[1].Keys!);
-        Assert.Empty(back[1].When!);
-        Assert.Empty(back[1].Blobs!);
+        back[1].Tags!.ShouldBeEmpty();
+        back[1].Scores!.ShouldBeEmpty();
+        back[1].Keys!.ShouldBeEmpty();
+        back[1].When!.ShouldBeEmpty();
+        back[1].Blobs!.ShouldBeEmpty();
 
-        Assert.Null(back[2].Tags);
-        Assert.Null(back[2].Keys);
-        Assert.Null(back[2].When);
-        Assert.Null(back[2].Blobs);
+        back[2].Tags.ShouldBeNull();
+        back[2].Keys.ShouldBeNull();
+        back[2].When.ShouldBeNull();
+        back[2].Blobs.ShouldBeNull();
 
         var expectedTags3 = new string?[] { null };
         var expectedScores3 = new[] { 7 };
         var expectedWhen3 = new DateTime?[] { null };
-        Assert.Equal(expectedTags3, back[3].Tags!.ToArray());
-        Assert.Equal(expectedScores3, back[3].Scores!.ToArray());
-        Assert.Null(back[3].Keys);
-        Assert.Equal(expectedWhen3, back[3].When!.ToArray());
+        back[3].Tags!.ToArray().ShouldBe(expectedTags3);
+        back[3].Scores!.ToArray().ShouldBe(expectedScores3);
+        back[3].Keys.ShouldBeNull();
+        back[3].When!.ToArray().ShouldBe(expectedWhen3);
     }
 
     [Fact]
@@ -118,17 +119,17 @@ public sealed class NestedListRoundTripTests
         ms.Position = 0;
         var back = await ListRowParquetExtensions.ReadParquetParallelArrayAsync(ms);
 
-        Assert.Equal(50, back.Length);
+        back.Length.ShouldBe(50);
         for (int i = 0; i < 50; i++)
         {
             if (i % 3 == 0)
-                Assert.Null(back[i].Tags);
+                back[i].Tags.ShouldBeNull();
             else
             {
                 var expectedTagsI = new string?[] { $"t{i}", null };
-                Assert.Equal(expectedTagsI, back[i].Tags!.ToArray());
+                back[i].Tags!.ToArray().ShouldBe(expectedTagsI);
             }
-            Assert.Equal(Enumerable.Range(0, i % 5).ToArray(), back[i].Scores!.ToArray());
+            back[i].Scores!.ToArray().ShouldBe(Enumerable.Range(0, i % 5).ToArray());
         }
     }
 }
@@ -211,24 +212,24 @@ public sealed partial record ListRow
 
         var back = await TripRowParquetExtensions.ReadParquetParallelArrayAsync(ms);
 
-        Assert.Equal(4, back.Length);
-        Assert.Null(back[0].Stops);
-        Assert.Null(back[0].Route);
-        Assert.Empty(back[1].Stops!);
-        Assert.Empty(back[1].Route!);
+        back.Length.ShouldBe(4);
+        back[0].Stops.ShouldBeNull();
+        back[0].Route.ShouldBeNull();
+        back[1].Stops!.ShouldBeEmpty();
+        back[1].Route!.ShouldBeEmpty();
         var stops2 = back[2].Stops!;
-        Assert.Equal(2, stops2.Count);
-        Assert.Equal("A", stops2[0].City);
-        Assert.Equal(1, stops2[0].Zip);
-        Assert.Equal(node1, stops2[0].Node);
-        Assert.Null(stops2[1].City);
-        Assert.Null(stops2[1].Zip);
-        Assert.Equal(node2, stops2[1].Node);
-        Assert.Single(back[2].Route!);
-        Assert.Equal("R", back[2].Route![0].City);
-        Assert.Equal(9, back[2].Route![0].Zip!.Value);
-        Assert.Single(back[3].Stops!);
-        Assert.Equal(0, back[3].Stops![0].Zip!.Value);
+        stops2.Count.ShouldBe(2);
+        stops2[0].City.ShouldBe("A");
+        stops2[0].Zip.ShouldBe(1);
+        stops2[0].Node.ShouldBe(node1);
+        stops2[1].City.ShouldBeNull();
+        stops2[1].Zip.ShouldBeNull();
+        stops2[1].Node.ShouldBe(node2);
+        back[2].Route!.Length.ShouldBe(1);
+        back[2].Route![0].City.ShouldBe("R");
+        back[2].Route![0].Zip!.Value.ShouldBe(9);
+        back[3].Stops!.Count.ShouldBe(1);
+        back[3].Stops![0].Zip!.Value.ShouldBe(0);
     }
 
     [Fact]
@@ -266,14 +267,14 @@ public sealed partial record ListRow
 
         var back = await TripRowParquetExtensions.ReadParquetParallelArrayAsync(ms);
 
-        Assert.Equal(50, back.Length);
+        back.Length.ShouldBe(50);
         for (int i = 0; i < 50; i++)
         {
             var stopsI = back[i].Stops!;
-            Assert.Equal(2, stopsI.Count);
-            Assert.Equal($"c{i}", stopsI[0].City);
-            Assert.Equal(i % 2, stopsI[0].Zip);
-            Assert.Null(stopsI[1].City);
+            stopsI.Count.ShouldBe(2);
+            stopsI[0].City.ShouldBe($"c{i}");
+            stopsI[0].Zip.ShouldBe(i % 2);
+            stopsI[1].City.ShouldBeNull();
         }
     }
 }

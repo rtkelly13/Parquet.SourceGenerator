@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -47,7 +48,7 @@ public sealed class RowGroupSizingTests
             rowCount: 6
         );
 
-        Assert.Equal(3, groups);
+        groups.ShouldBe(3);
     }
 
     [Fact]
@@ -55,7 +56,7 @@ public sealed class RowGroupSizingTests
     {
         int groups = await RowGroupCountAsync(options: null, rowCount: 6);
 
-        Assert.Equal(1, groups);
+        groups.ShouldBe(1);
     }
 
     [Fact]
@@ -68,7 +69,7 @@ public sealed class RowGroupSizingTests
             rowCount: 6
         );
 
-        Assert.Equal(1, groups);
+        groups.ShouldBe(1);
     }
 
     [Fact]
@@ -76,7 +77,7 @@ public sealed class RowGroupSizingTests
     {
         using var stream = new MemoryStream();
 
-        ArgumentOutOfRangeException zero = await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+        ArgumentOutOfRangeException zero = await Should.ThrowAsync<ArgumentOutOfRangeException>(
             () =>
                 Rows(2)
                     .WriteParquetBatchedAsync(
@@ -84,9 +85,9 @@ public sealed class RowGroupSizingTests
                         new ParquetSerializerOptions { RowGroupSize = 0 }
                     )
         );
-        Assert.Equal("options", zero.ParamName);
+        zero.ParamName.ShouldBe("options");
 
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+        await Should.ThrowAsync<ArgumentOutOfRangeException>(() =>
             Rows(2)
                 .WriteParquetBatchedAsync(
                     stream,
@@ -103,7 +104,7 @@ public sealed class RowGroupSizingTests
         ParquetSerializerOptions first = ParquetSerializerOptions.Default;
         first.RowGroupSize = 7;
 
-        Assert.Equal(50_000, ParquetSerializerOptions.Default.RowGroupSize);
-        Assert.NotSame(first, ParquetSerializerOptions.Default);
+        ParquetSerializerOptions.Default.RowGroupSize.ShouldBe(50_000);
+        ParquetSerializerOptions.Default.ShouldNotBeSameAs(first);
     }
 }

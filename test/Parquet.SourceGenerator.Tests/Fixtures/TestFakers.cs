@@ -59,4 +59,60 @@ public static class TestFakers
             .RuleFor(m => m.Name, f => f.Commerce.ProductName())
             .RuleFor(m => m.Score, f => f.Random.Double(0.0, 100.0))
             .RuleFor(m => m.InternalSecret, _ => "hidden");
+
+    /// <summary>
+    /// Creates a seeded <see cref="Faker{Address}"/> generating cities and zip codes.
+    /// </summary>
+    public static Faker<Address> CreateAddressFaker(int seed = DefaultSeed) =>
+        new Faker<Address>()
+            .UseSeed(seed)
+            .RuleFor(a => a.City, f => f.Address.City())
+            .RuleFor(a => a.Zip, f => f.Random.Int(10000, 99999));
+
+    /// <summary>
+    /// Creates a seeded <see cref="Faker{NestedOrder}"/> generating nested order records.
+    /// </summary>
+    public static Faker<NestedOrder> CreateNestedOrderFaker(
+        int seed = DefaultSeed,
+        float nullShipWeight = 0.2f
+    )
+    {
+        var addressFaker = CreateAddressFaker(seed);
+        return new Faker<NestedOrder>()
+            .UseSeed(seed)
+            .RuleFor(o => o.Id, f => f.IndexFaker + 1)
+            .RuleFor(
+                o => o.Ship,
+                f => f.Random.Bool(nullShipWeight) ? null : addressFaker.Generate()
+            )
+            .RuleFor(o => o.Bill, _ => addressFaker.Generate());
+    }
+
+    /// <summary>
+    /// Creates a seeded <see cref="Faker{ZeroBoxingRecord}"/> generating varied test records.
+    /// </summary>
+    public static Faker<ZeroBoxingRecord> CreateZeroBoxingRecordFaker(int seed = DefaultSeed) =>
+        new Faker<ZeroBoxingRecord>()
+            .UseSeed(seed)
+            .RuleFor(r => r.Id, f => f.IndexFaker + 1)
+            .RuleFor(r => r.Name, f => f.Commerce.ProductName())
+            .RuleFor(r => r.Description, f => f.Random.Bool(0.2f) ? null : f.Lorem.Sentence())
+            .RuleFor(r => r.Data, f => f.Random.Bytes(f.Random.Int(4, 32)))
+            .RuleFor(r => r.OptionalData, f => f.Random.Bool(0.3f) ? null : f.Random.Bytes(8));
+
+    /// <summary>
+    /// Creates a seeded <see cref="Faker{SpanDedupRecord}"/> generating string deduplication records.
+    /// </summary>
+    public static Faker<SpanDedupRecord> CreateSpanDedupRecordFaker(
+        int seed = DefaultSeed,
+        string[]? categories = null
+    )
+    {
+        string[] cats = categories ?? ["alpha", "beta", "gamma", "delta"];
+        return new Faker<SpanDedupRecord>()
+            .UseSeed(seed)
+            .RuleFor(r => r.Id, f => f.IndexFaker + 1)
+            .RuleFor(r => r.RequiredCategory, f => f.PickRandom(cats))
+            .RuleFor(r => r.OptionalCategory, f => f.Random.Bool(0.3f) ? null : f.PickRandom(cats));
+    }
 }

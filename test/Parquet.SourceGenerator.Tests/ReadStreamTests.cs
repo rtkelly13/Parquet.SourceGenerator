@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -40,12 +41,12 @@ public sealed class ReadStreamTests
             readItems.Add(item);
         }
 
-        Assert.Equal(3, readItems.Count);
-        Assert.Equal(1, readItems[0].Id);
-        Assert.Equal("Item_1", readItems[0].Name);
-        Assert.Equal(2, readItems[1].Id);
-        Assert.Equal("Item_2", readItems[1].Name);
-        Assert.Equal(3, readItems[2].Id);
-        Assert.Equal("Item_3", readItems[2].Name);
+        readItems.Count.ShouldBe(3);
+        readItems[0].Id.ShouldBe(1);
+        readItems[0].Name.ShouldBe("Item_1");
+        readItems[1].Id.ShouldBe(2);
+        readItems[1].Name.ShouldBe("Item_2");
+        readItems[2].Id.ShouldBe(3);
+        readItems[2].Name.ShouldBe("Item_3");
     }
 }

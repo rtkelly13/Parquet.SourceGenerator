@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -105,14 +106,14 @@ public sealed class SortedRowGroupPruningTests
                 pruning
             );
 
-        Assert.Single(found);
-        Assert.Equal(7_531, found[0].SequenceNumber);
-        Assert.True(pruning.SortedColumnDetected);
-        Assert.True(pruning.StrictlyMonotonic);
-        Assert.Equal(100, pruning.RowGroupCount);
-        Assert.Equal(1, pruning.RowGroupsScanned);
-        Assert.Equal(99, pruning.RowGroupsPruned);
-        Assert.Equal(75, pruning.FirstRowGroupRead);
+        found.Count.ShouldBe(1);
+        found[0].SequenceNumber.ShouldBe(7_531);
+        pruning.SortedColumnDetected.ShouldBeTrue();
+        pruning.StrictlyMonotonic.ShouldBeTrue();
+        pruning.RowGroupCount.ShouldBe(100);
+        pruning.RowGroupsScanned.ShouldBe(1);
+        pruning.RowGroupsPruned.ShouldBe(99);
+        pruning.FirstRowGroupRead.ShouldBe(75);
     }
 
     [Fact]
@@ -128,10 +129,10 @@ public sealed class SortedRowGroupPruningTests
                 pruning
             );
 
-        Assert.Empty(found);
-        Assert.True(pruning.SortedColumnDetected);
-        Assert.Equal(0, pruning.RowGroupsScanned);
-        Assert.Equal(-1, pruning.FirstRowGroupRead);
+        found.ShouldBeEmpty();
+        pruning.SortedColumnDetected.ShouldBeTrue();
+        pruning.RowGroupsScanned.ShouldBe(0);
+        pruning.FirstRowGroupRead.ShouldBe(-1);
     }
 
     [Fact]
@@ -148,14 +149,14 @@ public sealed class SortedRowGroupPruningTests
                 pruning
             );
 
-        Assert.Equal(300, slice.Count);
-        Assert.Equal(2_050, slice[0].SequenceNumber);
-        Assert.Equal(2_349, slice[^1].SequenceNumber);
-        Assert.True(pruning.SortedColumnDetected);
+        slice.Count.ShouldBe(300);
+        slice[0].SequenceNumber.ShouldBe(2_050);
+        slice[^1].SequenceNumber.ShouldBe(2_349);
+        pruning.SortedColumnDetected.ShouldBeTrue();
         // Groups 20..23 overlap [2050, 2349]; the other 96 never open.
-        Assert.Equal(4, pruning.RowGroupsScanned);
-        Assert.Equal(20, pruning.FirstRowGroupRead);
-        Assert.Equal(23, pruning.LastRowGroupRead);
+        pruning.RowGroupsScanned.ShouldBe(4);
+        pruning.FirstRowGroupRead.ShouldBe(20);
+        pruning.LastRowGroupRead.ShouldBe(23);
     }
 
     [Fact]
@@ -176,9 +177,9 @@ public sealed class SortedRowGroupPruningTests
                 3_210
             );
 
-        Assert.Equal(expected.Count, actual.Count);
-        Assert.Equal(expected.Select(r => r.SequenceNumber), actual.Select(r => r.SequenceNumber));
-        Assert.Equal(expected.Select(r => r.Payload), actual.Select(r => r.Payload));
+        actual.Count.ShouldBe(expected.Count);
+        actual.Select(r => r.SequenceNumber).ShouldBe(expected.Select(r => r.SequenceNumber));
+        actual.Select(r => r.Payload).ShouldBe(expected.Select(r => r.Payload));
     }
 
     [Fact]
@@ -194,9 +195,9 @@ public sealed class SortedRowGroupPruningTests
             pruning
         );
 
-        Assert.Equal(100, slice.Count);
-        Assert.True(pruning.SortedColumnDetected);
-        Assert.Equal(1, pruning.RowGroupsScanned);
+        slice.Count.ShouldBe(100);
+        pruning.SortedColumnDetected.ShouldBeTrue();
+        pruning.RowGroupsScanned.ShouldBe(1);
     }
 
     [Fact]
@@ -214,11 +215,11 @@ public sealed class SortedRowGroupPruningTests
             pruning
         );
 
-        Assert.False(pruning.SortedColumnDetected);
-        Assert.Equal(10, pruning.RowGroupCount);
-        Assert.Equal(10, pruning.RowGroupsScanned);
-        Assert.Equal(rows.Count(r => r.Bucket == 3), found.Count);
-        Assert.All(found, r => Assert.Equal(3, r.Bucket));
+        pruning.SortedColumnDetected.ShouldBeFalse();
+        pruning.RowGroupCount.ShouldBe(10);
+        pruning.RowGroupsScanned.ShouldBe(10);
+        found.Count.ShouldBe(rows.Count(r => r.Bucket == 3));
+        found.ShouldAllBe(r => r.Bucket == 3);
     }
 
     [Fact]
@@ -262,10 +263,10 @@ public sealed class SortedRowGroupPruningTests
                 pruning
             );
 
-        Assert.Equal(200, found.Count);
-        Assert.True(pruning.SortedColumnDetected);
-        Assert.False(pruning.StrictlyMonotonic);
-        Assert.Equal(2, pruning.RowGroupsScanned);
+        found.Count.ShouldBe(200);
+        pruning.SortedColumnDetected.ShouldBeTrue();
+        pruning.StrictlyMonotonic.ShouldBeFalse();
+        pruning.RowGroupsScanned.ShouldBe(2);
     }
 
     [Fact]
@@ -281,9 +282,9 @@ public sealed class SortedRowGroupPruningTests
                 pruning
             );
 
-        Assert.Single(found);
-        Assert.Equal(1, pruning.RowGroupCount);
-        Assert.Equal(1, pruning.RowGroupsScanned);
+        found.Count.ShouldBe(1);
+        pruning.RowGroupCount.ShouldBe(1);
+        pruning.RowGroupsScanned.ShouldBe(1);
     }
 
     [Fact]
@@ -298,13 +299,13 @@ public sealed class SortedRowGroupPruningTests
                 100
             );
 
-        Assert.Empty(found);
+        found.ShouldBeEmpty();
     }
 
     [Fact]
     public async Task NullStreamThrowsArgumentNullException()
     {
-        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+        await Should.ThrowAsync<ArgumentNullException>(() =>
             SortedEventParquetExtensions.ReadParquetBySequenceNumberAsync((Stream)null!, 1)
         );
     }
@@ -322,16 +323,16 @@ public sealed class SortedRowGroupPruningTests
             .Select(m => m.Name)
             .ToArray();
 
-        Assert.DoesNotContain("ReadParquetBySequenceNumberAsync", emitted);
-        Assert.DoesNotContain("ReadParquetSequenceNumberRangeAsync", emitted);
-        Assert.DoesNotContain("ReadPrunedRangeAsync", emitted);
-        Assert.DoesNotContain("TryPruneSortedRowGroups", emitted);
-        Assert.DoesNotContain("TryCompareStatistics", emitted);
-        Assert.DoesNotContain("TryCompareStatisticToKey", emitted);
+        emitted.ShouldNotContain("ReadParquetBySequenceNumberAsync");
+        emitted.ShouldNotContain("ReadParquetSequenceNumberRangeAsync");
+        emitted.ShouldNotContain("ReadPrunedRangeAsync");
+        emitted.ShouldNotContain("TryPruneSortedRowGroups");
+        emitted.ShouldNotContain("TryCompareStatistics");
+        emitted.ShouldNotContain("TryCompareStatisticToKey");
 
         // The ordinary read API is untouched, so the absence above is opt-in and not a
         // generator that simply failed to run for this model.
-        Assert.Contains("ReadParquetAsync", emitted);
+        emitted.ShouldContain("ReadParquetAsync");
     }
 
     /// <summary>
@@ -346,8 +347,8 @@ public sealed class SortedRowGroupPruningTests
             .Select(m => m.Name)
             .ToArray();
 
-        Assert.DoesNotContain("ReadParquetByPayloadAsync", emitted);
-        Assert.DoesNotContain("ReadParquetPayloadRangeAsync", emitted);
-        Assert.Contains("ReadParquetBySequenceNumberAsync", emitted);
+        emitted.ShouldNotContain("ReadParquetByPayloadAsync");
+        emitted.ShouldNotContain("ReadParquetPayloadRangeAsync");
+        emitted.ShouldContain("ReadParquetBySequenceNumberAsync");
     }
 }

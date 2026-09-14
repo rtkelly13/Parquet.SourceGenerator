@@ -1,5 +1,9 @@
+using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 using Parquet.SourceGenerator;
+using Parquet.SourceGenerator.Tests.Fixtures;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -43,17 +47,39 @@ public sealed class NestedStructRoundTripTests
 
         var back = await NestedOrderParquetExtensions.ReadParquetAsync(ms);
 
-        Assert.Equal(3, back.Count);
-        Assert.Equal("NYC", back[0].Ship!.City);
-        Assert.Equal(10001, back[0].Ship!.Zip);
-        Assert.Equal("Boston", back[0].Bill.City);
-        Assert.Null(back[1].Ship);
-        Assert.Null(back[1].Bill.City);
-        Assert.Null(back[1].Bill.Zip);
-        Assert.Null(back[2].Ship!.City);
-        Assert.Equal(55, back[2].Ship!.Zip);
-        Assert.Equal("LA", back[2].Bill.City);
-        Assert.Null(back[2].Bill.Zip);
+        back.Count.ShouldBe(3);
+        back[0].Ship!.City.ShouldBe("NYC");
+        back[0].Ship!.Zip.ShouldBe(10001);
+        back[0].Bill.City.ShouldBe("Boston");
+        back[1].Ship.ShouldBeNull();
+        back[1].Bill.City.ShouldBeNull();
+        back[1].Bill.Zip.ShouldBeNull();
+        back[2].Ship!.City.ShouldBeNull();
+        back[2].Ship!.Zip.ShouldBe(55);
+        back[2].Bill.City.ShouldBe("LA");
+        back[2].Bill.Zip.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task FakerGeneratedNestedOrdersRoundTrip()
+    {
+        var faker = TestFakers.CreateNestedOrderFaker(12345);
+        var rows = faker.Generate(25);
+
+        using var ms = new MemoryStream();
+        await NestedOrderParquetExtensions.WriteParquetAsync(rows, ms);
+        ms.Position = 0;
+
+        var back = await NestedOrderParquetExtensions.ReadParquetAsync(ms);
+        back.Count.ShouldBe(25);
+        for (int i = 0; i < rows.Count; i++)
+        {
+            back[i].Id.ShouldBe(rows[i].Id);
+            back[i].Ship?.City.ShouldBe(rows[i].Ship?.City);
+            back[i].Ship?.Zip.ShouldBe(rows[i].Ship?.Zip);
+            back[i].Bill.City.ShouldBe(rows[i].Bill.City);
+            back[i].Bill.Zip.ShouldBe(rows[i].Bill.Zip);
+        }
     }
 
     [Fact]
@@ -83,11 +109,11 @@ public sealed class NestedStructRoundTripTests
         ms.Position = 0;
         var back = await EnvelopeParquetExtensions.ReadParquetAsync(ms);
 
-        Assert.Equal("first", back[0].Outer!.Label);
-        Assert.Equal("Denver", back[0].Outer!.Inner!.City);
-        Assert.Null(back[1].Outer!.Label);
-        Assert.Null(back[1].Outer!.Inner);
-        Assert.Null(back[2].Outer);
+        back[0].Outer!.Label.ShouldBe("first");
+        back[0].Outer!.Inner!.City.ShouldBe("Denver");
+        back[1].Outer!.Label.ShouldBeNull();
+        back[1].Outer!.Inner.ShouldBeNull();
+        back[2].Outer.ShouldBeNull();
     }
 
     [Fact]
@@ -114,9 +140,9 @@ public sealed class NestedStructRoundTripTests
         ms.Position = 0;
         var array = await NestedOrderParquetExtensions.ReadParquetArrayAsync(ms);
 
-        Assert.Equal(2, array.Length);
-        Assert.Equal("A", array[0].Ship!.City);
-        Assert.Null(array[1].Ship);
+        array.Length.ShouldBe(2);
+        array[0].Ship!.City.ShouldBe("A");
+        array[1].Ship.ShouldBeNull();
     }
 
     [Fact]
@@ -142,7 +168,7 @@ public sealed class NestedStructRoundTripTests
         await NestedOrderParquetExtensions.WriteParquetAsync(rows, ms);
         ms.Position = 0;
         var back = await NestedOrderParquetExtensions.ReadParquetAsync(ms);
-        Assert.All(back, r => Assert.Null(r.Ship));
+        back.ShouldAllBe(r => r.Ship == null);
     }
 
     [Fact]
@@ -182,28 +208,28 @@ public sealed class NestedStructRoundTripTests
         var streamed = new List<NestedOrder>();
         await foreach (NestedOrder r in NestedOrderParquetExtensions.ReadParquetStreamAsync(ms))
             streamed.Add(r);
-        Assert.Equal(3, streamed.Count);
-        Assert.Equal("X", streamed[0].Ship!.City);
-        Assert.Null(streamed[1].Ship);
-        Assert.Null(streamed[2].Ship!.City);
-        Assert.Equal("Z", streamed[2].Bill.City);
+        streamed.Count.ShouldBe(3);
+        streamed[0].Ship!.City.ShouldBe("X");
+        streamed[1].Ship.ShouldBeNull();
+        streamed[2].Ship!.City.ShouldBeNull();
+        streamed[2].Bill.City.ShouldBe("Z");
 
         // parallel array read
         ms.Position = 0;
         var parallel = await NestedOrderParquetExtensions.ReadParquetParallelArrayAsync(ms);
-        Assert.Equal(3, parallel.Length);
-        Assert.Equal("Y", parallel[0].Bill.City);
+        parallel.Length.ShouldBe(3);
+        parallel[0].Bill.City.ShouldBe("Y");
 
         // memory buffer reads
         byte[] bytes = ms.ToArray();
         var mem = await NestedOrderParquetExtensions.ReadParquetAsync(bytes);
-        Assert.Equal(3, mem.Count);
+        mem.Count.ShouldBe(3);
         var memArr = await NestedOrderParquetExtensions.ReadParquetParallelArrayAsync(bytes);
-        Assert.Equal("X", memArr[0].Ship!.City);
+        memArr[0].Ship!.City.ShouldBe("X");
         var memStream = new List<NestedOrder>();
         await foreach (NestedOrder r in NestedOrderParquetExtensions.ReadParquetStreamAsync(bytes))
             memStream.Add(r);
-        Assert.Equal(3, memStream.Count);
+        memStream.Count.ShouldBe(3);
     }
 
     [Fact]
@@ -224,7 +250,7 @@ public sealed class NestedStructRoundTripTests
         await Source().WriteParquetAsync(ms);
         ms.Position = 0;
         var back = await NestedOrderParquetExtensions.ReadParquetAsync(ms);
-        Assert.Equal("S", back[0].Ship!.City);
+        back[0].Ship!.City.ShouldBe("S");
     }
 
     [Fact]
@@ -265,18 +291,18 @@ public sealed class NestedStructRoundTripTests
 
         var back = await NullableStructRowParquetExtensions.ReadParquetAsync(ms);
 
-        Assert.Equal(3, back.Count);
-        Assert.Equal(1, back[0].Origin.X);
-        Assert.Equal(3, back[0].Start!.Value.X);
-        Assert.Equal(4.5, back[0].Start!.Value.Y);
-        Assert.Equal(7, back[0].Frame!.Mark!.Value.X);
-        Assert.Null(back[1].Start);
-        Assert.Null(back[1].Frame);
-        Assert.NotNull(back[2].Start);
-        Assert.Equal(0, back[2].Start!.Value.X);
-        Assert.NotNull(back[2].Frame);
-        Assert.Null(back[2].Frame!.Tag);
-        Assert.Null(back[2].Frame!.Mark);
+        back.Count.ShouldBe(3);
+        back[0].Origin.X.ShouldBe(1);
+        back[0].Start!.Value.X.ShouldBe(3);
+        back[0].Start!.Value.Y.ShouldBe(4.5);
+        back[0].Frame!.Mark!.Value.X.ShouldBe(7);
+        back[1].Start.ShouldBeNull();
+        back[1].Frame.ShouldBeNull();
+        back[2].Start.ShouldNotBeNull();
+        back[2].Start!.Value.X.ShouldBe(0);
+        back[2].Frame.ShouldNotBeNull();
+        back[2].Frame!.Tag.ShouldBeNull();
+        back[2].Frame!.Mark.ShouldBeNull();
     }
 }
 

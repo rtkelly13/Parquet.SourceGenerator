@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
 using Parquet.SourceGenerator;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -182,8 +183,8 @@ public class ZeroBoxingSerializationTests
     public void WriteParquetRowGroupAsyncEmitsZeroBoxingOpcodes()
     {
         Type type = typeof(ZeroBoxingRecordParquetExtensions);
-        Assert.NotEmpty(WriteRowGroupOverloads(type));
-        Assert.Equal(0, CountBoxInstructionsInAllWriteRowGroupOverloads(type));
+        WriteRowGroupOverloads(type).ShouldNotBeEmpty();
+        CountBoxInstructionsInAllWriteRowGroupOverloads(type).ShouldBe(0);
     }
 
     [Fact]
@@ -233,15 +234,15 @@ public class ZeroBoxingSerializationTests
             stream
         );
 
-        Assert.Equal(items.Count, results.Count);
+        results.Count.ShouldBe(items.Count);
 
         for (int i = 0; i < items.Count; i++)
         {
-            Assert.Equal(items[i].Id, results[i].Id);
-            Assert.Equal(items[i].Name, results[i].Name);
-            Assert.Equal(items[i].Description, results[i].Description);
-            Assert.Equal(items[i].Data, results[i].Data);
-            Assert.Equal(items[i].OptionalData, results[i].OptionalData);
+            results[i].Id.ShouldBe(items[i].Id);
+            results[i].Name.ShouldBe(items[i].Name);
+            results[i].Description.ShouldBe(items[i].Description);
+            results[i].Data.ShouldBe(items[i].Data);
+            results[i].OptionalData.ShouldBe(items[i].OptionalData);
         }
     }
 
@@ -269,15 +270,15 @@ public class ZeroBoxingSerializationTests
             stream
         );
 
-        Assert.Equal(count, results.Count);
+        results.Count.ShouldBe(count);
 
         for (int i = 0; i < count; i++)
         {
-            Assert.Equal(items[i].Id, results[i].Id);
-            Assert.Equal(items[i].Name, results[i].Name);
-            Assert.Equal(items[i].Description, results[i].Description);
-            Assert.Equal(items[i].Data, results[i].Data);
-            Assert.Equal(items[i].OptionalData, results[i].OptionalData);
+            results[i].Id.ShouldBe(items[i].Id);
+            results[i].Name.ShouldBe(items[i].Name);
+            results[i].Description.ShouldBe(items[i].Description);
+            results[i].Data.ShouldBe(items[i].Data);
+            results[i].OptionalData.ShouldBe(items[i].OptionalData);
         }
     }
 
@@ -289,9 +290,8 @@ public class ZeroBoxingSerializationTests
             .Where(t => t.IsClass && t.Name.EndsWith("ParquetExtensions", StringComparison.Ordinal))
             .ToList();
 
-        Assert.NotEmpty(extensionTypes);
-        Assert.True(
-            extensionTypes.Count >= 20,
+        extensionTypes.ShouldNotBeEmpty();
+        (extensionTypes.Count >= 20).ShouldBeTrue(
             $"Expected at least 20 generated extension types in assembly, found {extensionTypes.Count}"
         );
 
@@ -311,8 +311,8 @@ public class ZeroBoxingSerializationTests
             }
         }
 
-        Assert.True(
-            violations.Count == 0,
+        violations.Count.ShouldBe(
+            0,
             $"Found boxing opcodes in WriteParquetRowGroupAsync:\n{string.Join("\n", violations)}"
         );
     }
@@ -347,10 +347,10 @@ public class ZeroBoxingSerializationTests
 
         Assembly compiledAssembly = CompileSourceToAssembly(source);
         Type? extType = compiledAssembly.GetType("DynamicBoxingTest.TestModelParquetExtensions");
-        Assert.NotNull(extType);
+        extType.ShouldNotBeNull();
 
-        Assert.NotEmpty(WriteRowGroupOverloads(extType));
-        Assert.Equal(0, CountBoxInstructionsInAllWriteRowGroupOverloads(extType));
+        WriteRowGroupOverloads(extType).ShouldNotBeEmpty();
+        CountBoxInstructionsInAllWriteRowGroupOverloads(extType).ShouldBe(0);
     }
 
     [Fact]
@@ -404,10 +404,10 @@ public class ZeroBoxingSerializationTests
         Type? extType = compiledAssembly.GetType(
             "DynamicBoxingTest.ComprehensiveModelParquetExtensions"
         );
-        Assert.NotNull(extType);
+        extType.ShouldNotBeNull();
 
-        Assert.NotEmpty(WriteRowGroupOverloads(extType));
-        Assert.Equal(0, CountBoxInstructionsInAllWriteRowGroupOverloads(extType));
+        WriteRowGroupOverloads(extType).ShouldNotBeEmpty();
+        CountBoxInstructionsInAllWriteRowGroupOverloads(extType).ShouldBe(0);
     }
 
     private static Assembly CompileSourceToAssembly(string source)
@@ -473,17 +473,15 @@ public class ZeroBoxingSerializationTests
             out var diagnostics
         );
 
-        Assert.DoesNotContain(
-            diagnostics,
-            d => d.Severity == global::Microsoft.CodeAnalysis.DiagnosticSeverity.Error
+        diagnostics.ShouldNotContain(d =>
+            d.Severity == global::Microsoft.CodeAnalysis.DiagnosticSeverity.Error
         );
 
         using var peStream = new MemoryStream();
         global::Microsoft.CodeAnalysis.Emit.EmitResult emitResult = outputCompilation.Emit(
             peStream
         );
-        Assert.True(
-            emitResult.Success,
+        emitResult.Success.ShouldBeTrue(
             string.Join(
                 "\n",
                 emitResult

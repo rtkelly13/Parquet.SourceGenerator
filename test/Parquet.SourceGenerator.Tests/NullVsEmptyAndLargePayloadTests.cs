@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Parquet;
 using Parquet.Data;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -109,8 +110,8 @@ public class NullVsEmptyAndLargePayloadTests
         string?[] strData = new string?[2];
         await groupReader.ReadAsync(optStrField, strData.AsMemory());
 
-        Assert.Equal(string.Empty, strData[0]);
-        Assert.Null(strData[1]);
+        strData[0].ShouldBe(string.Empty);
+        strData[1].ShouldBeNull();
 
         Parquet.Schema.DataField optBytesField =
             PayloadSemanticsModelParquetExtensions.Schema.DataFields.Single(f =>
@@ -119,9 +120,9 @@ public class NullVsEmptyAndLargePayloadTests
         byte[]?[] bytesData = new byte[]?[2];
         await groupReader.ReadAsync(optBytesField, bytesData.AsMemory());
 
-        Assert.NotNull(bytesData[0]);
-        Assert.Empty(bytesData[0]!);
-        Assert.Null(bytesData[1]);
+        bytesData[0].ShouldNotBeNull();
+        bytesData[0]!.ShouldBeEmpty();
+        bytesData[1].ShouldBeNull();
     }
 
     [Fact]
@@ -166,15 +167,15 @@ public class NullVsEmptyAndLargePayloadTests
         List<PayloadSemanticsModel> results =
             await PayloadSemanticsModelParquetExtensions.ReadParquetAsync(stream);
 
-        Assert.Equal(items.Count, results.Count);
+        results.Count.ShouldBe(items.Count);
 
         for (int i = 0; i < items.Count; i++)
         {
-            Assert.Equal(items[i].Id, results[i].Id);
-            Assert.Equal(items[i].RequiredString, results[i].RequiredString);
-            Assert.Equal(items[i].OptionalString, results[i].OptionalString);
-            Assert.Equal(items[i].RequiredBytes, results[i].RequiredBytes);
-            Assert.Equal(items[i].OptionalBytes, results[i].OptionalBytes);
+            results[i].Id.ShouldBe(items[i].Id);
+            results[i].RequiredString.ShouldBe(items[i].RequiredString);
+            results[i].OptionalString.ShouldBe(items[i].OptionalString);
+            results[i].RequiredBytes.ShouldBe(items[i].RequiredBytes);
+            results[i].OptionalBytes.ShouldBe(items[i].OptionalBytes);
         }
     }
 
@@ -242,14 +243,14 @@ public class NullVsEmptyAndLargePayloadTests
         List<PayloadSemanticsModel> sequentialResults =
             await PayloadSemanticsModelParquetExtensions.ReadParquetAsync(stream);
 
-        Assert.Equal(items.Count, sequentialResults.Count);
+        sequentialResults.Count.ShouldBe(items.Count);
         for (int i = 0; i < items.Count; i++)
         {
-            Assert.Equal(items[i].Id, sequentialResults[i].Id);
-            Assert.Equal(items[i].RequiredString, sequentialResults[i].RequiredString);
-            Assert.Equal(items[i].OptionalString, sequentialResults[i].OptionalString);
-            Assert.Equal(items[i].RequiredBytes, sequentialResults[i].RequiredBytes);
-            Assert.Equal(items[i].OptionalBytes, sequentialResults[i].OptionalBytes);
+            sequentialResults[i].Id.ShouldBe(items[i].Id);
+            sequentialResults[i].RequiredString.ShouldBe(items[i].RequiredString);
+            sequentialResults[i].OptionalString.ShouldBe(items[i].OptionalString);
+            sequentialResults[i].RequiredBytes.ShouldBe(items[i].RequiredBytes);
+            sequentialResults[i].OptionalBytes.ShouldBe(items[i].OptionalBytes);
         }
 
         // 2. Parallel Read
@@ -257,14 +258,14 @@ public class NullVsEmptyAndLargePayloadTests
         List<PayloadSemanticsModel> parallelResults =
             await PayloadSemanticsModelParquetExtensions.ReadParquetParallelAsync(stream);
 
-        Assert.Equal(items.Count, parallelResults.Count);
+        parallelResults.Count.ShouldBe(items.Count);
         for (int i = 0; i < items.Count; i++)
         {
-            Assert.Equal(items[i].Id, parallelResults[i].Id);
-            Assert.Equal(items[i].RequiredString, parallelResults[i].RequiredString);
-            Assert.Equal(items[i].OptionalString, parallelResults[i].OptionalString);
-            Assert.Equal(items[i].RequiredBytes, parallelResults[i].RequiredBytes);
-            Assert.Equal(items[i].OptionalBytes, parallelResults[i].OptionalBytes);
+            parallelResults[i].Id.ShouldBe(items[i].Id);
+            parallelResults[i].RequiredString.ShouldBe(items[i].RequiredString);
+            parallelResults[i].OptionalString.ShouldBe(items[i].OptionalString);
+            parallelResults[i].RequiredBytes.ShouldBe(items[i].RequiredBytes);
+            parallelResults[i].OptionalBytes.ShouldBe(items[i].OptionalBytes);
         }
     }
 
