@@ -93,6 +93,12 @@ dotnet_diagnostic.xUnit2004.severity = warning
 dotnet_diagnostic.xUnit2013.severity = warning
 dotnet_diagnostic.xUnit2017.severity = warning
 
+# Banned symbols analyzer (RS0030) - migrating xUnit.Assert to Shouldly (#295)
+dotnet_diagnostic.RS0030.severity = none
+
+[test/**/ParserAndEmitterTests.cs]
+dotnet_diagnostic.RS0030.severity = warning
+
 [samples/**.cs]
 dotnet_diagnostic.category-Meziantou.severity = none
 

@@ -24,6 +24,11 @@
       this assembly: the emitted overloads only exist because this reference does.
     -->
         <PackageReference Include="Apache.Arrow" />
+        <PackageReference Include="Shouldly" />
+        <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
     </ItemGroup>
 
     <ItemGroup>
@@ -98,5 +103,6 @@
         <AdditionalFiles Include="GoldenFiles\**\*.g.cs" />
         <AdditionalFiles Include="GoldenFiles\**\*.api.txt" />
         <AdditionalFiles Include="..\..\docs\api\LEDGER.md" />
+        <AdditionalFiles Include="BannedSymbols.txt" />
     </ItemGroup>
 </Project>
