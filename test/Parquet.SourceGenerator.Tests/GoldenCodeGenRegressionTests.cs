@@ -185,119 +185,92 @@ public sealed class GoldenCodeGenRegressionTests
             )
             .ToArray();
 
+    private static PropertyModel Prop(
+        string name,
+        string parquetColumnName,
+        string typeName,
+        int order,
+        PropertyKind kind = PropertyKind.Primitive,
+        bool isNullable = false,
+        string? timestampUnit = null,
+        string? enumUnderlyingTypeName = null,
+        int? decimalPrecision = null,
+        int? decimalScale = null
+    ) =>
+        new(
+            name,
+            parquetColumnName,
+            typeName,
+            timestampUnit,
+            enumUnderlyingTypeName,
+            order,
+            decimalPrecision,
+            decimalScale,
+            kind,
+            isNullable
+        );
+
+    private static LegacyModels.PropertyModel LegacyProp(
+        string name,
+        string parquetColumnName,
+        string typeName,
+        int order,
+        LegacyModels.PropertyKind kind = LegacyModels.PropertyKind.Primitive,
+        bool isNullable = false,
+        string? timestampUnit = null,
+        string? enumUnderlyingTypeName = null,
+        int? decimalPrecision = null,
+        int? decimalScale = null
+    ) =>
+        new(
+            name,
+            parquetColumnName,
+            typeName,
+            timestampUnit,
+            enumUnderlyingTypeName,
+            order,
+            decimalPrecision,
+            decimalScale,
+            kind,
+            isNullable
+        );
+
     [Fact]
     public void GoldenMasterComprehensiveModernV6Model()
     {
         var properties = new[]
         {
-            new PropertyModel(
-                "Id",
-                "id",
-                "int",
-                null,
-                null,
-                1,
-                null,
-                null,
-                PropertyKind.Primitive,
-                false
-            ),
-            new PropertyModel(
-                "Name",
-                "name",
-                "string?",
-                null,
-                null,
-                2,
-                null,
-                null,
-                PropertyKind.Primitive,
-                true
-            ),
-            new PropertyModel(
-                "Score",
-                "score",
-                "double",
-                null,
-                null,
-                3,
-                null,
-                null,
-                PropertyKind.Primitive,
-                false
-            ),
-            new PropertyModel(
+            Prop("Id", "id", "int", 1),
+            Prop("Name", "name", "string?", 2, isNullable: true),
+            Prop("Score", "score", "double", 3),
+            Prop(
                 "Price",
                 "price",
                 "decimal",
-                null,
-                null,
-                4,
-                18,
                 4,
                 PropertyKind.Decimal,
-                false
+                decimalPrecision: 18,
+                decimalScale: 4
             ),
-            new PropertyModel(
+            Prop(
                 "CreatedAt",
                 "created_at",
                 "System.DateTime",
-                "Microseconds",
-                null,
                 5,
-                null,
-                null,
                 PropertyKind.DateTime,
-                false
+                timestampUnit: "Microseconds"
             ),
-            new PropertyModel(
-                "Duration",
-                "duration",
-                "System.TimeSpan",
-                null,
-                null,
-                6,
-                null,
-                null,
-                PropertyKind.TimeSpan,
-                false
-            ),
-            new PropertyModel(
-                "CorrelationId",
-                "correlation_id",
-                "System.Guid",
-                null,
-                null,
-                7,
-                null,
-                null,
-                PropertyKind.Guid,
-                false
-            ),
-            new PropertyModel(
+            Prop("Duration", "duration", "System.TimeSpan", 6, PropertyKind.TimeSpan),
+            Prop("CorrelationId", "correlation_id", "System.Guid", 7, PropertyKind.Guid),
+            Prop(
                 "OptionalGuid",
                 "optional_guid",
                 "System.Guid?",
-                null,
-                null,
                 8,
-                null,
-                null,
                 PropertyKind.Guid,
-                true
+                isNullable: true
             ),
-            new PropertyModel(
-                "Payload",
-                "payload",
-                "byte[]",
-                null,
-                null,
-                9,
-                null,
-                null,
-                PropertyKind.ByteArray,
-                true
-            ),
+            Prop("Payload", "payload", "byte[]", 9, PropertyKind.ByteArray, isNullable: true),
         };
 
         var model = new TargetClassModel(
@@ -315,102 +288,29 @@ public sealed class GoldenCodeGenRegressionTests
     {
         var properties = new[]
         {
-            new PropertyModel(
-                "RowId",
-                "row_id",
-                "long",
-                null,
-                null,
-                1,
-                null,
-                null,
-                PropertyKind.Primitive,
-                false
-            ),
-            new PropertyModel(
-                "Flag",
-                "is_valid",
-                "bool",
-                null,
-                null,
-                2,
-                null,
-                null,
-                PropertyKind.Primitive,
-                false
-            ),
-            new PropertyModel(
-                "NullableFlag",
-                "maybe_flag",
-                "bool?",
-                null,
-                null,
-                3,
-                null,
-                null,
-                PropertyKind.Primitive,
-                true
-            ),
-            new PropertyModel(
+            Prop("RowId", "row_id", "long", 1),
+            Prop("Flag", "is_valid", "bool", 2),
+            Prop("NullableFlag", "maybe_flag", "bool?", 3, isNullable: true),
+            Prop(
                 "StatusCode",
                 "status",
                 "SampleDomain.Models.ProcessStatus",
-                null,
-                "int",
                 4,
-                null,
-                null,
                 PropertyKind.Enum,
-                false
+                enumUnderlyingTypeName: "int"
             ),
-            new PropertyModel(
+            Prop(
                 "OptionalStatus",
                 "opt_status",
                 "SampleDomain.Models.ProcessStatus?",
-                null,
-                "int",
                 5,
-                null,
-                null,
                 PropertyKind.Enum,
-                true
+                isNullable: true,
+                enumUnderlyingTypeName: "int"
             ),
-            new PropertyModel(
-                "TinyNum",
-                "tiny_num",
-                "byte",
-                null,
-                null,
-                6,
-                null,
-                null,
-                PropertyKind.Primitive,
-                false
-            ),
-            new PropertyModel(
-                "ShortNum",
-                "short_num",
-                "short",
-                null,
-                null,
-                7,
-                null,
-                null,
-                PropertyKind.Primitive,
-                false
-            ),
-            new PropertyModel(
-                "FloatVal",
-                "float_val",
-                "float",
-                null,
-                null,
-                8,
-                null,
-                null,
-                PropertyKind.Primitive,
-                false
-            ),
+            Prop("TinyNum", "tiny_num", "byte", 6),
+            Prop("ShortNum", "short_num", "short", 7),
+            Prop("FloatVal", "float_val", "float", 8),
         };
 
         var model = new TargetClassModel(
@@ -428,53 +328,23 @@ public sealed class GoldenCodeGenRegressionTests
     {
         var properties = new[]
         {
-            new LegacyModels.PropertyModel(
-                "Id",
-                "id",
-                "int",
-                null,
-                null,
-                1,
-                null,
-                null,
-                LegacyModels.PropertyKind.Primitive,
-                false
-            ),
-            new LegacyModels.PropertyModel(
-                "Description",
-                "desc",
-                "string",
-                null,
-                null,
-                2,
-                null,
-                null,
-                LegacyModels.PropertyKind.Primitive,
-                true
-            ),
-            new LegacyModels.PropertyModel(
+            LegacyProp("Id", "id", "int", 1),
+            LegacyProp("Description", "desc", "string", 2, isNullable: true),
+            LegacyProp(
                 "RawData",
                 "raw_data",
                 "byte[]",
-                null,
-                null,
                 3,
-                null,
-                null,
                 LegacyModels.PropertyKind.ByteArray,
-                true
+                isNullable: true
             ),
-            new LegacyModels.PropertyModel(
+            LegacyProp(
                 "Level",
                 "level",
                 "SampleDomain.Models.AccessLevel",
-                null,
-                "int",
                 4,
-                null,
-                null,
                 LegacyModels.PropertyKind.Enum,
-                false
+                enumUnderlyingTypeName: "int"
             ),
         };
 

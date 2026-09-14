@@ -226,8 +226,63 @@ public class StreamingChunkLifecycleTests
     {
         // First row group of 5 items has populated text and binary
         // Second row group (remainder of 2 items) has null text and empty binary
-        var items = new List<StreamingChunkModel>
+        var items = CreateMultiRowGroupRecyclingTestData();
+
+        using var stream = new MemoryStream();
+        await ToAsyncEnumerable(items)
+            .WriteParquetAsync(stream, new ParquetSerializerOptions { RowGroupSize = 5 });
+
+        // Verify low level
+        stream.Position = 0;
+        await using (var reader = await ParquetReader.CreateAsync(stream))
         {
+            Assert.Equal(2, reader.RowGroupCount);
+            using var rg0 = reader.OpenRowGroupReader(0);
+            Assert.Equal(5, rg0.RowCount);
+            using var rg1 = reader.OpenRowGroupReader(1);
+            Assert.Equal(2, rg1.RowCount);
+        }
+
+        // Verify roundtrip read
+        stream.Position = 0;
+        List<StreamingChunkModel> results =
+            await StreamingChunkModelParquetExtensions.ReadParquetParallelAsync(stream);
+
+        AssertEqualLists(items, results);
+
+        // Specifically assert the remainder items did not leak stale buffer contents
+        Assert.Equal(string.Empty, results[5].Text);
+        Assert.Null(results[5].OptionalText);
+        Assert.Empty(results[5].Data);
+        Assert.Equal(Guid.Empty, results[5].GuidVal);
+        Assert.Equal(0m, results[5].Amount);
+
+        Assert.Equal(string.Empty, results[6].Text);
+        Assert.Null(results[6].OptionalText);
+        Assert.Empty(results[6].Data);
+        Assert.Equal(Guid.Empty, results[6].GuidVal);
+        Assert.Equal(0m, results[6].Amount);
+    }
+
+    private static void AssertEqualLists(
+        List<StreamingChunkModel> expected,
+        List<StreamingChunkModel> actual
+    )
+    {
+        Assert.Equal(expected.Count, actual.Count);
+        for (int i = 0; i < expected.Count; i++)
+        {
+            Assert.Equal(expected[i].Id, actual[i].Id);
+            Assert.Equal(expected[i].Text, actual[i].Text);
+            Assert.Equal(expected[i].OptionalText, actual[i].OptionalText);
+            Assert.Equal(expected[i].Data, actual[i].Data);
+            Assert.Equal(expected[i].GuidVal, actual[i].GuidVal);
+            Assert.Equal(expected[i].Amount, actual[i].Amount);
+        }
+    }
+
+    private static List<StreamingChunkModel> CreateMultiRowGroupRecyclingTestData() =>
+        [
             // Row Group 1 (5 items)
             new()
             {
@@ -293,58 +348,5 @@ public class StreamingChunkLifecycleTests
                 GuidVal = Guid.Empty,
                 Amount = 0m,
             },
-        };
-
-        using var stream = new MemoryStream();
-        await ToAsyncEnumerable(items)
-            .WriteParquetAsync(stream, new ParquetSerializerOptions { RowGroupSize = 5 });
-
-        // Verify low level
-        stream.Position = 0;
-        await using (var reader = await ParquetReader.CreateAsync(stream))
-        {
-            Assert.Equal(2, reader.RowGroupCount);
-            using var rg0 = reader.OpenRowGroupReader(0);
-            Assert.Equal(5, rg0.RowCount);
-            using var rg1 = reader.OpenRowGroupReader(1);
-            Assert.Equal(2, rg1.RowCount);
-        }
-
-        // Verify roundtrip read
-        stream.Position = 0;
-        List<StreamingChunkModel> results =
-            await StreamingChunkModelParquetExtensions.ReadParquetParallelAsync(stream);
-
-        AssertEqualLists(items, results);
-
-        // Specifically assert the remainder items did not leak stale buffer contents
-        Assert.Equal(string.Empty, results[5].Text);
-        Assert.Null(results[5].OptionalText);
-        Assert.Empty(results[5].Data);
-        Assert.Equal(Guid.Empty, results[5].GuidVal);
-        Assert.Equal(0m, results[5].Amount);
-
-        Assert.Equal(string.Empty, results[6].Text);
-        Assert.Null(results[6].OptionalText);
-        Assert.Empty(results[6].Data);
-        Assert.Equal(Guid.Empty, results[6].GuidVal);
-        Assert.Equal(0m, results[6].Amount);
-    }
-
-    private static void AssertEqualLists(
-        List<StreamingChunkModel> expected,
-        List<StreamingChunkModel> actual
-    )
-    {
-        Assert.Equal(expected.Count, actual.Count);
-        for (int i = 0; i < expected.Count; i++)
-        {
-            Assert.Equal(expected[i].Id, actual[i].Id);
-            Assert.Equal(expected[i].Text, actual[i].Text);
-            Assert.Equal(expected[i].OptionalText, actual[i].OptionalText);
-            Assert.Equal(expected[i].Data, actual[i].Data);
-            Assert.Equal(expected[i].GuidVal, actual[i].GuidVal);
-            Assert.Equal(expected[i].Amount, actual[i].Amount);
-        }
-    }
+        ];
 }

@@ -275,220 +275,7 @@ public class LegacyEmitterTests
     [Fact]
     public void LegacyCodeEmitterEmitsAllSupportedTypesCorrectly()
     {
-        string code = Emit(
-            Prop(
-                "IntCol",
-                "int_col",
-                "int",
-                LegacyModels::PropertyKind.Primitive,
-                isNullable: false
-            ),
-            Prop(
-                "NullableIntCol",
-                "nullable_int_col",
-                "int?",
-                LegacyModels::PropertyKind.Primitive,
-                isNullable: true
-            ),
-            Prop(
-                "LongCol",
-                "long_col",
-                "long",
-                LegacyModels::PropertyKind.Primitive,
-                isNullable: false
-            ),
-            Prop(
-                "NullableLongCol",
-                "nullable_long_col",
-                "long?",
-                LegacyModels::PropertyKind.Primitive,
-                isNullable: true
-            ),
-            Prop(
-                "FloatCol",
-                "float_col",
-                "float",
-                LegacyModels::PropertyKind.Primitive,
-                isNullable: false
-            ),
-            Prop(
-                "NullableFloatCol",
-                "nullable_float_col",
-                "float?",
-                LegacyModels::PropertyKind.Primitive,
-                isNullable: true
-            ),
-            Prop(
-                "DoubleCol",
-                "double_col",
-                "double",
-                LegacyModels::PropertyKind.Primitive,
-                isNullable: false
-            ),
-            Prop(
-                "NullableDoubleCol",
-                "nullable_double_col",
-                "double?",
-                LegacyModels::PropertyKind.Primitive,
-                isNullable: true
-            ),
-            Prop(
-                "BoolCol",
-                "bool_col",
-                "bool",
-                LegacyModels::PropertyKind.Primitive,
-                isNullable: false
-            ),
-            Prop(
-                "NullableBoolCol",
-                "nullable_bool_col",
-                "bool?",
-                LegacyModels::PropertyKind.Primitive,
-                isNullable: true
-            ),
-            Prop(
-                "GuidCol",
-                "guid_col",
-                "global::System.Guid",
-                LegacyModels::PropertyKind.Guid,
-                isNullable: false
-            ),
-            Prop(
-                "NullableGuidCol",
-                "nullable_guid_col",
-                "global::System.Guid?",
-                LegacyModels::PropertyKind.Guid,
-                isNullable: true
-            ),
-            Prop(
-                "DateTimeCol",
-                "datetime_col",
-                "global::System.DateTime",
-                LegacyModels::PropertyKind.DateTime,
-                isNullable: false
-            ),
-            Prop(
-                "NullableDateTimeCol",
-                "nullable_datetime_col",
-                "global::System.DateTime?",
-                LegacyModels::PropertyKind.DateTime,
-                isNullable: true
-            ),
-            Prop(
-                "DateTimeOffsetCol",
-                "dto_col",
-                "global::System.DateTimeOffset",
-                LegacyModels::PropertyKind.DateTime,
-                isNullable: false
-            ),
-            Prop(
-                "NullableDateTimeOffsetCol",
-                "nullable_dto_col",
-                "global::System.DateTimeOffset?",
-                LegacyModels::PropertyKind.DateTime,
-                isNullable: true
-            ),
-            Prop(
-                "TimeSpanCol",
-                "timespan_col",
-                "global::System.TimeSpan",
-                LegacyModels::PropertyKind.TimeSpan,
-                isNullable: false
-            ),
-            Prop(
-                "NullableTimeSpanCol",
-                "nullable_timespan_col",
-                "global::System.TimeSpan?",
-                LegacyModels::PropertyKind.TimeSpan,
-                isNullable: true
-            ),
-            Prop(
-                "DateOnlyCol",
-                "date_col",
-                "global::System.DateOnly",
-                LegacyModels::PropertyKind.Primitive,
-                isNullable: false
-            ),
-            Prop(
-                "NullableDateOnlyCol",
-                "nullable_date_col",
-                "global::System.DateOnly?",
-                LegacyModels::PropertyKind.Primitive,
-                isNullable: true
-            ),
-            Prop(
-                "TimeOnlyCol",
-                "time_col",
-                "global::System.TimeOnly",
-                LegacyModels::PropertyKind.TimeOnly,
-                isNullable: false
-            ),
-            Prop(
-                "NullableTimeOnlyCol",
-                "nullable_time_col",
-                "global::System.TimeOnly?",
-                LegacyModels::PropertyKind.TimeOnly,
-                isNullable: true
-            ),
-            Prop(
-                "DecimalCol",
-                "decimal_col",
-                "decimal",
-                LegacyModels::PropertyKind.Decimal,
-                isNullable: false
-            ),
-            Prop(
-                "NullableDecimalCol",
-                "nullable_decimal_col",
-                "decimal?",
-                LegacyModels::PropertyKind.Decimal,
-                isNullable: true
-            ),
-            Prop(
-                "StringCol",
-                "string_col",
-                "string",
-                LegacyModels::PropertyKind.Primitive,
-                isNullable: false
-            ),
-            Prop(
-                "NullableStringCol",
-                "nullable_string_col",
-                "string?",
-                LegacyModels::PropertyKind.Primitive,
-                isNullable: true
-            ),
-            Prop(
-                "ByteArrayCol",
-                "bytes_col",
-                "byte[]",
-                LegacyModels::PropertyKind.ByteArray,
-                isNullable: false
-            ),
-            Prop(
-                "NullableByteArrayCol",
-                "nullable_bytes_col",
-                "byte[]?",
-                LegacyModels::PropertyKind.ByteArray,
-                isNullable: true
-            ),
-            Prop(
-                "EnumCol",
-                "enum_col",
-                "global::MyApp.Status",
-                LegacyModels::PropertyKind.Enum,
-                isNullable: false,
-                enumUnderlyingTypeName: "int"
-            ),
-            Prop(
-                "NullableEnumCol",
-                "nullable_enum_col",
-                "global::MyApp.Status?",
-                LegacyModels::PropertyKind.Enum,
-                isNullable: true,
-                enumUnderlyingTypeName: "int"
-            )
-        );
+        string code = Emit(AllSupportedLegacyProperties());
 
         Assert.Contains("var colArray_10 = new global::System.Guid[count];", code);
         Assert.Contains("var colArray_11 = new global::System.Guid?[count];", code);
@@ -742,6 +529,180 @@ public class LegacyEmitterTests
             kind,
             isNullable
         );
+
+    private static LegacyModels::PropertyModel[] AllSupportedLegacyProperties() =>
+        [
+            Prop("IntCol", "int_col", "int", LegacyModels::PropertyKind.Primitive, false),
+            Prop(
+                "NullableIntCol",
+                "nullable_int_col",
+                "int?",
+                LegacyModels::PropertyKind.Primitive,
+                true
+            ),
+            Prop("LongCol", "long_col", "long", LegacyModels::PropertyKind.Primitive, false),
+            Prop(
+                "NullableLongCol",
+                "nullable_long_col",
+                "long?",
+                LegacyModels::PropertyKind.Primitive,
+                true
+            ),
+            Prop("FloatCol", "float_col", "float", LegacyModels::PropertyKind.Primitive, false),
+            Prop(
+                "NullableFloatCol",
+                "nullable_float_col",
+                "float?",
+                LegacyModels::PropertyKind.Primitive,
+                true
+            ),
+            Prop("DoubleCol", "double_col", "double", LegacyModels::PropertyKind.Primitive, false),
+            Prop(
+                "NullableDoubleCol",
+                "nullable_double_col",
+                "double?",
+                LegacyModels::PropertyKind.Primitive,
+                true
+            ),
+            Prop("BoolCol", "bool_col", "bool", LegacyModels::PropertyKind.Primitive, false),
+            Prop(
+                "NullableBoolCol",
+                "nullable_bool_col",
+                "bool?",
+                LegacyModels::PropertyKind.Primitive,
+                true
+            ),
+            Prop(
+                "GuidCol",
+                "guid_col",
+                "global::System.Guid",
+                LegacyModels::PropertyKind.Guid,
+                false
+            ),
+            Prop(
+                "NullableGuidCol",
+                "nullable_guid_col",
+                "global::System.Guid?",
+                LegacyModels::PropertyKind.Guid,
+                true
+            ),
+            Prop(
+                "DateTimeCol",
+                "datetime_col",
+                "global::System.DateTime",
+                LegacyModels::PropertyKind.DateTime,
+                false
+            ),
+            Prop(
+                "NullableDateTimeCol",
+                "nullable_datetime_col",
+                "global::System.DateTime?",
+                LegacyModels::PropertyKind.DateTime,
+                true
+            ),
+            Prop(
+                "DateTimeOffsetCol",
+                "dto_col",
+                "global::System.DateTimeOffset",
+                LegacyModels::PropertyKind.DateTime,
+                false
+            ),
+            Prop(
+                "NullableDateTimeOffsetCol",
+                "nullable_dto_col",
+                "global::System.DateTimeOffset?",
+                LegacyModels::PropertyKind.DateTime,
+                true
+            ),
+            Prop(
+                "TimeSpanCol",
+                "timespan_col",
+                "global::System.TimeSpan",
+                LegacyModels::PropertyKind.TimeSpan,
+                false
+            ),
+            Prop(
+                "NullableTimeSpanCol",
+                "nullable_timespan_col",
+                "global::System.TimeSpan?",
+                LegacyModels::PropertyKind.TimeSpan,
+                true
+            ),
+            Prop(
+                "DateOnlyCol",
+                "date_col",
+                "global::System.DateOnly",
+                LegacyModels::PropertyKind.Primitive,
+                false
+            ),
+            Prop(
+                "NullableDateOnlyCol",
+                "nullable_date_col",
+                "global::System.DateOnly?",
+                LegacyModels::PropertyKind.Primitive,
+                true
+            ),
+            Prop(
+                "TimeOnlyCol",
+                "time_col",
+                "global::System.TimeOnly",
+                LegacyModels::PropertyKind.TimeOnly,
+                false
+            ),
+            Prop(
+                "NullableTimeOnlyCol",
+                "nullable_time_col",
+                "global::System.TimeOnly?",
+                LegacyModels::PropertyKind.TimeOnly,
+                true
+            ),
+            Prop("DecimalCol", "decimal_col", "decimal", LegacyModels::PropertyKind.Decimal, false),
+            Prop(
+                "NullableDecimalCol",
+                "nullable_decimal_col",
+                "decimal?",
+                LegacyModels::PropertyKind.Decimal,
+                true
+            ),
+            Prop("StringCol", "string_col", "string", LegacyModels::PropertyKind.Primitive, false),
+            Prop(
+                "NullableStringCol",
+                "nullable_string_col",
+                "string?",
+                LegacyModels::PropertyKind.Primitive,
+                true
+            ),
+            Prop(
+                "ByteArrayCol",
+                "bytes_col",
+                "byte[]",
+                LegacyModels::PropertyKind.ByteArray,
+                false
+            ),
+            Prop(
+                "NullableByteArrayCol",
+                "nullable_bytes_col",
+                "byte[]?",
+                LegacyModels::PropertyKind.ByteArray,
+                true
+            ),
+            Prop(
+                "EnumCol",
+                "enum_col",
+                "global::MyApp.Status",
+                LegacyModels::PropertyKind.Enum,
+                false,
+                "int"
+            ),
+            Prop(
+                "NullableEnumCol",
+                "nullable_enum_col",
+                "global::MyApp.Status?",
+                LegacyModels::PropertyKind.Enum,
+                true,
+                "int"
+            ),
+        ];
 
     private static string Emit(params LegacyModels::PropertyModel[] properties)
     {
