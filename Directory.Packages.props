@@ -30,6 +30,8 @@
         <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.0" />
         <PackageVersion Include="coverlet.collector" Version="6.0.4" />
         <PackageVersion Include="FsCheck.Xunit" Version="3.4.0" />
+        <PackageVersion Include="Shouldly" Version="4.3.0" />
+        <PackageVersion Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="3.3.4" />
 
         <!-- Benchmarks & Tooling Dependencies -->
         <PackageVersion Include="BenchmarkDotNet" Version="0.14.0" />

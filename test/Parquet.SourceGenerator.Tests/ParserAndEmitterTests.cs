@@ -7,6 +7,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Parquet.SourceGenerator.Diagnostics;
 using Parquet.SourceGenerator.Emitter;
 using Parquet.SourceGenerator.Models;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -100,20 +101,19 @@ public sealed class ParserAndEmitterTests
 
         string source = CodeEmitter.EmitSource(model);
 
-        Assert.NotNull(source);
-        Assert.Contains("namespace TestNamespace;", source);
-        Assert.Contains("public static partial class TestEntityParquetExtensions", source);
-        Assert.Contains("DecimalDataField", source);
-        Assert.Contains("DateTimeDataField", source);
-        Assert.Contains("TimeDataField", source);
-        Assert.Contains("WriteParquetRowGroupAsync", source);
-        Assert.Contains("WriteAllPartsAsync", source);
-        Assert.Contains("ReadParquetParallelAsync", source);
-        Assert.Contains("if (missing_1 || chunkStats_1?.NullCount == rowCount)", source);
-        Assert.Contains("global::System.Array.Clear(buffer_1, 0, rowCount);", source);
-        Assert.Contains(
-            "else\n                {\n                    await groupReader.ReadAsync(",
-            source
+        source.ShouldNotBeNull();
+        source.ShouldContain("namespace TestNamespace;");
+        source.ShouldContain("public static partial class TestEntityParquetExtensions");
+        source.ShouldContain("DecimalDataField");
+        source.ShouldContain("DateTimeDataField");
+        source.ShouldContain("TimeDataField");
+        source.ShouldContain("WriteParquetRowGroupAsync");
+        source.ShouldContain("WriteAllPartsAsync");
+        source.ShouldContain("ReadParquetParallelAsync");
+        source.ShouldContain("if (missing_1 || chunkStats_1?.NullCount == rowCount)");
+        source.ShouldContain("global::System.Array.Clear(buffer_1, 0, rowCount);");
+        source.ShouldContain(
+            "else\n                {\n                    await groupReader.ReadAsync("
         );
     }
 
@@ -124,23 +124,23 @@ public sealed class ParserAndEmitterTests
         var array2 = new EquatableArray<int>(SampleArray2);
         var array3 = new EquatableArray<int>(SampleArray3);
 
-        Assert.Equal(3, array1.Length);
-        Assert.Equal(2, array1[1]);
-        Assert.True(array1.Equals(array2));
-        Assert.True(array1 == array2);
-        Assert.False(array1 != array2);
-        Assert.False(array1.Equals(array3));
-        Assert.False(array1.Equals(null!));
-        Assert.Equal(array1.GetHashCode(), array2.GetHashCode());
-        Assert.Equal(0, EquatableArray<int>.Empty.Length);
+        array1.Length.ShouldBe(3);
+        array1[1].ShouldBe(2);
+        array1.Equals(array2).ShouldBeTrue();
+        (array1 == array2).ShouldBeTrue();
+        (array1 != array2).ShouldBeFalse();
+        array1.Equals(array3).ShouldBeFalse();
+        array1.Equals(null!).ShouldBeFalse();
+        array1.GetHashCode().ShouldBe(array2.GetHashCode());
+        EquatableArray<int>.Empty.Length.ShouldBe(0);
 
         int sum = 0;
         foreach (int item in array1)
         {
             sum += item;
         }
-        Assert.Equal(6, sum);
-        Assert.Equal(3, array1.AsSpan().Length);
+        sum.ShouldBe(6);
+        array1.AsSpan().Length.ShouldBe(3);
     }
 
     [Fact]
@@ -162,12 +162,12 @@ public sealed class ParserAndEmitterTests
             ClassArgs2
         );
 
-        Assert.True(diag1.Equals(diag2));
-        Assert.False(diag1.Equals(diag3));
-        Assert.Equal(diag1.GetHashCode(), diag2.GetHashCode());
+        diag1.Equals(diag2).ShouldBeTrue();
+        diag1.Equals(diag3).ShouldBeFalse();
+        diag1.GetHashCode().ShouldBe(diag2.GetHashCode());
 
         Diagnostic diagnostic = diag1.ToDiagnostic();
-        Assert.Equal("PARQ001", diagnostic.Id);
+        diagnostic.Id.ShouldBe("PARQ001");
     }
 
     [Fact]
@@ -184,9 +184,9 @@ public sealed class ParserAndEmitterTests
             encoding: ColumnEncoding.ByteSplitStream
         );
 
-        Assert.Equal(ColumnEncoding.Default, propDefault.Encoding);
-        Assert.Equal(ColumnEncoding.DeltaBinaryPacked, propDelta.Encoding);
-        Assert.NotEqual(propDefault, propDelta);
+        propDefault.Encoding.ShouldBe(ColumnEncoding.Default);
+        propDelta.Encoding.ShouldBe(ColumnEncoding.DeltaBinaryPacked);
+        propDefault.ShouldNotBe(propDelta);
 
         var targetClass = new TargetClassModel(
             Namespace: "TestEncodingNamespace",
@@ -197,17 +197,14 @@ public sealed class ParserAndEmitterTests
         );
 
         string source = CodeEmitter.EmitSource(targetClass);
-        Assert.Contains(
-            "formatOptions.ColumnEncodingHints[\"id\"] = global::Parquet.EncodingHint.DeltaBinaryPacked;",
-            source
+        source.ShouldContain(
+            "formatOptions.ColumnEncodingHints[\"id\"] = global::Parquet.EncodingHint.DeltaBinaryPacked;"
         );
-        Assert.Contains(
-            "formatOptions.ColumnEncodingHints[\"tag\"] = global::Parquet.EncodingHint.Dictionary;",
-            source
+        source.ShouldContain(
+            "formatOptions.ColumnEncodingHints[\"tag\"] = global::Parquet.EncodingHint.Dictionary;"
         );
-        Assert.Contains(
-            "formatOptions.ColumnEncodingHints[\"value\"] = global::Parquet.EncodingHint.ByteSplitStream;",
-            source
+        source.ShouldContain(
+            "formatOptions.ColumnEncodingHints[\"value\"] = global::Parquet.EncodingHint.ByteSplitStream;"
         );
     }
 
@@ -217,7 +214,7 @@ public sealed class ParserAndEmitterTests
     public async Task WriteParquetAsyncNullStreamThrowsArgumentNullException()
     {
         var items = new List<TypeCoverageRecord> { new() };
-        await Assert.ThrowsAsync<ArgumentNullException>(() => items.WriteParquetAsync(null!));
+        await Should.ThrowAsync<ArgumentNullException>(() => items.WriteParquetAsync(null!));
     }
 
     [Fact]
@@ -225,7 +222,7 @@ public sealed class ParserAndEmitterTests
     {
         IReadOnlyCollection<TypeCoverageRecord> items = null!;
         var stream = new MemoryStream();
-        await Assert.ThrowsAsync<ArgumentNullException>(() => items.WriteParquetAsync(stream));
+        await Should.ThrowAsync<ArgumentNullException>(() => items.WriteParquetAsync(stream));
     }
 
     [Fact]
@@ -233,13 +230,13 @@ public sealed class ParserAndEmitterTests
     {
         var items = new List<TypeCoverageRecord> { new() };
         var stream = new MemoryStream();
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+        await Should.ThrowAsync<ArgumentOutOfRangeException>(() =>
             items.WriteParquetBatchedAsync(
                 stream,
                 new ParquetSerializerOptions { RowGroupSize = 0 }
             )
         );
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+        await Should.ThrowAsync<ArgumentOutOfRangeException>(() =>
             items.WriteParquetBatchedAsync(
                 stream,
                 new ParquetSerializerOptions { RowGroupSize = -10 }
@@ -250,7 +247,7 @@ public sealed class ParserAndEmitterTests
     [Fact]
     public async Task ReadParquetAsyncNullStreamThrowsArgumentNullException()
     {
-        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+        await Should.ThrowAsync<ArgumentNullException>(() =>
             TypeCoverageRecordParquetExtensions.ReadParquetAsync((Stream)null!)
         );
     }
@@ -260,7 +257,7 @@ public sealed class ParserAndEmitterTests
     {
         // Cast required: ReadOnlyMemory<byte> has an implicit conversion from byte[], so a bare
         // `null` is convertible to the buffer overload as well as the stream one.
-        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+        await Should.ThrowAsync<ArgumentNullException>(() =>
             TypeCoverageRecordParquetExtensions.ReadParquetParallelAsync((Stream)null!)
         );
     }
