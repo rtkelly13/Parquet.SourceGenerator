@@ -4,6 +4,8 @@ using System.IO;
 using System.Linq;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using Parquet.SourceGenerator.Tests.Fixtures;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -57,12 +59,12 @@ public sealed class JsonSerializationAttributesTests
         var fields = JsonAnnotatedModelParquetExtensions.Schema.DataFields;
 
         // Exactly 3 fields should be in the schema because InternalSecret is decorated with [JsonIgnore]
-        Assert.Equal(3, fields.Length);
+        fields.Length.ShouldBe(3);
 
         // Fields should be ordered according to [JsonPropertyOrder] and named with [JsonPropertyName]
-        Assert.Equal("custom_id", fields[0].Name);
-        Assert.Equal("display_name", fields[1].Name);
-        Assert.Equal("Score", fields[2].Name);
+        fields[0].Name.ShouldBe("custom_id");
+        fields[1].Name.ShouldBe("display_name");
+        fields[2].Name.ShouldBe("Score");
     }
 
     [Fact]
@@ -70,35 +72,26 @@ public sealed class JsonSerializationAttributesTests
     {
         var fields = MixedAnnotationPrecedenceModelParquetExtensions.Schema.DataFields;
 
-        Assert.Equal(4, fields.Length);
+        fields.Length.ShouldBe(4);
 
         // Order 1: Description (via [ParquetColumn(Order = 1)] and [JsonPropertyName("json_description")])
-        Assert.Equal("json_description", fields[0].Name);
+        fields[0].Name.ShouldBe("json_description");
 
         // Order 2: Category (via [JsonPropertyOrder(2)])
-        Assert.Equal("Category", fields[1].Name);
+        fields[1].Name.ShouldBe("Category");
 
         // Order 3: Metric (via [ParquetColumn(Order = 3)] overriding [JsonPropertyOrder(1)])
-        Assert.Equal("Metric", fields[2].Name);
+        fields[2].Name.ShouldBe("Metric");
 
         // Order unspecified (-1): placed last, name is "parquet_id_wins" overriding [JsonPropertyName]
-        Assert.Equal("parquet_id_wins", fields[3].Name);
+        fields[3].Name.ShouldBe("parquet_id_wins");
     }
 
     [Fact]
     public async Task JsonAnnotatedModelRoundtripsThroughSourceGenerator()
     {
         const int count = 500;
-        var items = Enumerable
-            .Range(1, count)
-            .Select(i => new JsonAnnotatedModel
-            {
-                Id = i,
-                Name = $"Item_{i}",
-                Score = i * 1.5,
-                InternalSecret = "sensitive_data",
-            })
-            .ToList();
+        var items = TestFakers.CreateJsonAnnotatedModelFaker().Generate(count);
 
         using var ms = new MemoryStream();
         await items.WriteParquetAsync(ms);
@@ -106,29 +99,29 @@ public sealed class JsonSerializationAttributesTests
         // Read list
         ms.Position = 0;
         var readList = await JsonAnnotatedModelParquetExtensions.ReadParquetAsync(ms);
-        Assert.Equal(count, readList.Count);
+        readList.Count.ShouldBe(count);
         for (int i = 0; i < count; i++)
         {
-            Assert.Equal(items[i].Id, readList[i].Id);
-            Assert.Equal(items[i].Name, readList[i].Name);
-            Assert.Equal(items[i].Score, readList[i].Score);
+            readList[i].Id.ShouldBe(items[i].Id);
+            readList[i].Name.ShouldBe(items[i].Name);
+            readList[i].Score.ShouldBe(items[i].Score);
             // Ignored property should take default constructor value ("hidden"), not written "sensitive_data"
-            Assert.Equal("hidden", readList[i].InternalSecret);
+            readList[i].InternalSecret.ShouldBe("hidden");
         }
 
         // Read array
         ms.Position = 0;
         var readArray = await JsonAnnotatedModelParquetExtensions.ReadParquetArrayAsync(ms);
-        Assert.Equal(count, readArray.Length);
-        Assert.Equal(items[0].Name, readArray[0].Name);
+        readArray.Length.ShouldBe(count);
+        readArray[0].Name.ShouldBe(items[0].Name);
 
         // Read parallel
         byte[] bytes = ms.ToArray();
         var parallelList = await JsonAnnotatedModelParquetExtensions.ReadParquetParallelAsync(
             bytes
         );
-        Assert.Equal(count, parallelList.Count);
-        Assert.Equal(items[10].Score, parallelList[10].Score);
+        parallelList.Count.ShouldBe(count);
+        parallelList[10].Score.ShouldBe(items[10].Score);
 
         // Read stream
         using var streamMs = new MemoryStream(bytes);
@@ -137,10 +130,10 @@ public sealed class JsonSerializationAttributesTests
             var item in JsonAnnotatedModelParquetExtensions.ReadParquetStreamAsync(streamMs)
         )
         {
-            Assert.Equal(items[streamCount].Id, item.Id);
+            item.Id.ShouldBe(items[streamCount].Id);
             streamCount++;
         }
-        Assert.Equal(count, streamCount);
+        streamCount.ShouldBe(count);
     }
 
     [Fact]
@@ -175,11 +168,11 @@ public sealed class JsonSerializationAttributesTests
             await Parquet.Serialization.ParquetSerializer.DeserializeAsync<JsonAnnotatedModel>(
                 msGenerated
             );
-        Assert.Equal(2, reflectionResult.Data.Count);
-        Assert.Equal(101, reflectionResult.Data[0].Id);
-        Assert.Equal("Alice", reflectionResult.Data[0].Name);
-        Assert.Equal(99.5, reflectionResult.Data[0].Score);
-        Assert.Equal("hidden", reflectionResult.Data[0].InternalSecret);
+        reflectionResult.Data.Count.ShouldBe(2);
+        reflectionResult.Data[0].Id.ShouldBe(101);
+        reflectionResult.Data[0].Name.ShouldBe("Alice");
+        reflectionResult.Data[0].Score.ShouldBe(99.5);
+        reflectionResult.Data[0].InternalSecret.ShouldBe("hidden");
 
         // 2. Write with ParquetSerializer reflection, Read with Parquet.SourceGenerator
         using var msReflection = new MemoryStream();
@@ -189,10 +182,10 @@ public sealed class JsonSerializationAttributesTests
         var generatorResult = await JsonAnnotatedModelParquetExtensions.ReadParquetAsync(
             msReflection
         );
-        Assert.Equal(2, generatorResult.Count);
-        Assert.Equal(102, generatorResult[1].Id);
-        Assert.Equal("Bob", generatorResult[1].Name);
-        Assert.Equal(88.0, generatorResult[1].Score);
-        Assert.Equal("hidden", generatorResult[1].InternalSecret);
+        generatorResult.Count.ShouldBe(2);
+        generatorResult[1].Id.ShouldBe(102);
+        generatorResult[1].Name.ShouldBe("Bob");
+        generatorResult[1].Score.ShouldBe(88.0);
+        generatorResult[1].InternalSecret.ShouldBe("hidden");
     }
 }

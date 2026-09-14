@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Parquet.SourceGenerator.Tests.Fixtures;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -101,11 +103,10 @@ public sealed class TypeCoverageTests
 
         var result = await TypeCoverageRecordParquetExtensions.ReadParquetAsync(stream);
 
-        Assert.Single(result);
+        result.ShouldHaveSingleItem();
         // DateTime precision in Parquet Impala format is milliseconds
-        Assert.Equal(
-            now.Ticks / TimeSpan.TicksPerMillisecond,
-            result[0].CreatedAt.Ticks / TimeSpan.TicksPerMillisecond
+        (result[0].CreatedAt.Ticks / TimeSpan.TicksPerMillisecond).ShouldBe(
+            now.Ticks / TimeSpan.TicksPerMillisecond
         );
     }
 
@@ -126,27 +127,16 @@ public sealed class TypeCoverageTests
         ReadOnlyMemory<byte> mem = bytes;
         var result = await CompactTimestampRecordParquetExtensions.ReadParquetAsync(mem);
 
-        Assert.Single(result);
-        Assert.Equal(
-            now.Ticks / TimeSpan.TicksPerMillisecond,
-            result[0].MicroTs.Ticks / TimeSpan.TicksPerMillisecond
+        result.ShouldHaveSingleItem();
+        (result[0].MicroTs.Ticks / TimeSpan.TicksPerMillisecond).ShouldBe(
+            now.Ticks / TimeSpan.TicksPerMillisecond
         );
     }
 
     [Fact]
     public async Task CustomOptionsRoundtripCorrectly()
     {
-        var items = Enumerable
-            .Range(0, 100)
-            .Select(i => new TypeCoverageRecord
-            {
-                Id = i,
-                CreatedAt = DateTime.UtcNow,
-                CorrelationId = Guid.NewGuid(),
-                Status = EventStatus.Active,
-                Duration = TimeSpan.FromSeconds(i),
-            })
-            .ToList();
+        var items = TestFakers.CreateTypeCoverageRecordFaker().Generate(100);
 
         var options = new ParquetSerializerOptions
         {
@@ -164,8 +154,8 @@ public sealed class TypeCoverageTests
             options: options
         );
 
-        Assert.Equal(100, result.Count);
-        Assert.Equal(items[50].Id, result[50].Id);
+        result.Count.ShouldBe(100);
+        result[50].Id.ShouldBe(items[50].Id);
     }
 
     [Fact]
@@ -194,9 +184,9 @@ public sealed class TypeCoverageTests
 
         var result = await TypeCoverageRecordParquetExtensions.ReadParquetAsync(stream);
 
-        Assert.Equal(50, result.Count);
-        Assert.Equal(0, result[0].Id);
-        Assert.Equal(49, result[49].Id);
+        result.Count.ShouldBe(50);
+        result[0].Id.ShouldBe(0);
+        result[49].Id.ShouldBe(49);
     }
 
     [Fact]
@@ -221,8 +211,8 @@ public sealed class TypeCoverageTests
 
         var result = await TypeCoverageRecordParquetExtensions.ReadParquetAsync(stream);
 
-        Assert.Single(result);
-        Assert.Equal(id, result[0].CorrelationId);
+        result.ShouldHaveSingleItem();
+        result[0].CorrelationId.ShouldBe(id);
     }
 
     [Fact]
@@ -248,9 +238,9 @@ public sealed class TypeCoverageTests
 
         var result = await TypeCoverageRecordParquetExtensions.ReadParquetAsync(stream);
 
-        Assert.Equal(items.Count, result.Count);
+        result.Count.ShouldBe(items.Count);
         for (int i = 0; i < items.Count; i++)
-            Assert.Equal(items[i].Status, result[i].Status);
+            result[i].Status.ShouldBe(items[i].Status);
     }
 
     [Fact]
@@ -275,28 +265,17 @@ public sealed class TypeCoverageTests
 
         var result = await TypeCoverageRecordParquetExtensions.ReadParquetAsync(stream);
 
-        Assert.Single(result);
+        result.ShouldHaveSingleItem();
         // TimeSpan in Parquet MilliSeconds format — verify millisecond precision
-        Assert.Equal(
-            duration.Ticks / TimeSpan.TicksPerMillisecond,
-            result[0].Duration.Ticks / TimeSpan.TicksPerMillisecond
+        (result[0].Duration.Ticks / TimeSpan.TicksPerMillisecond).ShouldBe(
+            duration.Ticks / TimeSpan.TicksPerMillisecond
         );
     }
 
     [Fact]
     public async Task MultipleRowGroupsBatchedRoundtripsCorrectly()
     {
-        var items = Enumerable
-            .Range(0, 1_000)
-            .Select(i => new TypeCoverageRecord
-            {
-                Id = i,
-                CreatedAt = DateTime.UtcNow.AddSeconds(i),
-                CorrelationId = Guid.NewGuid(),
-                Status = (EventStatus)(i % 3),
-                Duration = TimeSpan.FromMilliseconds(i * 100),
-            })
-            .ToList();
+        var items = TestFakers.CreateTypeCoverageRecordFaker().Generate(1_000);
 
         var stream = new MemoryStream();
         // Write in 3 row groups (rowGroupSize=333 → 3 groups + tail)
@@ -308,26 +287,16 @@ public sealed class TypeCoverageTests
 
         var result = await TypeCoverageRecordParquetExtensions.ReadParquetAsync(stream);
 
-        Assert.Equal(items.Count, result.Count);
-        Assert.Equal(items[500].Id, result[500].Id);
-        Assert.Equal(items[500].CorrelationId, result[500].CorrelationId);
-        Assert.Equal(items[500].Status, result[500].Status);
+        result.Count.ShouldBe(items.Count);
+        result[500].Id.ShouldBe(items[500].Id);
+        result[500].CorrelationId.ShouldBe(items[500].CorrelationId);
+        result[500].Status.ShouldBe(items[500].Status);
     }
 
     [Fact]
     public async Task ReadParquetParallelAsyncRoundtripsCorrectly()
     {
-        var items = Enumerable
-            .Range(0, 1_000)
-            .Select(i => new TypeCoverageRecord
-            {
-                Id = i,
-                CreatedAt = DateTime.UtcNow.AddSeconds(i),
-                CorrelationId = Guid.NewGuid(),
-                Status = (EventStatus)(i % 3),
-                Duration = TimeSpan.FromMilliseconds(i * 100),
-            })
-            .ToList();
+        var items = TestFakers.CreateTypeCoverageRecordFaker().Generate(1_000);
 
         var stream = new MemoryStream();
         await ((IEnumerable<TypeCoverageRecord>)items).WriteParquetBatchedAsync(
@@ -341,11 +310,11 @@ public sealed class TypeCoverageTests
             new ParquetSerializerOptions { MaxDegreeOfParallelism = 4 }
         );
 
-        Assert.Equal(items.Count, result.Count);
-        Assert.Equal(items[0].Id, result[0].Id);
-        Assert.Equal(items[500].Id, result[500].Id);
-        Assert.Equal(items[999].Id, result[999].Id);
-        Assert.Equal(items[500].CorrelationId, result[500].CorrelationId);
+        result.Count.ShouldBe(items.Count);
+        result[0].Id.ShouldBe(items[0].Id);
+        result[500].Id.ShouldBe(items[500].Id);
+        result[999].Id.ShouldBe(items[999].Id);
+        result[500].CorrelationId.ShouldBe(items[500].CorrelationId);
     }
 
     [Fact]
@@ -376,12 +345,32 @@ public sealed class TypeCoverageTests
 
         var result = await NullableTypeCoverageRecordParquetExtensions.ReadParquetAsync(stream);
 
-        Assert.Equal(2, result.Count);
-        Assert.Null(result[0].CreatedAt);
-        Assert.Null(result[0].CorrelationId);
-        Assert.Null(result[0].Status);
-        Assert.Equal(id1, result[1].CorrelationId);
-        Assert.Equal(EventStatus.Closed, result[1].Status);
+        result.Count.ShouldBe(2);
+        result[0].CreatedAt.ShouldBeNull();
+        result[0].CorrelationId.ShouldBeNull();
+        result[0].Status.ShouldBeNull();
+        result[1].CorrelationId.ShouldBe(id1);
+        result[1].Status.ShouldBe(EventStatus.Closed);
+    }
+
+    [Fact]
+    public async Task NullableTypesFuzzedWithBogusRoundtripsCorrectly()
+    {
+        var items = TestFakers.CreateNullableTypeCoverageRecordFaker().Generate(100);
+
+        var stream = new MemoryStream();
+        await items.WriteParquetAsync(stream);
+        stream.Position = 0;
+
+        var result = await NullableTypeCoverageRecordParquetExtensions.ReadParquetAsync(stream);
+
+        result.Count.ShouldBe(100);
+        for (int i = 0; i < items.Count; i++)
+        {
+            result[i].Id.ShouldBe(items[i].Id);
+            result[i].CorrelationId.ShouldBe(items[i].CorrelationId);
+            result[i].Status.ShouldBe(items[i].Status);
+        }
     }
 
     [Fact]
@@ -412,13 +401,13 @@ public sealed class TypeCoverageTests
 
         var result = await TimeOnlyCoverageRecordParquetExtensions.ReadParquetAsync(stream);
 
-        Assert.Equal(2, result.Count);
-        Assert.Equal(1, result[0].Id);
-        Assert.Equal(t1, result[0].TimeOfDay);
-        Assert.Null(result[0].OptionalTime);
+        result.Count.ShouldBe(2);
+        result[0].Id.ShouldBe(1);
+        result[0].TimeOfDay.ShouldBe(t1);
+        result[0].OptionalTime.ShouldBeNull();
 
-        Assert.Equal(2, result[1].Id);
-        Assert.Equal(t2, result[1].TimeOfDay);
-        Assert.Equal(t1, result[1].OptionalTime);
+        result[1].Id.ShouldBe(2);
+        result[1].TimeOfDay.ShouldBe(t2);
+        result[1].OptionalTime.ShouldBe(t1);
     }
 }

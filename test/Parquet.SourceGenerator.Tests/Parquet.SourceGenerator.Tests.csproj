@@ -25,6 +25,7 @@
     -->
         <PackageReference Include="Apache.Arrow" />
         <PackageReference Include="Shouldly" />
+        <PackageReference Include="Bogus" />
         <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
