@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -159,23 +160,22 @@ public sealed class BranchlessNullExtractionTests
         string because
     )
     {
-        Assert.Equal(expected.Count, actual.Count);
+        actual.Count.ShouldBe(expected.Count, because);
         for (int i = 0; i < expected.Count; i++)
         {
             BranchlessNullModel e = expected[i];
             BranchlessNullModel a = actual[i];
-            Assert.Equal(e.Row, a.Row);
-            Assert.Equal(e.OptInt, a.OptInt);
-            Assert.Equal(e.OptLong, a.OptLong);
-            Assert.Equal(e.OptDouble, a.OptDouble);
-            Assert.Equal(e.OptBool, a.OptBool);
-            Assert.Equal(e.OptEnum, a.OptEnum);
-            Assert.Equal(e.OptGuid, a.OptGuid);
-            Assert.Equal(e.OptTimeSpan, a.OptTimeSpan);
-            Assert.Equal(e.OptDateOnly, a.OptDateOnly);
-            Assert.Equal(e.OptTimeOnly, a.OptTimeOnly);
-            Assert.Equal(e.OptDateTime?.Ticks, a.OptDateTime?.Ticks);
-            Assert.True(true, because);
+            a.Row.ShouldBe(e.Row, because);
+            a.OptInt.ShouldBe(e.OptInt, because);
+            a.OptLong.ShouldBe(e.OptLong, because);
+            a.OptDouble.ShouldBe(e.OptDouble, because);
+            a.OptBool.ShouldBe(e.OptBool, because);
+            a.OptEnum.ShouldBe(e.OptEnum, because);
+            a.OptGuid.ShouldBe(e.OptGuid, because);
+            a.OptTimeSpan.ShouldBe(e.OptTimeSpan, because);
+            a.OptDateOnly.ShouldBe(e.OptDateOnly, because);
+            a.OptTimeOnly.ShouldBe(e.OptTimeOnly, because);
+            (a.OptDateTime?.Ticks).ShouldBe(e.OptDateTime?.Ticks, because);
         }
     }
 
@@ -244,7 +244,7 @@ public sealed class BranchlessNullExtractionTests
         byte[] fromArray = await WriteAsync(rows.ToArray());
         byte[] fromOpaque = await WriteAsync(new OpaqueCollection(rows));
 
-        Assert.True(fromList.SequenceEqual(fromArray), "list vs array");
-        Assert.True(fromList.SequenceEqual(fromOpaque), "list vs opaque");
+        fromArray.ShouldBe(fromList, "list vs array");
+        fromOpaque.ShouldBe(fromList, "list vs opaque");
     }
 }

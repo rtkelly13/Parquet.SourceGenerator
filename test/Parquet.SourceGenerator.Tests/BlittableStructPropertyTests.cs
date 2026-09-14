@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -159,30 +160,30 @@ public sealed class BlittableStructPropertyTests
             // 1. Sequential Stream List Read
             ms.Position = 0;
             var seqList = await BlittableInt32StructParquetExtensions.ReadParquetAsync(ms);
-            Assert.Equal(count, seqList.Count);
-            Assert.Equal(items, seqList);
+            seqList.Count.ShouldBe(count);
+            seqList.ShouldBe(items);
 
             // 2. Sequential Stream Array Read
             ms.Position = 0;
             var seqArray = await BlittableInt32StructParquetExtensions.ReadParquetArrayAsync(ms);
-            Assert.Equal(items, seqArray);
+            seqArray.ShouldBe(items);
 
             // 3. Sequential Bytes Array Read
             var bytesArray = await BlittableInt32StructParquetExtensions.ReadParquetArrayAsync(
                 bytes
             );
-            Assert.Equal(items, bytesArray);
+            bytesArray.ShouldBe(items);
 
             // 4. Parallel Bytes Array Read
             var parArray =
                 await BlittableInt32StructParquetExtensions.ReadParquetParallelArrayAsync(bytes);
-            Assert.Equal(items, parArray);
+            parArray.ShouldBe(items);
 
             // 5. Parallel Bytes List Read
             var parList = await BlittableInt32StructParquetExtensions.ReadParquetParallelAsync(
                 bytes
             );
-            Assert.Equal(items, parList);
+            parList.ShouldBe(items);
         }
     }
 
@@ -217,8 +218,8 @@ public sealed class BlittableStructPropertyTests
             var parArray =
                 await BlittableInt64StructParquetExtensions.ReadParquetParallelArrayAsync(bytes);
 
-            Assert.Equal(items, seqArray);
-            Assert.Equal(items, parArray);
+            seqArray.ShouldBe(items);
+            parArray.ShouldBe(items);
         }
     }
 
@@ -252,7 +253,7 @@ public sealed class BlittableStructPropertyTests
             var res8 = await BlittableUInt8StructParquetExtensions.ReadParquetArrayAsync(
                 ms8.ToArray()
             );
-            Assert.Equal(byteItems, res8);
+            res8.ShouldBe(byteItems);
 
             // UInt16
             using var ms16 = new MemoryStream();
@@ -260,7 +261,7 @@ public sealed class BlittableStructPropertyTests
             var res16 = await BlittableUInt16StructParquetExtensions.ReadParquetArrayAsync(
                 ms16.ToArray()
             );
-            Assert.Equal(ushortItems, res16);
+            res16.ShouldBe(ushortItems);
 
             // UInt32
             using var ms32 = new MemoryStream();
@@ -268,7 +269,7 @@ public sealed class BlittableStructPropertyTests
             var res32 = await BlittableUInt32StructParquetExtensions.ReadParquetArrayAsync(
                 ms32.ToArray()
             );
-            Assert.Equal(uintItems, res32);
+            res32.ShouldBe(uintItems);
 
             // UInt64
             using var ms64 = new MemoryStream();
@@ -276,7 +277,7 @@ public sealed class BlittableStructPropertyTests
             var res64 = await BlittableUInt64StructParquetExtensions.ReadParquetArrayAsync(
                 ms64.ToArray()
             );
-            Assert.Equal(ulongItems, res64);
+            res64.ShouldBe(ulongItems);
         }
     }
 
@@ -308,14 +309,14 @@ public sealed class BlittableStructPropertyTests
             var res8 = await BlittableInt8StructParquetExtensions.ReadParquetArrayAsync(
                 ms8.ToArray()
             );
-            Assert.Equal(sbyteItems, res8);
+            res8.ShouldBe(sbyteItems);
 
             using var ms16 = new MemoryStream();
             await shortItems.WriteParquetAsync(ms16);
             var res16 = await BlittableInt16StructParquetExtensions.ReadParquetArrayAsync(
                 ms16.ToArray()
             );
-            Assert.Equal(shortItems, res16);
+            res16.ShouldBe(shortItems);
         }
     }
 
@@ -358,7 +359,7 @@ public sealed class BlittableStructPropertyTests
             var readArray = await BlittableFloatStructParquetExtensions.ReadParquetArrayAsync(
                 bytes
             );
-            Assert.Equal(count, readArray.Length);
+            readArray.Length.ShouldBe(count);
 
             for (int i = 0; i < count; i++)
             {
@@ -368,14 +369,13 @@ public sealed class BlittableStructPropertyTests
                 // Handle IEEE-754 NaN and bitwise representation
                 if (float.IsNaN(expected))
                 {
-                    Assert.True(float.IsNaN(actual));
+                    float.IsNaN(actual).ShouldBeTrue();
                 }
                 else
                 {
-                    Assert.Equal(
-                        BitConverter.SingleToInt32Bits(expected),
-                        BitConverter.SingleToInt32Bits(actual)
-                    );
+                    BitConverter
+                        .SingleToInt32Bits(actual)
+                        .ShouldBe(BitConverter.SingleToInt32Bits(expected));
                 }
             }
         }
@@ -416,7 +416,7 @@ public sealed class BlittableStructPropertyTests
 
             ms.Position = 0;
             var readArray = await BlittableDoubleStructParquetExtensions.ReadParquetArrayAsync(ms);
-            Assert.Equal(count, readArray.Length);
+            readArray.Length.ShouldBe(count);
 
             for (int i = 0; i < count; i++)
             {
@@ -425,14 +425,13 @@ public sealed class BlittableStructPropertyTests
 
                 if (double.IsNaN(expected))
                 {
-                    Assert.True(double.IsNaN(actual));
+                    double.IsNaN(actual).ShouldBeTrue();
                 }
                 else
                 {
-                    Assert.Equal(
-                        BitConverter.DoubleToInt64Bits(expected),
-                        BitConverter.DoubleToInt64Bits(actual)
-                    );
+                    BitConverter
+                        .DoubleToInt64Bits(actual)
+                        .ShouldBe(BitConverter.DoubleToInt64Bits(expected));
                 }
             }
         }
@@ -461,8 +460,8 @@ public sealed class BlittableStructPropertyTests
                 ms.ToArray()
             );
 
-            Assert.Equal(count, read.Length);
-            Assert.Equal(items, read);
+            read.Length.ShouldBe(count);
+            read.ShouldBe(items);
         }
     }
 
@@ -510,10 +509,10 @@ public sealed class BlittableStructPropertyTests
             new MemoryStream(parquetBytes)
         );
 
-        Assert.Equal(totalRows, seqArray.Length);
-        Assert.Equal(allItems, seqArray);
-        Assert.Equal(allItems, parArray);
-        Assert.Equal(allItems, seqList);
+        seqArray.Length.ShouldBe(totalRows);
+        seqArray.ShouldBe(allItems);
+        parArray.ShouldBe(allItems);
+        seqList.ShouldBe(allItems);
     }
 
     // ── Layout Anomaly Soundness Fallback Tests ────────────────────────────
@@ -534,11 +533,11 @@ public sealed class BlittableStructPropertyTests
         ms.Position = 0;
         var readArray = await StructWithIgnoredFieldParquetExtensions.ReadParquetArrayAsync(ms);
 
-        Assert.Equal(count, readArray.Length);
+        readArray.Length.ShouldBe(count);
         for (int i = 0; i < count; i++)
         {
-            Assert.Equal(i * 10, readArray[i].Value);
-            Assert.Equal(0, readArray[i].Extra);
+            readArray[i].Value.ShouldBe(i * 10);
+            readArray[i].Extra.ShouldBe(0);
         }
     }
 
@@ -559,11 +558,11 @@ public sealed class BlittableStructPropertyTests
         ms.Position = 0;
         var readArray = await StructWithPrivateFieldParquetExtensions.ReadParquetArrayAsync(ms);
 
-        Assert.Equal(count, readArray.Length);
+        readArray.Length.ShouldBe(count);
         for (int i = 0; i < count; i++)
         {
-            Assert.Equal(i * 42, readArray[i].Value);
-            Assert.Equal(0, readArray[i].GetPadding());
+            readArray[i].Value.ShouldBe(i * 42);
+            readArray[i].GetPadding().ShouldBe(0);
         }
     }
 }

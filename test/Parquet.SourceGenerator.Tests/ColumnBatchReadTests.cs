@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Parquet.SourceGenerator.Emitter;
 using Parquet.SourceGenerator.Models;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -109,15 +110,14 @@ public sealed class ColumnBatchReadTests
 
         string source = CodeEmitter.EmitSource(model);
 
-        Assert.Contains("public readonly struct ColumnBatch", source);
-        Assert.Contains(
-            "public static async global::System.Collections.Generic.IAsyncEnumerable<ColumnBatch> ReadParquetBatchesAsync(",
-            source
+        source.ShouldContain("public readonly struct ColumnBatch");
+        source.ShouldContain(
+            "public static async global::System.Collections.Generic.IAsyncEnumerable<ColumnBatch> ReadParquetBatchesAsync("
         );
-        Assert.Contains("public global::System.ReadOnlySpan<int> IdSpan =>", source);
-        Assert.Contains("public global::System.ReadOnlySpan<string> NameSpan =>", source);
+        source.ShouldContain("public global::System.ReadOnlySpan<int> IdSpan =>");
+        source.ShouldContain("public global::System.ReadOnlySpan<string> NameSpan =>");
         // ReadOnlyMemory<byte> overload comes along for the ride.
-        Assert.Contains("global::System.ReadOnlyMemory<byte> parquetBytes,", source);
+        source.ShouldContain("global::System.ReadOnlyMemory<byte> parquetBytes,");
     }
 
     [Fact]
@@ -134,7 +134,7 @@ public sealed class ColumnBatchReadTests
             "IAsyncEnumerable<ColumnBatch> ReadParquetBatchesAsync(",
             StringComparison.Ordinal
         );
-        Assert.True(start > 0);
+        (start > 0).ShouldBeTrue();
         string batchApi = source.Substring(start);
 
         // The only allocation in the batch path is the batch struct itself (a value type) — no
@@ -143,7 +143,7 @@ public sealed class ColumnBatchReadTests
         // emitted file, which since #217 also contains the read builders, and
         // `new TestEntityParquetStreamSource(...)` starts with the domain type's name without
         // constructing one.
-        Assert.DoesNotMatch(new Regex(@"new TestEntity(?![A-Za-z0-9_])"), batchApi);
+        batchApi.ShouldNotMatch(@"new TestEntity(?![A-Za-z0-9_])");
     }
 
     [Fact]
@@ -162,7 +162,7 @@ public sealed class ColumnBatchReadTests
         );
         string batchApi = source.Substring(start);
 
-        Assert.Contains("global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);", batchApi);
+        batchApi.ShouldContain("global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);");
         // The return sits in the finally that runs on the consumer's next MoveNextAsync or on
         // disposal — that is what makes the buffers safe to hand out as spans.
         int yieldIndex = batchApi.IndexOf("yield return new ColumnBatch", StringComparison.Ordinal);
@@ -171,7 +171,7 @@ public sealed class ColumnBatchReadTests
             "global::System.Buffers.ArrayPool<int>.Shared.Return(buffer_0",
             StringComparison.Ordinal
         );
-        Assert.True(yieldIndex > 0 && finallyIndex > yieldIndex && returnIndex > finallyIndex);
+        (yieldIndex > 0 && finallyIndex > yieldIndex && returnIndex > finallyIndex).ShouldBeTrue();
     }
 
     [Fact]
@@ -227,8 +227,8 @@ public sealed class ColumnBatchReadTests
 
         string source = CodeEmitter.EmitSource(model);
 
-        Assert.DoesNotContain("ColumnBatch", source);
-        Assert.DoesNotContain("ReadParquetBatchesAsync", source);
+        source.ShouldNotContain("ColumnBatch");
+        source.ShouldNotContain("ReadParquetBatchesAsync");
     }
 
     // ── Runtime behaviour ─────────────────────────────────────────────
@@ -252,7 +252,7 @@ public sealed class ColumnBatchReadTests
             )
         )
         {
-            Assert.Equal(expectedGroupIndex++, batch.RowGroupIndex);
+            batch.RowGroupIndex.ShouldBe(expectedGroupIndex++);
             groupSizes.Add(batch.RowCount);
 
             ReadOnlySpan<long> ids = batch.OrderIdSpan;
@@ -260,10 +260,10 @@ public sealed class ColumnBatchReadTests
             ReadOnlySpan<double?> discounts = batch.DiscountSpan;
             ReadOnlySpan<string> regions = batch.RegionSpan;
 
-            Assert.Equal(batch.RowCount, ids.Length);
-            Assert.Equal(batch.RowCount, amounts.Length);
-            Assert.Equal(batch.RowCount, discounts.Length);
-            Assert.Equal(batch.RowCount, regions.Length);
+            ids.Length.ShouldBe(batch.RowCount);
+            amounts.Length.ShouldBe(batch.RowCount);
+            discounts.Length.ShouldBe(batch.RowCount);
+            regions.Length.ShouldBe(batch.RowCount);
 
             for (int i = 0; i < batch.RowCount; i++)
             {
@@ -274,11 +274,11 @@ public sealed class ColumnBatchReadTests
             }
         }
 
-        Assert.Equal(ExpectedGroupSizes, groupSizes);
-        Assert.Equal(rows.Select(r => r.OrderId), seenIds);
-        Assert.Equal(rows.Select(r => r.Amount), seenAmounts);
-        Assert.Equal(rows.Select(r => r.Discount), seenDiscounts);
-        Assert.Equal(rows.Select(r => r.Region), seenRegions);
+        groupSizes.ShouldBe(ExpectedGroupSizes);
+        seenIds.ShouldBe(rows.Select(r => r.OrderId));
+        seenAmounts.ShouldBe(rows.Select(r => r.Amount));
+        seenDiscounts.ShouldBe(rows.Select(r => r.Discount));
+        seenRegions.ShouldBe(rows.Select(r => r.Region));
     }
 
     [Fact]
@@ -308,7 +308,7 @@ public sealed class ColumnBatchReadTests
         );
         double pocoTotal = poco.Sum(r => r.Amount * (1 - (r.Discount ?? 0)));
 
-        Assert.Equal(pocoTotal, batchTotal, 6);
+        batchTotal.ShouldBe(pocoTotal, 0.000001);
     }
 
     [Fact]
@@ -341,12 +341,10 @@ public sealed class ColumnBatchReadTests
         // per column per row group, sized to the data) — the public reader surface offers no way
         // to decode straight into a caller-owned buffer, so "zero allocation" here means zero
         // *domain object* allocation, not zero bytes.
-        Assert.True(
-            batchAllocated * 2 < pocoAllocated,
+        (batchAllocated * 2 < pocoAllocated).ShouldBeTrue(
             $"batch allocated {batchAllocated} bytes, POCO allocated {pocoAllocated} bytes"
         );
-        Assert.True(
-            pocoAllocated - batchAllocated > 20_000 * 30,
+        (pocoAllocated - batchAllocated > 20_000 * 30).ShouldBeTrue(
             $"expected the POCOs to cost at least 30 bytes/row more; batch {batchAllocated}, POCO {pocoAllocated}"
         );
     }
@@ -417,7 +415,7 @@ public sealed class ColumnBatchReadTests
             }
         }
 
-        Assert.Equal(rows.Select(r => r.OrderId), ids);
+        ids.ShouldBe(rows.Select(r => r.OrderId));
     }
 
     [Fact]
@@ -455,8 +453,7 @@ public sealed class ColumnBatchReadTests
 
         // 10x the row groups must not cost 10x the allocation: the column buffers are recycled,
         // so only the per-group Parquet.Net bookkeeping scales.
-        Assert.True(
-            twentyGroups < twoGroups * 10,
+        (twentyGroups < twoGroups * 10).ShouldBeTrue(
             $"2 groups allocated {twoGroups} bytes, 20 groups allocated {twentyGroups} bytes"
         );
     }
@@ -476,7 +473,7 @@ public sealed class ColumnBatchReadTests
             batches += batch.RowCount;
         }
 
-        Assert.Equal(0, batches);
+        batches.ShouldBe(0);
     }
 
     [Fact]
@@ -485,7 +482,7 @@ public sealed class ColumnBatchReadTests
         // Runtime mirror of the emitter-level gate: the generated extensions class for a model
         // with a list member exposes no ColumnBatch nested type.
         Type extensions = typeof(ColumnBatchWithListParquetExtensions);
-        Assert.Null(extensions.GetNestedType("ColumnBatch"));
-        Assert.Null(extensions.GetMethod("ReadParquetBatchesAsync"));
+        extensions.GetNestedType("ColumnBatch").ShouldBeNull();
+        extensions.GetMethod("ReadParquetBatchesAsync").ShouldBeNull();
     }
 }

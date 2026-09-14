@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Parquet;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -81,19 +82,19 @@ public class EagerBufferReturnTests
         ms.Position = 0;
         var readBack = await EagerBufferModelParquetExtensions.ReadParquetAsync(ms);
 
-        Assert.Equal(3, readBack.Count);
-        Assert.Equal(items[0].Id, readBack[0].Id);
-        Assert.Equal(items[0].NullableInt, readBack[0].NullableInt);
-        Assert.Equal(items[0].Name, readBack[0].Name);
-        Assert.Equal(items[0].Price, readBack[0].Price);
-        Assert.Equal(items[0].NullableDouble, readBack[0].NullableDouble);
-        Assert.Equal(items[0].CorrelationId, readBack[0].CorrelationId);
-        Assert.Equal(items[0].Payload, readBack[0].Payload);
+        readBack.Count.ShouldBe(3);
+        readBack[0].Id.ShouldBe(items[0].Id);
+        readBack[0].NullableInt.ShouldBe(items[0].NullableInt);
+        readBack[0].Name.ShouldBe(items[0].Name);
+        readBack[0].Price.ShouldBe(items[0].Price);
+        readBack[0].NullableDouble.ShouldBe(items[0].NullableDouble);
+        readBack[0].CorrelationId.ShouldBe(items[0].CorrelationId);
+        readBack[0].Payload.ShouldBe(items[0].Payload);
 
-        Assert.Null(readBack[1].NullableInt);
-        Assert.Null(readBack[1].Name);
-        Assert.Null(readBack[1].NullableDouble);
-        Assert.Null(readBack[1].Payload);
+        readBack[1].NullableInt.ShouldBeNull();
+        readBack[1].Name.ShouldBeNull();
+        readBack[1].NullableDouble.ShouldBeNull();
+        readBack[1].Payload.ShouldBeNull();
     }
 
     [Fact]
@@ -117,7 +118,7 @@ public class EagerBufferReturnTests
         cts.Cancel(); // Cancelled immediately
 
         using var ms = new MemoryStream();
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
+        await Should.ThrowAsync<OperationCanceledException>(async () =>
         {
             await items.WriteParquetAsync(ms, cancellationToken: cts.Token);
         });

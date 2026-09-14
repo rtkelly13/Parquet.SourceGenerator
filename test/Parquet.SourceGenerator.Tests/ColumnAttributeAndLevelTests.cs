@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -40,7 +41,7 @@ public sealed class ColumnAttributeAndLevelTests
             .ToArray();
 
         // First and Third keep their member names; only Second was renamed.
-        Assert.Equal(ExpectedColumnOrder, columns);
+        columns.ShouldBe(ExpectedColumnOrder);
     }
 
     [Fact]
@@ -62,10 +63,10 @@ public sealed class ColumnAttributeAndLevelTests
 
         List<OrderOnlyModel> read = await OrderOnlyModelParquetExtensions.ReadParquetAsync(stream);
 
-        Assert.Single(read);
-        Assert.Equal(1, read[0].First);
-        Assert.Equal(2, read[0].Second);
-        Assert.Equal(3, read[0].Third);
+        read.ShouldHaveSingleItem();
+        read[0].First.ShouldBe(1);
+        read[0].Second.ShouldBe(2);
+        read[0].Third.ShouldBe(3);
     }
 
     [Fact]
@@ -101,16 +102,15 @@ public sealed class ColumnAttributeAndLevelTests
         // NoCompression through a compressing method is the one level that must differ plainly.
         // Asserting a size relationship rather than exact bytes keeps this from breaking on a
         // Parquet.Net or zlib change.
-        Assert.True(
-            noCompression > smallest * 2,
+        (noCompression > smallest * 2).ShouldBeTrue(
             $"NoCompression ({noCompression} bytes) should be far larger than SmallestSize ({smallest} bytes)"
         );
 
         // Unspecified must leave Parquet.Net's own default in place rather than picking a level.
-        Assert.Equal(smallest, unspecified);
+        unspecified.ShouldBe(smallest);
 
         // A mis-mapped enum member would most likely surface as a write failure or an absurd size.
-        Assert.True(fastest > 0 && optimal > 0, "Every level should produce a readable file");
+        (fastest > 0 && optimal > 0).ShouldBeTrue("Every level should produce a readable file");
     }
 
     [Fact]
@@ -132,8 +132,8 @@ public sealed class ColumnAttributeAndLevelTests
         List<CompressionLevelModel> read =
             await CompressionLevelModelParquetExtensions.ReadParquetAsync(stream);
 
-        Assert.Equal(2, read.Count);
-        Assert.Equal("first", read[0].Payload);
-        Assert.Equal("second", read[1].Payload);
+        read.Count.ShouldBe(2);
+        read[0].Payload.ShouldBe("first");
+        read[1].Payload.ShouldBe("second");
     }
 }

@@ -9,6 +9,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Parquet;
 using Parquet.Meta;
 using Parquet.SourceGenerator;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -69,22 +70,20 @@ public sealed class ColumnEncodingTests
 
         await using (var reader = await ParquetReader.CreateAsync(stream, leaveStreamOpen: true))
         {
-            Assert.NotNull(reader.Metadata);
-            Assert.NotEmpty(reader.Metadata.RowGroups);
+            reader.Metadata.ShouldNotBeNull();
+            reader.Metadata.RowGroups.ShouldNotBeEmpty();
             var rg = reader.Metadata.RowGroups[0];
 
             var col0 = rg.Columns[0];
-            Assert.NotNull(col0.MetaData);
-            Assert.Contains(
-                global::Parquet.Meta.Encoding.DELTA_BINARY_PACKED,
-                col0.MetaData.Encodings
+            col0.MetaData.ShouldNotBeNull();
+            col0.MetaData.Encodings.ShouldContain(
+                global::Parquet.Meta.Encoding.DELTA_BINARY_PACKED
             );
 
             var col1 = rg.Columns[1];
-            Assert.NotNull(col1.MetaData);
-            Assert.Contains(
-                global::Parquet.Meta.Encoding.DELTA_BINARY_PACKED,
-                col1.MetaData.Encodings
+            col1.MetaData.ShouldNotBeNull();
+            col1.MetaData.Encodings.ShouldContain(
+                global::Parquet.Meta.Encoding.DELTA_BINARY_PACKED
             );
         }
 
@@ -92,11 +91,11 @@ public sealed class ColumnEncodingTests
         List<DeltaEncodedRecord> read = await DeltaEncodedRecordParquetExtensions.ReadParquetAsync(
             stream
         );
-        Assert.Equal(written.Count, read.Count);
+        read.Count.ShouldBe(written.Count);
         for (int i = 0; i < written.Count; i++)
         {
-            Assert.Equal(written[i].Id, read[i].Id);
-            Assert.Equal(written[i].Seq, read[i].Seq);
+            read[i].Id.ShouldBe(written[i].Id);
+            read[i].Seq.ShouldBe(written[i].Seq);
         }
     }
 
@@ -119,17 +118,16 @@ public sealed class ColumnEncodingTests
 
         await using (var reader = await ParquetReader.CreateAsync(stream, leaveStreamOpen: true))
         {
-            Assert.NotNull(reader.Metadata);
-            Assert.NotEmpty(reader.Metadata.RowGroups);
+            reader.Metadata.ShouldNotBeNull();
+            reader.Metadata.RowGroups.ShouldNotBeEmpty();
             var rg = reader.Metadata.RowGroups[0];
 
             var col0 = rg.Columns[0];
-            Assert.NotNull(col0.MetaData);
+            col0.MetaData.ShouldNotBeNull();
             bool hasDictionary =
                 col0.MetaData.Encodings.Contains(global::Parquet.Meta.Encoding.PLAIN_DICTIONARY)
                 || col0.MetaData.Encodings.Contains(global::Parquet.Meta.Encoding.RLE_DICTIONARY);
-            Assert.True(
-                hasDictionary,
+            hasDictionary.ShouldBeTrue(
                 $"Expected dictionary encoding in column 0 encodings: {string.Join(", ", col0.MetaData.Encodings)}"
             );
         }
@@ -137,11 +135,11 @@ public sealed class ColumnEncodingTests
         stream.Position = 0;
         List<DictionaryEncodedRecord> read =
             await DictionaryEncodedRecordParquetExtensions.ReadParquetAsync(stream);
-        Assert.Equal(written.Count, read.Count);
+        read.Count.ShouldBe(written.Count);
         for (int i = 0; i < written.Count; i++)
         {
-            Assert.Equal(written[i].Category, read[i].Category);
-            Assert.Equal(written[i].Value, read[i].Value);
+            read[i].Category.ShouldBe(written[i].Category);
+            read[i].Value.ShouldBe(written[i].Value);
         }
     }
 
@@ -163,34 +161,28 @@ public sealed class ColumnEncodingTests
 
         await using (var reader = await ParquetReader.CreateAsync(stream, leaveStreamOpen: true))
         {
-            Assert.NotNull(reader.Metadata);
-            Assert.NotEmpty(reader.Metadata.RowGroups);
+            reader.Metadata.ShouldNotBeNull();
+            reader.Metadata.RowGroups.ShouldNotBeEmpty();
             var rg = reader.Metadata.RowGroups[0];
 
             var col0 = rg.Columns[0];
-            Assert.NotNull(col0.MetaData);
-            Assert.Contains(
-                global::Parquet.Meta.Encoding.BYTE_STREAM_SPLIT,
-                col0.MetaData.Encodings
-            );
+            col0.MetaData.ShouldNotBeNull();
+            col0.MetaData.Encodings.ShouldContain(global::Parquet.Meta.Encoding.BYTE_STREAM_SPLIT);
 
             var col1 = rg.Columns[1];
-            Assert.NotNull(col1.MetaData);
-            Assert.Contains(
-                global::Parquet.Meta.Encoding.BYTE_STREAM_SPLIT,
-                col1.MetaData.Encodings
-            );
+            col1.MetaData.ShouldNotBeNull();
+            col1.MetaData.Encodings.ShouldContain(global::Parquet.Meta.Encoding.BYTE_STREAM_SPLIT);
         }
 
         stream.Position = 0;
         List<ByteSplitRecord> read = await ByteSplitRecordParquetExtensions.ReadParquetAsync(
             stream
         );
-        Assert.Equal(written.Count, read.Count);
+        read.Count.ShouldBe(written.Count);
         for (int i = 0; i < written.Count; i++)
         {
-            Assert.Equal(written[i].Measurement, read[i].Measurement);
-            Assert.Equal(written[i].Ratio, read[i].Ratio);
+            read[i].Measurement.ShouldBe(written[i].Measurement);
+            read[i].Ratio.ShouldBe(written[i].Ratio);
         }
     }
 
@@ -217,33 +209,29 @@ public sealed class ColumnEncodingTests
 
         await using (var reader = await ParquetReader.CreateAsync(stream, leaveStreamOpen: true))
         {
-            Assert.NotNull(reader.Metadata);
-            Assert.NotEmpty(reader.Metadata.RowGroups);
+            reader.Metadata.ShouldNotBeNull();
+            reader.Metadata.RowGroups.ShouldNotBeEmpty();
             var rg = reader.Metadata.RowGroups[0];
 
             var col0 = rg.Columns[0];
-            Assert.NotNull(col0.MetaData);
-            Assert.Contains(
-                global::Parquet.Meta.Encoding.DELTA_BINARY_PACKED,
-                col0.MetaData.Encodings
+            col0.MetaData.ShouldNotBeNull();
+            col0.MetaData.Encodings.ShouldContain(
+                global::Parquet.Meta.Encoding.DELTA_BINARY_PACKED
             );
 
             var col1 = rg.Columns[1];
-            Assert.NotNull(col1.MetaData);
-            Assert.Contains(
-                global::Parquet.Meta.Encoding.BYTE_STREAM_SPLIT,
-                col1.MetaData.Encodings
-            );
+            col1.MetaData.ShouldNotBeNull();
+            col1.MetaData.Encodings.ShouldContain(global::Parquet.Meta.Encoding.BYTE_STREAM_SPLIT);
         }
 
         stream.Position = 0;
         List<UnannotatedEncodingRecord> read =
             await UnannotatedEncodingRecordParquetExtensions.ReadParquetAsync(stream);
-        Assert.Equal(written.Count, read.Count);
+        read.Count.ShouldBe(written.Count);
         for (int i = 0; i < written.Count; i++)
         {
-            Assert.Equal(written[i].Id, read[i].Id);
-            Assert.Equal(written[i].Metric, read[i].Metric);
+            read[i].Id.ShouldBe(written[i].Id);
+            read[i].Metric.ShouldBe(written[i].Metric);
         }
     }
 
@@ -268,23 +256,21 @@ public sealed class ColumnEncodingTests
 
         await using (var reader = await ParquetReader.CreateAsync(stream, leaveStreamOpen: true))
         {
-            Assert.NotNull(reader.Metadata);
-            Assert.NotEmpty(reader.Metadata.RowGroups);
+            reader.Metadata.ShouldNotBeNull();
+            reader.Metadata.RowGroups.ShouldNotBeEmpty();
             var rg = reader.Metadata.RowGroups[0];
 
             var col0 = rg.Columns[0];
-            Assert.NotNull(col0.MetaData);
-            Assert.DoesNotContain(
-                global::Parquet.Meta.Encoding.DELTA_BINARY_PACKED,
-                col0.MetaData.Encodings
+            col0.MetaData.ShouldNotBeNull();
+            col0.MetaData.Encodings.ShouldNotContain(
+                global::Parquet.Meta.Encoding.DELTA_BINARY_PACKED
             );
 
             // "seq" was not overridden, so compile-time DeltaBinaryPacked remains
             var col1 = rg.Columns[1];
-            Assert.NotNull(col1.MetaData);
-            Assert.Contains(
-                global::Parquet.Meta.Encoding.DELTA_BINARY_PACKED,
-                col1.MetaData.Encodings
+            col1.MetaData.ShouldNotBeNull();
+            col1.MetaData.Encodings.ShouldContain(
+                global::Parquet.Meta.Encoding.DELTA_BINARY_PACKED
             );
         }
 
@@ -292,7 +278,7 @@ public sealed class ColumnEncodingTests
         List<DeltaEncodedRecord> read = await DeltaEncodedRecordParquetExtensions.ReadParquetAsync(
             stream
         );
-        Assert.Equal(written.Count, read.Count);
+        read.Count.ShouldBe(written.Count);
     }
 
     [Fact]
@@ -319,7 +305,7 @@ public sealed class ColumnEncodingTests
 
         List<DictionaryEncodedRecord> read =
             await DictionaryEncodedRecordParquetExtensions.ReadParquetAsync(stream);
-        Assert.Equal(written.Count, read.Count);
+        read.Count.ShouldBe(written.Count);
     }
 
     [Fact]
@@ -371,23 +357,20 @@ public sealed class ColumnEncodingTests
             out var diagnostics
         );
 
-        Assert.Empty(diagnostics);
+        diagnostics.ShouldBeEmpty();
         var generatedTrees = outputCompilation.SyntaxTrees.ToList();
         var generatedSource = generatedTrees
             .First(t => t.FilePath.Contains("ParserEncodingTestClass"))
             .ToString();
 
-        Assert.Contains(
-            "formatOptions.ColumnEncodingHints[\"num\"] = global::Parquet.EncodingHint.DeltaBinaryPacked;",
-            generatedSource
+        generatedSource.ShouldContain(
+            "formatOptions.ColumnEncodingHints[\"num\"] = global::Parquet.EncodingHint.DeltaBinaryPacked;"
         );
-        Assert.Contains(
-            "formatOptions.ColumnEncodingHints[\"str\"] = global::Parquet.EncodingHint.Dictionary;",
-            generatedSource
+        generatedSource.ShouldContain(
+            "formatOptions.ColumnEncodingHints[\"str\"] = global::Parquet.EncodingHint.Dictionary;"
         );
-        Assert.Contains(
-            "formatOptions.ColumnEncodingHints[\"flt\"] = global::Parquet.EncodingHint.ByteSplitStream;",
-            generatedSource
+        generatedSource.ShouldContain(
+            "formatOptions.ColumnEncodingHints[\"flt\"] = global::Parquet.EncodingHint.ByteSplitStream;"
         );
     }
 }
