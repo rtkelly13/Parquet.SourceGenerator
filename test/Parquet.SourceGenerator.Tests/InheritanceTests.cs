@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -37,7 +38,7 @@ public sealed class InheritanceTests
 
         // Base-first ordering is deliberate: a derived declaration that shadows a base one replaces
         // it in the base's position, so adding an override never reorders the schema.
-        Assert.Equal(ExpectedColumnOrder, fields);
+        fields.ShouldBe(ExpectedColumnOrder);
     }
 
     [Fact]
@@ -65,12 +66,12 @@ public sealed class InheritanceTests
 
         List<InvoiceRow> read = await InvoiceRowParquetExtensions.ReadParquetAsync(stream);
 
-        Assert.Equal(2, read.Count);
-        Assert.Equal(1, read[0].Id);
-        Assert.Equal("ada", read[0].CreatedBy);
-        Assert.Equal(12.5, read[0].Amount);
-        Assert.Equal(2, read[1].Id);
-        Assert.Equal("grace", read[1].CreatedBy);
-        Assert.Equal(99.0, read[1].Amount);
+        read.Count.ShouldBe(2);
+        read[0].Id.ShouldBe(1);
+        read[0].CreatedBy.ShouldBe("ada");
+        read[0].Amount.ShouldBe(12.5);
+        read[1].Id.ShouldBe(2);
+        read[1].CreatedBy.ShouldBe("grace");
+        read[1].Amount.ShouldBe(99.0);
     }
 }

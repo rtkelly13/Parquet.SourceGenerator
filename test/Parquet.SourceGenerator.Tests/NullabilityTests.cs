@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -47,7 +48,7 @@ public sealed class NullabilityTests
     [InlineData("required_payload")]
     public void NonNullableMembersProduceRequiredColumns(string columnName)
     {
-        Assert.False(IsColumnNullable(columnName), $"'{columnName}' should be a required column");
+        IsColumnNullable(columnName).ShouldBeFalse($"'{columnName}' should be a required column");
     }
 
     [Theory]
@@ -56,7 +57,7 @@ public sealed class NullabilityTests
     [InlineData("optional_payload")]
     public void NullableMembersProduceOptionalColumns(string columnName)
     {
-        Assert.True(IsColumnNullable(columnName), $"'{columnName}' should be an optional column");
+        IsColumnNullable(columnName).ShouldBeTrue($"'{columnName}' should be an optional column");
     }
 
     [Fact]
@@ -92,13 +93,13 @@ public sealed class NullabilityTests
             stream
         );
 
-        Assert.Equal(2, read.Count);
-        Assert.Null(read[0].OptionalId);
-        Assert.Null(read[0].OptionalName);
-        Assert.Null(read[0].OptionalPayload);
-        Assert.Equal(42, read[1].OptionalId);
-        Assert.Equal("set", read[1].OptionalName);
-        Assert.Equal(new byte[] { 4, 5 }, read[1].OptionalPayload);
-        Assert.Equal("present", read[0].RequiredName);
+        read.Count.ShouldBe(2);
+        read[0].OptionalId.ShouldBeNull();
+        read[0].OptionalName.ShouldBeNull();
+        read[0].OptionalPayload.ShouldBeNull();
+        read[1].OptionalId.ShouldBe(42);
+        read[1].OptionalName.ShouldBe("set");
+        read[1].OptionalPayload.ShouldBe(new byte[] { 4, 5 });
+        read[0].RequiredName.ShouldBe("present");
     }
 }

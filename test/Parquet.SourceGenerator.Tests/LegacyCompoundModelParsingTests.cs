@@ -7,6 +7,7 @@ using System.Reflection;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Parquet.SourceGenerator.Diagnostics;
+using Shouldly;
 using Xunit;
 using LegacyApiLevel = LegacyGenerator::Parquet.SourceGenerator.Parser.ParquetApiLevel;
 using LegacyEmitter = LegacyGenerator::Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter;
@@ -83,27 +84,24 @@ public sealed class LegacyCompoundModelParsingTests
         LegacyGenerator::Parquet.SourceGenerator.Parser.TargetParserResult result =
             LegacyParser.GetTargetModel(row, LegacyApiLevel.V4, allowCompoundTypes: true);
 
-        Assert.Empty(result.Diagnostics);
-        Assert.NotNull(result.Model);
+        result.Diagnostics.ShouldBeEmpty();
+        result.Model.ShouldNotBeNull();
 
-        LegacyModels::PropertyModel ship = Assert.Single(
-            result.Model!.Properties,
-            p => p.Kind == LegacyModels::PropertyKind.Struct
+        LegacyModels::PropertyModel ship = result.Model!.Properties.Single(p =>
+            p.Kind == LegacyModels::PropertyKind.Struct
         );
-        Assert.Equal(CityZipNames, ship.Children.Select(c => c.Name).ToArray());
+        ship.Children.Select(c => c.Name).ToArray().ShouldBe(CityZipNames);
 
-        LegacyModels::PropertyModel tags = Assert.Single(
-            result.Model!.Properties,
-            p => p.Kind == LegacyModels::PropertyKind.List
+        LegacyModels::PropertyModel tags = result.Model!.Properties.Single(p =>
+            p.Kind == LegacyModels::PropertyKind.List
         );
-        Assert.True(tags.Element!.IsNullable);
+        tags.Element!.IsNullable.ShouldBeTrue();
 
-        LegacyModels::PropertyModel meta = Assert.Single(
-            result.Model!.Properties,
-            p => p.Kind == LegacyModels::PropertyKind.Map
+        LegacyModels::PropertyModel meta = result.Model!.Properties.Single(p =>
+            p.Kind == LegacyModels::PropertyKind.Map
         );
-        Assert.False(meta.Children[0].IsNullable); // required key
-        Assert.True(meta.MapValue!.IsNullable);
+        meta.Children[0].IsNullable.ShouldBeFalse(); // required key
+        meta.MapValue!.IsNullable.ShouldBeTrue();
     }
 
     [Fact]
@@ -129,9 +127,8 @@ public sealed class LegacyCompoundModelParsingTests
         INamedTypeSymbol row = CompileAndGet(source, "App.Row");
         var result = LegacyParser.GetTargetModel(row, LegacyApiLevel.V4, allowCompoundTypes: true);
 
-        Assert.Contains(
-            result.Diagnostics,
-            d => d.Descriptor.Id == DiagnosticDescriptors.TypeUnsupportedOnClassicApi.Id
+        result.Diagnostics.ShouldContain(d =>
+            d.Descriptor.Id == DiagnosticDescriptors.TypeUnsupportedOnClassicApi.Id
         );
     }
 
@@ -156,9 +153,8 @@ public sealed class LegacyCompoundModelParsingTests
             LegacyApiLevel.V4,
             allowCompoundTypes: true
         );
-        Assert.Contains(
-            cycle.Diagnostics,
-            d => d.Descriptor.Id == DiagnosticDescriptors.NestedTypeCycleDetected.Id
+        cycle.Diagnostics.ShouldContain(d =>
+            d.Descriptor.Id == DiagnosticDescriptors.NestedTypeCycleDetected.Id
         );
 
         string deepSource = """
@@ -181,9 +177,8 @@ public sealed class LegacyCompoundModelParsingTests
             LegacyApiLevel.V4,
             allowCompoundTypes: true
         );
-        Assert.Contains(
-            deep.Diagnostics,
-            d => d.Descriptor.Id == DiagnosticDescriptors.NestedTypeTooDeep.Id
+        deep.Diagnostics.ShouldContain(d =>
+            d.Descriptor.Id == DiagnosticDescriptors.NestedTypeTooDeep.Id
         );
     }
 
@@ -198,11 +193,10 @@ public sealed class LegacyCompoundModelParsingTests
             allowCompoundTypes: false
         );
 
-        Assert.Contains(
-            viaPipeline.Diagnostics,
-            d => d.Descriptor.Id == DiagnosticDescriptors.UnsupportedPropertyType.Id
+        viaPipeline.Diagnostics.ShouldContain(d =>
+            d.Descriptor.Id == DiagnosticDescriptors.UnsupportedPropertyType.Id
         );
-        Assert.Null(viaPipeline.Model);
+        viaPipeline.Model.ShouldBeNull();
     }
 
     [Fact]
@@ -228,8 +222,8 @@ public sealed class LegacyCompoundModelParsingTests
             allowCompoundTypes: false
         );
 
-        Assert.NotNull(result.Model);
+        result.Model.ShouldNotBeNull();
         string code = LegacyEmitter.EmitSource(result.Model!);
-        Assert.Contains("RowParquetLegacyExtensions", code);
+        code.ShouldContain("RowParquetLegacyExtensions");
     }
 }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -73,7 +74,7 @@ public sealed class PyArrowInteropTests
             return;
         }
 
-        Assert.True(System.IO.File.Exists(path), $"PyArrow fixture does not exist: {path}");
+        System.IO.File.Exists(path).ShouldBeTrue($"PyArrow fixture does not exist: {path}");
 
         await using var stream = System.IO.File.OpenRead(path!);
         List<PyArrowInteropRecord> actual =
@@ -96,7 +97,7 @@ public sealed class PyArrowInteropTests
             return;
         }
 
-        Assert.True(System.IO.File.Exists(path), $"DuckDB fixture does not exist: {path}");
+        System.IO.File.Exists(path).ShouldBeTrue($"DuckDB fixture does not exist: {path}");
         await using var stream = System.IO.File.OpenRead(path);
         List<DuckDbInteropRecord> actual =
             await DuckDbInteropRecordParquetExtensions.ReadParquetAsync(stream);

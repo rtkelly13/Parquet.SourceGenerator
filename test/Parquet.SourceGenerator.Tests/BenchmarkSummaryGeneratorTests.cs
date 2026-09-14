@@ -1,6 +1,7 @@
 using System;
 using System.Text;
 using Parquet.SourceGenerator.Tools;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -31,10 +32,9 @@ public sealed class BenchmarkSummaryGeneratorTests : IDisposable
         string readme = WriteReadme();
         Program.UpdateReadmeFile(readme, "## Fresh Table");
         byte[] bytes = System.IO.File.ReadAllBytes(readme);
-        Assert.False(
-            bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF,
-            "README rewrite emitted a UTF-8 BOM."
-        );
+        (
+            bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF
+        ).ShouldBeFalse("README rewrite emitted a UTF-8 BOM.");
     }
 
     [Fact]
@@ -44,12 +44,12 @@ public sealed class BenchmarkSummaryGeneratorTests : IDisposable
         Program.UpdateReadmeFile(readme, "## Fresh Table\n\n| row |");
 
         string content = System.IO.File.ReadAllText(readme);
-        Assert.StartsWith("Preamble line", content, StringComparison.Ordinal);
-        Assert.EndsWith("Postamble line", content, StringComparison.Ordinal);
-        Assert.Contains($"{StartMarker}\n## Fresh Table", content, StringComparison.Ordinal);
-        Assert.DoesNotContain("stale table", content, StringComparison.Ordinal);
-        Assert.Equal(1, CountOccurrences(content, StartMarker));
-        Assert.Equal(1, CountOccurrences(content, EndMarker));
+        content.ShouldStartWith("Preamble line", Case.Sensitive);
+        content.ShouldEndWith("Postamble line", Case.Sensitive);
+        content.ShouldContain($"{StartMarker}\n## Fresh Table");
+        content.ShouldNotContain("stale table");
+        CountOccurrences(content, StartMarker).ShouldBe(1);
+        CountOccurrences(content, EndMarker).ShouldBe(1);
     }
 
     [Fact]
@@ -58,7 +58,7 @@ public sealed class BenchmarkSummaryGeneratorTests : IDisposable
         string readme = WriteReadme(withMarkers: false);
         string before = System.IO.File.ReadAllText(readme);
         Program.UpdateReadmeFile(readme, "## Fresh Table");
-        Assert.Equal(before, System.IO.File.ReadAllText(readme));
+        System.IO.File.ReadAllText(readme).ShouldBe(before);
     }
 
     public void Dispose()

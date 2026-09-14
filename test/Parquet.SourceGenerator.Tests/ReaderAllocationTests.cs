@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Parquet.SourceGenerator.Emitter;
 using Parquet.SourceGenerator.Models;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -42,12 +43,11 @@ public sealed class ReaderAllocationTests
         string source = CodeEmitter.EmitSource(model);
 
         // Sizing happens upfront from the summed row count, avoiding per-row-group reallocations.
-        Assert.Contains("int totalRows = checked((int)totalRowsLong);", source);
-        Assert.Contains(
-            "new global::System.Collections.Generic.List<TestEntity>(totalRows)",
-            source
+        source.ShouldContain("int totalRows = checked((int)totalRowsLong);");
+        source.ShouldContain(
+            "new global::System.Collections.Generic.List<TestEntity>(totalRows)"
         );
-        Assert.DoesNotContain("results.Capacity", source);
+        source.ShouldNotContain("results.Capacity");
     }
 
     [Fact]
@@ -71,9 +71,9 @@ public sealed class ReaderAllocationTests
             stream
         );
 
-        Assert.Equal(7, read.Count);
-        Assert.Equal(written.Select(x => x.Id), read.Select(x => x.Id));
-        Assert.Equal(written.Select(x => x.Name), read.Select(x => x.Name));
+        read.Count.ShouldBe(7);
+        read.Select(x => x.Id).ShouldBe(written.Select(x => x.Id));
+        read.Select(x => x.Name).ShouldBe(written.Select(x => x.Name));
     }
 
     [Fact]
@@ -98,7 +98,7 @@ public sealed class ReaderAllocationTests
         List<MultiRowGroupModel> parallel =
             await MultiRowGroupModelParquetExtensions.ReadParquetParallelAsync(stream);
 
-        Assert.Equal(sequential.Select(x => x.Id), parallel.Select(x => x.Id));
-        Assert.Equal(sequential.Select(x => x.Name), parallel.Select(x => x.Name));
+        parallel.Select(x => x.Id).ShouldBe(sequential.Select(x => x.Id));
+        parallel.Select(x => x.Name).ShouldBe(sequential.Select(x => x.Name));
     }
 }

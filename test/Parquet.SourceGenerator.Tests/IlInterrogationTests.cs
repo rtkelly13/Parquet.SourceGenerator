@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -17,7 +18,7 @@ public class IlInterrogationTests
         var psi = CreateProcessStartInfo(repoRoot);
 
         using var process = Process.Start(psi);
-        Assert.NotNull(process);
+        process.ShouldNotBeNull();
 
         var stdoutTask = process.StandardOutput.ReadToEndAsync();
         var stderrTask = process.StandardError.ReadToEndAsync();
@@ -26,12 +27,11 @@ public class IlInterrogationTests
         string stdout = await stdoutTask;
         string stderr = await stderrTask;
 
-        Assert.True(
-            process.ExitCode == 0,
+        (process.ExitCode == 0).ShouldBeTrue(
             $"InterrogateIL.cs failed with exit code {process.ExitCode}.\nStdout:\n{stdout}\nStderr:\n{stderr}"
         );
-        Assert.Contains("IL interrogation completed successfully!", stdout);
-        Assert.DoesNotContain("boxing operation(s) ('box') detected", stderr);
+        stdout.ShouldContain("IL interrogation completed successfully!");
+        stderr.ShouldNotContain("boxing operation(s) ('box') detected");
     }
 
     private static string FindRepoRoot()

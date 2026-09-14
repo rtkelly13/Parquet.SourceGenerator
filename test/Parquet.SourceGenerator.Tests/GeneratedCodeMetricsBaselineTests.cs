@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using Parquet.SourceGenerator.ApiGates;
+using Shouldly;
 using Xunit;
 using IODirectory = System.IO.Directory;
 using IOFile = System.IO.File;
@@ -54,26 +55,28 @@ public sealed class GeneratedCodeMetricsBaselineTests
     {
         // A zero-length theory silently passes, which would turn every assertion below into a
         // no-op the first time the directory layout moved.
-        Assert.Equal(7, GoldenSourceFiles().Count);
+        GoldenSourceFiles().Count.ShouldBe(7);
     }
 
     [Theory]
     [MemberData(nameof(GoldenModels))]
     public void EveryGoldenModelHasAMetricsBaselineAndAModelDeclaration(string stem)
     {
-        Assert.True(
-            IOFile.Exists(IOPath.Combine(GoldenFilesDir, stem + ".metrics.txt")),
-            $"GoldenFiles/{stem}.metrics.txt is missing. Refresh it with "
-                + "UPDATE_GOLDEN_FILES=true dotnet run scripts/CodeMetrics.cs."
-        );
+        IOFile
+            .Exists(IOPath.Combine(GoldenFilesDir, stem + ".metrics.txt"))
+            .ShouldBeTrue(
+                $"GoldenFiles/{stem}.metrics.txt is missing. Refresh it with "
+                    + "UPDATE_GOLDEN_FILES=true dotnet run scripts/CodeMetrics.cs."
+            );
 
         // The emitted code is a fragment that extends a consumer-written type; without that
         // declaration it cannot be compiled and therefore cannot be measured.
-        Assert.True(
-            IOFile.Exists(IOPath.Combine(GoldenFilesDir, "Models", ModelFileNameFor(stem))),
-            $"GoldenFiles/Models/{ModelFileNameFor(stem)} is missing; scripts/CodeMetrics.cs "
-                + "compiles the golden file against it."
-        );
+        IOFile
+            .Exists(IOPath.Combine(GoldenFilesDir, "Models", ModelFileNameFor(stem)))
+            .ShouldBeTrue(
+                $"GoldenFiles/Models/{ModelFileNameFor(stem)} is missing; scripts/CodeMetrics.cs "
+                    + "compiles the golden file against it."
+            );
     }
 
     [Theory]
@@ -87,7 +90,7 @@ public sealed class GeneratedCodeMetricsBaselineTests
                 .Replace("\r\n", "\n", StringComparison.Ordinal)
         );
 
-        Assert.Equal(expected, int.Parse(summary["MEMBERS"], CultureInfo.InvariantCulture));
+        int.Parse(summary["MEMBERS"], CultureInfo.InvariantCulture).ShouldBe(expected);
     }
 
     [Theory]
@@ -98,10 +101,10 @@ public sealed class GeneratedCodeMetricsBaselineTests
         int members = int.Parse(summary["MEMBERS"], CultureInfo.InvariantCulture);
         long executableLines = long.Parse(summary["ELOC"], CultureInfo.InvariantCulture);
 
-        Assert.Equal(
-            ((double)executableLines / members).ToString("F1", CultureInfo.InvariantCulture),
-            summary["ELOC_PER_MEMBER"]
-        );
+        summary["ELOC_PER_MEMBER"]
+            .ShouldBe(
+                ((double)executableLines / members).ToString("F1", CultureInfo.InvariantCulture)
+            );
     }
 
     [Theory]
@@ -117,8 +120,8 @@ public sealed class GeneratedCodeMetricsBaselineTests
             .Select(line => line[..line.LastIndexOf(" | ", StringComparison.Ordinal)])
             .ToList();
 
-        Assert.NotEmpty(keys);
-        Assert.Equal(keys.OrderBy(k => k, StringComparer.Ordinal).ToList(), keys);
+        keys.ShouldNotBeEmpty();
+        keys.ShouldBe(keys.OrderBy(k => k, StringComparer.Ordinal).ToList());
     }
 
     private static List<string> GoldenSourceFiles() =>
@@ -142,12 +145,9 @@ public sealed class GeneratedCodeMetricsBaselineTests
 
     private static Dictionary<string, string> SummaryFields(string stem)
     {
-        string line = Assert.Single(
-            BaselineLines(stem),
-            l => l.StartsWith("S:", StringComparison.Ordinal)
-        );
+        string line = BaselineLines(stem).Single(l => l.StartsWith("S:", StringComparison.Ordinal));
         int bar = line.LastIndexOf(" | ", StringComparison.Ordinal);
-        Assert.Equal(stem, line[2..bar]);
+        line[2..bar].ShouldBe(stem);
 
         return line[(bar + 3)..]
             .Split(' ', StringSplitOptions.RemoveEmptyEntries)

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -47,8 +48,8 @@ public sealed class MemoryOverloadTests
             new ReadOnlyMemory<byte>(bytes)
         );
 
-        Assert.Equal(5, read.Count);
-        Assert.Equal(Enumerable.Range(1, 5), read.Select(x => x.Id));
+        read.Count.ShouldBe(5);
+        read.Select(x => x.Id).ShouldBe(Enumerable.Range(1, 5));
     }
 
     [Fact]
@@ -60,9 +61,9 @@ public sealed class MemoryOverloadTests
             new ReadOnlyMemory<byte>(bytes)
         );
 
-        Assert.Equal(5, read.Count);
-        Assert.Equal(Enumerable.Range(1, 5), read.Select(x => x.Id));
-        Assert.Equal("Item_3", read[2].Name);
+        read.Count.ShouldBe(5);
+        read.Select(x => x.Id).ShouldBe(Enumerable.Range(1, 5));
+        read[2].Name.ShouldBe("Item_3");
     }
 
     [Fact]
@@ -80,8 +81,8 @@ public sealed class MemoryOverloadTests
             read.Add(item);
         }
 
-        Assert.Equal(5, read.Count);
-        Assert.Equal(Enumerable.Range(1, 5), read.Select(x => x.Id));
+        read.Count.ShouldBe(5);
+        read.Select(x => x.Id).ShouldBe(Enumerable.Range(1, 5));
     }
 
     [Fact]
@@ -105,7 +106,7 @@ public sealed class MemoryOverloadTests
             }
         }
 
-        Assert.Equal(3, read.Count);
+        read.Count.ShouldBe(3);
     }
 
     [Fact]
@@ -121,7 +122,7 @@ public sealed class MemoryOverloadTests
             new ReadOnlyMemory<byte>(padded, 4, bytes.Length)
         );
 
-        Assert.Equal(4, read.Count);
-        Assert.Equal(Enumerable.Range(1, 4), read.Select(x => x.Id));
+        read.Count.ShouldBe(4);
+        read.Select(x => x.Id).ShouldBe(Enumerable.Range(1, 4));
     }
 }
