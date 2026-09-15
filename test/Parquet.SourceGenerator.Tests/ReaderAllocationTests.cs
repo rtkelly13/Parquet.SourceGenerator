@@ -44,9 +44,7 @@ public sealed class ReaderAllocationTests
 
         // Sizing happens upfront from the summed row count, avoiding per-row-group reallocations.
         source.ShouldContain("int totalRows = checked((int)totalRowsLong);");
-        source.ShouldContain(
-            "new global::System.Collections.Generic.List<TestEntity>(totalRows)"
-        );
+        source.ShouldContain("new global::System.Collections.Generic.List<TestEntity>(totalRows)");
         source.ShouldNotContain("results.Capacity");
     }
 
