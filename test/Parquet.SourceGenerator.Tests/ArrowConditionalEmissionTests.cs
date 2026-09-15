@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -140,13 +141,13 @@ public sealed class ArrowConditionalEmissionTests
             out _
         );
 
-        Assert.Equal(
-            PocoOnlyHintNames,
-            sources.Select(s => s.HintName).OrderBy(n => n, StringComparer.Ordinal).ToArray()
-        );
-        Assert.DoesNotContain(
-            sources,
-            s => s.SourceText.ToString().Contains("Apache.Arrow", StringComparison.Ordinal)
+        sources
+            .Select(s => s.HintName)
+            .OrderBy(n => n, StringComparer.Ordinal)
+            .ToArray()
+            .ShouldBe(PocoOnlyHintNames);
+        sources.ShouldNotContain(s =>
+            s.SourceText.ToString().Contains("Apache.Arrow", StringComparison.Ordinal)
         );
     }
 
@@ -159,20 +160,17 @@ public sealed class ArrowConditionalEmissionTests
             out _
         );
 
-        Assert.Equal(
-            PocoAndArrowHintNames,
-            sources.Select(s => s.HintName).OrderBy(n => n, StringComparer.Ordinal).ToArray()
-        );
+        sources
+            .Select(s => s.HintName)
+            .OrderBy(n => n, StringComparer.Ordinal)
+            .ToArray()
+            .ShouldBe(PocoAndArrowHintNames);
 
         string arrow = sources
             .Single(s => s.HintName.EndsWith(".Arrow.g.cs", StringComparison.Ordinal))
             .SourceText.ToString();
-        Assert.Contains("global::Apache.Arrow.RecordBatch batch", arrow, StringComparison.Ordinal);
-        Assert.Contains(
-            "public static partial class TradeParquetExtensions",
-            arrow,
-            StringComparison.Ordinal
-        );
+        arrow.ShouldContain("global::Apache.Arrow.RecordBatch batch", Case.Sensitive);
+        arrow.ShouldContain("public static partial class TradeParquetExtensions", Case.Sensitive);
     }
 
     [Fact]
@@ -186,8 +184,8 @@ public sealed class ArrowConditionalEmissionTests
 
         // Address is flat, so it gets a bridge. Customer carries a nested group, which #176 has yet
         // to model on the Arrow side, so it deliberately gets none rather than a partial one.
-        Assert.Contains(sources, s => s.HintName == "Demo.Address.Arrow.g.cs");
-        Assert.DoesNotContain(sources, s => s.HintName == "Demo.Customer.Arrow.g.cs");
+        sources.ShouldContain(s => s.HintName == "Demo.Address.Arrow.g.cs");
+        sources.ShouldNotContain(s => s.HintName == "Demo.Customer.Arrow.g.cs");
     }
 
     [Fact]
@@ -197,22 +195,18 @@ public sealed class ArrowConditionalEmissionTests
         CSharpCompilation without = Compilation(FlatSource, withArrow: false);
 
         ImmutableArray<GeneratedSourceResult> first = Run(driver, without, out driver);
-        Assert.Single(first);
+        first.Length.ShouldBe(1);
 
         Compilation with = without.AddReferences(ArrowReference());
         ImmutableArray<GeneratedSourceResult> second = Run(driver, with, out driver);
-        Assert.Equal(2, second.Length);
+        second.Length.ShouldBe(2);
 
         // The POCO emission's output is byte-identical and its source-output step reports as
         // cached: adding the reference reran the Arrow-gated output and nothing else.
-        Assert.Equal(
-            first.Single().SourceText.ToString(),
-            second
-                .Single(s =>
-                    s.HintName.EndsWith(".ParquetSerializer.g.cs", StringComparison.Ordinal)
-                )
-                .SourceText.ToString()
-        );
+        second
+            .Single(s => s.HintName.EndsWith(".ParquetSerializer.g.cs", StringComparison.Ordinal))
+            .SourceText.ToString()
+            .ShouldBe(first.Single().SourceText.ToString());
 
         ImmutableArray<IncrementalGeneratorRunStep> outputSteps = driver
             .GetRunResult()
@@ -220,17 +214,14 @@ public sealed class ArrowConditionalEmissionTests
             .TrackedOutputSteps.SelectMany(kvp => kvp.Value)
             .ToImmutableArray();
 
-        Assert.Contains(
-            outputSteps,
-            step => step.Outputs.All(o => o.Reason == IncrementalStepRunReason.Cached)
+        outputSteps.ShouldContain(step =>
+            step.Outputs.All(o => o.Reason == IncrementalStepRunReason.Cached)
         );
-        Assert.Contains(
-            outputSteps,
-            step =>
-                step.Outputs.Any(o =>
-                    o.Reason == IncrementalStepRunReason.New
-                    || o.Reason == IncrementalStepRunReason.Modified
-                )
+        outputSteps.ShouldContain(step =>
+            step.Outputs.Any(o =>
+                o.Reason == IncrementalStepRunReason.New
+                || o.Reason == IncrementalStepRunReason.Modified
+            )
         );
     }
 
@@ -241,20 +232,22 @@ public sealed class ArrowConditionalEmissionTests
         CSharpCompilation with = Compilation(FlatSource, withArrow: true);
 
         ImmutableArray<GeneratedSourceResult> first = Run(driver, with, out driver);
-        Assert.Equal(2, first.Length);
+        first.Length.ShouldBe(2);
 
         Compilation without = Compilation(FlatSource, withArrow: false);
         ImmutableArray<GeneratedSourceResult> second = Run(driver, without, out driver);
 
-        Assert.Single(second);
-        Assert.Equal(
-            first
-                .Single(s =>
-                    s.HintName.EndsWith(".ParquetSerializer.g.cs", StringComparison.Ordinal)
-                )
-                .SourceText.ToString(),
-            second.Single().SourceText.ToString()
-        );
+        second.Length.ShouldBe(1);
+        second
+            .Single()
+            .SourceText.ToString()
+            .ShouldBe(
+                first
+                    .Single(s =>
+                        s.HintName.EndsWith(".ParquetSerializer.g.cs", StringComparison.Ordinal)
+                    )
+                    .SourceText.ToString()
+            );
     }
 
     [Fact]
@@ -271,20 +264,20 @@ public sealed class ArrowConditionalEmissionTests
             .SourceText.ToString();
 
         string idBlock = ColumnBlock(arrow, "// column 0: id");
-        Assert.Contains("ArrowFixedWidthMemory<int>", idBlock, StringComparison.Ordinal);
-        Assert.DoesNotContain("ArrayPool", idBlock, StringComparison.Ordinal);
+        idBlock.ShouldContain("ArrowFixedWidthMemory<int>", Case.Sensitive);
+        idBlock.ShouldNotContain("ArrayPool", Case.Sensitive);
 
         // The nullable long column cannot be zero-copy: values are packed and def levels derived
         // from the validity bitmap, which does rent.
         string qtyBlock = ColumnBlock(arrow, "// column 2: qty");
-        Assert.Contains("WriteAllPartsAsync<long>", qtyBlock, StringComparison.Ordinal);
-        Assert.Contains("IsValid(row)", qtyBlock, StringComparison.Ordinal);
+        qtyBlock.ShouldContain("WriteAllPartsAsync<long>", Case.Sensitive);
+        qtyBlock.ShouldContain("IsValid(row)", Case.Sensitive);
     }
 
     private static string ColumnBlock(string source, string marker)
     {
         int start = source.IndexOf(marker, StringComparison.Ordinal);
-        Assert.True(start >= 0, $"marker '{marker}' not found in the generated Arrow bridge.");
+        (start >= 0).ShouldBeTrue($"marker '{marker}' not found in the generated Arrow bridge.");
         int next = source.IndexOf("// column ", start + marker.Length, StringComparison.Ordinal);
         return next < 0 ? source.Substring(start) : source.Substring(start, next - start);
     }

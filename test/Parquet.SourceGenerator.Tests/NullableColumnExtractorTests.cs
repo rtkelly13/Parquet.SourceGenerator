@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -137,23 +138,19 @@ public sealed class NullableColumnExtractorTests
                 );
 
                 string because = $"{name}/len={count}/forceLast={forceLast}";
-                Assert.Equal(expectedCount, branchlessCount);
-                Assert.Equal(expectedCount, twoPassCount);
-                Assert.True(expectedLevels.SequenceEqual(branchlessLevels), because);
-                Assert.True(expectedLevels.SequenceEqual(twoPassLevels), because);
-                Assert.True(
-                    expectedValues
-                        .Take(expectedCount)
-                        .SequenceEqual(branchlessValues.Take(branchlessCount)),
-                    because
-                );
-                Assert.True(
-                    expectedValues
-                        .Take(expectedCount)
-                        .SequenceEqual(twoPassValues.Take(twoPassCount)),
-                    because
-                );
-                Assert.Equal(expectedCount, NullableColumnExtractor.CountPresent(presence));
+                branchlessCount.ShouldBe(expectedCount);
+                twoPassCount.ShouldBe(expectedCount);
+                expectedLevels.SequenceEqual(branchlessLevels).ShouldBeTrue(because);
+                expectedLevels.SequenceEqual(twoPassLevels).ShouldBeTrue(because);
+                expectedValues
+                    .Take(expectedCount)
+                    .SequenceEqual(branchlessValues.Take(branchlessCount))
+                    .ShouldBeTrue(because);
+                expectedValues
+                    .Take(expectedCount)
+                    .SequenceEqual(twoPassValues.Take(twoPassCount))
+                    .ShouldBeTrue(because);
+                NullableColumnExtractor.CountPresent(presence).ShouldBe(expectedCount);
             }
         }
     }
@@ -170,7 +167,7 @@ public sealed class NullableColumnExtractorTests
         NullableColumnExtractor.ExpandPresenceToDefinitionLevels(presence, vector);
 
         for (int i = 0; i < count; i++)
-            Assert.Equal(presence[i], vector[i]);
+            vector[i].ShouldBe(presence[i]);
     }
 
     [Theory]
@@ -185,7 +182,7 @@ public sealed class NullableColumnExtractorTests
             expected += presence[i];
         }
 
-        Assert.Equal(expected, NullableColumnExtractor.CountPresent(presence));
+        NullableColumnExtractor.CountPresent(presence).ShouldBe(expected);
     }
 
     [Fact]
@@ -196,7 +193,7 @@ public sealed class NullableColumnExtractorTests
         {
             var presence = new byte[count];
             presence.AsSpan().Fill(1);
-            Assert.Equal(count, NullableColumnExtractor.CountPresent(presence));
+            NullableColumnExtractor.CountPresent(presence).ShouldBe(count);
         }
     }
 
@@ -218,8 +215,8 @@ public sealed class NullableColumnExtractorTests
             }
 
             int packed = NullableColumnExtractor.CompactInPlace<long>(values, presence);
-            Assert.Equal(expected.Count, packed);
-            Assert.True(expected.SequenceEqual(values.Take(packed)), $"{name}/len={count}");
+            packed.ShouldBe(expected.Count);
+            expected.SequenceEqual(values.Take(packed)).ShouldBeTrue($"{name}/len={count}");
         }
     }
 
@@ -256,15 +253,15 @@ public sealed class NullableColumnExtractorTests
             guidValues
         );
 
-        Assert.Equal(75, packedDates);
-        Assert.Equal(75, packedGuids);
-        Assert.True(levels.SequenceEqual(guidLevels));
+        packedDates.ShouldBe(75);
+        packedGuids.ShouldBe(75);
+        levels.SequenceEqual(guidLevels).ShouldBeTrue();
         for (int i = 0, k = 0; i < Count; i++)
         {
             if (i % 4 == 0)
                 continue;
-            Assert.Equal(source[i]!.Value, dates[k]);
-            Assert.Equal(guids[i]!.Value, guidValues[k]);
+            dates[k].ShouldBe(source[i]!.Value);
+            guidValues[k].ShouldBe(guids[i]!.Value);
             k++;
         }
     }
@@ -273,19 +270,19 @@ public sealed class NullableColumnExtractorTests
     public void ShortDestinationsThrow()
     {
         var source = new int?[8];
-        Assert.Throws<ArgumentException>(() =>
+        Should.Throw<ArgumentException>(() =>
             NullableColumnExtractor.ExtractBranchless<int>(source, new int[4], new int[8])
         );
-        Assert.Throws<ArgumentException>(() =>
+        Should.Throw<ArgumentException>(() =>
             NullableColumnExtractor.ExtractBranchless<int>(source, new int[8], new int[4])
         );
-        Assert.Throws<ArgumentException>(() =>
+        Should.Throw<ArgumentException>(() =>
             NullableColumnExtractor.ExtractTwoPass<int>(source, new byte[4], new int[8], new int[8])
         );
-        Assert.Throws<ArgumentException>(() =>
+        Should.Throw<ArgumentException>(() =>
             NullableColumnExtractor.ExpandPresenceToDefinitionLevels(new byte[8], new int[4])
         );
-        Assert.Throws<ArgumentException>(() =>
+        Should.Throw<ArgumentException>(() =>
             NullableColumnExtractor.CompactInPlace<int>(new int[8], new byte[4])
         );
     }
