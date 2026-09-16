@@ -9,13 +9,14 @@
 # ELOC_PER_MEMBER emitted executable lines per emitted public member.
 # Ordinal-sorted. CC, CL, SLOC, ELOC, DIT, ERRORS and MEMBERS are gated exactly; MI is
 # REPORTED BUT NOT GATED for generated code. See docs/22-GENERATED-CODE-METRICS.md.
-S:NestedOrderParquetExtensions | EMITTER=v6 MEMBERS=47 CC=367 CL=78 SLOC=2966 ELOC=1213 ERRORS=0 METHODS=52 MAXCC=62 ELOC_PER_MEMBER=25.8
+S:NestedOrderParquetExtensions | EMITTER=v6 MEMBERS=47 CC=393 CL=78 SLOC=3085 ELOC=1277 ERRORS=0 METHODS=54 MAXCC=62 ELOC_PER_MEMBER=27.2
 M:SampleDomain.Models.NestedOrderParquet.From(System.IO.Stream) | MI=90 CC=2 CL=5 DIT=- SLOC=3 ELOC=1
 M:SampleDomain.Models.NestedOrderParquet.From(System.ReadOnlyMemory<byte>) | MI=94 CC=1 CL=3 DIT=- SLOC=3 ELOC=1
 M:SampleDomain.Models.NestedOrderParquetExtensions.AcceptRowGroup(System.Func<SampleDomain.Models.NestedOrderRowGroupMetadata, bool>, Parquet.ParquetRowGroupReader, int, Parquet.Schema.DataField) | MI=65 CC=5 CL=8 DIT=- SLOC=34 ELOC=6
 M:SampleDomain.Models.NestedOrderParquetExtensions.BuildFormatOptions(Parquet.SourceGenerator.ParquetSerializerOptions) | MI=59 CC=5 CL=11 DIT=- SLOC=64 ELOC=10
 M:SampleDomain.Models.NestedOrderParquetExtensions.CreateBufferStream(System.ReadOnlyMemory<byte>) | MI=87 CC=2 CL=4 DIT=- SLOC=13 ELOC=1
 M:SampleDomain.Models.NestedOrderParquetExtensions.GetFieldDepth(Parquet.Schema.Field) | MI=60 CC=6 CL=6 DIT=- SLOC=22 ELOC=11
+M:SampleDomain.Models.NestedOrderParquetExtensions.GetFooterStart(System.IO.Stream) | MI=52 CC=7 CL=3 DIT=- SLOC=34 ELOC=18
 M:SampleDomain.Models.NestedOrderParquetExtensions.ReadBufferSequentialArrayAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=24 CC=31 CL=23 DIT=- SLOC=237 ELOC=118
 M:SampleDomain.Models.NestedOrderParquetExtensions.ReadParquetArrayAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.NestedOrderRowGroupMetadata, bool>) | MI=22 CC=37 CL=24 DIT=- SLOC=265 ELOC=130
 M:SampleDomain.Models.NestedOrderParquetExtensions.ReadParquetArrayAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=76 CC=1 CL=4 DIT=- SLOC=10 ELOC=3
@@ -29,8 +30,9 @@ M:SampleDomain.Models.NestedOrderParquetExtensions.ReadParquetStreamAsync(System
 M:SampleDomain.Models.NestedOrderParquetExtensions.ReadParquetStreamAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.NestedOrderRowGroupMetadata, bool>) | MI=67 CC=2 CL=10 DIT=- SLOC=15 ELOC=6
 M:SampleDomain.Models.NestedOrderParquetExtensions.ReadRowGroupsIntoAsync(System.ReadOnlyMemory<byte>, Parquet.ParquetOptions, SampleDomain.Models.NestedOrder[], int[], int[], int, int, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationTokenSource, System.Threading.CancellationToken) | MI=27 CC=23 CL=24 DIT=- SLOC=229 ELOC=99
 M:SampleDomain.Models.NestedOrderParquetExtensions.ResolveSchemaField(Parquet.Schema.DataField[], int, Parquet.Schema.DataField, ref System.Collections.Generic.Dictionary<string, Parquet.Schema.DataField>, out bool) | MI=50 CC=10 CL=9 DIT=- SLOC=62 ELOC=21
-M:SampleDomain.Models.NestedOrderParquetExtensions.ValidatePhysicalType(Parquet.ParquetReader, Parquet.Schema.DataField[], Parquet.Schema.DataField) | MI=50 CC=11 CL=15 DIT=- SLOC=40 ELOC=20
-M:SampleDomain.Models.NestedOrderParquetExtensions.ValidateReader(Parquet.ParquetReader, Parquet.SourceGenerator.ParquetSerializerOptions) | MI=52 CC=6 CL=8 DIT=- SLOC=34 ELOC=19
+M:SampleDomain.Models.NestedOrderParquetExtensions.ValidateColumnChunkBounds(Parquet.ParquetReader, long) | MI=40 CC=19 CL=10 DIT=- SLOC=79 ELOC=44
+M:SampleDomain.Models.NestedOrderParquetExtensions.ValidatePhysicalType(Parquet.ParquetReader, Parquet.Schema.DataField[], Parquet.Schema.DataField, long) | MI=50 CC=11 CL=15 DIT=- SLOC=41 ELOC=20
+M:SampleDomain.Models.NestedOrderParquetExtensions.ValidateReader(Parquet.ParquetReader, System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions) | MI=51 CC=6 CL=9 DIT=- SLOC=37 ELOC=21
 M:SampleDomain.Models.NestedOrderParquetExtensions.WriteParquetAsync(System.Collections.Generic.IAsyncEnumerable<SampleDomain.Models.NestedOrder>, System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=54 CC=7 CL=15 DIT=- SLOC=35 ELOC=16
 M:SampleDomain.Models.NestedOrderParquetExtensions.WriteParquetAsync(System.Collections.Generic.IReadOnlyCollection<SampleDomain.Models.NestedOrder>, System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=62 CC=3 CL=12 DIT=- SLOC=22 ELOC=8
 M:SampleDomain.Models.NestedOrderParquetExtensions.WriteParquetBatchedAsync(System.Collections.Generic.IEnumerable<SampleDomain.Models.NestedOrder>, System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=51 CC=9 CL=15 DIT=- SLOC=46 ELOC=19
@@ -67,7 +69,7 @@ P:SampleDomain.Models.NestedOrderRowGroupMetadata.Id | MI=100 CC=1 CL=1 DIT=- SL
 P:SampleDomain.Models.NestedOrderRowGroupMetadata.RowCount | MI=100 CC=1 CL=0 DIT=- SLOC=2 ELOC=0
 P:SampleDomain.Models.NestedOrderRowGroupMetadata.RowGroupIndex | MI=100 CC=1 CL=0 DIT=- SLOC=2 ELOC=0
 T:SampleDomain.Models.NestedOrderParquet | MI=91 CC=3 CL=7 DIT=1 SLOC=13 ELOC=2
-T:SampleDomain.Models.NestedOrderParquetExtensions | MI=39 CC=327 CL=72 DIT=1 SLOC=2750 ELOC=1164
+T:SampleDomain.Models.NestedOrderParquetExtensions | MI=39 CC=353 CL=72 DIT=1 SLOC=2869 ELOC=1228
 T:SampleDomain.Models.NestedOrderParquetFilteredSource | MI=73 CC=10 CL=14 DIT=1 SLOC=53 ELOC=15
 T:SampleDomain.Models.NestedOrderParquetMemorySource | MI=82 CC=9 CL=15 DIT=1 SLOC=45 ELOC=11
 T:SampleDomain.Models.NestedOrderParquetParallelSource | MI=82 CC=5 CL=9 DIT=1 SLOC=31 ELOC=7

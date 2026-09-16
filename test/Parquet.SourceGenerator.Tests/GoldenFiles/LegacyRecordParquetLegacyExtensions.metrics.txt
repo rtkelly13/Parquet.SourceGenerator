@@ -9,9 +9,10 @@
 # ELOC_PER_MEMBER emitted executable lines per emitted public member.
 # Ordinal-sorted. CC, CL, SLOC, ELOC, DIT, ERRORS and MEMBERS are gated exactly; MI is
 # REPORTED BUT NOT GATED for generated code. See docs/22-GENERATED-CODE-METRICS.md.
-S:LegacyRecordParquetLegacyExtensions | EMITTER=V5 MEMBERS=7 CC=56 CL=45 SLOC=545 ELOC=145 ERRORS=0 METHODS=17 MAXCC=11 ELOC_PER_MEMBER=20.7
+S:LegacyRecordParquetLegacyExtensions | EMITTER=V5 MEMBERS=7 CC=82 CL=45 SLOC=664 ELOC=209 ERRORS=0 METHODS=19 MAXCC=19 ELOC_PER_MEMBER=29.9
 M:SampleDomain.Models.LegacyRecordParquetLegacyExtensions.ApplyCompression(Parquet.ParquetWriter, Parquet.SourceGenerator.ParquetSerializerOptions) | MI=72 CC=6 CL=7 DIT=- SLOC=50 ELOC=3
 M:SampleDomain.Models.LegacyRecordParquetLegacyExtensions.BuildFormatOptions(Parquet.SourceGenerator.ParquetSerializerOptions) | MI=100 CC=1 CL=2 DIT=- SLOC=13 ELOC=1
+M:SampleDomain.Models.LegacyRecordParquetLegacyExtensions.GetFooterStart(System.IO.Stream) | MI=52 CC=7 CL=3 DIT=- SLOC=34 ELOC=18
 M:SampleDomain.Models.LegacyRecordParquetLegacyExtensions.ReadParquetArrayAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=42 CC=9 CL=20 DIT=- SLOC=72 ELOC=34
 M:SampleDomain.Models.LegacyRecordParquetLegacyExtensions.ReadParquetAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=72 CC=1 CL=7 DIT=- SLOC=11 ELOC=4
 M:SampleDomain.Models.LegacyRecordParquetLegacyExtensions.ResolveSchemaField(Parquet.Schema.DataField[], int, Parquet.Schema.DataField, ref System.Collections.Generic.Dictionary<string, Parquet.Schema.DataField>, out bool) | MI=50 CC=10 CL=9 DIT=- SLOC=62 ELOC=21
@@ -22,10 +23,11 @@ M:SampleDomain.Models.LegacyRecordParquetLegacyExtensions.StringDeduplicator.Has
 M:SampleDomain.Models.LegacyRecordParquetLegacyExtensions.StringDeduplicator.HashString(string) | MI=71 CC=2 CL=0 DIT=- SLOC=10 ELOC=5
 M:SampleDomain.Models.LegacyRecordParquetLegacyExtensions.StringDeduplicator.SpanEqualsOrdinal(System.ReadOnlySpan<char>, string) | MI=72 CC=4 CL=1 DIT=- SLOC=9 ELOC=4
 M:SampleDomain.Models.LegacyRecordParquetLegacyExtensions.StringDeduplicator.StringDeduplicator(int) | MI=72 CC=1 CL=2 DIT=- SLOC=6 ELOC=4
-M:SampleDomain.Models.LegacyRecordParquetLegacyExtensions.ValidatePhysicalType(Parquet.ParquetReader, Parquet.Schema.DataField[], Parquet.Schema.DataField) | MI=50 CC=11 CL=15 DIT=- SLOC=40 ELOC=20
-M:SampleDomain.Models.LegacyRecordParquetLegacyExtensions.ValidateReader(Parquet.ParquetReader, Parquet.Schema.DataField[]) | MI=75 CC=1 CL=2 DIT=- SLOC=12 ELOC=4
+M:SampleDomain.Models.LegacyRecordParquetLegacyExtensions.ValidateColumnChunkBounds(Parquet.ParquetReader, long) | MI=40 CC=19 CL=10 DIT=- SLOC=79 ELOC=44
+M:SampleDomain.Models.LegacyRecordParquetLegacyExtensions.ValidatePhysicalType(Parquet.ParquetReader, Parquet.Schema.DataField[], Parquet.Schema.DataField, long) | MI=50 CC=11 CL=15 DIT=- SLOC=41 ELOC=20
+M:SampleDomain.Models.LegacyRecordParquetLegacyExtensions.ValidateReader(Parquet.ParquetReader, System.IO.Stream, Parquet.Schema.DataField[]) | MI=69 CC=1 CL=3 DIT=- SLOC=15 ELOC=6
 M:SampleDomain.Models.LegacyRecordParquetLegacyExtensions.WriteParquetAsync(System.Collections.Generic.IReadOnlyList<SampleDomain.Models.LegacyRecord>, System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=62 CC=3 CL=14 DIT=- SLOC=23 ELOC=8
 M:SampleDomain.Models.LegacyRecordParquetLegacyExtensions.WriteParquetBatchedAsync(System.Collections.Generic.IEnumerable<SampleDomain.Models.LegacyRecord>, System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=49 CC=9 CL=17 DIT=- SLOC=54 ELOC=22
 M:SampleDomain.Models.LegacyRecordParquetLegacyExtensions.WriteRowGroupAsync(Parquet.ParquetWriter, System.Collections.Generic.IReadOnlyList<SampleDomain.Models.LegacyRecord>, System.Threading.CancellationToken) | MI=48 CC=5 CL=13 DIT=- SLOC=40 ELOC=24
-T:SampleDomain.Models.LegacyRecordParquetLegacyExtensions | MI=57 CC=56 CL=45 DIT=1 SLOC=545 ELOC=145
+T:SampleDomain.Models.LegacyRecordParquetLegacyExtensions | MI=54 CC=82 CL=45 DIT=1 SLOC=664 ELOC=209
 T:SampleDomain.Models.LegacyRecordParquetLegacyExtensions.StringDeduplicator | MI=64 CC=24 CL=7 DIT=1 SLOC=139 ELOC=57

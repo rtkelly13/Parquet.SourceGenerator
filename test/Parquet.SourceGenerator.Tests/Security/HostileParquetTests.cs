@@ -448,9 +448,67 @@ public class HostileParquetTests
         }
     }
 
+    [Theory]
+    [InlineData("before-header", "outside the file data bounds")]
+    [InlineData("in-footer", "outside the file data bounds")]
+    [InlineData("past-footer", "extends beyond the file data bounds")]
+    [InlineData("overlap", "ranges overlap")]
+    public async Task MalformedColumnChunkBoundsAreRejected(string mutation, string expectedMessage)
+    {
+        var items = new List<MultiRowGroupModel>
+        {
+            new() { Id = 1, Name = "one" },
+        };
+
+        using var source = new MemoryStream();
+        await items.WriteParquetAsync(source);
+        byte[] hostileBytes = await RewriteColumnMetadataAsync(
+            source.ToArray(),
+            (metadata, footerStart) =>
+            {
+                var first = metadata.RowGroups[0].Columns[0].MetaData!;
+                switch (mutation)
+                {
+                    case "before-header":
+                        first.DataPageOffset = -1;
+                        break;
+                    case "in-footer":
+                        first.DataPageOffset = footerStart;
+                        break;
+                    case "past-footer":
+                        first.TotalCompressedSize = long.MaxValue;
+                        break;
+                    case "overlap":
+                        metadata.RowGroups[0].Columns[1].MetaData!.DataPageOffset =
+                            first.DataPageOffset;
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(mutation), mutation, null);
+                }
+            }
+        );
+
+        using var hostileStream = new MemoryStream(hostileBytes, writable: false);
+        var ex = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            MultiRowGroupModelParquetExtensions.ReadParquetAsync(hostileStream)
+        );
+        Assert.Contains(expectedMessage, ex.Message);
+    }
+
     private static async Task<byte[]> RewriteFirstColumnPhysicalTypeAsync(
         byte[] bytes,
         ParquetPhysicalType physicalType
+    )
+    {
+        return await RewriteColumnMetadataAsync(
+            bytes,
+            (metadata, _) => metadata.RowGroups[0].Columns[0].MetaData!.Type = physicalType
+        );
+    }
+
+    private static async Task<byte[]> RewriteColumnMetadataAsync(
+        byte[] bytes,
+        Action<FileMetaData, int> mutate
     )
     {
         int footerLength = BitConverter.ToInt32(bytes, bytes.Length - 8);
@@ -458,7 +516,7 @@ public class HostileParquetTests
 
         using var input = new MemoryStream(bytes, writable: false);
         await using var reader = await ParquetReader.CreateAsync(input);
-        reader.Metadata!.RowGroups[0].Columns[0].MetaData!.Type = physicalType;
+        mutate(reader.Metadata!, footerStart);
 
         using var footer = new MemoryStream();
         System.Type writerType = typeof(ParquetReader).Assembly.GetType(

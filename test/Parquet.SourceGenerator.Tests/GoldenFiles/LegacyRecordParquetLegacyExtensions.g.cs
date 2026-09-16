@@ -90,7 +90,8 @@ public static partial class LegacyRecordParquetLegacyExtensions
     private static void ValidatePhysicalType(
         global::Parquet.ParquetReader reader,
         global::Parquet.Schema.DataField[] fileFields,
-        global::Parquet.Schema.DataField expected)
+        global::Parquet.Schema.DataField expected,
+        long footerStart)
     {
         string expectedPath = expected.Path.ToString();
         int fieldIndex = -1;
@@ -125,6 +126,121 @@ public static partial class LegacyRecordParquetLegacyExtensions
         }
     }
 
+    private static long GetFooterStart(global::System.IO.Stream stream)
+    {
+        if (!stream.CanSeek || stream.Length < 8)
+        {
+            throw new global::System.IO.InvalidDataException("Parquet stream is not seekable or is too small to contain a footer.");
+        }
+        long originalPosition = stream.Position;
+        try
+        {
+            stream.Position = stream.Length - 8;
+            var footerLengthBytes = new byte[4];
+            int read = 0;
+            while (read < footerLengthBytes.Length)
+            {
+                int count = stream.Read(footerLengthBytes, read, footerLengthBytes.Length - read);
+                if (count == 0)
+                {
+                    throw new global::System.IO.InvalidDataException("Parquet footer length could not be read.");
+                }
+                read += count;
+            }
+            long footerLength = footerLengthBytes[0] | ((long)footerLengthBytes[1] << 8) | ((long)footerLengthBytes[2] << 16) | ((long)footerLengthBytes[3] << 24);
+            long footerStart = stream.Length - 8 - footerLength;
+            if (footerStart < 4 || footerStart > stream.Length - 8)
+            {
+                throw new global::System.IO.InvalidDataException("Parquet footer bounds are invalid.");
+            }
+            return footerStart;
+        }
+        finally
+        {
+            stream.Position = originalPosition;
+        }
+    }
+
+    private static void ValidateColumnChunkBounds(global::Parquet.ParquetReader reader, long footerStart)
+    {
+        var fileMetadata = reader.Metadata;
+        if (fileMetadata is null)
+        {
+            throw new global::System.IO.InvalidDataException("Parquet footer metadata is missing.");
+        }
+        int chunkCount = 0;
+        foreach (var rowGroup in fileMetadata.RowGroups)
+        {
+            if (rowGroup.Columns.Count > int.MaxValue - chunkCount)
+            {
+                throw new global::System.IO.InvalidDataException("Parquet footer contains too many column chunks.");
+            }
+            chunkCount += rowGroup.Columns.Count;
+        }
+        var starts = new long[chunkCount];
+        var ends = new long[chunkCount];
+        int rangeCount = 0;
+        for (int rowGroupIndex = 0; rowGroupIndex < fileMetadata.RowGroups.Count; rowGroupIndex++)
+        {
+            var rowGroup = fileMetadata.RowGroups[rowGroupIndex];
+            for (int columnIndex = 0; columnIndex < rowGroup.Columns.Count; columnIndex++)
+            {
+                var column = rowGroup.Columns[columnIndex];
+                var metadata = column.MetaData;
+                if (metadata is null)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column chunk metadata is missing for row group {rowGroupIndex}, column {columnIndex}.");
+                }
+                if (metadata.TotalCompressedSize < 0)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column chunk {columnIndex} in row group {rowGroupIndex} has a negative compressed size.");
+                }
+                if (metadata.TotalCompressedSize == 0)
+                {
+                    if (rowGroup.NumRows > 0)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Column chunk {columnIndex} in row group {rowGroupIndex} has no compressed data.");
+                    }
+                    continue;
+                }
+                long dataPageOffset = metadata.DataPageOffset;
+                if (dataPageOffset < 4 || dataPageOffset >= footerStart)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column chunk {columnIndex} in row group {rowGroupIndex} has data page offset {dataPageOffset} outside the file data bounds.");
+                }
+                long chunkStart = dataPageOffset;
+                if (metadata.DictionaryPageOffset.HasValue)
+                {
+                    long dictionaryPageOffset = metadata.DictionaryPageOffset.Value;
+                    if (dictionaryPageOffset < 4 || dictionaryPageOffset >= footerStart)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Column chunk {columnIndex} in row group {rowGroupIndex} has dictionary page offset {dictionaryPageOffset} outside the file data bounds.");
+                    }
+                    if (dictionaryPageOffset > dataPageOffset)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Column chunk {columnIndex} in row group {rowGroupIndex} has a dictionary page after its data page.");
+                    }
+                    chunkStart = dictionaryPageOffset;
+                }
+                if (metadata.TotalCompressedSize > footerStart - chunkStart)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column chunk {columnIndex} in row group {rowGroupIndex} extends beyond the file data bounds.");
+                }
+                starts[rangeCount] = chunkStart;
+                ends[rangeCount] = chunkStart + metadata.TotalCompressedSize;
+                rangeCount++;
+            }
+        }
+        global::System.Array.Sort(starts, ends, 0, rangeCount);
+        for (int i = 1; i < rangeCount; i++)
+        {
+            if (starts[i] < ends[i - 1])
+            {
+                throw new global::System.IO.InvalidDataException($"Column chunk ranges overlap at file offset {starts[i]}.");
+            }
+        }
+    }
+
     /// <summary>
     /// Translates the generator's options into the Parquet.Net options the reader and writer accept.
     /// </summary>
@@ -144,12 +260,15 @@ public static partial class LegacyRecordParquetLegacyExtensions
     /// </summary>
     private static void ValidateReader(
         global::Parquet.ParquetReader reader,
+        global::System.IO.Stream stream,
         global::Parquet.Schema.DataField[] fileFieldsForTypeValidation)
     {
-        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_0);
-        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_1);
-        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_2);
-        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_3);
+        long footerStart = GetFooterStart(stream);
+        ValidateColumnChunkBounds(reader, footerStart);
+        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_0, footerStart);
+        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_1, footerStart);
+        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_2, footerStart);
+        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_3, footerStart);
     }
 
     /// <summary>
@@ -493,7 +612,7 @@ public static partial class LegacyRecordParquetLegacyExtensions
             cancellationToken: cancellationToken).ConfigureAwait(false))
         {
             var fileFields = reader.Schema.GetDataFields();
-            ValidateReader(reader, fileFields);
+            ValidateReader(reader, stream, fileFields);
             int totalRows = 0;
             for (int r = 0; r < reader.RowGroupCount; r++)
             {

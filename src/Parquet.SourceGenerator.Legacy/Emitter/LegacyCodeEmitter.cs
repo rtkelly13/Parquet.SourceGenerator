@@ -124,6 +124,8 @@ public static class LegacyCodeEmitter
         EmitResolveSchemaField(builder);
         builder.AppendLine();
         SchemaComponent.EmitValidatePhysicalType(builder);
+        builder.AppendLine();
+        SchemaComponent.EmitValidateColumnChunkBounds(builder);
     }
 
     private static void EmitValidateReader(StringBuilder builder, TargetClassModel model)
@@ -135,14 +137,17 @@ public static class LegacyCodeEmitter
         builder.AppendLine("    /// </summary>");
         builder.AppendLine("    private static void ValidateReader(");
         builder.AppendLine("        global::Parquet.ParquetReader reader,");
+        builder.AppendLine("        global::System.IO.Stream stream,");
         builder.AppendLine(
             "        global::Parquet.Schema.DataField[] fileFieldsForTypeValidation)"
         );
         builder.AppendLine("    {");
+        builder.AppendLine("        long footerStart = GetFooterStart(stream);");
+        builder.AppendLine("        ValidateColumnChunkBounds(reader, footerStart);");
         for (int i = 0; i < model.Properties.Length; i++)
         {
             builder.AppendLine(
-                $"        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_{i});"
+                $"        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_{i}, footerStart);"
             );
         }
         builder.AppendLine("    }");
@@ -646,7 +651,7 @@ public static class LegacyCodeEmitter
         if (model.Properties.Length > 0)
         {
             builder.AppendLine("            var fileFields = reader.Schema.GetDataFields();");
-            builder.AppendLine("            ValidateReader(reader, fileFields);");
+            builder.AppendLine("            ValidateReader(reader, stream, fileFields);");
         }
 
         if (model.Properties.Length == 0)
