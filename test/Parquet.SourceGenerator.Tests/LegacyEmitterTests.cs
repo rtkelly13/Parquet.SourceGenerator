@@ -176,22 +176,17 @@ public class LegacyEmitterTests
             Prop("Description", "description", "string", LegacyModels::PropertyKind.Primitive, true)
         );
 
-        Assert.Contains("ValidateDictionaryEntries(rgReader, field_0, options);", code);
-        Assert.Contains(
-            "if (!missing_1) ValidateDictionaryEntries(rgReader, field_1, options);",
-            code
+        code.ShouldContain("ValidateDictionaryEntries(rgReader, field_0, options);");
+        code.ShouldContain(
+            "if (!missing_1) ValidateDictionaryEntries(rgReader, field_1, options);"
         );
-        Assert.Contains(
-            "dictionaryEncoded && metadata.NumValues > options.MaxDictionaryEntries",
-            code
+        code.ShouldContain(
+            "dictionaryEncoded && metadata.NumValues > options.MaxDictionaryEntries"
         );
-        Assert.Contains("ValidateStringLengths(data_0, field_0.Name, options);", code);
-        Assert.Contains(
-            "if (!missing_1) ValidateStringLengths(data_1, field_1.Name, options);",
-            code
-        );
-        Assert.Contains("options.MaxStringLengthBytes", code);
-        Assert.Contains("throw new global::System.IO.InvalidDataException", code);
+        code.ShouldContain("ValidateStringLengths(data_0, field_0.Name, options);");
+        code.ShouldContain("if (!missing_1) ValidateStringLengths(data_1, field_1.Name, options);");
+        code.ShouldContain("options.MaxStringLengthBytes");
+        code.ShouldContain("throw new global::System.IO.InvalidDataException");
     }
 
     /// <summary>

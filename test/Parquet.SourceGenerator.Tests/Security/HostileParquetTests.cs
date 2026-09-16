@@ -273,29 +273,28 @@ public class HostileParquetTests
         var hostileOptions = new ParquetSerializerOptions { MaxDictionaryEntries = 1 };
 
         ms.Position = 0;
-        var listException = await Assert.ThrowsAsync<InvalidDataException>(() =>
+        var listException = await Should.ThrowAsync<InvalidDataException>(() =>
             DictionaryEncodedRecordParquetExtensions.ReadParquetAsync(ms, hostileOptions)
         );
-        Assert.Equal(
-            "Dictionary column 'Category' value count 1000 exceeds maximum allowed 1.",
-            listException.Message
+        listException.Message.ShouldBe(
+            "Dictionary column 'Category' value count 1000 exceeds maximum allowed 1."
         );
 
-        var arrayException = await Assert.ThrowsAsync<InvalidDataException>(() =>
+        var arrayException = await Should.ThrowAsync<InvalidDataException>(() =>
             DictionaryEncodedRecordParquetExtensions.ReadParquetArrayAsync(bytes, hostileOptions)
         );
-        Assert.Equal(listException.Message, arrayException.Message);
+        arrayException.Message.ShouldBe(listException.Message);
 
-        var parallelException = await Assert.ThrowsAsync<InvalidDataException>(() =>
+        var parallelException = await Should.ThrowAsync<InvalidDataException>(() =>
             DictionaryEncodedRecordParquetExtensions.ReadParquetParallelArrayAsync(
                 bytes,
                 hostileOptions
             )
         );
-        Assert.Equal(listException.Message, parallelException.Message);
+        parallelException.Message.ShouldBe(listException.Message);
 
         using var stream = new MemoryStream(bytes, writable: false);
-        var streamException = await Assert.ThrowsAsync<InvalidDataException>(async () =>
+        var streamException = await Should.ThrowAsync<InvalidDataException>(async () =>
         {
             await foreach (
                 var _ in DictionaryEncodedRecordParquetExtensions.ReadParquetStreamAsync(
@@ -304,7 +303,7 @@ public class HostileParquetTests
                 )
             ) { }
         });
-        Assert.Equal(listException.Message, streamException.Message);
+        streamException.Message.ShouldBe(listException.Message);
     }
 
     [Fact]
@@ -322,26 +321,25 @@ public class HostileParquetTests
         var hostileOptions = new ParquetSerializerOptions { MaxStringLengthBytes = 3 };
 
         ms.Position = 0;
-        var listException = await Assert.ThrowsAsync<InvalidDataException>(() =>
+        var listException = await Should.ThrowAsync<InvalidDataException>(() =>
             CompressibleRecordParquetExtensions.ReadParquetAsync(ms, hostileOptions)
         );
-        Assert.Equal(
-            "String column 'payload' value at index 0 UTF-8 length 4 exceeds maximum allowed 3.",
-            listException.Message
+        listException.Message.ShouldBe(
+            "String column 'payload' value at index 0 UTF-8 length 4 exceeds maximum allowed 3."
         );
 
-        var arrayException = await Assert.ThrowsAsync<InvalidDataException>(() =>
+        var arrayException = await Should.ThrowAsync<InvalidDataException>(() =>
             CompressibleRecordParquetExtensions.ReadParquetArrayAsync(bytes, hostileOptions)
         );
-        Assert.Equal(listException.Message, arrayException.Message);
+        arrayException.Message.ShouldBe(listException.Message);
 
-        var parallelException = await Assert.ThrowsAsync<InvalidDataException>(() =>
+        var parallelException = await Should.ThrowAsync<InvalidDataException>(() =>
             CompressibleRecordParquetExtensions.ReadParquetParallelArrayAsync(bytes, hostileOptions)
         );
-        Assert.Equal(listException.Message, parallelException.Message);
+        parallelException.Message.ShouldBe(listException.Message);
 
         using var stream = new MemoryStream(bytes, writable: false);
-        var streamException = await Assert.ThrowsAsync<InvalidDataException>(async () =>
+        var streamException = await Should.ThrowAsync<InvalidDataException>(async () =>
         {
             await foreach (
                 var _ in CompressibleRecordParquetExtensions.ReadParquetStreamAsync(
@@ -350,7 +348,7 @@ public class HostileParquetTests
                 )
             ) { }
         });
-        Assert.Equal(listException.Message, streamException.Message);
+        streamException.Message.ShouldBe(listException.Message);
     }
 
     [Fact]
@@ -365,16 +363,15 @@ public class HostileParquetTests
         await items.WriteParquetAsync(ms);
         ms.Position = 0;
 
-        var ex = await Assert.ThrowsAsync<InvalidDataException>(() =>
+        var ex = await Should.ThrowAsync<InvalidDataException>(() =>
             ListRowParquetExtensions.ReadParquetAsync(
                 ms,
                 new ParquetSerializerOptions { MaxStringLengthBytes = 1 }
             )
         );
 
-        Assert.Equal(
-            "String column 'Tags' value at index 0 UTF-8 length 2 exceeds maximum allowed 1.",
-            ex.Message
+        ex.Message.ShouldBe(
+            "String column 'Tags' value at index 0 UTF-8 length 2 exceeds maximum allowed 1."
         );
     }
 
