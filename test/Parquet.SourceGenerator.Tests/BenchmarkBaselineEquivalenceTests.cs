@@ -76,7 +76,7 @@ public sealed class BenchmarkBaselineEquivalenceTests
         for (int i = 0; i < count; i++)
         {
             sgResult[i].Id.ShouldBe(original[i].Id);
-            sgResult[i].ValA.ShouldBe(original[i].ValA, 0.00001);
+            sgResult[i].ValA.ShouldBe(original[i].ValA, 0.000005);
             sgResult[i].ValB.ShouldBe(original[i].ValB);
             sgResult[i].IsValid.ShouldBe(original[i].IsValid);
         }
@@ -90,7 +90,7 @@ public sealed class BenchmarkBaselineEquivalenceTests
         for (int i = 0; i < count; i++)
         {
             baselineResult.Data[i].Id.ShouldBe(original[i].Id);
-            baselineResult.Data[i].ValA.ShouldBe(original[i].ValA, 0.00001);
+            baselineResult.Data[i].ValA.ShouldBe(original[i].ValA, 0.000005);
             baselineResult.Data[i].ValB.ShouldBe(original[i].ValB);
             baselineResult.Data[i].IsValid.ShouldBe(original[i].IsValid);
         }

@@ -229,15 +229,15 @@ public sealed class BenchmarkDatasetsIntegrationTests
         records.Count.ShouldBe(53940);
 
         var r0 = records[0];
-        r0.Carat!.Value.ShouldBe(0.23, 0.01);
+        r0.Carat!.Value.ShouldBe(0.23, 0.005);
         r0.Cut.ShouldBe(2L);
         r0.Color.ShouldBe(1L);
         r0.Clarity.ShouldBe(3L);
-        r0.Depth!.Value.ShouldBe(61.5, 0.1);
-        r0.Table!.Value.ShouldBe(55.0, 0.1);
-        r0.X!.Value.ShouldBe(3.95, 0.01);
-        r0.Y!.Value.ShouldBe(3.98, 0.01);
-        r0.Z!.Value.ShouldBe(2.43, 0.01);
+        r0.Depth!.Value.ShouldBe(61.5, 0.05);
+        r0.Table!.Value.ShouldBe(55.0, 0.05);
+        r0.X!.Value.ShouldBe(3.95, 0.005);
+        r0.Y!.Value.ShouldBe(3.98, 0.005);
+        r0.Z!.Value.ShouldBe(2.43, 0.005);
     }
 
     [Fact]
