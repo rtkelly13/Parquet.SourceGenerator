@@ -97,6 +97,68 @@ public sealed record PropertyModel(
 ) : IEquatable<PropertyModel>
 {
     /// <summary>
+    /// Compares all semantic model state, including compound subtrees and opt-in flags that are
+    /// represented by init-only properties rather than positional record parameters.
+    /// </summary>
+    public bool Equals(PropertyModel? other)
+    {
+        return other is not null
+            && Name == other.Name
+            && ParquetColumnName == other.ParquetColumnName
+            && TypeName == other.TypeName
+            && TimestampUnit == other.TimestampUnit
+            && EnumUnderlyingTypeName == other.EnumUnderlyingTypeName
+            && Order == other.Order
+            && DecimalPrecision == other.DecimalPrecision
+            && DecimalScale == other.DecimalScale
+            && Kind == other.Kind
+            && IsNullable == other.IsNullable
+            && Deduplicate == other.Deduplicate
+            && Encoding == other.Encoding
+            && Children.Equals(other.Children)
+            && Equals(Element, other.Element)
+            && Equals(MapValue, other.MapValue)
+            && IsSortKey == other.IsSortKey
+            && CompoundIsValueType == other.CompoundIsValueType;
+    }
+
+    /// <summary>
+    /// Computes a hash code over every field used by <see cref="Equals(PropertyModel?)"/>.
+    /// </summary>
+    public override int GetHashCode()
+    {
+        unchecked
+        {
+            int hash = StringComparer.Ordinal.GetHashCode(Name);
+            hash = (hash * 397) ^ StringComparer.Ordinal.GetHashCode(ParquetColumnName);
+            hash = (hash * 397) ^ StringComparer.Ordinal.GetHashCode(TypeName);
+            hash =
+                (hash * 397)
+                ^ (TimestampUnit is null ? 0 : StringComparer.Ordinal.GetHashCode(TimestampUnit));
+            hash =
+                (hash * 397)
+                ^ (
+                    EnumUnderlyingTypeName is null
+                        ? 0
+                        : StringComparer.Ordinal.GetHashCode(EnumUnderlyingTypeName)
+                );
+            hash = (hash * 397) ^ Order;
+            hash = (hash * 397) ^ DecimalPrecision.GetHashCode();
+            hash = (hash * 397) ^ DecimalScale.GetHashCode();
+            hash = (hash * 397) ^ (int)Kind;
+            hash = (hash * 397) ^ IsNullable.GetHashCode();
+            hash = (hash * 397) ^ Deduplicate.GetHashCode();
+            hash = (hash * 397) ^ (int)Encoding;
+            hash = (hash * 397) ^ Children.GetHashCode();
+            hash = (hash * 397) ^ (Element?.GetHashCode() ?? 0);
+            hash = (hash * 397) ^ (MapValue?.GetHashCode() ?? 0);
+            hash = (hash * 397) ^ IsSortKey.GetHashCode();
+            hash = (hash * 397) ^ CompoundIsValueType.GetHashCode();
+            return hash;
+        }
+    }
+
+    /// <summary>
     /// Struct members: the child property models, in schema order. Value-equal via
     /// <see cref="EquatableArray{T}"/> — a <c>List</c> here would break model equality and
     /// with it the incremental pipeline's caching.

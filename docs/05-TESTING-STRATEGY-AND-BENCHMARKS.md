@@ -96,10 +96,16 @@ public void GeneratorCachesOutputsOnUnrelatedChanges()
     GeneratorDriverRunResult result = driver.GetRunResult();
     
     // Assert generator steps were cached rather than recalculated
-    var stepState = result.Results[0].TrackedSteps["TransformModelStep"];
-    Assert.All(stepState, step => Assert.Equal(IncrementalStepRunReason.Cached, step.Outputs[0].Reason));
+    var outputSteps = result.Results[0].TrackedOutputSteps.Values.SelectMany(steps => steps);
+    Assert.All(outputSteps, step =>
+        Assert.All(step.Outputs, output => Assert.Equal(IncrementalStepRunReason.Cached, output.Reason)));
 }
 ```
+
+The concrete #258 evidence, including unrelated-file and per-model edits, is in
+[`28 - Build Incrementality Spike`](./28-BUILD-INCREMENTALITY-258.md). Stable provider labels via
+`WithTrackingName` are not available on this repository's Roslyn 4.0.1 shipping floor or its
+Roslyn 4.8.0 test dependency, so the tests use the public tracked-output collection instead.
 
 ---
 
