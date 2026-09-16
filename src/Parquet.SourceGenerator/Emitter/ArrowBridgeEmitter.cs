@@ -1,4 +1,5 @@
 using System.Text;
+using Parquet.SourceGenerator.Emitter.Columnar;
 using Parquet.SourceGenerator.Emitter.Components;
 using Parquet.SourceGenerator.Models;
 
@@ -275,7 +276,15 @@ internal static class ArrowBridgeEmitter
         builder.AppendLine("        int count = batch.Length;");
         builder.AppendLine("        if (count == 0) return;");
         builder.AppendLine();
-        builder.AppendLine("        using (var groupWriter = writer.CreateRowGroup())");
+        builder.AppendLine(
+            $"        var columnarBatch = new {ColumnarBatchComponent.BatchTypeName(model)} {{ {ColumnarBatchComponent.RowCountMemberName(model)} = count }};"
+        );
+        for (int i = 0; i < model.Properties.Length; i++)
+        {
+            EmitColumnDeclarations(builder, model.Properties[i], i);
+        }
+        builder.AppendLine();
+        builder.AppendLine("        try");
         builder.AppendLine("        {");
 
         for (int i = 0; i < model.Properties.Length; i++)
@@ -283,6 +292,17 @@ internal static class ArrowBridgeEmitter
             EmitColumn(builder, model.Properties[i], i);
         }
 
+        builder.AppendLine();
+        builder.AppendLine(
+            "            await writer.WriteParquetRowGroupAsync(columnarBatch, cancellationToken);"
+        );
+        builder.AppendLine("        }");
+        builder.AppendLine("        finally");
+        builder.AppendLine("        {");
+        for (int i = 0; i < model.Properties.Length; i++)
+        {
+            EmitColumnCleanup(builder, model.Properties[i], i);
+        }
         builder.AppendLine("        }");
         builder.AppendLine("    }");
     }
@@ -295,11 +315,8 @@ internal static class ArrowBridgeEmitter
             quote: true
         );
         string arr = $"arrow_{slot}";
-        string field = $"_field_{slot}";
-
         builder.AppendLine();
         builder.AppendLine($"            // column {slot}: {prop.ParquetColumnName}");
-        builder.AppendLine("            {");
         builder.AppendLine($"                var {arr} = ({map.ArrowArrayType})batch.Column(");
         builder.AppendLine(
             $"                    batch.Schema.GetFieldIndex({name}, global::System.StringComparer.Ordinal));"
@@ -308,49 +325,84 @@ internal static class ArrowBridgeEmitter
         switch (map.Mode)
         {
             case ArrowExtractionMode.Direct when !prop.IsNullable:
-                EmitDirectRequired(builder, map, arr, field);
+                EmitDirectRequired(builder, map, arr, prop.Name);
                 break;
             case ArrowExtractionMode.Utf8:
-                EmitUtf8(builder, prop, map, arr, field, slot);
+                EmitUtf8(builder, prop, map, arr, slot);
                 break;
             case ArrowExtractionMode.Binary:
-                EmitBinary(builder, prop, map, arr, field, slot);
+                EmitBinary(builder, prop, map, arr, slot);
                 break;
             case ArrowExtractionMode.Convert when !prop.IsNullable:
-                EmitConvertRequired(builder, map, arr, field, slot);
+                EmitConvertRequired(builder, map, arr, prop.Name, slot);
                 break;
             default:
-                EmitPackedNullable(builder, map, arr, field, slot);
+                EmitPackedNullable(builder, map, arr, prop.Name, slot);
                 break;
         }
+    }
 
-        builder.AppendLine("            }");
+    private static void EmitColumnDeclarations(StringBuilder builder, PropertyModel prop, int slot)
+    {
+        ArrowLeafMapping map = ArrowMappingComponent.TryMap(prop)!;
+
+        switch (map.Mode)
+        {
+            case ArrowExtractionMode.Direct when !prop.IsNullable:
+                return;
+
+            case ArrowExtractionMode.Utf8:
+            {
+                string element = prop.IsNullable
+                    ? "global::System.ReadOnlyMemory<char>?"
+                    : "global::System.ReadOnlyMemory<char>";
+                builder.AppendLine($"        {element}[]? buffer_{slot} = null;");
+                builder.AppendLine($"        char[]? chars_{slot} = null;");
+                return;
+            }
+
+            case ArrowExtractionMode.Binary:
+            {
+                string element = prop.IsNullable
+                    ? "global::System.ReadOnlyMemory<byte>?"
+                    : "global::System.ReadOnlyMemory<byte>";
+                builder.AppendLine($"        {element}[]? buffer_{slot} = null;");
+                return;
+            }
+
+            case ArrowExtractionMode.Convert when !prop.IsNullable:
+                builder.AppendLine($"        {map.ParquetElementType}[]? buffer_{slot} = null;");
+                return;
+
+            default:
+                builder.AppendLine($"        {map.ParquetElementType}[]? packed_{slot} = null;");
+                builder.AppendLine($"        int[]? defLevels_{slot} = null;");
+                builder.AppendLine($"        int nonNullCount_{slot} = 0;");
+                return;
+        }
     }
 
     private static void EmitDirectRequired(
         StringBuilder builder,
         ArrowLeafMapping map,
         string arr,
-        string field
+        string propertyName
     )
     {
         string t = map.ParquetElementType;
         builder.AppendLine(
             "                // Zero-copy: the Arrow value buffer is reinterpreted in place."
         );
-        builder.AppendLine($"                await groupWriter.WriteAsync<{t}>(");
-        builder.AppendLine($"                    {field},");
         builder.AppendLine(
-            $"                    ArrowFixedWidthMemory<{t}>({arr}.ValueBuffer, {arr}.Offset, count),"
+            $"                columnarBatch.{propertyName} = ArrowFixedWidthMemory<{t}>({arr}.ValueBuffer, {arr}.Offset, count);"
         );
-        builder.AppendLine("                    cancellationToken: cancellationToken);");
     }
 
     private static void EmitConvertRequired(
         StringBuilder builder,
         ArrowLeafMapping map,
         string arr,
-        string field,
+        string propertyName,
         int slot
     )
     {
@@ -358,10 +410,8 @@ internal static class ArrowBridgeEmitter
         string convert = Substitute(map.ConvertExpression!, arr, "values", "row");
 
         builder.AppendLine(
-            $"                var buffer_{slot} = global::System.Buffers.ArrayPool<{t}>.Shared.Rent(count);"
+            $"                buffer_{slot} = global::System.Buffers.ArrayPool<{t}>.Shared.Rent(count);"
         );
-        builder.AppendLine("                try");
-        builder.AppendLine("                {");
         builder.AppendLine($"                    void Fill_{slot}()");
         builder.AppendLine("                    {");
         if (map.UsesValuesSpan)
@@ -374,26 +424,16 @@ internal static class ArrowBridgeEmitter
         builder.AppendLine("                        }");
         builder.AppendLine("                    }");
         builder.AppendLine($"                    Fill_{slot}();");
-        builder.AppendLine($"                    await groupWriter.WriteAsync<{t}>(");
-        builder.AppendLine($"                        {field},");
         builder.AppendLine(
-            $"                        new global::System.ReadOnlyMemory<{t}>(buffer_{slot}, 0, count),"
+            $"                    columnarBatch.{propertyName} = new global::System.ReadOnlyMemory<{t}>(buffer_{slot}, 0, count);"
         );
-        builder.AppendLine("                        cancellationToken: cancellationToken);");
-        builder.AppendLine("                }");
-        builder.AppendLine("                finally");
-        builder.AppendLine("                {");
-        builder.AppendLine(
-            $"                    global::System.Buffers.ArrayPool<{t}>.Shared.Return(buffer_{slot}, clearArray: false);"
-        );
-        builder.AppendLine("                }");
     }
 
     private static void EmitPackedNullable(
         StringBuilder builder,
         ArrowLeafMapping map,
         string arr,
-        string field,
+        string propertyName,
         int slot
     )
     {
@@ -411,14 +451,11 @@ internal static class ArrowBridgeEmitter
             "                // for the writer, one def level per row. No caller-supplied levels needed."
         );
         builder.AppendLine(
-            $"                var packed_{slot} = global::System.Buffers.ArrayPool<{t}>.Shared.Rent(count);"
+            $"                packed_{slot} = global::System.Buffers.ArrayPool<{t}>.Shared.Rent(count);"
         );
         builder.AppendLine(
-            $"                var defLevels_{slot} = global::System.Buffers.ArrayPool<int>.Shared.Rent(count);"
+            $"                defLevels_{slot} = global::System.Buffers.ArrayPool<int>.Shared.Rent(count);"
         );
-        builder.AppendLine($"                int nonNullCount_{slot} = 0;");
-        builder.AppendLine("                try");
-        builder.AppendLine("                {");
         builder.AppendLine($"                    void Pack_{slot}()");
         builder.AppendLine("                    {");
         if (needsValues)
@@ -452,26 +489,12 @@ internal static class ArrowBridgeEmitter
         builder.AppendLine("                        }");
         builder.AppendLine("                    }");
         builder.AppendLine($"                    Pack_{slot}();");
-        builder.AppendLine($"                    await groupWriter.WriteAllPartsAsync<{t}>(");
-        builder.AppendLine($"                        {field},");
         builder.AppendLine(
-            $"                        new global::System.ReadOnlyMemory<{t}>(packed_{slot}, 0, nonNullCount_{slot}),"
+            $"                    columnarBatch.{propertyName} = new global::System.ReadOnlyMemory<{t}>(packed_{slot}, 0, nonNullCount_{slot});"
         );
         builder.AppendLine(
-            $"                        new global::System.ReadOnlyMemory<int>(defLevels_{slot}, 0, count),"
+            $"                    columnarBatch.{propertyName}DefinitionLevels = new global::System.ReadOnlyMemory<int>(defLevels_{slot}, 0, count);"
         );
-        builder.AppendLine("                        null,");
-        builder.AppendLine("                        cancellationToken: cancellationToken);");
-        builder.AppendLine("                }");
-        builder.AppendLine("                finally");
-        builder.AppendLine("                {");
-        builder.AppendLine(
-            $"                    global::System.Buffers.ArrayPool<{t}>.Shared.Return(packed_{slot}, clearArray: false);"
-        );
-        builder.AppendLine(
-            $"                    global::System.Buffers.ArrayPool<int>.Shared.Return(defLevels_{slot}, clearArray: false);"
-        );
-        builder.AppendLine("                }");
     }
 
     private static void EmitUtf8(
@@ -479,7 +502,6 @@ internal static class ArrowBridgeEmitter
         PropertyModel prop,
         ArrowLeafMapping map,
         string arr,
-        string field,
         int slot
     )
     {
@@ -496,11 +518,8 @@ internal static class ArrowBridgeEmitter
             "                // so N strings cost one rental rather than N string allocations."
         );
         builder.AppendLine(
-            $"                var buffer_{slot} = global::System.Buffers.ArrayPool<{element}>.Shared.Rent(count);"
+            $"                buffer_{slot} = global::System.Buffers.ArrayPool<{element}>.Shared.Rent(count);"
         );
-        builder.AppendLine($"                char[]? chars_{slot} = null;");
-        builder.AppendLine("                try");
-        builder.AppendLine("                {");
         builder.AppendLine($"                    void Fill_{slot}()");
         builder.AppendLine("                    {");
         builder.AppendLine("                        int totalChars = 0;");
@@ -538,26 +557,8 @@ internal static class ArrowBridgeEmitter
         builder.AppendLine("                    }");
         builder.AppendLine($"                    Fill_{slot}();");
         builder.AppendLine(
-            "                    await groupWriter.WriteAsync<global::System.ReadOnlyMemory<char>>("
+            $"                    columnarBatch.{prop.Name} = new global::System.ReadOnlyMemory<{element}>(buffer_{slot}, 0, count);"
         );
-        builder.AppendLine($"                        {field},");
-        builder.AppendLine(
-            $"                        new global::System.ReadOnlyMemory<{element}>(buffer_{slot}, 0, count),"
-        );
-        builder.AppendLine("                        cancellationToken: cancellationToken);");
-        builder.AppendLine("                }");
-        builder.AppendLine("                finally");
-        builder.AppendLine("                {");
-        builder.AppendLine(
-            $"                    global::System.Buffers.ArrayPool<{element}>.Shared.Return(buffer_{slot}, clearArray: true);"
-        );
-        builder.AppendLine($"                    if (chars_{slot} != null)");
-        builder.AppendLine("                    {");
-        builder.AppendLine(
-            $"                        global::System.Buffers.ArrayPool<char>.Shared.Return(chars_{slot}, clearArray: false);"
-        );
-        builder.AppendLine("                    }");
-        builder.AppendLine("                }");
     }
 
     private static void EmitBinary(
@@ -565,7 +566,6 @@ internal static class ArrowBridgeEmitter
         PropertyModel prop,
         ArrowLeafMapping map,
         string arr,
-        string field,
         int slot
     )
     {
@@ -578,10 +578,8 @@ internal static class ArrowBridgeEmitter
             "                // Each row is a slice of the Arrow value buffer — the payload is never copied."
         );
         builder.AppendLine(
-            $"                var buffer_{slot} = global::System.Buffers.ArrayPool<{element}>.Shared.Rent(count);"
+            $"                buffer_{slot} = global::System.Buffers.ArrayPool<{element}>.Shared.Rent(count);"
         );
-        builder.AppendLine("                try");
-        builder.AppendLine("                {");
         builder.AppendLine($"                    void Fill_{slot}()");
         builder.AppendLine("                    {");
         builder.AppendLine(
@@ -604,20 +602,77 @@ internal static class ArrowBridgeEmitter
         builder.AppendLine("                    }");
         builder.AppendLine($"                    Fill_{slot}();");
         builder.AppendLine(
-            "                    await groupWriter.WriteAsync<global::System.ReadOnlyMemory<byte>>("
+            $"                    columnarBatch.{prop.Name} = new global::System.ReadOnlyMemory<{element}>(buffer_{slot}, 0, count);"
         );
-        builder.AppendLine($"                        {field},");
-        builder.AppendLine(
-            $"                        new global::System.ReadOnlyMemory<{element}>(buffer_{slot}, 0, count),"
-        );
-        builder.AppendLine("                        cancellationToken: cancellationToken);");
-        builder.AppendLine("                }");
-        builder.AppendLine("                finally");
-        builder.AppendLine("                {");
-        builder.AppendLine(
-            $"                    global::System.Buffers.ArrayPool<{element}>.Shared.Return(buffer_{slot}, clearArray: true);"
-        );
-        builder.AppendLine("                }");
+    }
+
+    private static void EmitColumnCleanup(StringBuilder builder, PropertyModel prop, int slot)
+    {
+        ArrowLeafMapping map = ArrowMappingComponent.TryMap(prop)!;
+
+        switch (map.Mode)
+        {
+            case ArrowExtractionMode.Direct when !prop.IsNullable:
+                return;
+
+            case ArrowExtractionMode.Utf8:
+            {
+                string element = prop.IsNullable
+                    ? "global::System.ReadOnlyMemory<char>?"
+                    : "global::System.ReadOnlyMemory<char>";
+                builder.AppendLine($"            if (buffer_{slot} != null)");
+                builder.AppendLine("            {");
+                builder.AppendLine(
+                    $"                global::System.Buffers.ArrayPool<{element}>.Shared.Return(buffer_{slot}, clearArray: true);"
+                );
+                builder.AppendLine("            }");
+                builder.AppendLine($"            if (chars_{slot} != null)");
+                builder.AppendLine("            {");
+                builder.AppendLine(
+                    $"                global::System.Buffers.ArrayPool<char>.Shared.Return(chars_{slot}, clearArray: false);"
+                );
+                builder.AppendLine("            }");
+                return;
+            }
+
+            case ArrowExtractionMode.Binary:
+            {
+                string element = prop.IsNullable
+                    ? "global::System.ReadOnlyMemory<byte>?"
+                    : "global::System.ReadOnlyMemory<byte>";
+                builder.AppendLine($"            if (buffer_{slot} != null)");
+                builder.AppendLine("            {");
+                builder.AppendLine(
+                    $"                global::System.Buffers.ArrayPool<{element}>.Shared.Return(buffer_{slot}, clearArray: true);"
+                );
+                builder.AppendLine("            }");
+                return;
+            }
+
+            case ArrowExtractionMode.Convert when !prop.IsNullable:
+                builder.AppendLine($"            if (buffer_{slot} != null)");
+                builder.AppendLine("            {");
+                builder.AppendLine(
+                    $"                global::System.Buffers.ArrayPool<{map.ParquetElementType}>.Shared.Return(buffer_{slot}, clearArray: false);"
+                );
+                builder.AppendLine("            }");
+                return;
+
+            default:
+                builder.AppendLine($"            if (packed_{slot} != null)");
+                builder.AppendLine("            {");
+                builder.AppendLine(
+                    $"                global::System.Buffers.ArrayPool<{map.ParquetElementType}>.Shared.Return(packed_{slot}, clearArray: false);"
+                );
+                builder.AppendLine("            }");
+                builder.AppendLine($"            if (defLevels_{slot} != null)");
+                builder.AppendLine("            {");
+                builder.AppendLine(
+                    $"                global::System.Buffers.ArrayPool<int>.Shared.Return(defLevels_{slot}, clearArray: false);"
+                );
+                builder.AppendLine("            }");
+                return;
+        }
     }
 
     // ──────────────────────────────────────────────────────────

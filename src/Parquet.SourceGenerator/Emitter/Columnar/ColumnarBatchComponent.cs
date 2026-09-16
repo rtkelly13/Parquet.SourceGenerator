@@ -130,8 +130,8 @@ internal static class ColumnarBatchComponent
     public static string BatchTypeName(TargetClassModel model) =>
         $"{model.ClassName.Replace(".", string.Empty)}ColumnarBatch";
 
-    /// <summary>The member holding the row count, avoiding a clash with a column of that name.</summary>
-    private static string RowCountMemberName(TargetClassModel model)
+    /// <summary>Returns the generated batch's row-count member, avoiding property-name clashes.</summary>
+    public static string RowCountMemberName(TargetClassModel model)
     {
         string candidate = "RowCount";
         bool clash = true;

@@ -106,16 +106,18 @@ API can accept.
 None of these are bugs; they are the shape of the low-level API. They are recorded here because each
 one closed off a friendlier API design during #137, and a future Parquet.Net version relaxing any of
 them would let the generated surface get simpler.
-## Apache.Arrow 23.0.0 — Native AOT readiness unproven
+## Apache.Arrow 23.0.0 — Native AOT verification
 
 The conditionally emitted Arrow ingestion bridge ([issue #177](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/177))
-has **not** been exercised through the `AotTest` harness. `Parquet.SourceGenerator.AotTest` deliberately
-does not reference Apache.Arrow, so the native publish CI job proves nothing about it either way.
+is exercised by `test/Parquet.SourceGenerator.AotTest`, which references Apache.Arrow, publishes
+with `PublishAot`, and executes the resulting native binary. The check writes an Arrow
+`RecordBatch` through the generated bridge and reads it back through the generated POCO reader.
+The CI gate rejects new ILCompiler warnings outside the existing Parquet.Net warnings, so this is
+evidence for the shipped bridge and its current Apache.Arrow 23.0.0 dependency surface.
 
-The emitted bridge itself is reflection-free — it is ordinary generated text calling Apache.Arrow's
-public API — but Apache.Arrow's own AOT/trimming posture is unverified here. Until someone runs a
-`PublishAot` harness that references Apache.Arrow and reports the ILCompiler warnings, treat the
-bridge as **AOT-unsupported**.
+This is a verification result, not a promise that every Apache.Arrow API is AOT-safe. The bridge
+continues to support only the explicitly mapped flat-array types below; unsupported Arrow array
+families are rejected before writing.
 
 ## Apache.Arrow 23.0.0 — no zero-copy `ReadOnlyMemory<T>` view over a value buffer
 

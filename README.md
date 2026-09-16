@@ -335,7 +335,7 @@ OrderEventParquetExtensions.WriteParquetRowGroupAsync(writer, recordBatch);
 | **`DateTimeOffset`** | ❌ Unsupported | Parquet has no direct representation; use `DateTime` + offset column. |
 | **Positional Records** | ❌ Unsupported | Constructor with parameters reported as `PARQ008`. Use nominal records with `{ get; init; }`. |
 | **.NET Framework (net472)** | ✅ Supported via V5 | Use `Parquet.SourceGenerator.V5` for Parquet.Net 4.x/5.x support. |
-| **Apache Arrow ingestion** | 🧪 Experimental (v6 only) | Emitted only when the consumer references Apache.Arrow. Flat models only; Native AOT unproven. |
+| **Apache Arrow ingestion** | 🧪 Experimental (v6 only) | Emitted only when the consumer references Apache.Arrow. Flat models only; Native AOT exercised by the repository's published AOT harness. |
 
 > A complete audit of limitations and remediation roadmap is in **[`docs/07-KNOWN-LIMITATIONS.md`](https://github.com/rtkelly13/Parquet.SourceGenerator/blob/main/docs/07-KNOWN-LIMITATIONS.md)**.
 

@@ -268,10 +268,36 @@ public sealed class ArrowConditionalEmissionTests
         idBlock.ShouldNotContain("ArrayPool", Case.Sensitive);
 
         // The nullable long column cannot be zero-copy: values are packed and def levels derived
-        // from the validity bitmap, which does rent.
+        // from the validity bitmap, which does rent before the shared columnar writer is called.
         string qtyBlock = ColumnBlock(arrow, "// column 2: qty");
-        qtyBlock.ShouldContain("WriteAllPartsAsync<long>", Case.Sensitive);
+        qtyBlock.ShouldContain("columnarBatch.Qty =", Case.Sensitive);
+        qtyBlock.ShouldContain("columnarBatch.QtyDefinitionLevels =", Case.Sensitive);
         qtyBlock.ShouldContain("IsValid(row)", Case.Sensitive);
+    }
+
+    [Fact]
+    public void ArrowBridgeDelegatesTheFinalWriteToTheGeneratedColumnarBatchSurface()
+    {
+        ImmutableArray<GeneratedSourceResult> sources = Run(
+            CreateDriver(),
+            Compilation(FlatSource, withArrow: true),
+            out _
+        );
+
+        string arrow = sources
+            .Single(s => s.HintName.EndsWith(".Arrow.g.cs", StringComparison.Ordinal))
+            .SourceText.ToString();
+
+        arrow.ShouldContain(
+            "var columnarBatch = new TradeColumnarBatch { RowCount = count };",
+            Case.Sensitive
+        );
+        arrow.ShouldContain(
+            "await writer.WriteParquetRowGroupAsync(columnarBatch, cancellationToken);",
+            Case.Sensitive
+        );
+        arrow.ShouldNotContain("groupWriter", Case.Sensitive);
+        arrow.ShouldNotContain("WriteAllPartsAsync<long>", Case.Sensitive);
     }
 
     private static string ColumnBlock(string source, string marker)

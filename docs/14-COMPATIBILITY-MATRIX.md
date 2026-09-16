@@ -220,6 +220,11 @@ FooParquetExtensions.WriteParquetRowGroupAsync(
 supports can consume the bridge. The emitted code calls Apache.Arrow's public API directly — there is
 no helper assembly and therefore no version-skew surface beyond the API used here.
 
+The bridge is also covered by the Native AOT harness: `Parquet.SourceGenerator.AotTest` references
+Apache.Arrow, publishes with `PublishAot`, and executes an Arrow `RecordBatch` ingestion round-trip
+in the resulting native binary. The CI warning gate allows only the pre-existing warnings attributed
+to Parquet.Net.
+
 ### Physical type mapping
 
 | C# member | Parquet column | Required Arrow type | Handoff |
@@ -240,6 +245,11 @@ no helper assembly and therefore no version-skew surface beyond the API used her
 
 Nullable columns take their definition levels from the Arrow validity bitmap; no caller-supplied
 level arrays are needed, and the resulting file is byte-identical to the POCO write path.
+
+The bridge materializes Arrow columns into the generated `{Type}ColumnarBatch` and delegates the
+row-group write to that shared surface. This keeps Arrow-specific validation and offset/bitmap
+conversion at the adapter boundary while the columnar writer owns buffer-shape validation and
+Parquet.Net calls.
 
 ### Rejected inputs
 
