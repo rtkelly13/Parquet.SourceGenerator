@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using SampleDomain.Models;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.AbiMatrix;
@@ -46,18 +47,18 @@ public sealed class OrderEventAbiExecutionTests
         ms.Position = 0;
 
         List<OrderEvent> actual = await OrderEventParquetExtensions.ReadParquetAsync(ms);
-        Assert.Equal(expected.Count, actual.Count);
+        actual.Count.ShouldBe(expected.Count);
         for (int i = 0; i < expected.Count; i++)
         {
-            Assert.Equal(expected[i].Id, actual[i].Id);
-            Assert.Equal(expected[i].Name, actual[i].Name);
-            Assert.Equal(expected[i].Score, actual[i].Score);
-            Assert.Equal(expected[i].Price, actual[i].Price);
-            Assert.Equal(expected[i].CreatedAt, actual[i].CreatedAt);
-            Assert.Equal(expected[i].Duration, actual[i].Duration);
-            Assert.Equal(expected[i].CorrelationId, actual[i].CorrelationId);
-            Assert.Equal(expected[i].OptionalGuid, actual[i].OptionalGuid);
-            Assert.Equal(expected[i].Payload, actual[i].Payload);
+            actual[i].Id.ShouldBe(expected[i].Id);
+            actual[i].Name.ShouldBe(expected[i].Name);
+            actual[i].Score.ShouldBe(expected[i].Score);
+            actual[i].Price.ShouldBe(expected[i].Price);
+            actual[i].CreatedAt.ShouldBe(expected[i].CreatedAt);
+            actual[i].Duration.ShouldBe(expected[i].Duration);
+            actual[i].CorrelationId.ShouldBe(expected[i].CorrelationId);
+            actual[i].OptionalGuid.ShouldBe(expected[i].OptionalGuid);
+            actual[i].Payload.ShouldBe(expected[i].Payload);
         }
     }
 
@@ -73,11 +74,11 @@ public sealed class OrderEventAbiExecutionTests
         ms.Position = 0;
 
         OrderEvent[] actual = await OrderEventParquetExtensions.ReadParquetParallelArrayAsync(ms);
-        Assert.Equal(expected.Count, actual.Length);
+        actual.Length.ShouldBe(expected.Count);
         for (int i = 0; i < expected.Count; i++)
         {
-            Assert.Equal(expected[i].Id, actual[i].Id);
-            Assert.Equal(expected[i].CorrelationId, actual[i].CorrelationId);
+            actual[i].Id.ShouldBe(expected[i].Id);
+            actual[i].CorrelationId.ShouldBe(expected[i].CorrelationId);
         }
     }
 
@@ -95,9 +96,9 @@ public sealed class OrderEventAbiExecutionTests
             actual.Add(evt);
         }
 
-        Assert.Equal(expected.Count, actual.Count);
-        Assert.Equal(expected[0].Id, actual[0].Id);
-        Assert.Equal(expected[14].Id, actual[14].Id);
+        actual.Count.ShouldBe(expected.Count);
+        actual[0].Id.ShouldBe(expected[0].Id);
+        actual[14].Id.ShouldBe(expected[14].Id);
     }
 
     [Fact]
@@ -109,7 +110,7 @@ public sealed class OrderEventAbiExecutionTests
         byte[] bytes = ms.ToArray();
 
         List<OrderEvent> actual = await OrderEventParquetExtensions.ReadParquetAsync(bytes);
-        Assert.Equal(expected.Count, actual.Count);
-        Assert.Equal(expected[0].Name, actual[0].Name);
+        actual.Count.ShouldBe(expected.Count);
+        actual[0].Name.ShouldBe(expected[0].Name);
     }
 }

@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Parquet.Serialization;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -71,13 +72,13 @@ public sealed class BenchmarkBaselineEquivalenceTests
         List<BenchmarkScaleModel> sgResult =
             await BenchmarkScaleModelParquetExtensions.ReadParquetAsync(sgStream);
 
-        Assert.Equal(count, sgResult.Count);
+        sgResult.Count.ShouldBe(count);
         for (int i = 0; i < count; i++)
         {
-            Assert.Equal(original[i].Id, sgResult[i].Id);
-            Assert.Equal(original[i].ValA, sgResult[i].ValA, precision: 5);
-            Assert.Equal(original[i].ValB, sgResult[i].ValB);
-            Assert.Equal(original[i].IsValid, sgResult[i].IsValid);
+            sgResult[i].Id.ShouldBe(original[i].Id);
+            sgResult[i].ValA.ShouldBe(original[i].ValA, 0.00001);
+            sgResult[i].ValB.ShouldBe(original[i].ValB);
+            sgResult[i].IsValid.ShouldBe(original[i].IsValid);
         }
 
         // 2. Guard the reflection baseline: ensure ParquetSerializer does NOT silently skip columns
@@ -85,13 +86,13 @@ public sealed class BenchmarkBaselineEquivalenceTests
         DeserializationResult<BenchmarkScaleModel> baselineResult =
             await ParquetSerializer.DeserializeAsync<BenchmarkScaleModel>(baselineStream);
 
-        Assert.Equal(count, baselineResult.Data.Count);
+        baselineResult.Data.Count.ShouldBe(count);
         for (int i = 0; i < count; i++)
         {
-            Assert.Equal(original[i].Id, baselineResult.Data[i].Id);
-            Assert.Equal(original[i].ValA, baselineResult.Data[i].ValA, precision: 5);
-            Assert.Equal(original[i].ValB, baselineResult.Data[i].ValB);
-            Assert.Equal(original[i].IsValid, baselineResult.Data[i].IsValid);
+            baselineResult.Data[i].Id.ShouldBe(original[i].Id);
+            baselineResult.Data[i].ValA.ShouldBe(original[i].ValA, 0.00001);
+            baselineResult.Data[i].ValB.ShouldBe(original[i].ValB);
+            baselineResult.Data[i].IsValid.ShouldBe(original[i].IsValid);
         }
     }
 
@@ -127,18 +128,18 @@ public sealed class BenchmarkBaselineEquivalenceTests
         DeserializationResult<BenchmarkGuidModel> baselineResult =
             await ParquetSerializer.DeserializeAsync<BenchmarkGuidModel>(baselineStream);
 
-        Assert.Equal(count, sgResult.Count);
-        Assert.Equal(count, baselineResult.Data.Count);
+        sgResult.Count.ShouldBe(count);
+        baselineResult.Data.Count.ShouldBe(count);
 
         for (int i = 0; i < count; i++)
         {
-            Assert.Equal(original[i].Id, sgResult[i].Id);
-            Assert.Equal(original[i].CorrelationId, sgResult[i].CorrelationId);
-            Assert.Equal(original[i].Timestamp, sgResult[i].Timestamp);
+            sgResult[i].Id.ShouldBe(original[i].Id);
+            sgResult[i].CorrelationId.ShouldBe(original[i].CorrelationId);
+            sgResult[i].Timestamp.ShouldBe(original[i].Timestamp);
 
-            Assert.Equal(original[i].Id, baselineResult.Data[i].Id);
-            Assert.Equal(original[i].CorrelationId, baselineResult.Data[i].CorrelationId);
-            Assert.Equal(original[i].Timestamp, baselineResult.Data[i].Timestamp);
+            baselineResult.Data[i].Id.ShouldBe(original[i].Id);
+            baselineResult.Data[i].CorrelationId.ShouldBe(original[i].CorrelationId);
+            baselineResult.Data[i].Timestamp.ShouldBe(original[i].Timestamp);
         }
     }
 
@@ -176,8 +177,8 @@ public sealed class BenchmarkBaselineEquivalenceTests
         using (var s = new MemoryStream(bytes))
         {
             var res = await ParquetSerializer.DeserializeAsync<BenchmarkScaleModel>(s);
-            Assert.Equal(count, res.Data.Count);
-            Assert.Equal(count - 1, res.Data[count - 1].Id);
+            res.Data.Count.ShouldBe(count);
+            res.Data[count - 1].Id.ShouldBe(count - 1);
         }
         long allocBaseline = GC.GetAllocatedBytesForCurrentThread() - b0;
 
@@ -186,14 +187,13 @@ public sealed class BenchmarkBaselineEquivalenceTests
         using (var s = new MemoryStream(bytes))
         {
             var res = await BenchmarkScaleModelParquetExtensions.ReadParquetArrayAsync(s);
-            Assert.Equal(count, res.Length);
-            Assert.Equal(count - 1, res[count - 1].Id);
+            res.Length.ShouldBe(count);
+            res[count - 1].Id.ShouldBe(count - 1);
         }
         long allocSGArray = GC.GetAllocatedBytesForCurrentThread() - b1;
 
         // Source generator array deserializer must allocate less than or equal to reflection baseline
-        Assert.True(
-            allocSGArray <= allocBaseline,
+        (allocSGArray <= allocBaseline).ShouldBeTrue(
             $"Source generator allocated {allocSGArray:N0} bytes which exceeds reflection baseline {allocBaseline:N0} bytes"
         );
     }

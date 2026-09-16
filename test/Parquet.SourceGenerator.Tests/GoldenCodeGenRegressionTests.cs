@@ -10,6 +10,7 @@ using Parquet.SourceGenerator.ApiGates;
 using Parquet.SourceGenerator.Diagnostics;
 using Parquet.SourceGenerator.Emitter;
 using Parquet.SourceGenerator.Models;
+using Shouldly;
 using Xunit;
 using IODirectory = System.IO.Directory;
 using IOFile = System.IO.File;
@@ -58,14 +59,14 @@ public sealed class GoldenCodeGenRegressionTests
         string expectedSource = IOFile.ReadAllText(filePath).Replace("\r\n", "\n").TrimEnd();
 
         // 1. Exact string-level consistency against source-controlled golden file
-        Assert.Equal(expectedSource, normalizedEmitted);
+        normalizedEmitted.ShouldBe(expectedSource);
 
         // 2. Verify Roslyn parses emitted source without syntax errors
         SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(emittedSource);
         IEnumerable<Diagnostic> syntaxDiagnostics = syntaxTree
             .GetDiagnostics()
             .Where(d => d.Severity == DiagnosticSeverity.Error);
-        Assert.Empty(syntaxDiagnostics);
+        syntaxDiagnostics.ShouldBeEmpty();
 
         // 3. Signature-only public API baseline, from the same emitted string as the golden file
         //    above, so the two physically cannot drift (issue #215).
@@ -97,7 +98,9 @@ public sealed class GoldenCodeGenRegressionTests
 
         if (!string.Equals(expected, actual, StringComparison.Ordinal))
         {
-            Assert.Fail(DescribeBaselineDrift(baselineFileName, expected, actual));
+            throw new ShouldAssertException(
+                DescribeBaselineDrift(baselineFileName, expected, actual)
+            );
         }
     }
 
@@ -386,9 +389,8 @@ public sealed class GoldenCodeGenRegressionTests
 
         var (diagnostics, outputTrees) = RunGenerator(modelSource);
 
-        Assert.DoesNotContain(diagnostics, d => d.Severity == DiagnosticSeverity.Error);
-        Assert.True(
-            outputTrees.Count >= 2,
+        diagnostics.ShouldNotContain(d => d.Severity == DiagnosticSeverity.Error);
+        (outputTrees.Count >= 2).ShouldBeTrue(
             "Expected generator to emit at least 1 syntax tree besides the input."
         );
 
@@ -396,9 +398,9 @@ public sealed class GoldenCodeGenRegressionTests
         SyntaxTree emittedTree = outputTrees[outputTrees.Count - 1];
         string emittedCode = emittedTree.ToString();
 
-        Assert.Contains("public static partial class GoldenModelParquetExtensions", emittedCode);
-        Assert.Contains("WriteParquetAsync", emittedCode);
-        Assert.Contains("ReadParquetParallelAsync", emittedCode);
+        emittedCode.ShouldContain("public static partial class GoldenModelParquetExtensions");
+        emittedCode.ShouldContain("WriteParquetAsync");
+        emittedCode.ShouldContain("ReadParquetParallelAsync");
     }
 
     [Fact]
@@ -438,7 +440,7 @@ public sealed class GoldenCodeGenRegressionTests
             """;
 
         var (diagnostics, outputTrees) = RunGenerator(source);
-        Assert.DoesNotContain(diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+        diagnostics.ShouldNotContain(d => d.Severity == DiagnosticSeverity.Error);
 
         string generated = outputTrees[outputTrees.Count - 1].ToString();
         AssertGoldenMatch("NestedOrderParquetExtensions.g.cs", generated);
@@ -466,10 +468,10 @@ public sealed class GoldenCodeGenRegressionTests
             """;
 
         var (diagnostics, outputTrees) = RunGenerator(source);
-        Assert.DoesNotContain(diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+        diagnostics.ShouldNotContain(d => d.Severity == DiagnosticSeverity.Error);
         string generated = outputTrees[outputTrees.Count - 1].ToString();
-        Assert.Contains("ListField(", generated);
-        Assert.Contains("repLevels_", generated);
+        generated.ShouldContain("ListField(");
+        generated.ShouldContain("repLevels_");
         AssertGoldenMatch("ListOrderParquetExtensions.g.cs", generated);
     }
 
@@ -504,11 +506,11 @@ public sealed class GoldenCodeGenRegressionTests
             """;
 
         var (diagnostics, outputTrees) = RunGenerator(source);
-        Assert.DoesNotContain(diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+        diagnostics.ShouldNotContain(d => d.Severity == DiagnosticSeverity.Error);
         string generated = outputTrees[outputTrees.Count - 1].ToString();
-        Assert.Contains("new global::Parquet.Schema.ListField(", generated);
-        Assert.Contains("StructField(\n", generated);
-        Assert.Contains(".Item).Fields[", generated);
+        generated.ShouldContain("new global::Parquet.Schema.ListField(");
+        generated.ShouldContain("StructField(\n");
+        generated.ShouldContain(".Item).Fields[");
         AssertGoldenMatch("PocoOrderParquetExtensions.g.cs", generated);
     }
 
@@ -549,32 +551,31 @@ public sealed class GoldenCodeGenRegressionTests
             """;
 
         var (diagnostics, outputTrees) = RunGenerator(source);
-        Assert.DoesNotContain(diagnostics, d => d.Severity == DiagnosticSeverity.Error);
-        Assert.DoesNotContain(diagnostics, d => d.Descriptor.Id == "PARQ014");
+        diagnostics.ShouldNotContain(d => d.Severity == DiagnosticSeverity.Error);
+        diagnostics.ShouldNotContain(d => d.Descriptor.Id == "PARQ014");
 
         string generated = outputTrees[outputTrees.Count - 1].ToString();
         // Predicate pushdown surface.
-        Assert.Contains("RowGroupMetadata", generated);
-        Assert.Contains("bool AcceptRowGroup(", generated);
-        Assert.Contains("ParquetColumnStatistics<long> Sequence { get; }", generated);
-        Assert.Contains("ParquetColumnStatistics<int> WeightGrams { get; }", generated);
-        Assert.Contains("ParquetColumnStatistics<string> Carrier { get; }", generated);
+        generated.ShouldContain("RowGroupMetadata");
+        generated.ShouldContain("bool AcceptRowGroup(");
+        generated.ShouldContain("ParquetColumnStatistics<long> Sequence { get; }");
+        generated.ShouldContain("ParquetColumnStatistics<int> WeightGrams { get; }");
+        generated.ShouldContain("ParquetColumnStatistics<string> Carrier { get; }");
 
         // Sorted-lookup surface, one pair per key column, over the shared core.
-        Assert.Contains("bool TryPruneSortedRowGroups<", generated);
-        Assert.Contains("ReadPrunedRangeAsync<", generated);
-        Assert.Contains("ReadParquetBySequenceAsync(", generated);
-        Assert.Contains("ReadParquetByShippedAtAsync(", generated);
+        generated.ShouldContain("bool TryPruneSortedRowGroups<");
+        generated.ShouldContain("ReadPrunedRangeAsync<");
+        generated.ShouldContain("ReadParquetBySequenceAsync(");
+        generated.ShouldContain("ReadParquetByShippedAtAsync(");
 
         // Eligibility boundaries held where they should: a DateTime key is searched but
         // never projected; a string is projected but can never be searched. A golden
         // that starts disagreeing with this is a silent API-surface move.
-        Assert.DoesNotContain(
+        generated.ShouldNotContain(
             "ParquetColumnStatistics<System.DateTime> ShippedAt",
-            generated,
-            StringComparison.Ordinal
+            Case.Sensitive
         );
-        Assert.DoesNotContain("ReadParquetByCarrierAsync(", generated, StringComparison.Ordinal);
+        generated.ShouldNotContain("ReadParquetByCarrierAsync(", Case.Sensitive);
 
         AssertGoldenMatch("SortedShipmentParquetExtensions.g.cs", generated);
     }
@@ -633,9 +634,9 @@ public sealed class GoldenCodeGenRegressionTests
             .GetDiagnostics()
             .Where(d => d.Severity == DiagnosticSeverity.Error)
             .ToList();
-        Assert.Empty(
-            genErrors.Select(d => $"{d.Id}: {d.Location.GetLineSpan().StartLinePosition.Line}")
-        );
+        genErrors
+            .Select(d => $"{d.Id}: {d.Location.GetLineSpan().StartLinePosition.Line}")
+            .ShouldBeEmpty();
 
         return (diagnostics, outputCompilation.SyntaxTrees.ToList());
     }

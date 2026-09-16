@@ -8,6 +8,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Parquet.SourceGenerator.Diagnostics;
 using Parquet.SourceGenerator.Models;
 using Parquet.SourceGenerator.Parser;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -92,17 +93,14 @@ public sealed class CompoundModelParsingTests
     {
         var (result, _) = Parse(Row("public Address Ship { get; init; }"), "App.Row");
 
-        Assert.Empty(result.Diagnostics);
-        PropertyModel ship = Assert.Single(
-            result.Model!.Properties,
-            p => p.Kind == PropertyKind.Struct
-        );
-        Assert.Equal("Ship", ship.Name);
-        Assert.False(ship.IsNullable); // non-nullable annotation
-        Assert.Equal(CityZipNames, ship.Children.Select(c => c.Name).ToArray());
-        Assert.True(ship.Children[0].IsNullable); // string?
-        Assert.Equal(PropertyKind.Primitive, ship.Children[1].Kind); // int? unwrapped
-        Assert.True(ship.Children[1].IsNullable);
+        result.Diagnostics.ShouldBeEmpty();
+        PropertyModel ship = result.Model!.Properties.Single(p => p.Kind == PropertyKind.Struct);
+        ship.Name.ShouldBe("Ship");
+        ship.IsNullable.ShouldBeFalse(); // non-nullable annotation
+        ship.Children.Select(c => c.Name).ToArray().ShouldBe(CityZipNames);
+        ship.Children[0].IsNullable.ShouldBeTrue(); // string?
+        ship.Children[1].Kind.ShouldBe(PropertyKind.Primitive); // int? unwrapped
+        ship.Children[1].IsNullable.ShouldBeTrue();
     }
 
     [Fact]
@@ -111,7 +109,7 @@ public sealed class CompoundModelParsingTests
         var (result, _) = Parse(Row("public Address? Ship { get; init; }"), "App.Row");
 
         PropertyModel ship = result.Model!.Properties.First(p => p.Kind == PropertyKind.Struct);
-        Assert.True(ship.IsNullable);
+        ship.IsNullable.ShouldBeTrue();
     }
 
     [Fact]
@@ -119,13 +117,10 @@ public sealed class CompoundModelParsingTests
     {
         var (result, _) = Parse(Row("public List<string?> Tags { get; init; }"), "App.Row");
 
-        PropertyModel tags = Assert.Single(
-            result.Model!.Properties,
-            p => p.Kind == PropertyKind.List
-        );
-        Assert.NotNull(tags.Element);
-        Assert.Equal(PropertyKind.Primitive, tags.Element!.Kind);
-        Assert.True(tags.Element!.IsNullable);
+        PropertyModel tags = result.Model!.Properties.Single(p => p.Kind == PropertyKind.List);
+        tags.Element.ShouldNotBeNull();
+        tags.Element!.Kind.ShouldBe(PropertyKind.Primitive);
+        tags.Element!.IsNullable.ShouldBeTrue();
     }
 
     [Fact]
@@ -134,7 +129,7 @@ public sealed class CompoundModelParsingTests
         var (result, _) = Parse(Row("public List<int> Scores { get; init; }"), "App.Row");
 
         PropertyModel scores = result.Model!.Properties.First(p => p.Kind == PropertyKind.List);
-        Assert.False(scores.Element!.IsNullable);
+        scores.Element!.IsNullable.ShouldBeFalse();
     }
 
     [Fact]
@@ -146,10 +141,9 @@ public sealed class CompoundModelParsingTests
             ParquetApiLevel.V6,
             CompoundKinds.Struct | CompoundKinds.List
         );
-        Assert.NotNull(viaPipeline.Model);
-        Assert.DoesNotContain(
-            viaPipeline.Diagnostics,
-            d => d.Descriptor.Id == DiagnosticDescriptors.UnsupportedPropertyType.Id
+        viaPipeline.Model.ShouldNotBeNull();
+        viaPipeline.Diagnostics.ShouldNotContain(d =>
+            d.Descriptor.Id == DiagnosticDescriptors.UnsupportedPropertyType.Id
         );
     }
 
@@ -173,11 +167,10 @@ public sealed class CompoundModelParsingTests
             ParquetApiLevel.V6,
             CompoundKinds.Struct | CompoundKinds.List
         );
-        Assert.Contains(
-            viaPipeline.Diagnostics,
-            d => d.Descriptor.Id == DiagnosticDescriptors.UnsupportedPropertyType.Id
+        viaPipeline.Diagnostics.ShouldContain(d =>
+            d.Descriptor.Id == DiagnosticDescriptors.UnsupportedPropertyType.Id
         );
-        Assert.Null(viaPipeline.Model);
+        viaPipeline.Model.ShouldBeNull();
     }
 
     [Fact]
@@ -186,8 +179,8 @@ public sealed class CompoundModelParsingTests
         var (result, _) = Parse(Row("public List<Address> Stops { get; init; }"), "App.Row");
 
         PropertyModel stops = result.Model!.Properties.First(p => p.Kind == PropertyKind.List);
-        Assert.Equal(PropertyKind.Struct, stops.Element!.Kind);
-        Assert.Equal(CityZipNames, stops.Element!.Children.Select(c => c.Name).ToArray());
+        stops.Element!.Kind.ShouldBe(PropertyKind.Struct);
+        stops.Element!.Children.Select(c => c.Name).ToArray().ShouldBe(CityZipNames);
     }
 
     [Fact]
@@ -196,7 +189,7 @@ public sealed class CompoundModelParsingTests
         var (result, _) = Parse(Row("public int[] Counts { get; init; }"), "App.Row");
 
         PropertyModel counts = result.Model!.Properties.First(p => p.Kind == PropertyKind.List);
-        Assert.Equal(PropertyKind.Primitive, counts.Element!.Kind);
+        counts.Element!.Kind.ShouldBe(PropertyKind.Primitive);
     }
 
     [Fact]
@@ -205,7 +198,7 @@ public sealed class CompoundModelParsingTests
         var (result, _) = Parse(Row("public byte[] Payload { get; init; }"), "App.Row");
 
         PropertyModel payload = result.Model!.Properties.First(p => p.Name == "Payload");
-        Assert.Equal(PropertyKind.ByteArray, payload.Kind);
+        payload.Kind.ShouldBe(PropertyKind.ByteArray);
     }
 
     [Fact]
@@ -216,14 +209,11 @@ public sealed class CompoundModelParsingTests
             "App.Row"
         );
 
-        PropertyModel meta = Assert.Single(
-            result.Model!.Properties,
-            p => p.Kind == PropertyKind.Map
-        );
-        Assert.Equal("key", meta.Children[0].Name);
-        Assert.False(meta.Children[0].IsNullable); // MAP keys are REQUIRED
-        Assert.NotNull(meta.MapValue);
-        Assert.True(meta.MapValue!.IsNullable);
+        PropertyModel meta = result.Model!.Properties.Single(p => p.Kind == PropertyKind.Map);
+        meta.Children[0].Name.ShouldBe("key");
+        meta.Children[0].IsNullable.ShouldBeFalse(); // MAP keys are REQUIRED
+        meta.MapValue.ShouldNotBeNull();
+        meta.MapValue!.IsNullable.ShouldBeTrue();
     }
 
     [Fact]
@@ -234,11 +224,10 @@ public sealed class CompoundModelParsingTests
             "App.Row"
         );
 
-        Assert.Contains(
-            result.Diagnostics,
-            d => d.Descriptor.Id == DiagnosticDescriptors.UnsupportedPropertyType.Id
+        result.Diagnostics.ShouldContain(d =>
+            d.Descriptor.Id == DiagnosticDescriptors.UnsupportedPropertyType.Id
         );
-        Assert.Null(result.Model); // emission suppressed while a member is rejected
+        result.Model.ShouldBeNull(); // emission suppressed while a member is rejected
     }
 
     [Fact]
@@ -252,9 +241,8 @@ public sealed class CompoundModelParsingTests
             "App.Row"
         );
 
-        Assert.Contains(
-            result.Diagnostics,
-            d => d.Descriptor.Id == DiagnosticDescriptors.UnsupportedPropertyType.Id
+        result.Diagnostics.ShouldContain(d =>
+            d.Descriptor.Id == DiagnosticDescriptors.UnsupportedPropertyType.Id
         );
     }
 
@@ -276,9 +264,8 @@ public sealed class CompoundModelParsingTests
 
         var (result, _) = Parse(source, "App.Node");
 
-        Assert.Contains(
-            result.Diagnostics,
-            d => d.Descriptor.Id == DiagnosticDescriptors.NestedTypeCycleDetected.Id
+        result.Diagnostics.ShouldContain(d =>
+            d.Descriptor.Id == DiagnosticDescriptors.NestedTypeCycleDetected.Id
         );
     }
 
@@ -307,9 +294,8 @@ public sealed class CompoundModelParsingTests
 
         var (result, _) = Parse(source, "App.Foo");
 
-        Assert.Contains(
-            result.Diagnostics,
-            d => d.Descriptor.Id == DiagnosticDescriptors.NestedTypeCycleDetected.Id
+        result.Diagnostics.ShouldContain(d =>
+            d.Descriptor.Id == DiagnosticDescriptors.NestedTypeCycleDetected.Id
         );
     }
 
@@ -337,8 +323,8 @@ public sealed class CompoundModelParsingTests
 
         var (result, _) = Parse(source, "App.Order");
 
-        Assert.Empty(result.Diagnostics);
-        Assert.Equal(2, result.Model!.Properties.Length);
+        result.Diagnostics.ShouldBeEmpty();
+        result.Model!.Properties.Length.ShouldBe(2);
     }
 
     [Fact]
@@ -362,9 +348,8 @@ public sealed class CompoundModelParsingTests
         var (result, _) = Parse(source, "App.Root");
 
         // Root -> L1..L7 is seven compound nodes; the seventh exceeds MaxCompoundDepth.
-        Assert.Contains(
-            result.Diagnostics,
-            d => d.Descriptor.Id == DiagnosticDescriptors.NestedTypeTooDeep.Id
+        result.Diagnostics.ShouldContain(d =>
+            d.Descriptor.Id == DiagnosticDescriptors.NestedTypeTooDeep.Id
         );
     }
 
@@ -386,7 +371,7 @@ public sealed class CompoundModelParsingTests
 
         var (result, _) = Parse(source, "App.Root");
 
-        Assert.Empty(result.Diagnostics);
+        result.Diagnostics.ShouldBeEmpty();
     }
 
     [Fact]
@@ -412,9 +397,8 @@ public sealed class CompoundModelParsingTests
 
         var (result, _) = Parse(source, "App.Row");
 
-        Assert.Contains(
-            result.Diagnostics,
-            d => d.Descriptor.Id == DiagnosticDescriptors.MemberNotAssignable.Id
+        result.Diagnostics.ShouldContain(d =>
+            d.Descriptor.Id == DiagnosticDescriptors.MemberNotAssignable.Id
         );
     }
 
@@ -441,9 +425,8 @@ public sealed class CompoundModelParsingTests
 
         var (result, _) = Parse(source, "App.Row");
 
-        Assert.Contains(
-            result.Diagnostics,
-            d => d.Descriptor.Id == DiagnosticDescriptors.GenericTypeNotSupported.Id
+        result.Diagnostics.ShouldContain(d =>
+            d.Descriptor.Id == DiagnosticDescriptors.GenericTypeNotSupported.Id
         );
     }
 
@@ -452,7 +435,7 @@ public sealed class CompoundModelParsingTests
     {
         // M1 inertness: the shipping entry point never builds compound models.
         var (result, symbol) = Parse(Row("public Address Ship { get; init; }"), "App.Row");
-        Assert.NotNull(result.Model); // compound build for reference
+        result.Model.ShouldNotBeNull(); // compound build for reference
 
         TargetParserResult viaPipeline = TargetParser.GetTargetModel(
             symbol,
@@ -460,11 +443,10 @@ public sealed class CompoundModelParsingTests
             allowCompoundTypes: false
         );
 
-        Assert.Contains(
-            viaPipeline.Diagnostics,
-            d => d.Descriptor.Id == DiagnosticDescriptors.UnsupportedPropertyType.Id
+        viaPipeline.Diagnostics.ShouldContain(d =>
+            d.Descriptor.Id == DiagnosticDescriptors.UnsupportedPropertyType.Id
         );
-        Assert.Null(viaPipeline.Model);
+        viaPipeline.Model.ShouldBeNull();
     }
 
     [Fact]
@@ -477,7 +459,7 @@ public sealed class CompoundModelParsingTests
         var (first, _) = Parse(source, "App.Row");
         var (second, _) = Parse(source, "App.Row");
 
-        Assert.Equal(first.Model!, second.Model!);
-        Assert.Equal(first.Model!.GetHashCode(), second.Model!.GetHashCode());
+        first.Model!.ShouldBe(second.Model!);
+        first.Model!.GetHashCode().ShouldBe(second.Model!.GetHashCode());
     }
 }

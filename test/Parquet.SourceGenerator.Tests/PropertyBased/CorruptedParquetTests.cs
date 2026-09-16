@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Parquet.Schema;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests.PropertyBased;
@@ -147,8 +148,7 @@ public sealed class CorruptedParquetTests
 
         ReadOutcome outcome = await ReadAsync(damaged);
 
-        Assert.False(
-            outcome.TimedOut,
+        outcome.TimedOut.ShouldBeFalse(
             $"bit flips (seed {seed}): read did not finish within {ReadTimeout}."
         );
         AssertBoundedFailure($"bit flips (seed {seed})", outcome);
@@ -244,9 +244,8 @@ public sealed class CorruptedParquetTests
     {
         ReadOutcome outcome = await ReadAsync(bytes);
 
-        Assert.False(outcome.TimedOut, $"{description}: read did not finish within {ReadTimeout}.");
-        Assert.True(
-            outcome.Exception is not null,
+        outcome.TimedOut.ShouldBeFalse($"{description}: read did not finish within {ReadTimeout}.");
+        outcome.Exception.ShouldNotBeNull(
             $"{description}: the reader accepted a file it cannot possibly interpret correctly."
         );
         AssertBoundedFailure(description, outcome);
@@ -261,7 +260,7 @@ public sealed class CorruptedParquetTests
     {
         ReadOutcome outcome = await ReadAsync(bytes);
 
-        Assert.False(outcome.TimedOut, $"{description}: read did not finish within {ReadTimeout}.");
+        outcome.TimedOut.ShouldBeFalse($"{description}: read did not finish within {ReadTimeout}.");
         AssertBoundedFailure(description, outcome);
 
         if (outcome.Exception is not null)
@@ -270,8 +269,8 @@ public sealed class CorruptedParquetTests
         }
 
         List<FuzzWideRecord> actual = outcome.Rows!;
-        Assert.True(
-            actual.Count == expected.Count,
+        actual.Count.ShouldBe(
+            expected.Count,
             $"{description}: read succeeded but returned {actual.Count} rows instead of "
                 + $"{expected.Count}. A corrupt file must be rejected, not silently truncated."
         );
@@ -286,24 +285,23 @@ public sealed class CorruptedParquetTests
             {
                 object? want = column.NormalizedValue(expected[i]);
                 object? got = column.NormalizedValue(actual[i]);
-                Assert.True(
-                    FuzzCompare.Equal(want, got),
-                    $"{description}: read succeeded but column '{column.Name}' row {i} came back as "
-                        + $"{FuzzValues.Describe(got)} instead of {FuzzValues.Describe(want)}. "
-                        + "A corrupt file must never be accepted with changed values."
-                );
+                FuzzCompare
+                    .Equal(want, got)
+                    .ShouldBeTrue(
+                        $"{description}: read succeeded but column '{column.Name}' row {i} came back as "
+                            + $"{FuzzValues.Describe(got)} instead of {FuzzValues.Describe(want)}. "
+                            + "A corrupt file must never be accepted with changed values."
+                    );
             }
         }
     }
 
     private static void AssertBoundedFailure(string description, ReadOutcome outcome)
     {
-        Assert.False(
-            outcome.Exception is OutOfMemoryException,
+        (outcome.Exception is OutOfMemoryException).ShouldBeFalse(
             $"{description}: the reader exhausted memory rather than rejecting the file."
         );
-        Assert.True(
-            outcome.AllocatedBytes < AllocationCeilingBytes,
+        (outcome.AllocatedBytes < AllocationCeilingBytes).ShouldBeTrue(
             $"{description}: reading allocated "
                 + $"{(outcome.AllocatedBytes / (1024.0 * 1024.0)).ToString("F1", CultureInfo.InvariantCulture)} MB, "
                 + $"over the {AllocationCeilingBytes / (1024 * 1024)} MB ceiling for a file of "
