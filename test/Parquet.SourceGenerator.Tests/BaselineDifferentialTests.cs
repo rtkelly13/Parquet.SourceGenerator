@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Parquet.Serialization;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -52,13 +53,13 @@ public class BaselineDifferentialTests
         );
 
         // 4. Assert symmetric identity
-        Assert.Equal(expected.Count, actual.Count);
+        actual.Count.ShouldBe(expected.Count);
         for (int i = 0; i < expected.Count; i++)
         {
-            Assert.Equal(expected[i].Id, actual[i].Id);
-            Assert.Equal(expected[i].Name, actual[i].Name);
-            Assert.Equal(expected[i].Score, actual[i].Score);
-            Assert.Equal(expected[i].IsActive, actual[i].IsActive);
+            actual[i].Id.ShouldBe(expected[i].Id);
+            actual[i].Name.ShouldBe(expected[i].Name);
+            actual[i].Score.ShouldBe(expected[i].Score);
+            actual[i].IsActive.ShouldBe(expected[i].IsActive);
         }
     }
 
@@ -87,13 +88,13 @@ public class BaselineDifferentialTests
         IList<BaselineRecord> actual = result.Data;
 
         // 4. Assert symmetric identity
-        Assert.Equal(expected.Count, actual.Count);
+        actual.Count.ShouldBe(expected.Count);
         for (int i = 0; i < expected.Count; i++)
         {
-            Assert.Equal(expected[i].Id, actual[i].Id);
-            Assert.Equal(expected[i].Name, actual[i].Name);
-            Assert.Equal(expected[i].Score, actual[i].Score);
-            Assert.Equal(expected[i].IsActive, actual[i].IsActive);
+            actual[i].Id.ShouldBe(expected[i].Id);
+            actual[i].Name.ShouldBe(expected[i].Name);
+            actual[i].Score.ShouldBe(expected[i].Score);
+            actual[i].IsActive.ShouldBe(expected[i].IsActive);
         }
     }
 }

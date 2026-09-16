@@ -116,6 +116,56 @@ public sealed class SortedRowGroupPruningTests
         pruning.FirstRowGroupRead.ShouldBe(75);
     }
 
+    /// <summary>
+    /// #264's combined surface, and the correctness floor for converging the two mechanisms
+    /// onto one footer read: <c>SortedEvent</c> carries BOTH — three sort keys emit the
+    /// binary-search path, the non-key eligible columns emit the predicate zone-map path —
+    /// so one footer is currently read by two independent code paths. Before any merge, all
+    /// three access paths (full scan, pushdown predicate, sorted lookup) must agree on the
+    /// SAME bytes. The <c>SortedShipmentParquetExtensions</c> golden is this test's
+    /// emitted-API twin; together they are what a convergence must keep green.
+    /// </summary>
+    [Fact]
+    public async Task PredicatePushdownAndSortedLookupCoexistOnOneModel()
+    {
+        byte[] bytes = await WriteAsync(SortedRows(10_000), rowGroupSize: 100);
+
+        List<SortedEvent> all = await SortedEventParquetExtensions.ReadParquetAsync(Open(bytes));
+        all.Count.ShouldBe(10_000);
+
+        // Predicate path (AcceptRowGroup / RowGroupMetadata): the pushdown result must equal
+        // the client-side filter over the full scan — pruning may only remove provably-empty
+        // groups, never a matching row.
+        List<SortedEvent> viaPredicate = await SortedEventParquetExtensions.ReadParquetAsync(
+            Open(bytes),
+            predicate: meta => meta.SequenceNumber.MayContainAtLeast(9_500)
+        );
+        viaPredicate
+            .Select(e => e.SequenceNumber)
+            .ShouldBe(all.Where(e => e.SequenceNumber >= 9_500).Select(e => e.SequenceNumber));
+
+        // Sorted-lookup path (TryPruneSortedRowGroups / ReadPrunedRangeAsync) on the same
+        // key column and file.
+        var pruning = new ParquetPruneStatistics();
+        List<SortedEvent> viaLookup =
+            await SortedEventParquetExtensions.ReadParquetBySequenceNumberAsync(
+                Open(bytes),
+                9_999,
+                pruning
+            );
+        viaLookup.Count.ShouldBe(1);
+        viaLookup[0].SequenceNumber.ShouldBe(9_999);
+
+        // The two mechanisms must not interfere: the co-located predicate machinery cannot
+        // silently disable sorted binary search, and vice versa.
+        pruning.SortedColumnDetected.ShouldBeTrue();
+        pruning.RowGroupsScanned.ShouldBe(1);
+
+        // And the lookup's row is inside the predicate's surviving set — one key column, one
+        // file, two pruning mechanisms, one consistent answer.
+        viaPredicate.ShouldContain(viaLookup[0]);
+    }
+
     [Fact]
     public async Task PointLookupOnAMissingKeyReadsNothingAndReturnsEmpty()
     {

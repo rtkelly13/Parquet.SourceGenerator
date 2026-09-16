@@ -1,5 +1,6 @@
 using Microsoft.CodeAnalysis.Text;
 using Parquet.SourceGenerator.ApiGates;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -36,9 +37,9 @@ public sealed class ApiChangeContractTests
             )
         );
 
-        Assert.Equal(2, catalogue.Count);
-        Assert.Contains("Sample.Space.Widget", catalogue);
-        Assert.Contains("static Sample.Space.Widget.Read() -> int", catalogue);
+        catalogue.Count.ShouldBe(2);
+        catalogue.ShouldContain("Sample.Space.Widget");
+        catalogue.ShouldContain("static Sample.Space.Widget.Read() -> int");
     }
 
     [Theory]
@@ -49,7 +50,7 @@ public sealed class ApiChangeContractTests
     [InlineData("const Sample.Space.Widget.Limit = 512 -> int", "Limit")]
     [InlineData("static Sample.Space.Widget.Map<T>(T value) -> T", "Map")]
     public void SimpleNameIsTheMemberIdentifier(string line, string expected) =>
-        Assert.Equal(expected, ApiCatalogue.SimpleName(line));
+        ApiCatalogue.SimpleName(line).ShouldBe(expected);
 
     [Fact]
     public void AnEntryWithoutTheMarkerExemptsNothing()
@@ -64,8 +65,8 @@ public sealed class ApiChangeContractTests
             )
         );
 
-        Assert.True(ledger.IsEmpty);
-        Assert.False(ledger.IsExempt(SpikeLine));
+        ledger.IsEmpty.ShouldBeTrue();
+        ledger.IsExempt(SpikeLine).ShouldBeFalse();
     }
 
     [Fact]
@@ -81,31 +82,29 @@ public sealed class ApiChangeContractTests
             )
         );
 
-        Assert.True(ledger.IsExempt(SpikeLine));
+        ledger.IsExempt(SpikeLine).ShouldBeTrue();
     }
 
     [Fact]
     public void AMarkedEntryExemptsByBareMemberNameAndByVerbatimCatalogueLine()
     {
-        Assert.True(
-            ApiLedger
-                .Read(
-                    SourceText.From(
-                        "### 2026-09-11 — `SpikeCount`\n- **Unapproved-by-design:** spike.\n"
-                    )
+        ApiLedger
+            .Read(
+                SourceText.From(
+                    "### 2026-09-11 — `SpikeCount`\n- **Unapproved-by-design:** spike.\n"
                 )
-                .IsExempt(SpikeLine)
-        );
+            )
+            .IsExempt(SpikeLine)
+            .ShouldBeTrue();
 
-        Assert.True(
-            ApiLedger
-                .Read(
-                    SourceText.From(
-                        $"### 2026-09-11 — spike\n- **Unapproved-by-design:** `{SpikeLine}`\n"
-                    )
+        ApiLedger
+            .Read(
+                SourceText.From(
+                    $"### 2026-09-11 — spike\n- **Unapproved-by-design:** `{SpikeLine}`\n"
                 )
-                .IsExempt(SpikeLine)
-        );
+            )
+            .IsExempt(SpikeLine)
+            .ShouldBeTrue();
     }
 
     [Fact]
@@ -121,7 +120,7 @@ public sealed class ApiChangeContractTests
             )
         );
 
-        Assert.False(ledger.IsExempt(SpikeLine));
+        ledger.IsExempt(SpikeLine).ShouldBeFalse();
     }
 
     [Fact]
@@ -139,8 +138,8 @@ public sealed class ApiChangeContractTests
             )
         );
 
-        Assert.True(ledger.IsExempt(SpikeLine));
-        Assert.False(ledger.IsExempt("static Ns.T.Approved(System.IO.Stream stream) -> int"));
+        ledger.IsExempt(SpikeLine).ShouldBeTrue();
+        ledger.IsExempt("static Ns.T.Approved(System.IO.Stream stream) -> int").ShouldBeFalse();
     }
 
     [Fact]
@@ -160,10 +159,11 @@ public sealed class ApiChangeContractTests
             "LEDGER.md"
         );
 
-        Assert.True(System.IO.File.Exists(ledgerPath), $"Ledger not found at {ledgerPath}");
-        Assert.True(
-            ApiLedger.Read(SourceText.From(System.IO.File.ReadAllText(ledgerPath))).IsEmpty,
-            "docs/api/LEDGER.md carries an '**Unapproved-by-design:**' entry, which cannot merge to main."
-        );
+        System.IO.File.Exists(ledgerPath).ShouldBeTrue($"Ledger not found at {ledgerPath}");
+        ApiLedger
+            .Read(SourceText.From(System.IO.File.ReadAllText(ledgerPath)))
+            .IsEmpty.ShouldBeTrue(
+                "docs/api/LEDGER.md carries an '**Unapproved-by-design:**' entry, which cannot merge to main."
+            );
     }
 }

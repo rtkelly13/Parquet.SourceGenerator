@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -82,14 +83,14 @@ public sealed class SchemaFieldResolutionTests
         // still hits on position — so a single read covers both paths and the reuse between misses.
         List<ReversedOrder> read = await ReversedOrderParquetExtensions.ReadParquetAsync(stream);
 
-        Assert.Equal(3, read.Count);
+        read.Count.ShouldBe(3);
         for (int i = 0; i < written.Count; i++)
         {
             // If resolution fell back to position rather than name, Alpha and Gamma would be
             // transposed here rather than merely wrong.
-            Assert.Equal(written[i].Alpha, read[i].Alpha);
-            Assert.Equal(written[i].Beta, read[i].Beta);
-            Assert.Equal(written[i].Gamma, read[i].Gamma);
+            read[i].Alpha.ShouldBe(written[i].Alpha);
+            read[i].Beta.ShouldBe(written[i].Beta);
+            read[i].Gamma.ShouldBe(written[i].Gamma);
         }
     }
 
@@ -121,12 +122,12 @@ public sealed class SchemaFieldResolutionTests
             stream
         );
 
-        Assert.Equal(written.Count, read.Count);
+        read.Count.ShouldBe(written.Count);
         for (int i = 0; i < written.Count; i++)
         {
-            Assert.Equal(written[i].Alpha, read[i].Alpha);
-            Assert.Equal(written[i].Beta, read[i].Beta);
-            Assert.Equal(written[i].Gamma, read[i].Gamma);
+            read[i].Alpha.ShouldBe(written[i].Alpha);
+            read[i].Beta.ShouldBe(written[i].Beta);
+            read[i].Gamma.ShouldBe(written[i].Gamma);
         }
     }
 
@@ -150,10 +151,10 @@ public sealed class SchemaFieldResolutionTests
 
         List<ForwardOrder> read = await ForwardOrderParquetExtensions.ReadParquetAsync(stream);
 
-        Assert.Single(read);
-        Assert.Equal(7, read[0].Alpha);
-        Assert.Equal("seven", read[0].Beta);
-        Assert.Equal(7.75, read[0].Gamma);
+        read.ShouldHaveSingleItem();
+        read[0].Alpha.ShouldBe(7);
+        read[0].Beta.ShouldBe("seven");
+        read[0].Gamma.ShouldBe(7.75);
     }
 
     [Fact]
@@ -170,12 +171,11 @@ public sealed class SchemaFieldResolutionTests
         stream.Position = 0;
 
         // ForwardOrder requires 'gamma' (non-nullable double). Reading partial stream should throw InvalidDataException.
-        var ex = await Assert.ThrowsAsync<InvalidDataException>(() =>
+        var ex = await Should.ThrowAsync<InvalidDataException>(() =>
             ForwardOrderParquetExtensions.ReadParquetAsync(stream)
         );
-        Assert.Contains(
-            "Required column 'gamma' was not found in the Parquet file schema",
-            ex.Message
+        ex.Message.ShouldContain(
+            "Required column 'gamma' was not found in the Parquet file schema"
         );
     }
 }

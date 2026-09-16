@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -43,8 +44,7 @@ public static class ParquetCompatibilityOracle
         List<T> actualRows = actual.ToList();
         options ??= new CompatibilityComparisonOptions();
 
-        Assert.True(
-            expectedRows.Count == actualRows.Count,
+        (expectedRows.Count == actualRows.Count).ShouldBeTrue(
             $"row count: expected {expectedRows.Count}, actual {actualRows.Count}"
         );
 
@@ -63,8 +63,7 @@ public static class ParquetCompatibilityOracle
     {
         if (expected is null || actual is null)
         {
-            Assert.True(
-                expected is null && actual is null,
+            (expected is null && actual is null).ShouldBeTrue(
                 $"{path}: expected {FormatValue(expected)}, actual {FormatValue(actual)}"
             );
             return;
@@ -72,10 +71,12 @@ public static class ParquetCompatibilityOracle
 
         if (expected is byte[] expectedBytes && actual is byte[] actualBytes)
         {
-            Assert.True(
-                expectedBytes.AsSpan().SequenceEqual(actualBytes),
-                $"{path}: expected {FormatBytes(expectedBytes)}, actual {FormatBytes(actualBytes)}"
-            );
+            expectedBytes
+                .AsSpan()
+                .SequenceEqual(actualBytes)
+                .ShouldBeTrue(
+                    $"{path}: expected {FormatBytes(expectedBytes)}, actual {FormatBytes(actualBytes)}"
+                );
             return;
         }
 
@@ -84,10 +85,11 @@ public static class ParquetCompatibilityOracle
             && actual is ReadOnlyMemory<byte> actualByteMemory
         )
         {
-            Assert.True(
-                expectedByteMemory.Span.SequenceEqual(actualByteMemory.Span),
-                $"{path}: expected {FormatBytes(expectedByteMemory.Span)}, actual {FormatBytes(actualByteMemory.Span)}"
-            );
+            expectedByteMemory
+                .Span.SequenceEqual(actualByteMemory.Span)
+                .ShouldBeTrue(
+                    $"{path}: expected {FormatBytes(expectedByteMemory.Span)}, actual {FormatBytes(actualByteMemory.Span)}"
+                );
             return;
         }
 
@@ -96,10 +98,11 @@ public static class ParquetCompatibilityOracle
             && actual is ReadOnlyMemory<char> actualCharMemory
         )
         {
-            Assert.True(
-                expectedCharMemory.Span.SequenceEqual(actualCharMemory.Span),
-                $"{path}: expected '{expectedCharMemory}', actual '{actualCharMemory}'"
-            );
+            expectedCharMemory
+                .Span.SequenceEqual(actualCharMemory.Span)
+                .ShouldBeTrue(
+                    $"{path}: expected '{expectedCharMemory}', actual '{actualCharMemory}'"
+                );
             return;
         }
 
@@ -107,18 +110,16 @@ public static class ParquetCompatibilityOracle
         {
             if (options.TimestampPrecision is TimeSpan precision)
             {
-                Assert.True(precision > TimeSpan.Zero, "TimestampPrecision must be positive.");
+                (precision > TimeSpan.Zero).ShouldBeTrue("TimestampPrecision must be positive.");
                 long expectedBucket = expectedDateTime.Ticks / precision.Ticks;
                 long actualBucket = actualDateTime.Ticks / precision.Ticks;
-                Assert.True(
-                    expectedBucket == actualBucket,
+                (expectedBucket == actualBucket).ShouldBeTrue(
                     $"{path}: expected {expectedDateTime:o}, actual {actualDateTime:o}, precision {precision}"
                 );
             }
             else
             {
-                Assert.True(
-                    expectedDateTime.Ticks == actualDateTime.Ticks,
+                (expectedDateTime.Ticks == actualDateTime.Ticks).ShouldBeTrue(
                     $"{path}: expected {expectedDateTime:o}, actual {actualDateTime:o}"
                 );
             }
@@ -130,18 +131,18 @@ public static class ParquetCompatibilityOracle
         {
             if (options.TimestampPrecision is TimeSpan timePrecision)
             {
-                Assert.True(timePrecision > TimeSpan.Zero, "TimestampPrecision must be positive.");
+                (timePrecision > TimeSpan.Zero).ShouldBeTrue(
+                    "TimestampPrecision must be positive."
+                );
                 long expectedBucket = expectedTime.Ticks / timePrecision.Ticks;
                 long actualBucket = actualTime.Ticks / timePrecision.Ticks;
-                Assert.True(
-                    expectedBucket == actualBucket,
+                (expectedBucket == actualBucket).ShouldBeTrue(
                     $"{path}: expected {expectedTime}, actual {actualTime}, precision {timePrecision}"
                 );
             }
             else
             {
-                Assert.True(
-                    expectedTime.Ticks == actualTime.Ticks,
+                (expectedTime.Ticks == actualTime.Ticks).ShouldBeTrue(
                     $"{path}: expected {expectedTime}, actual {actualTime}"
                 );
             }
@@ -168,10 +169,10 @@ public static class ParquetCompatibilityOracle
             || expected.GetType().IsValueType
         )
         {
-            Assert.True(
-                Equals(expected, actual),
-                $"{path}: expected {FormatValue(expected)}, actual {FormatValue(actual)}"
-            );
+            Equals(expected, actual)
+                .ShouldBeTrue(
+                    $"{path}: expected {FormatValue(expected)}, actual {FormatValue(actual)}"
+                );
             return;
         }
 
@@ -179,8 +180,7 @@ public static class ParquetCompatibilityOracle
         {
             List<object?> expectedList = expectedItems.Cast<object?>().ToList();
             List<object?> actualList = actualItems.Cast<object?>().ToList();
-            Assert.True(
-                expectedList.Count == actualList.Count,
+            (expectedList.Count == actualList.Count).ShouldBeTrue(
                 $"{path}: expected {expectedList.Count} items, actual {actualList.Count}"
             );
             for (int i = 0; i < expectedList.Count; i++)
@@ -196,13 +196,12 @@ public static class ParquetCompatibilityOracle
             .GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Where(property => property.GetIndexParameters().Length == 0)
             .ToArray();
-        Assert.True(properties.Length > 0, $"{path}: no comparable public values found.");
+        (properties.Length > 0).ShouldBeTrue($"{path}: no comparable public values found.");
 
         foreach (PropertyInfo property in properties)
         {
             PropertyInfo? actualProperty = actual.GetType().GetProperty(property.Name);
-            Assert.True(
-                actualProperty is not null,
+            (actualProperty is not null).ShouldBeTrue(
                 $"{path}: actual value has no property '{property.Name}'."
             );
             CompareValue(
@@ -226,8 +225,7 @@ public static class ParquetCompatibilityOracle
             double.IsInfinity(expected) || double.IsInfinity(actual)
                 ? expected == actual
                 : Math.Abs(expected - actual) <= tolerance;
-        Assert.True(
-            equal,
+        equal.ShouldBeTrue(
             $"{path}: expected {expected:R}, actual {actual:R}, tolerance {tolerance}"
         );
     }
@@ -334,11 +332,11 @@ public sealed class CompatibilityTestHarnessTests
             new CompatibilityRecord { RequiredName = "expected", OptionalName = string.Empty },
         };
 
-        Xunit.Sdk.XunitException exception = Assert.ThrowsAny<Xunit.Sdk.XunitException>(() =>
+        var exception = Should.Throw<ShouldAssertException>(() =>
             ParquetCompatibilityOracle.AssertEquivalent(expected, actual)
         );
 
-        Assert.Contains("row 0.OptionalName", exception.Message);
+        exception.Message.ShouldContain("row 0.OptionalName");
     }
 
     [Fact]
