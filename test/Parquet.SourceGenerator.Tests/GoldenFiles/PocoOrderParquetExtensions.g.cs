@@ -244,11 +244,16 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
             }
         }
         global::System.Array.Sort(starts, ends, 0, rangeCount);
+        long previousEnd = rangeCount == 0 ? 0 : ends[0];
         for (int i = 1; i < rangeCount; i++)
         {
-            if (starts[i] < ends[i - 1])
+            if (starts[i] < previousEnd)
             {
                 throw new global::System.IO.InvalidDataException($"Column chunk ranges overlap at file offset {starts[i]}.");
+            }
+            if (ends[i] > previousEnd)
+            {
+                previousEnd = ends[i];
             }
         }
     }

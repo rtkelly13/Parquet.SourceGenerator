@@ -9,7 +9,7 @@
 # ELOC_PER_MEMBER emitted executable lines per emitted public member.
 # Ordinal-sorted. CC, CL, SLOC, ELOC, DIT, ERRORS and MEMBERS are gated exactly; MI is
 # REPORTED BUT NOT GATED for generated code. See docs/22-GENERATED-CODE-METRICS.md.
-S:ListOrderParquetExtensions | EMITTER=v6 MEMBERS=47 CC=602 CL=78 SLOC=3459 ELOC=1890 ERRORS=0 METHODS=54 MAXCC=97 ELOC_PER_MEMBER=40.2
+S:ListOrderParquetExtensions | EMITTER=v6 MEMBERS=47 CC=604 CL=78 SLOC=3464 ELOC=1893 ERRORS=0 METHODS=54 MAXCC=97 ELOC_PER_MEMBER=40.3
 M:SampleDomain.Models.ListOrderParquet.From(System.IO.Stream) | MI=90 CC=2 CL=5 DIT=- SLOC=3 ELOC=1
 M:SampleDomain.Models.ListOrderParquet.From(System.ReadOnlyMemory<byte>) | MI=94 CC=1 CL=3 DIT=- SLOC=3 ELOC=1
 M:SampleDomain.Models.ListOrderParquetExtensions.AcceptRowGroup(System.Func<SampleDomain.Models.ListOrderRowGroupMetadata, bool>, Parquet.ParquetRowGroupReader, int, Parquet.Schema.DataField) | MI=65 CC=5 CL=8 DIT=- SLOC=34 ELOC=6
@@ -30,7 +30,7 @@ M:SampleDomain.Models.ListOrderParquetExtensions.ReadParquetStreamAsync(System.I
 M:SampleDomain.Models.ListOrderParquetExtensions.ReadParquetStreamAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.ListOrderRowGroupMetadata, bool>) | MI=67 CC=2 CL=10 DIT=- SLOC=15 ELOC=6
 M:SampleDomain.Models.ListOrderParquetExtensions.ReadRowGroupsIntoAsync(System.ReadOnlyMemory<byte>, Parquet.ParquetOptions, SampleDomain.Models.ListOrder[], int[], int[], int, int, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationTokenSource, System.Threading.CancellationToken) | MI=18 CC=52 CL=26 DIT=- SLOC=216 ELOC=158
 M:SampleDomain.Models.ListOrderParquetExtensions.ResolveSchemaField(Parquet.Schema.DataField[], int, Parquet.Schema.DataField, ref System.Collections.Generic.Dictionary<string, Parquet.Schema.DataField>, out bool) | MI=50 CC=10 CL=9 DIT=- SLOC=62 ELOC=21
-M:SampleDomain.Models.ListOrderParquetExtensions.ValidateColumnChunkBounds(Parquet.ParquetReader, long) | MI=40 CC=19 CL=10 DIT=- SLOC=79 ELOC=44
+M:SampleDomain.Models.ListOrderParquetExtensions.ValidateColumnChunkBounds(Parquet.ParquetReader, long) | MI=38 CC=21 CL=10 DIT=- SLOC=84 ELOC=47
 M:SampleDomain.Models.ListOrderParquetExtensions.ValidatePhysicalType(Parquet.ParquetReader, Parquet.Schema.DataField[], Parquet.Schema.DataField, long) | MI=50 CC=11 CL=15 DIT=- SLOC=41 ELOC=20
 M:SampleDomain.Models.ListOrderParquetExtensions.ValidateReader(Parquet.ParquetReader, System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions) | MI=54 CC=6 CL=9 DIT=- SLOC=32 ELOC=16
 M:SampleDomain.Models.ListOrderParquetExtensions.WriteParquetAsync(System.Collections.Generic.IAsyncEnumerable<SampleDomain.Models.ListOrder>, System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=54 CC=7 CL=15 DIT=- SLOC=35 ELOC=16
@@ -69,7 +69,7 @@ P:SampleDomain.Models.ListOrderRowGroupMetadata.Id | MI=100 CC=1 CL=1 DIT=- SLOC
 P:SampleDomain.Models.ListOrderRowGroupMetadata.RowCount | MI=100 CC=1 CL=0 DIT=- SLOC=2 ELOC=0
 P:SampleDomain.Models.ListOrderRowGroupMetadata.RowGroupIndex | MI=100 CC=1 CL=0 DIT=- SLOC=2 ELOC=0
 T:SampleDomain.Models.ListOrderParquet | MI=91 CC=3 CL=7 DIT=1 SLOC=13 ELOC=2
-T:SampleDomain.Models.ListOrderParquetExtensions | MI=33 CC=562 CL=72 DIT=1 SLOC=3243 ELOC=1841
+T:SampleDomain.Models.ListOrderParquetExtensions | MI=33 CC=564 CL=72 DIT=1 SLOC=3248 ELOC=1844
 T:SampleDomain.Models.ListOrderParquetFilteredSource | MI=73 CC=10 CL=14 DIT=1 SLOC=53 ELOC=15
 T:SampleDomain.Models.ListOrderParquetMemorySource | MI=82 CC=9 CL=15 DIT=1 SLOC=45 ELOC=11
 T:SampleDomain.Models.ListOrderParquetParallelSource | MI=82 CC=5 CL=9 DIT=1 SLOC=31 ELOC=7

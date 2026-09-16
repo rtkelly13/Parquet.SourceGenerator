@@ -452,6 +452,9 @@ public class HostileParquetTests
     [InlineData("before-header", "outside the file data bounds")]
     [InlineData("in-footer", "outside the file data bounds")]
     [InlineData("past-footer", "extends beyond the file data bounds")]
+    [InlineData("negative-size", "negative compressed size")]
+    [InlineData("zero-size", "no compressed data")]
+    [InlineData("contained", "ranges overlap")]
     [InlineData("overlap", "ranges overlap")]
     public async Task MalformedColumnChunkBoundsAreRejected(string mutation, string expectedMessage)
     {
@@ -477,6 +480,18 @@ public class HostileParquetTests
                         break;
                     case "past-footer":
                         first.TotalCompressedSize = long.MaxValue;
+                        break;
+                    case "negative-size":
+                        first.TotalCompressedSize = -1;
+                        break;
+                    case "zero-size":
+                        first.TotalCompressedSize = 0;
+                        break;
+                    case "contained":
+                        first.TotalCompressedSize =
+                            metadata.RowGroups[0].Columns[1].MetaData!.DataPageOffset
+                            - first.DataPageOffset
+                            + 1;
                         break;
                     case "overlap":
                         metadata.RowGroups[0].Columns[1].MetaData!.DataPageOffset =

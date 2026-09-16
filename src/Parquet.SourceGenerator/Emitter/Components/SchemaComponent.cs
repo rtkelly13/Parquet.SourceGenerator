@@ -518,13 +518,18 @@ internal static class SchemaComponent
         builder.AppendLine("            }");
         builder.AppendLine("        }");
         builder.AppendLine("        global::System.Array.Sort(starts, ends, 0, rangeCount);");
+        builder.AppendLine("        long previousEnd = rangeCount == 0 ? 0 : ends[0];");
         builder.AppendLine("        for (int i = 1; i < rangeCount; i++)");
         builder.AppendLine("        {");
-        builder.AppendLine("            if (starts[i] < ends[i - 1])");
+        builder.AppendLine("            if (starts[i] < previousEnd)");
         builder.AppendLine("            {");
         builder.AppendLine(
             "                throw new global::System.IO.InvalidDataException($\"Column chunk ranges overlap at file offset {starts[i]}.\");"
         );
+        builder.AppendLine("            }");
+        builder.AppendLine("            if (ends[i] > previousEnd)");
+        builder.AppendLine("            {");
+        builder.AppendLine("                previousEnd = ends[i];");
         builder.AppendLine("            }");
         builder.AppendLine("        }");
         builder.AppendLine("    }");
