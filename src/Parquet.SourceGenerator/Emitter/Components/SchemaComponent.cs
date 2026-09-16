@@ -287,4 +287,76 @@ internal static class SchemaComponent
             builder.AppendLine("    }");
         }
     }
+
+    /// <summary>
+    /// Emits validation for the physical type recorded in every row-group column chunk.
+    /// </summary>
+    /// <remarks>
+    /// Schema fields expose a CLR projection, but a hostile footer can retain the expected schema
+    /// while changing a column chunk's physical type. The generated readers must reject that
+    /// mismatch before asking Parquet.Net to allocate or decode a column buffer.
+    /// </remarks>
+    public static void EmitValidatePhysicalType(StringBuilder builder)
+    {
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine(
+            "    /// Validates that a present column chunk retains the physical type declared by the generated schema."
+        );
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    private static void ValidatePhysicalType(");
+        builder.AppendLine("        global::Parquet.ParquetReader reader,");
+        builder.AppendLine("        global::Parquet.Schema.DataField[] fileFields,");
+        builder.AppendLine("        global::Parquet.Schema.DataField expected)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        string expectedPath = expected.Path.ToString();");
+        builder.AppendLine("        int fieldIndex = -1;");
+        builder.AppendLine("        for (int i = 0; i < fileFields.Length; i++)");
+        builder.AppendLine("        {");
+        builder.AppendLine(
+            "            if (string.Equals(fileFields[i].Path.ToString(), expectedPath, global::System.StringComparison.OrdinalIgnoreCase))"
+        );
+        builder.AppendLine("            {");
+        builder.AppendLine("                fieldIndex = i;");
+        builder.AppendLine("                break;");
+        builder.AppendLine("            }");
+        builder.AppendLine("        }");
+        builder.AppendLine("        if (fieldIndex < 0)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            if (expected.IsNullable) return;");
+        builder.AppendLine(
+            "            throw new global::System.IO.InvalidDataException($\"Required column '{expectedPath}' was not found in the Parquet file schema.\");"
+        );
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        var schemaElement = fileFields[fieldIndex].SchemaElement;");
+        builder.AppendLine(
+            "        if (schemaElement is null) throw new global::System.IO.InvalidDataException($\"Column '{expectedPath}' has no physical type in the Parquet file schema.\");"
+        );
+        builder.AppendLine("        var expectedPhysicalType = schemaElement.Type;");
+        builder.AppendLine(
+            "        for (int rowGroup = 0; rowGroup < reader.RowGroupCount; rowGroup++)"
+        );
+        builder.AppendLine("        {");
+        builder.AppendLine(
+            "            if ((uint)rowGroup >= (uint)reader.Metadata.RowGroups.Count) throw new global::System.IO.InvalidDataException($\"Row group {rowGroup} is missing from the Parquet footer metadata.\");"
+        );
+        builder.AppendLine(
+            "            var columns = reader.Metadata.RowGroups[rowGroup].Columns;"
+        );
+        builder.AppendLine(
+            "            if ((uint)fieldIndex >= (uint)columns.Count) throw new global::System.IO.InvalidDataException($\"Column '{expectedPath}' is missing from row group {rowGroup} metadata.\");"
+        );
+        builder.AppendLine("            var metadata = columns[fieldIndex].MetaData;");
+        builder.AppendLine(
+            "            if (metadata is null) throw new global::System.IO.InvalidDataException($\"Column '{expectedPath}' has no metadata in row group {rowGroup}.\");"
+        );
+        builder.AppendLine("            if (metadata.Type != expectedPhysicalType)");
+        builder.AppendLine("            {");
+        builder.AppendLine(
+            "                throw new global::System.IO.InvalidDataException($\"Column '{expectedPath}' physical type '{metadata.Type}' does not match expected '{expectedPhysicalType}' for CLR type '{expected.ClrType}' in row group {rowGroup}.\");"
+        );
+        builder.AppendLine("            }");
+        builder.AppendLine("        }");
+        builder.AppendLine("    }");
+    }
 }

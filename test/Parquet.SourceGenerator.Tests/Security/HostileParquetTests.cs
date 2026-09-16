@@ -1,11 +1,15 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using Parquet;
+using Parquet.Meta;
 using Parquet.Schema;
 using Xunit;
+using ParquetPhysicalType = Parquet.Meta.Type;
 
 namespace Parquet.SourceGenerator.Tests.Security;
 
@@ -391,6 +395,96 @@ public class HostileParquetTests
         );
         Assert.Contains("Column 'id' type", ex.Message);
         Assert.Contains("does not match expected 'System.Int32'", ex.Message);
+    }
+
+    [Fact]
+    public async Task PhysicalMetadataMismatchIsRejectedAcrossGeneratedReadPaths()
+    {
+        var items = new List<MultiRowGroupModel>
+        {
+            new() { Id = 1, Name = "one" },
+        };
+
+        using var source = new MemoryStream();
+        await items.WriteParquetAsync(source);
+        byte[] hostileBytes = await RewriteFirstColumnPhysicalTypeAsync(
+            source.ToArray(),
+            ParquetPhysicalType.BYTE_ARRAY
+        );
+
+        using (var listStream = new MemoryStream(hostileBytes, writable: false))
+        {
+            var ex = await Assert.ThrowsAsync<InvalidDataException>(() =>
+                MultiRowGroupModelParquetExtensions.ReadParquetAsync(listStream)
+            );
+            Assert.Contains("physical type 'BYTE_ARRAY'", ex.Message);
+            Assert.Contains("expected 'INT32'", ex.Message);
+        }
+
+        using (var arrayStream = new MemoryStream(hostileBytes, writable: false))
+        {
+            var ex = await Assert.ThrowsAsync<InvalidDataException>(() =>
+                MultiRowGroupModelParquetExtensions.ReadParquetArrayAsync(arrayStream)
+            );
+            Assert.Contains("physical type 'BYTE_ARRAY'", ex.Message);
+        }
+
+        using (var parallelStream = new MemoryStream(hostileBytes, writable: false))
+        {
+            var ex = await Assert.ThrowsAsync<InvalidDataException>(() =>
+                MultiRowGroupModelParquetExtensions.ReadParquetParallelArrayAsync(parallelStream)
+            );
+            Assert.Contains("physical type 'BYTE_ARRAY'", ex.Message);
+        }
+
+        using (var stream = new MemoryStream(hostileBytes, writable: false))
+        {
+            var ex = await Assert.ThrowsAsync<InvalidDataException>(async () =>
+            {
+                await foreach (
+                    var _ in MultiRowGroupModelParquetExtensions.ReadParquetStreamAsync(stream)
+                ) { }
+            });
+            Assert.Contains("physical type 'BYTE_ARRAY'", ex.Message);
+        }
+    }
+
+    private static async Task<byte[]> RewriteFirstColumnPhysicalTypeAsync(
+        byte[] bytes,
+        ParquetPhysicalType physicalType
+    )
+    {
+        int footerLength = BitConverter.ToInt32(bytes, bytes.Length - 8);
+        int footerStart = bytes.Length - 8 - footerLength;
+
+        using var input = new MemoryStream(bytes, writable: false);
+        await using var reader = await ParquetReader.CreateAsync(input);
+        reader.Metadata!.RowGroups[0].Columns[0].MetaData!.Type = physicalType;
+
+        using var footer = new MemoryStream();
+        System.Type writerType = typeof(ParquetReader).Assembly.GetType(
+            "Parquet.Meta.Proto.ThriftCompactProtocolWriter",
+            throwOnError: true
+        )!;
+        object writer = Activator.CreateInstance(
+            writerType,
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+            binder: null,
+            args: [footer],
+            culture: CultureInfo.InvariantCulture
+        )!;
+        MethodInfo writeMethod = typeof(FileMetaData).GetMethod(
+            "Write",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+        )!;
+        writeMethod.Invoke(reader.Metadata, [writer]);
+
+        byte[] result = new byte[footerStart + footer.Length + 8];
+        Buffer.BlockCopy(bytes, 0, result, 0, footerStart);
+        footer.ToArray().AsSpan().CopyTo(result.AsSpan(footerStart));
+        BitConverter.GetBytes((int)footer.Length).CopyTo(result, footerStart + (int)footer.Length);
+        "PAR1"u8.CopyTo(result.AsSpan(result.Length - 4));
+        return result;
     }
 
     private static async Task WriteEmptyListColumnsAsync(

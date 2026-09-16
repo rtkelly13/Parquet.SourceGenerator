@@ -85,6 +85,47 @@ public static partial class LegacyRecordParquetLegacyExtensions
     }
 
     /// <summary>
+    /// Validates that a present column chunk retains the physical type declared by the generated schema.
+    /// </summary>
+    private static void ValidatePhysicalType(
+        global::Parquet.ParquetReader reader,
+        global::Parquet.Schema.DataField[] fileFields,
+        global::Parquet.Schema.DataField expected)
+    {
+        string expectedPath = expected.Path.ToString();
+        int fieldIndex = -1;
+        for (int i = 0; i < fileFields.Length; i++)
+        {
+            if (string.Equals(fileFields[i].Path.ToString(), expectedPath, global::System.StringComparison.OrdinalIgnoreCase))
+            {
+                fieldIndex = i;
+                break;
+            }
+        }
+        if (fieldIndex < 0)
+        {
+            if (expected.IsNullable) return;
+            throw new global::System.IO.InvalidDataException($"Required column '{expectedPath}' was not found in the Parquet file schema.");
+        }
+
+        var schemaElement = fileFields[fieldIndex].SchemaElement;
+        if (schemaElement is null) throw new global::System.IO.InvalidDataException($"Column '{expectedPath}' has no physical type in the Parquet file schema.");
+        var expectedPhysicalType = schemaElement.Type;
+        for (int rowGroup = 0; rowGroup < reader.RowGroupCount; rowGroup++)
+        {
+            if ((uint)rowGroup >= (uint)reader.Metadata.RowGroups.Count) throw new global::System.IO.InvalidDataException($"Row group {rowGroup} is missing from the Parquet footer metadata.");
+            var columns = reader.Metadata.RowGroups[rowGroup].Columns;
+            if ((uint)fieldIndex >= (uint)columns.Count) throw new global::System.IO.InvalidDataException($"Column '{expectedPath}' is missing from row group {rowGroup} metadata.");
+            var metadata = columns[fieldIndex].MetaData;
+            if (metadata is null) throw new global::System.IO.InvalidDataException($"Column '{expectedPath}' has no metadata in row group {rowGroup}.");
+            if (metadata.Type != expectedPhysicalType)
+            {
+                throw new global::System.IO.InvalidDataException($"Column '{expectedPath}' physical type '{metadata.Type}' does not match expected '{expectedPhysicalType}' for CLR type '{expected.ClrType}' in row group {rowGroup}.");
+            }
+        }
+    }
+
+    /// <summary>
     /// Translates the generator's options into the Parquet.Net options the reader and writer accept.
     /// </summary>
     /// <remarks>
@@ -96,6 +137,19 @@ public static partial class LegacyRecordParquetLegacyExtensions
     private static global::Parquet.ParquetOptions BuildFormatOptions(global::Parquet.SourceGenerator.ParquetSerializerOptions options)
     {
         return new global::Parquet.ParquetOptions();
+    }
+
+    /// <summary>
+    /// Validates row-group column metadata before the legacy reader allocates result buffers.
+    /// </summary>
+    private static void ValidateReader(
+        global::Parquet.ParquetReader reader,
+        global::Parquet.Schema.DataField[] fileFieldsForTypeValidation)
+    {
+        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_0);
+        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_1);
+        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_2);
+        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_3);
     }
 
     /// <summary>
@@ -438,6 +492,8 @@ public static partial class LegacyRecordParquetLegacyExtensions
             BuildFormatOptions(options),
             cancellationToken: cancellationToken).ConfigureAwait(false))
         {
+            var fileFields = reader.Schema.GetDataFields();
+            ValidateReader(reader, fileFields);
             int totalRows = 0;
             for (int r = 0; r < reader.RowGroupCount; r++)
             {
@@ -447,7 +503,6 @@ public static partial class LegacyRecordParquetLegacyExtensions
             var results = new LegacyRecord[totalRows];
             int currentOffset = 0;
 
-            var fileFields = reader.Schema.GetDataFields();
             global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
             var field_0 = ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName, out _);
             var field_1 = ResolveSchemaField(fileFields, 1, _field_1, ref fieldsByName, out bool missing_1);

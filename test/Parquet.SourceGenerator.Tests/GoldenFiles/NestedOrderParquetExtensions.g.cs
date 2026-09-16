@@ -107,6 +107,47 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
     }
 
     /// <summary>
+    /// Validates that a present column chunk retains the physical type declared by the generated schema.
+    /// </summary>
+    private static void ValidatePhysicalType(
+        global::Parquet.ParquetReader reader,
+        global::Parquet.Schema.DataField[] fileFields,
+        global::Parquet.Schema.DataField expected)
+    {
+        string expectedPath = expected.Path.ToString();
+        int fieldIndex = -1;
+        for (int i = 0; i < fileFields.Length; i++)
+        {
+            if (string.Equals(fileFields[i].Path.ToString(), expectedPath, global::System.StringComparison.OrdinalIgnoreCase))
+            {
+                fieldIndex = i;
+                break;
+            }
+        }
+        if (fieldIndex < 0)
+        {
+            if (expected.IsNullable) return;
+            throw new global::System.IO.InvalidDataException($"Required column '{expectedPath}' was not found in the Parquet file schema.");
+        }
+
+        var schemaElement = fileFields[fieldIndex].SchemaElement;
+        if (schemaElement is null) throw new global::System.IO.InvalidDataException($"Column '{expectedPath}' has no physical type in the Parquet file schema.");
+        var expectedPhysicalType = schemaElement.Type;
+        for (int rowGroup = 0; rowGroup < reader.RowGroupCount; rowGroup++)
+        {
+            if ((uint)rowGroup >= (uint)reader.Metadata.RowGroups.Count) throw new global::System.IO.InvalidDataException($"Row group {rowGroup} is missing from the Parquet footer metadata.");
+            var columns = reader.Metadata.RowGroups[rowGroup].Columns;
+            if ((uint)fieldIndex >= (uint)columns.Count) throw new global::System.IO.InvalidDataException($"Column '{expectedPath}' is missing from row group {rowGroup} metadata.");
+            var metadata = columns[fieldIndex].MetaData;
+            if (metadata is null) throw new global::System.IO.InvalidDataException($"Column '{expectedPath}' has no metadata in row group {rowGroup}.");
+            if (metadata.Type != expectedPhysicalType)
+            {
+                throw new global::System.IO.InvalidDataException($"Column '{expectedPath}' physical type '{metadata.Type}' does not match expected '{expectedPhysicalType}' for CLR type '{expected.ClrType}' in row group {rowGroup}.");
+            }
+        }
+    }
+
+    /// <summary>
     /// Translates the generator's options into the Parquet.Net options the writer accepts.
     /// </summary>
     private static global::Parquet.ParquetOptions BuildFormatOptions(global::Parquet.SourceGenerator.ParquetSerializerOptions options)
@@ -193,6 +234,17 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
         {
             throw new global::System.IO.InvalidDataException($"Schema nesting depth {maxDepth} exceeds maximum allowed {options.MaxNestingDepth}.");
         }
+
+        var fileFieldsForTypeValidation = reader.Schema.DataFields;
+        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_0);
+        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_1);
+        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_2);
+        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_3);
+        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_4);
+        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_5);
+        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_6);
+        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_7);
+        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_8);
     }
 
     private static int GetFieldDepth(global::Parquet.Schema.Field field)
