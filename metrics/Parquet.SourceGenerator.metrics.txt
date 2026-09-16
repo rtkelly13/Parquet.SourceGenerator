@@ -5,7 +5,7 @@
 # MI maintainability index 0-100 (higher is better), CC cyclomatic complexity,
 # CL class coupling, DIT depth of inheritance, SLOC source lines, ELOC executable lines.
 # Ordinal-sorted. MI is compared with a +/-2 tolerance; every other metric exactly.
-A:Parquet.SourceGenerator | MI=74 CC=1009 CL=125 DIT=1 SLOC=11054 ELOC=4064
+A:Parquet.SourceGenerator | MI=74 CC=1009 CL=125 DIT=1 SLOC=11062 ELOC=4064
 M:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.CanEmit(Parquet.SourceGenerator.Models.TargetClassModel) | MI=97 CC=1 CL=2 DIT=- SLOC=5 ELOC=1
 M:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitBinary(System.Text.StringBuilder, Parquet.SourceGenerator.Models.PropertyModel, Parquet.SourceGenerator.Emitter.Components.ArrowLeafMapping, string, string, int) | MI=48 CC=3 CL=3 DIT=- SLOC=59 ELOC=30
 M:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitColumn(System.Text.StringBuilder, Parquet.SourceGenerator.Models.PropertyModel, int) | MI=58 CC=6 CL=6 DIT=- SLOC=39 ELOC=11
@@ -121,7 +121,7 @@ M:Parquet.SourceGenerator.Emitter.Components.PropertyMappingComponent.IsSingleFi
 M:Parquet.SourceGenerator.Emitter.Components.RowGroupLayoutComponent.EmitIndexedLayoutProbe(System.Text.StringBuilder, string, string, string, string, string, bool, string, string) | MI=41 CC=3 CL=1 DIT=- SLOC=76 ELOC=44
 M:Parquet.SourceGenerator.Emitter.Components.RowGroupLayoutComponent.EmitLayoutProbe(System.Text.StringBuilder, string, string, string, string, bool, string, string) | MI=46 CC=2 CL=1 DIT=- SLOC=51 ELOC=31
 M:Parquet.SourceGenerator.Emitter.Components.SchemaComponent.BoolLiteral(bool) | MI=95 CC=2 CL=0 DIT=- SLOC=4 ELOC=1
-M:Parquet.SourceGenerator.Emitter.Components.SchemaComponent.EmitResolveSchemaField(System.Text.StringBuilder, bool) | MI=31 CC=2 CL=1 DIT=- SLOC=179 ELOC=114
+M:Parquet.SourceGenerator.Emitter.Components.SchemaComponent.EmitResolveSchemaField(System.Text.StringBuilder, bool) | MI=31 CC=2 CL=1 DIT=- SLOC=187 ELOC=114
 M:Parquet.SourceGenerator.Emitter.Components.SchemaComponent.EmitSchema(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel) | MI=62 CC=3 CL=4 DIT=- SLOC=23 ELOC=9
 M:Parquet.SourceGenerator.Emitter.Components.SchemaComponent.EmitStaticFields(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel) | MI=81 CC=2 CL=4 DIT=- SLOC=12 ELOC=2
 M:Parquet.SourceGenerator.Emitter.Components.SchemaComponent.GetFieldCreationExpression(Parquet.SourceGenerator.Models.PropertyModel) | MI=73 CC=5 CL=4 DIT=- SLOC=49 ELOC=2
@@ -344,7 +344,7 @@ N:Parquet.SourceGenerator | MI=59 CC=15 CL=35 DIT=1 SLOC=0 ELOC=31
 N:Parquet.SourceGenerator.Diagnostics | MI=83 CC=0 CL=2 DIT=1 SLOC=226 ELOC=4
 N:Parquet.SourceGenerator.Emitter | MI=56 CC=270 CL=37 DIT=1 SLOC=4956 ELOC=2445
 N:Parquet.SourceGenerator.Emitter.Columnar | MI=57 CC=42 CL=13 DIT=1 SLOC=528 ELOC=164
-N:Parquet.SourceGenerator.Emitter.Components | MI=65 CC=157 CL=15 DIT=1 SLOC=1628 ELOC=605
+N:Parquet.SourceGenerator.Emitter.Components | MI=65 CC=157 CL=15 DIT=1 SLOC=1636 ELOC=605
 N:Parquet.SourceGenerator.Emitter.Compound | MI=72 CC=223 CL=21 DIT=1 SLOC=1342 ELOC=456
 N:Parquet.SourceGenerator.Models | MI=86 CC=69 CL=23 DIT=1 SLOC=488 ELOC=75
 N:Parquet.SourceGenerator.Parser | MI=93 CC=233 CL=67 DIT=1 SLOC=1886 ELOC=284
@@ -458,7 +458,7 @@ T:Parquet.SourceGenerator.Emitter.Components.BatchValidationComponent | MI=71 CC
 T:Parquet.SourceGenerator.Emitter.Components.BufferPoolComponent | MI=62 CC=37 CL=5 DIT=1 SLOC=236 ELOC=67
 T:Parquet.SourceGenerator.Emitter.Components.PropertyMappingComponent | MI=57 CC=43 CL=8 DIT=1 SLOC=302 ELOC=83
 T:Parquet.SourceGenerator.Emitter.Components.RowGroupLayoutComponent | MI=43 CC=5 CL=1 DIT=1 SLOC=134 ELOC=75
-T:Parquet.SourceGenerator.Emitter.Components.SchemaComponent | MI=48 CC=14 CL=7 DIT=1 SLOC=277 ELOC=128
+T:Parquet.SourceGenerator.Emitter.Components.SchemaComponent | MI=48 CC=14 CL=7 DIT=1 SLOC=285 ELOC=128
 T:Parquet.SourceGenerator.Emitter.Components.StringDeduplicatorComponent | MI=39 CC=7 CL=8 DIT=1 SLOC=326 ELOC=223
 T:Parquet.SourceGenerator.Emitter.Compound.ChainStepKind | MI=100 CC=1 CL=0 DIT=1 SLOC=9 ELOC=0
 T:Parquet.SourceGenerator.Emitter.Compound.CompoundBuffers | MI=55 CC=33 CL=8 DIT=1 SLOC=235 ELOC=79
