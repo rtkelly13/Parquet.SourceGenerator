@@ -6,7 +6,7 @@
 #        components-must-not-call-the-emitter-hub layering.
 # Unresolved call sites (delegates, virtuals, framework): measured in the
 # header below so the blind spot is visible, never silently absent.
-# stats: nodes=105 edges=120 call-sites=1099 unresolved=954
+# stats: nodes=108 edges=123 call-sites=1154 unresolved=1006
 E:Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.IsSupported/(TargetClassModel) | Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.TryMap/(PropertyModel)
 E:Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.MapIntegral/(string) | Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.Fixed/(string,string,string,string)
 E:Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.TryMap/(PropertyModel) | Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.Fixed/(string,string,string,string)
@@ -44,15 +44,18 @@ E:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitReadArrayAsync/(S
 E:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitReadArrayAsync/(StringBuilder,TargetClassModel) | Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.GetColumnElementType/(PropertyModel)
 E:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitResolveSchemaField/(StringBuilder) | Parquet.SourceGenerator.Emitter.Components.SchemaComponent.EmitResolveSchemaField/(StringBuilder,bool)
 E:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitSchema/(StringBuilder,TargetClassModel) | Parquet.SourceGenerator.Emitter.Components.SchemaComponent.EmitSchema/(StringBuilder,TargetClassModel)
+E:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitSchemaHelpers/(StringBuilder) | Parquet.SourceGenerator.Emitter.Components.SchemaComponent.EmitValidatePhysicalType/(StringBuilder)
+E:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitSchemaHelpers/(StringBuilder) | Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitResolveSchemaField/(StringBuilder)
 E:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitSource/(TargetClassModel) | Parquet.SourceGenerator.Emitter.Components.StringDeduplicatorComponent.EmitStringDeduplicator/(StringBuilder,bool)
 E:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitSource/(TargetClassModel) | Parquet.SourceGenerator.Emitter.Components.StringDeduplicatorComponent.HasStringProperties/(TargetClassModel)
 E:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitSource/(TargetClassModel) | Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitApplyCompression/(StringBuilder)
 E:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitSource/(TargetClassModel) | Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitBuildFormatOptions/(StringBuilder)
 E:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitSource/(TargetClassModel) | Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitReadArrayAsync/(StringBuilder,TargetClassModel)
 E:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitSource/(TargetClassModel) | Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitReadAsync/(StringBuilder,TargetClassModel)
-E:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitSource/(TargetClassModel) | Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitResolveSchemaField/(StringBuilder)
 E:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitSource/(TargetClassModel) | Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitSchema/(StringBuilder,TargetClassModel)
+E:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitSource/(TargetClassModel) | Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitSchemaHelpers/(StringBuilder)
 E:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitSource/(TargetClassModel) | Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitStaticFields/(StringBuilder,TargetClassModel)
+E:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitSource/(TargetClassModel) | Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitValidateReader/(StringBuilder,TargetClassModel)
 E:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitSource/(TargetClassModel) | Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitWriteAsync/(StringBuilder,TargetClassModel)
 E:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitSource/(TargetClassModel) | Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitWriteBatchedAsync/(StringBuilder,TargetClassModel)
 E:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitSource/(TargetClassModel) | Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitWriteRowGroupAsync/(StringBuilder,TargetClassModel)

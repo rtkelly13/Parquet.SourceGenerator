@@ -46,9 +46,7 @@ public static class LegacyCodeEmitter
 
         if (model.Properties.Length > 0)
         {
-            EmitResolveSchemaField(builder);
-            builder.AppendLine();
-            SchemaComponent.EmitValidatePhysicalType(builder);
+            EmitSchemaHelpers(builder);
             builder.AppendLine();
         }
 
@@ -110,6 +108,13 @@ public static class LegacyCodeEmitter
     private static void EmitResolveSchemaField(StringBuilder builder)
     {
         SchemaComponent.EmitResolveSchemaField(builder, usePath: true);
+    }
+
+    private static void EmitSchemaHelpers(StringBuilder builder)
+    {
+        EmitResolveSchemaField(builder);
+        builder.AppendLine();
+        SchemaComponent.EmitValidatePhysicalType(builder);
     }
 
     private static void EmitValidateReader(StringBuilder builder, TargetClassModel model)

@@ -5,7 +5,7 @@
 # MI maintainability index 0-100 (higher is better), CC cyclomatic complexity,
 # CL class coupling, DIT depth of inheritance, SLOC source lines, ELOC executable lines.
 # Ordinal-sorted. MI is compared with a +/-2 tolerance; every other metric exactly.
-A:Parquet.SourceGenerator.Legacy | MI=80 CC=506 CL=104 DIT=1 SLOC=5142 ELOC=1393
+A:Parquet.SourceGenerator.Legacy | MI=80 CC=507 CL=104 DIT=1 SLOC=5147 ELOC=1394
 M:Parquet.SourceGenerator.Emitter.Components.ArrowLeafMapping.ArrowArrayType.get | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
 M:Parquet.SourceGenerator.Emitter.Components.ArrowLeafMapping.ArrowArrayType.set | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
 M:Parquet.SourceGenerator.Emitter.Components.ArrowLeafMapping.ArrowTypeId.get | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
@@ -65,7 +65,8 @@ M:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitReadArrayAsync(Sy
 M:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitReadAsync(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel) | MI=61 CC=1 CL=2 DIT=- SLOC=30 ELOC=11
 M:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitResolveSchemaField(System.Text.StringBuilder) | MI=97 CC=1 CL=2 DIT=- SLOC=4 ELOC=1
 M:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitSchema(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel) | MI=97 CC=1 CL=3 DIT=- SLOC=8 ELOC=1
-M:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitSource(Parquet.SourceGenerator.Models.TargetClassModel) | MI=44 CC=5 CL=6 DIT=- SLOC=81 ELOC=42
+M:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitSchemaHelpers(System.Text.StringBuilder) | MI=84 CC=1 CL=2 DIT=- SLOC=6 ELOC=3
+M:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitSource(Parquet.SourceGenerator.Models.TargetClassModel) | MI=45 CC=5 CL=5 DIT=- SLOC=79 ELOC=40
 M:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitStaticFields(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel) | MI=97 CC=1 CL=3 DIT=- SLOC=4 ELOC=1
 M:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitValidateReader(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel) | MI=62 CC=2 CL=4 DIT=- SLOC=21 ELOC=10
 M:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitWriteAsync(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel) | MI=52 CC=1 CL=2 DIT=- SLOC=48 ELOC=23
@@ -159,7 +160,7 @@ M:Parquet.SourceGenerator.Parser.TargetParserResult.TargetParserResult(Parquet.S
 N:Parquet.SourceGenerator.Diagnostics | MI=83 CC=0 CL=2 DIT=1 SLOC=226 ELOC=4
 N:Parquet.SourceGenerator.Emitter.Components | MI=65 CC=158 CL=15 DIT=1 SLOC=1708 ELOC=645
 N:Parquet.SourceGenerator.Legacy | MI=64 CC=7 CL=25 DIT=1 SLOC=54 ELOC=14
-N:Parquet.SourceGenerator.Legacy.Emitter | MI=51 CC=39 CL=10 DIT=1 SLOC=780 ELOC=371
+N:Parquet.SourceGenerator.Legacy.Emitter | MI=52 CC=40 CL=10 DIT=1 SLOC=785 ELOC=372
 N:Parquet.SourceGenerator.Models | MI=86 CC=69 CL=23 DIT=1 SLOC=488 ELOC=75
 N:Parquet.SourceGenerator.Parser | MI=93 CC=233 CL=67 DIT=1 SLOC=1886 ELOC=284
 N:System.Runtime.CompilerServices | MI=100 CC=0 CL=0 DIT=1 SLOC=0 ELOC=0
@@ -228,7 +229,7 @@ T:Parquet.SourceGenerator.Emitter.Components.PropertyMappingComponent | MI=57 CC
 T:Parquet.SourceGenerator.Emitter.Components.RowGroupLayoutComponent | MI=43 CC=5 CL=1 DIT=1 SLOC=134 ELOC=75
 T:Parquet.SourceGenerator.Emitter.Components.SchemaComponent | MI=47 CC=15 CL=7 DIT=1 SLOC=357 ELOC=168
 T:Parquet.SourceGenerator.Emitter.Components.StringDeduplicatorComponent | MI=39 CC=7 CL=8 DIT=1 SLOC=326 ELOC=223
-T:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter | MI=51 CC=39 CL=10 DIT=1 SLOC=778 ELOC=371
+T:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter | MI=52 CC=40 CL=10 DIT=1 SLOC=783 ELOC=372
 T:Parquet.SourceGenerator.Legacy.ParquetLegacyIncrementalGenerator | MI=64 CC=7 CL=25 DIT=1 SLOC=52 ELOC=14
 T:Parquet.SourceGenerator.Models.ColumnEncoding | MI=93 CC=1 CL=0 DIT=1 SLOC=17 ELOC=2
 T:Parquet.SourceGenerator.Models.DiagnosticInfo | MI=82 CC=11 CL=6 DIT=1 SLOC=47 ELOC=12

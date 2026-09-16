@@ -52,9 +52,7 @@ public static class CodeEmitter
 
         if (model.Properties.Length > 0)
         {
-            EmitResolveSchemaField(builder, usePath: EmissionPlan.For(model).HasCompound);
-            builder.AppendLine();
-            SchemaComponent.EmitValidatePhysicalType(builder);
+            EmitSchemaHelpers(builder, usePath: EmissionPlan.For(model).HasCompound);
             builder.AppendLine();
         }
 
@@ -186,6 +184,13 @@ public static class CodeEmitter
     private static void EmitResolveSchemaField(StringBuilder builder, bool usePath = false)
     {
         SchemaComponent.EmitResolveSchemaField(builder, usePath: usePath);
+    }
+
+    private static void EmitSchemaHelpers(StringBuilder builder, bool usePath)
+    {
+        EmitResolveSchemaField(builder, usePath);
+        builder.AppendLine();
+        SchemaComponent.EmitValidatePhysicalType(builder);
     }
 
     // ──────────────────────────────────────────────────────────
