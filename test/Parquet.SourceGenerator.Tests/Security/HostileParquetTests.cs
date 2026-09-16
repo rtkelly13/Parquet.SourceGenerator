@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Parquet;
 using Parquet.Meta;
 using Parquet.Schema;
+using Shouldly;
 using Xunit;
 using ParquetPhysicalType = Parquet.Meta.Type;
 
@@ -42,29 +43,29 @@ public class HostileParquetTests
 
         // 1. ReadParquetAsync (List)
         ms.Position = 0;
-        var exList = await Assert.ThrowsAsync<InvalidDataException>(() =>
+        var exList = await Should.ThrowAsync<InvalidDataException>(() =>
             MultiRowGroupModelParquetExtensions.ReadParquetAsync(ms, hostileOptions)
         );
-        Assert.Contains("Row group count", exList.Message);
-        Assert.Contains("exceeds maximum allowed", exList.Message);
+        exList.Message.ShouldContain("Row group count");
+        exList.Message.ShouldContain("exceeds maximum allowed");
 
         // 2. ReadParquetArrayAsync (Array)
         ms.Position = 0;
-        var exArr = await Assert.ThrowsAsync<InvalidDataException>(() =>
+        var exArr = await Should.ThrowAsync<InvalidDataException>(() =>
             MultiRowGroupModelParquetExtensions.ReadParquetArrayAsync(ms, hostileOptions)
         );
-        Assert.Contains("Row group count", exArr.Message);
+        exArr.Message.ShouldContain("Row group count");
 
         // 3. ReadParquetParallelArrayAsync (Parallel Array)
         ms.Position = 0;
-        var exParallel = await Assert.ThrowsAsync<InvalidDataException>(() =>
+        var exParallel = await Should.ThrowAsync<InvalidDataException>(() =>
             MultiRowGroupModelParquetExtensions.ReadParquetParallelArrayAsync(ms, hostileOptions)
         );
-        Assert.Contains("Row group count", exParallel.Message);
+        exParallel.Message.ShouldContain("Row group count");
 
         // 4. ReadParquetStreamAsync (IAsyncEnumerable)
         ms.Position = 0;
-        var exStream = await Assert.ThrowsAsync<InvalidDataException>(async () =>
+        var exStream = await Should.ThrowAsync<InvalidDataException>(async () =>
         {
             await foreach (
                 var _ in MultiRowGroupModelParquetExtensions.ReadParquetStreamAsync(
@@ -73,7 +74,7 @@ public class HostileParquetTests
                 )
             ) { }
         });
-        Assert.Contains("Row group count", exStream.Message);
+        exStream.Message.ShouldContain("Row group count");
     }
 
     [Fact]
@@ -95,28 +96,28 @@ public class HostileParquetTests
 
         // 1. ReadParquetAsync
         ms.Position = 0;
-        var exList = await Assert.ThrowsAsync<InvalidDataException>(() =>
+        var exList = await Should.ThrowAsync<InvalidDataException>(() =>
             MultiRowGroupModelParquetExtensions.ReadParquetAsync(ms, hostileOptions)
         );
-        Assert.Contains("exceeds maximum allowed", exList.Message);
+        exList.Message.ShouldContain("exceeds maximum allowed");
 
         // 2. ReadParquetArrayAsync
         ms.Position = 0;
-        var exArr = await Assert.ThrowsAsync<InvalidDataException>(() =>
+        var exArr = await Should.ThrowAsync<InvalidDataException>(() =>
             MultiRowGroupModelParquetExtensions.ReadParquetArrayAsync(ms, hostileOptions)
         );
-        Assert.Contains("exceeds maximum allowed", exArr.Message);
+        exArr.Message.ShouldContain("exceeds maximum allowed");
 
         // 3. ReadParquetParallelArrayAsync
         ms.Position = 0;
-        var exParallel = await Assert.ThrowsAsync<InvalidDataException>(() =>
+        var exParallel = await Should.ThrowAsync<InvalidDataException>(() =>
             MultiRowGroupModelParquetExtensions.ReadParquetParallelArrayAsync(ms, hostileOptions)
         );
-        Assert.Contains("exceeds maximum allowed", exParallel.Message);
+        exParallel.Message.ShouldContain("exceeds maximum allowed");
 
         // 4. ReadParquetStreamAsync (stream checks each row group row count against MaxAllocationValues)
         ms.Position = 0;
-        var exStream = await Assert.ThrowsAsync<InvalidDataException>(async () =>
+        var exStream = await Should.ThrowAsync<InvalidDataException>(async () =>
         {
             await foreach (
                 var _ in MultiRowGroupModelParquetExtensions.ReadParquetStreamAsync(
@@ -125,7 +126,7 @@ public class HostileParquetTests
                 )
             ) { }
         });
-        Assert.Contains("exceeds maximum allowed", exStream.Message);
+        exStream.Message.ShouldContain("exceeds maximum allowed");
     }
 
     [Fact]
@@ -151,11 +152,11 @@ public class HostileParquetTests
         };
 
         ms.Position = 0;
-        var ex = await Assert.ThrowsAsync<InvalidDataException>(() =>
+        var ex = await Should.ThrowAsync<InvalidDataException>(() =>
             NestedOrderParquetExtensions.ReadParquetAsync(ms, hostileOptions)
         );
-        Assert.Contains("Schema nesting depth", ex.Message);
-        Assert.Contains("exceeds maximum allowed 1", ex.Message);
+        ex.Message.ShouldContain("Schema nesting depth");
+        ex.Message.ShouldContain("exceeds maximum allowed 1");
     }
 
     [Fact]
@@ -180,10 +181,10 @@ public class HostileParquetTests
         var hostileOptions = new ParquetSerializerOptions { MaxAllocationValues = 3 };
 
         ms.Position = 0;
-        var ex = await Assert.ThrowsAsync<InvalidDataException>(() =>
+        var ex = await Should.ThrowAsync<InvalidDataException>(() =>
             ListRowParquetExtensions.ReadParquetAsync(ms, hostileOptions)
         );
-        Assert.Contains("exceeds maximum allowed 3", ex.Message);
+        ex.Message.ShouldContain("exceeds maximum allowed 3");
     }
 
     private static readonly int[] SingleNegativeOneArray = [-1];
@@ -211,8 +212,7 @@ public class HostileParquetTests
             }
         }
 
-        Assert.True(
-            offsets.Count >= 3,
+        (offsets.Count >= 3).ShouldBeTrue(
             "Expected at least 3 num_rows/num_values occurrences in Thrift footer"
         );
         // Patch FileMetaData.num_rows (first), Id column num_values (second), and RowGroup.num_rows (last)
@@ -223,10 +223,10 @@ public class HostileParquetTests
         bytes[offsets[^1] + 1] = 0x02;
 
         using var corruptedMs = new MemoryStream(bytes);
-        var ex = await Assert.ThrowsAsync<InvalidDataException>(() =>
+        var ex = await Should.ThrowAsync<InvalidDataException>(() =>
             ListRowParquetExtensions.ReadParquetAsync(corruptedMs)
         );
-        Assert.Contains("produced more rows than row group capacity", ex.Message);
+        ex.Message.ShouldContain("produced more rows than row group capacity");
     }
 
     [Fact]
@@ -262,10 +262,10 @@ public class HostileParquetTests
         }
 
         ms.Position = 0;
-        var ex = await Assert.ThrowsAsync<InvalidDataException>(() =>
+        var ex = await Should.ThrowAsync<InvalidDataException>(() =>
             ListRowParquetExtensions.ReadParquetAsync(ms)
         );
-        Assert.Contains("Illegal definition level 99", ex.Message);
+        ex.Message.ShouldContain("Illegal definition level 99");
     }
 
     [Fact]
@@ -301,10 +301,10 @@ public class HostileParquetTests
         }
 
         ms.Position = 0;
-        var ex = await Assert.ThrowsAsync<InvalidDataException>(() =>
+        var ex = await Should.ThrowAsync<InvalidDataException>(() =>
             ListRowParquetExtensions.ReadParquetAsync(ms)
         );
-        Assert.Contains("Illegal definition level", ex.Message);
+        ex.Message.ShouldContain("Illegal definition level");
     }
 
     [Fact]
@@ -341,7 +341,7 @@ public class HostileParquetTests
         for (int i = 0; i < 50; i++)
         {
             ms.Position = 0;
-            await Assert.ThrowsAsync<InvalidDataException>(() =>
+            await Should.ThrowAsync<InvalidDataException>(() =>
                 ListRowParquetExtensions.ReadParquetAsync(ms)
             );
         }
@@ -361,8 +361,8 @@ public class HostileParquetTests
         await validItems.WriteParquetAsync(validMs);
         validMs.Position = 0;
         var restored = await ListRowParquetExtensions.ReadParquetAsync(validMs);
-        Assert.Single(restored);
-        Assert.Equal(100, restored[0].Id);
+        restored.ShouldHaveSingleItem();
+        restored[0].Id.ShouldBe(100);
     }
 
     [Fact]
@@ -373,12 +373,11 @@ public class HostileParquetTests
         await using (var writer = await ParquetWriter.CreateAsync(schema, ms)) { }
 
         ms.Position = 0;
-        var ex = await Assert.ThrowsAsync<InvalidDataException>(() =>
+        var ex = await Should.ThrowAsync<InvalidDataException>(() =>
             MultiRowGroupModelParquetExtensions.ReadParquetAsync(ms)
         );
-        Assert.Contains(
-            "Column 'id' type 'System.Int64' does not match expected 'System.Int32'",
-            ex.Message
+        ex.Message.ShouldContain(
+            "Column 'id' type 'System.Int64' does not match expected 'System.Int32'"
         );
     }
 
@@ -390,11 +389,11 @@ public class HostileParquetTests
         await using (var writer = await ParquetWriter.CreateAsync(schema, ms)) { }
 
         ms.Position = 0;
-        var ex = await Assert.ThrowsAsync<InvalidDataException>(() =>
+        var ex = await Should.ThrowAsync<InvalidDataException>(() =>
             MultiRowGroupModelParquetExtensions.ReadParquetAsync(ms)
         );
-        Assert.Contains("Column 'id' type", ex.Message);
-        Assert.Contains("does not match expected 'System.Int32'", ex.Message);
+        ex.Message.ShouldContain("Column 'id' type");
+        ex.Message.ShouldContain("does not match expected 'System.Int32'");
     }
 
     [Fact]
@@ -414,38 +413,38 @@ public class HostileParquetTests
 
         using (var listStream = new MemoryStream(hostileBytes, writable: false))
         {
-            var ex = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            var ex = await Should.ThrowAsync<InvalidDataException>(() =>
                 MultiRowGroupModelParquetExtensions.ReadParquetAsync(listStream)
             );
-            Assert.Contains("physical type 'BYTE_ARRAY'", ex.Message);
-            Assert.Contains("expected 'INT32'", ex.Message);
+            ex.Message.ShouldContain("physical type 'BYTE_ARRAY'");
+            ex.Message.ShouldContain("expected 'INT32'");
         }
 
         using (var arrayStream = new MemoryStream(hostileBytes, writable: false))
         {
-            var ex = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            var ex = await Should.ThrowAsync<InvalidDataException>(() =>
                 MultiRowGroupModelParquetExtensions.ReadParquetArrayAsync(arrayStream)
             );
-            Assert.Contains("physical type 'BYTE_ARRAY'", ex.Message);
+            ex.Message.ShouldContain("physical type 'BYTE_ARRAY'");
         }
 
         using (var parallelStream = new MemoryStream(hostileBytes, writable: false))
         {
-            var ex = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            var ex = await Should.ThrowAsync<InvalidDataException>(() =>
                 MultiRowGroupModelParquetExtensions.ReadParquetParallelArrayAsync(parallelStream)
             );
-            Assert.Contains("physical type 'BYTE_ARRAY'", ex.Message);
+            ex.Message.ShouldContain("physical type 'BYTE_ARRAY'");
         }
 
         using (var stream = new MemoryStream(hostileBytes, writable: false))
         {
-            var ex = await Assert.ThrowsAsync<InvalidDataException>(async () =>
+            var ex = await Should.ThrowAsync<InvalidDataException>(async () =>
             {
                 await foreach (
                     var _ in MultiRowGroupModelParquetExtensions.ReadParquetStreamAsync(stream)
                 ) { }
             });
-            Assert.Contains("physical type 'BYTE_ARRAY'", ex.Message);
+            ex.Message.ShouldContain("physical type 'BYTE_ARRAY'");
         }
     }
 

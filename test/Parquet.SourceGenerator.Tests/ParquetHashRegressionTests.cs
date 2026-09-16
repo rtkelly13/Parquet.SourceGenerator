@@ -5,6 +5,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -134,8 +135,8 @@ public sealed class ParquetHashRegressionTests
         string hash1 = ComputeSha256(bytes1);
         string hash2 = ComputeSha256(bytes2);
 
-        Assert.Equal(hash1, hash2);
-        Assert.True(bytes1.AsSpan().SequenceEqual(bytes2.AsSpan()));
+        hash1.ShouldBe(hash2);
+        bytes1.AsSpan().SequenceEqual(bytes2.AsSpan()).ShouldBeTrue();
     }
 
     [Theory]
@@ -165,8 +166,8 @@ public sealed class ParquetHashRegressionTests
         string hash1 = ComputeSha256(bytes1);
         string hash2 = ComputeSha256(bytes2);
 
-        Assert.Equal(hash1, hash2);
-        Assert.True(bytes1.AsSpan().SequenceEqual(bytes2.AsSpan()));
+        hash1.ShouldBe(hash2);
+        bytes1.AsSpan().SequenceEqual(bytes2.AsSpan()).ShouldBeTrue();
     }
 
     [Fact]
@@ -185,8 +186,8 @@ public sealed class ParquetHashRegressionTests
         string hash1 = ComputeSha256(bytes1);
         string hash2 = ComputeSha256(bytes2);
 
-        Assert.Equal(hash1, hash2);
-        Assert.True(bytes1.AsSpan().SequenceEqual(bytes2.AsSpan()));
+        hash1.ShouldBe(hash2);
+        bytes1.AsSpan().SequenceEqual(bytes2.AsSpan()).ShouldBeTrue();
     }
 
     [Fact]
@@ -205,8 +206,8 @@ public sealed class ParquetHashRegressionTests
         string hash1 = ComputeSha256(bytes1);
         string hash2 = ComputeSha256(bytes2);
 
-        Assert.Equal(hash1, hash2);
-        Assert.True(bytes1.AsSpan().SequenceEqual(bytes2.AsSpan()));
+        hash1.ShouldBe(hash2);
+        bytes1.AsSpan().SequenceEqual(bytes2.AsSpan()).ShouldBeTrue();
     }
 
     // =========================================================================
@@ -227,10 +228,7 @@ public sealed class ParquetHashRegressionTests
         );
 
         string actualHash = ComputeSha256(stream);
-        Assert.Equal(
-            "042c17fd3f6b782acf0eaf1d5b7fc82be239ad134695720f3921d72cd8a02518",
-            actualHash
-        );
+        actualHash.ShouldBe("042c17fd3f6b782acf0eaf1d5b7fc82be239ad134695720f3921d72cd8a02518");
     }
 
     [Fact]
@@ -247,10 +245,7 @@ public sealed class ParquetHashRegressionTests
         );
 
         string actualHash = ComputeSha256(stream);
-        Assert.Equal(
-            "5913c404a436b0c8502db61bbc2f201838ea13a5dc2c055718064129350b8b62",
-            actualHash
-        );
+        actualHash.ShouldBe("5913c404a436b0c8502db61bbc2f201838ea13a5dc2c055718064129350b8b62");
     }
 
     [Fact]
@@ -264,10 +259,7 @@ public sealed class ParquetHashRegressionTests
         );
 
         string actualHash = ComputeSha256(stream);
-        Assert.Equal(
-            "02738967a4061950a3881e82d2c3db63bdc1949dade0cbafead52347c2069af2",
-            actualHash
-        );
+        actualHash.ShouldBe("02738967a4061950a3881e82d2c3db63bdc1949dade0cbafead52347c2069af2");
     }
 
     [Fact]
@@ -278,10 +270,7 @@ public sealed class ParquetHashRegressionTests
         await records.WriteParquetAsync(stream);
 
         string actualHash = ComputeSha256(stream);
-        Assert.Equal(
-            "0dc304733a62f1ee46bedb8a2bca6afffd0598a3412cb14d0692ccb4a26f97a0",
-            actualHash
-        );
+        actualHash.ShouldBe("0dc304733a62f1ee46bedb8a2bca6afffd0598a3412cb14d0692ccb4a26f97a0");
     }
 
     [Fact]
@@ -292,10 +281,7 @@ public sealed class ParquetHashRegressionTests
         await records.WriteParquetAsync(stream);
 
         string actualHash = ComputeSha256(stream);
-        Assert.Equal(
-            "78baabb5a2c8fc5334565d99574af8d550306c3ffa266cd1c882ecb88d91c3a2",
-            actualHash
-        );
+        actualHash.ShouldBe("78baabb5a2c8fc5334565d99574af8d550306c3ffa266cd1c882ecb88d91c3a2");
     }
 
     [Fact]
@@ -329,9 +315,9 @@ public sealed class ParquetHashRegressionTests
         string hash1 = ComputeSha256(bytes1);
         string hash2 = ComputeSha256(bytes2);
 
-        Assert.Equal(hash1, hash2);
-        Assert.True(bytes1.AsSpan().SequenceEqual(bytes2.AsSpan()));
-        Assert.Equal("5dd4a14e2b8ceaeed711a514e112f6cfcf3dffc36edf8698afb0cfc6db125b5b", hash1);
+        hash1.ShouldBe(hash2);
+        bytes1.AsSpan().SequenceEqual(bytes2.AsSpan()).ShouldBeTrue();
+        hash1.ShouldBe("5dd4a14e2b8ceaeed711a514e112f6cfcf3dffc36edf8698afb0cfc6db125b5b");
     }
 
     [Fact]
@@ -365,9 +351,9 @@ public sealed class ParquetHashRegressionTests
         string hash1 = ComputeSha256(bytes1);
         string hash2 = ComputeSha256(bytes2);
 
-        Assert.Equal(hash1, hash2);
-        Assert.True(bytes1.AsSpan().SequenceEqual(bytes2.AsSpan()));
-        Assert.Equal("86dd82d1b8582da34878745ae5fb4314aba6105c9b1fdd6ca75598c5f4f0aff5", hash1);
+        hash1.ShouldBe(hash2);
+        bytes1.AsSpan().SequenceEqual(bytes2.AsSpan()).ShouldBeTrue();
+        hash1.ShouldBe("86dd82d1b8582da34878745ae5fb4314aba6105c9b1fdd6ca75598c5f4f0aff5");
     }
 
     [Fact]
@@ -401,9 +387,9 @@ public sealed class ParquetHashRegressionTests
         string hash1 = ComputeSha256(bytes1);
         string hash2 = ComputeSha256(bytes2);
 
-        Assert.Equal(hash1, hash2);
-        Assert.True(bytes1.AsSpan().SequenceEqual(bytes2.AsSpan()));
-        Assert.Equal("c88ea3dacd504ac83ba8c09a4d2757c490ba8de6665f519d34998f1de0b7facf", hash1);
+        hash1.ShouldBe(hash2);
+        bytes1.AsSpan().SequenceEqual(bytes2.AsSpan()).ShouldBeTrue();
+        hash1.ShouldBe("c88ea3dacd504ac83ba8c09a4d2757c490ba8de6665f519d34998f1de0b7facf");
     }
 
     // =========================================================================
@@ -431,30 +417,26 @@ public sealed class ParquetHashRegressionTests
             .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        Assert.Equal(manifestPaths, actualPaths);
-        Assert.All(
-            manifest.Fixtures,
-            fixture =>
-            {
-                Assert.False(string.IsNullOrWhiteSpace(fixture.Category));
-                Assert.False(string.IsNullOrWhiteSpace(fixture.Producer));
-                Assert.False(string.IsNullOrWhiteSpace(fixture.ProducerVersion));
-                Assert.False(string.IsNullOrWhiteSpace(fixture.CreatedBy));
-                Assert.True(
-                    !string.IsNullOrWhiteSpace(fixture.GenerationScript)
-                        || !string.IsNullOrWhiteSpace(fixture.SourceCommit),
-                    $"Fixture '{fixture.Path}' has no provenance source."
-                );
-                Assert.False(string.IsNullOrWhiteSpace(fixture.FormatVersion));
-                Assert.False(string.IsNullOrWhiteSpace(fixture.Compression));
-                Assert.True(fixture.RowCount > 0);
-                Assert.True(fixture.RowGroupCount > 0);
-                Assert.True(fixture.ColumnCount > 0);
-                Assert.False(string.IsNullOrWhiteSpace(fixture.Support));
-                Assert.False(string.IsNullOrWhiteSpace(fixture.Sha256));
-                Assert.Equal(64, fixture.Sha256.Length);
-            }
-        );
+        actualPaths.ShouldBe(manifestPaths);
+        manifest.Fixtures.ForEach(fixture =>
+        {
+            string.IsNullOrWhiteSpace(fixture.Category).ShouldBeFalse();
+            string.IsNullOrWhiteSpace(fixture.Producer).ShouldBeFalse();
+            string.IsNullOrWhiteSpace(fixture.ProducerVersion).ShouldBeFalse();
+            string.IsNullOrWhiteSpace(fixture.CreatedBy).ShouldBeFalse();
+            (
+                !string.IsNullOrWhiteSpace(fixture.GenerationScript)
+                || !string.IsNullOrWhiteSpace(fixture.SourceCommit)
+            ).ShouldBeTrue($"Fixture '{fixture.Path}' has no provenance source.");
+            string.IsNullOrWhiteSpace(fixture.FormatVersion).ShouldBeFalse();
+            string.IsNullOrWhiteSpace(fixture.Compression).ShouldBeFalse();
+            (fixture.RowCount > 0).ShouldBeTrue();
+            (fixture.RowGroupCount > 0).ShouldBeTrue();
+            (fixture.ColumnCount > 0).ShouldBeTrue();
+            string.IsNullOrWhiteSpace(fixture.Support).ShouldBeFalse();
+            string.IsNullOrWhiteSpace(fixture.Sha256).ShouldBeFalse();
+            fixture.Sha256.Length.ShouldBe(64);
+        });
     }
 
     [Theory]
@@ -463,30 +445,29 @@ public sealed class ParquetHashRegressionTests
     public async Task CheckedInDatasetMatchesManifest(string relativePath)
     {
         FixtureManifest manifest = LoadFixtureManifest();
-        FixtureEntry fixture = Assert.Single(
-            manifest.Fixtures,
-            candidate =>
+        FixtureEntry fixture = manifest
+            .Fixtures.Where(candidate =>
                 string.Equals(candidate.Path, relativePath, StringComparison.OrdinalIgnoreCase)
-        );
+            )
+            .ShouldHaveSingleItem();
         string fullPath = Path.Combine(SolutionRoot, relativePath);
-        Assert.True(System.IO.File.Exists(fullPath), $"Dataset file does not exist: {fullPath}");
+        System.IO.File.Exists(fullPath).ShouldBeTrue($"Dataset file does not exist: {fullPath}");
 
         var fileInfo = new FileInfo(fullPath);
-        Assert.True(
-            fileInfo.Length > 1024,
+        (fileInfo.Length > 1024).ShouldBeTrue(
             $"File is smaller than 1KB ({fileInfo.Length} bytes), likely unhydrated LFS pointer: {fullPath}"
         );
 
         using var fs = System.IO.File.OpenRead(fullPath);
         string actualHash = ComputeSha256(fs);
-        Assert.Equal(fixture.Sha256, actualHash);
+        actualHash.ShouldBe(fixture.Sha256);
 
         await using var metadataStream = System.IO.File.OpenRead(fullPath);
         await using var reader = await Parquet.ParquetReader.CreateAsync(metadataStream);
-        Assert.Equal(fixture.CreatedBy, reader.Metadata?.CreatedBy);
-        Assert.Equal(fixture.RowGroupCount, reader.RowGroups.Count);
-        Assert.Equal(fixture.ColumnCount, reader.Schema.DataFields.Length);
-        Assert.Equal(fixture.RowCount, reader.RowGroups.Sum(rowGroup => rowGroup.RowCount));
+        reader.Metadata?.CreatedBy.ShouldBe(fixture.CreatedBy);
+        reader.RowGroups.Count.ShouldBe(fixture.RowGroupCount);
+        reader.Schema.DataFields.Length.ShouldBe(fixture.ColumnCount);
+        reader.RowGroups.Sum(rowGroup => rowGroup.RowCount).ShouldBe(fixture.RowCount);
     }
 
     private static FixtureManifest LoadFixtureManifest()
@@ -496,8 +477,8 @@ public sealed class ParquetHashRegressionTests
             json,
             FixtureManifestJsonOptions
         );
-        Assert.NotNull(manifest);
-        Assert.Equal(1, manifest!.SchemaVersion);
+        manifest.ShouldNotBeNull();
+        manifest!.SchemaVersion.ShouldBe(1);
         return manifest;
     }
 

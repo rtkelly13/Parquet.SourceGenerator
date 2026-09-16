@@ -6,6 +6,7 @@ using System.Reflection;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Parquet.SourceGenerator.Diagnostics;
+using Shouldly;
 using Xunit;
 
 using LegacyModels = LegacyGenerator::Parquet.SourceGenerator.Models;
@@ -22,15 +23,14 @@ public class LegacyEmitterTests
             Prop("Name", "name", "string", LegacyModels::PropertyKind.Primitive, isNullable: true)
         );
 
-        Assert.Contains("namespace TestNamespace;", code);
-        Assert.Contains("public static partial class TestModelParquetLegacyExtensions", code);
-        Assert.Contains(
-            "public static readonly global::Parquet.Schema.ParquetSchema Schema = new global::Parquet.Schema.ParquetSchema(",
-            code
+        code.ShouldContain("namespace TestNamespace;");
+        code.ShouldContain("public static partial class TestModelParquetLegacyExtensions");
+        code.ShouldContain(
+            "public static readonly global::Parquet.Schema.ParquetSchema Schema = new global::Parquet.Schema.ParquetSchema("
         );
-        Assert.Contains("new global::Parquet.Data.DataColumn(_field_0, colArray_0)", code);
-        Assert.Contains("rgWriter.WriteColumnAsync(col_0, cancellationToken)", code);
-        Assert.Contains("rgReader.ReadColumnAsync(field_0, cancellationToken)", code);
+        code.ShouldContain("new global::Parquet.Data.DataColumn(_field_0, colArray_0)");
+        code.ShouldContain("rgWriter.WriteColumnAsync(col_0, cancellationToken)");
+        code.ShouldContain("rgReader.ReadColumnAsync(field_0, cancellationToken)");
     }
 
     /// <summary>
@@ -51,14 +51,14 @@ public class LegacyEmitterTests
             )
         );
 
-        Assert.Contains("var colArray_0 = new byte[count][];", code);
-        Assert.DoesNotContain("new byte[][count]", code);
+        code.ShouldContain("var colArray_0 = new byte[count][];");
+        code.ShouldNotContain("new byte[][count]");
 
         // The read cast has to name the jagged type, where the rank does belong at the end.
         // The optional column is read through the schema-evolution ternary, so the cast sits on the
         // awaited read rather than on a separate col_0 local.
-        Assert.Contains("? new byte[groupRows][]", code);
-        Assert.Contains("(byte[][])(await rgReader.ReadColumnAsync(field_0", code);
+        code.ShouldContain("? new byte[groupRows][]");
+        code.ShouldContain("(byte[][])(await rgReader.ReadColumnAsync(field_0");
     }
 
     /// <summary>
@@ -81,11 +81,10 @@ public class LegacyEmitterTests
             )
         );
 
-        Assert.Contains("var colArray_0 = new int?[count];", code);
-        Assert.Contains("item.Grade is null ? (int?)null : (int)item.Grade.Value", code);
-        Assert.Contains(
-            "data_0[k] is null ? (global::MyApp.Grade?)null : (global::MyApp.Grade)data_0[k]!",
-            code
+        code.ShouldContain("var colArray_0 = new int?[count];");
+        code.ShouldContain("item.Grade is null ? (int?)null : (int)item.Grade.Value");
+        code.ShouldContain(
+            "data_0[k] is null ? (global::MyApp.Grade?)null : (global::MyApp.Grade)data_0[k]!"
         );
     }
 
@@ -103,8 +102,8 @@ public class LegacyEmitterTests
             )
         );
 
-        Assert.Contains("var colArray_0 = new int[count];", code);
-        Assert.Contains("colArray_0[k] = (int)item.Grade;", code);
+        code.ShouldContain("var colArray_0 = new int[count];");
+        code.ShouldContain("colArray_0[k] = (int)item.Grade;");
     }
 
     /// <summary>
@@ -119,15 +118,14 @@ public class LegacyEmitterTests
             Prop("Id", "id", "int", LegacyModels::PropertyKind.Primitive, isNullable: false)
         );
 
-        Assert.Contains("writer.CompressionMethod = options.CompressionMethod switch", code);
-        Assert.Contains(
-            "writer.CompressionLevel = global::System.IO.Compression.CompressionLevel.Fastest;",
-            code
+        code.ShouldContain("writer.CompressionMethod = options.CompressionMethod switch");
+        code.ShouldContain(
+            "writer.CompressionLevel = global::System.IO.Compression.CompressionLevel.Fastest;"
         );
 
         // Both WriteParquetAsync and WriteParquetBatchedAsync must call it, or the batched path
         // quietly keeps the default while the simple path honours the option.
-        Assert.Equal(2, CountOccurrences(code, "ApplyCompression(writer, options);"));
+        CountOccurrences(code, "ApplyCompression(writer, options);").ShouldBe(2);
     }
 
     /// <summary>
@@ -149,11 +147,10 @@ public class LegacyEmitterTests
             StringComparison.Ordinal
         );
 
-        Assert.True(
-            guardStart >= 0,
+        (guardStart >= 0).ShouldBeTrue(
             "The emitted code should guard the .NET 6+ compression level."
         );
-        Assert.InRange(smallestSize, guardStart, guardEnd);
+        smallestSize.ShouldBeInRange(guardStart, guardEnd);
     }
 
     /// <summary>
@@ -167,8 +164,8 @@ public class LegacyEmitterTests
             Prop("Id", "id", "int", LegacyModels::PropertyKind.Primitive, isNullable: false)
         );
 
-        Assert.Contains("global::Parquet.ParquetReader.CreateAsync(", code);
-        Assert.Contains("BuildFormatOptions(options)", code);
+        code.ShouldContain("global::Parquet.ParquetReader.CreateAsync(");
+        code.ShouldContain("BuildFormatOptions(options)");
     }
 
     /// <summary>
@@ -183,14 +180,12 @@ public class LegacyEmitterTests
             Prop("Name", "name", "string", LegacyModels::PropertyKind.Primitive, isNullable: true)
         );
 
-        Assert.Equal(1, CountOccurrences(code, "reader.Schema.GetDataFields()"));
-        Assert.Equal(
-            1,
-            CountOccurrences(code, "ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName,")
-        );
+        CountOccurrences(code, "reader.Schema.GetDataFields()").ShouldBe(1);
+        CountOccurrences(code, "ResolveSchemaField(fileFields, 0, _field_0, ref fieldsByName,")
+            .ShouldBe(1);
 
         // Row counts come from row-group metadata, so the file is not walked twice just to total them.
-        Assert.Contains("totalRows += (int)reader.RowGroups[r].RowCount;", code);
+        code.ShouldContain("totalRows += (int)reader.RowGroups[r].RowCount;");
     }
 
     /// <summary>
@@ -213,10 +208,8 @@ public class LegacyEmitterTests
             }
             """;
 
-        Assert.Contains(
-            RunLegacyGenerator(source),
-            d => d.Id == DiagnosticDescriptors.TypeUnsupportedOnClassicApi.Id
-        );
+        RunLegacyGenerator(source)
+            .ShouldContain(d => d.Id == DiagnosticDescriptors.TypeUnsupportedOnClassicApi.Id);
     }
 
     [Fact]
@@ -245,14 +238,10 @@ public class LegacyEmitterTests
 
         ImmutableArray<Diagnostic> diagnostics = RunLegacyGenerator(source);
 
-        Assert.DoesNotContain(
-            diagnostics,
-            d => d.Id == DiagnosticDescriptors.TypeUnsupportedOnClassicApi.Id
+        diagnostics.ShouldNotContain(d =>
+            d.Id == DiagnosticDescriptors.TypeUnsupportedOnClassicApi.Id
         );
-        Assert.DoesNotContain(
-            diagnostics,
-            d => d.Id == DiagnosticDescriptors.UnsupportedPropertyType.Id
-        );
+        diagnostics.ShouldNotContain(d => d.Id == DiagnosticDescriptors.UnsupportedPropertyType.Id);
     }
 
     [Fact]
@@ -263,12 +252,11 @@ public class LegacyEmitterTests
         );
 
         // Direct array reader overload
-        Assert.Contains("Task<TestModel[]> ReadParquetArrayAsync(", code);
+        code.ShouldContain("Task<TestModel[]> ReadParquetArrayAsync(");
 
         // Batched write small-collection fast path
-        Assert.Contains(
-            "if (items is global::System.Collections.Generic.IReadOnlyList<TestModel> list && list.Count <= batchSize)",
-            code
+        code.ShouldContain(
+            "if (items is global::System.Collections.Generic.IReadOnlyList<TestModel> list && list.Count <= batchSize)"
         );
     }
 
@@ -277,11 +265,11 @@ public class LegacyEmitterTests
     {
         string code = Emit(AllSupportedLegacyProperties());
 
-        Assert.Contains("var colArray_10 = new global::System.Guid[count];", code);
-        Assert.Contains("var colArray_11 = new global::System.Guid?[count];", code);
-        Assert.Contains("struct StringDeduplicator", code);
-        Assert.Contains("ReadColumnAsync", code);
-        Assert.Contains("WriteColumnAsync", code);
+        code.ShouldContain("var colArray_10 = new global::System.Guid[count];");
+        code.ShouldContain("var colArray_11 = new global::System.Guid?[count];");
+        code.ShouldContain("struct StringDeduplicator");
+        code.ShouldContain("ReadColumnAsync");
+        code.ShouldContain("WriteColumnAsync");
     }
 
     [Fact]
@@ -289,11 +277,10 @@ public class LegacyEmitterTests
     {
         string code = Emit();
 
-        Assert.Contains(
-            "await global::System.Threading.Tasks.Task.CompletedTask.ConfigureAwait(false);",
-            code
+        code.ShouldContain(
+            "await global::System.Threading.Tasks.Task.CompletedTask.ConfigureAwait(false);"
         );
-        Assert.Contains("return global::System.Array.Empty<TestModel>();", code);
+        code.ShouldContain("return global::System.Array.Empty<TestModel>();");
     }
 
     [Fact]
@@ -321,8 +308,8 @@ public class LegacyEmitterTests
                 model
             );
 
-        Assert.DoesNotContain("namespace ;", code);
-        Assert.Contains("public static partial class GlobalModelParquetLegacyExtensions", code);
+        code.ShouldNotContain("namespace ;");
+        code.ShouldContain("public static partial class GlobalModelParquetLegacyExtensions");
     }
 
     [Fact]
@@ -353,15 +340,13 @@ public class LegacyEmitterTests
                 model
             );
 
-        Assert.Contains(
-            "global::System.Runtime.InteropServices.MemoryMarshal.Cast<BlittableInt, int>",
-            code
+        code.ShouldContain(
+            "global::System.Runtime.InteropServices.MemoryMarshal.Cast<BlittableInt, int>"
         );
-        Assert.Contains(
-            "items is global::System.Collections.Generic.List<BlittableInt> listItems",
-            code
+        code.ShouldContain(
+            "items is global::System.Collections.Generic.List<BlittableInt> listItems"
         );
-        Assert.Contains("items is BlittableInt[] arrayItems", code);
+        code.ShouldContain("items is BlittableInt[] arrayItems");
     }
 
     [Fact]
@@ -428,12 +413,12 @@ public class LegacyEmitterTests
 
         var (diagnostics, trees) = RunLegacyGeneratorWithOutput(source);
 
-        Assert.Empty(diagnostics);
-        Assert.Single(trees);
+        diagnostics.ShouldBeEmpty();
+        trees.Length.ShouldBe(1);
         string generatedSource = trees[0].ToString();
-        Assert.Contains("FullModelParquetLegacyExtensions", generatedSource);
-        Assert.Contains("WriteRowGroupAsync", generatedSource);
-        Assert.Contains("ReadParquetArrayAsync", generatedSource);
+        generatedSource.ShouldContain("FullModelParquetLegacyExtensions");
+        generatedSource.ShouldContain("WriteRowGroupAsync");
+        generatedSource.ShouldContain("ReadParquetArrayAsync");
     }
 
     [Fact]
@@ -461,8 +446,8 @@ public class LegacyEmitterTests
 
         var (diagnostics, trees) = RunLegacyGeneratorWithOutput(source);
 
-        Assert.Empty(diagnostics);
-        Assert.Equal(2, trees.Length);
+        diagnostics.ShouldBeEmpty();
+        trees.Length.ShouldBe(2);
     }
 
     [Fact]
@@ -473,10 +458,8 @@ public class LegacyEmitterTests
             [ParquetSerializable]
             public class NotPartial { public int Id { get; set; } }
             """;
-        Assert.Contains(
-            RunLegacyGenerator(notPartial),
-            d => d.Id == DiagnosticDescriptors.MustBePartial.Id
-        );
+        RunLegacyGenerator(notPartial)
+            .ShouldContain(d => d.Id == DiagnosticDescriptors.MustBePartial.Id);
 
         string duplicateProp = """
             using Parquet.SourceGenerator;
@@ -489,20 +472,16 @@ public class LegacyEmitterTests
                 public int B { get; set; }
             }
             """;
-        Assert.Contains(
-            RunLegacyGenerator(duplicateProp),
-            d => d.Id == DiagnosticDescriptors.DuplicateColumnName.Id
-        );
+        RunLegacyGenerator(duplicateProp)
+            .ShouldContain(d => d.Id == DiagnosticDescriptors.DuplicateColumnName.Id);
 
         string generic = """
             using Parquet.SourceGenerator;
             [ParquetSerializable]
             public partial class GenericClass<T> { public T? Value { get; set; } }
             """;
-        Assert.Contains(
-            RunLegacyGenerator(generic),
-            d => d.Id == DiagnosticDescriptors.GenericTypeNotSupported.Id
-        );
+        RunLegacyGenerator(generic)
+            .ShouldContain(d => d.Id == DiagnosticDescriptors.GenericTypeNotSupported.Id);
     }
 
     // ──────────────────────────────────────────────────────────

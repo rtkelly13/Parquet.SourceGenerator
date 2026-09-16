@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Parquet.SourceGenerator.Tools;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -30,7 +31,7 @@ public sealed class BenchmarkRegressionTests
     [InlineData("0.5 s", 500_000_000d)]
     public void DurationsNormaliseToNanoseconds(string value, double expected)
     {
-        Assert.Equal(expected, RegressionCheck.ParseTimeToNanoseconds(value));
+        RegressionCheck.ParseTimeToNanoseconds(value).ShouldBe(expected);
     }
 
     /// <summary>
@@ -44,10 +45,9 @@ public sealed class BenchmarkRegressionTests
         double? before = RegressionCheck.ParseTimeToNanoseconds("900.0 μs");
         double? after = RegressionCheck.ParseTimeToNanoseconds("1.2 ms");
 
-        Assert.NotNull(before);
-        Assert.NotNull(after);
-        Assert.True(
-            after > before,
+        before.ShouldNotBeNull();
+        after.ShouldNotBeNull();
+        (after > before).ShouldBeTrue(
             $"1.2 ms ({after} ns) must compare as slower than 900 μs ({before} ns)"
         );
     }
@@ -59,7 +59,7 @@ public sealed class BenchmarkRegressionTests
     [InlineData("1,024 KB", 1_048_576L)]
     public void AllocationsNormaliseToBytes(string value, long expected)
     {
-        Assert.Equal(expected, RegressionCheck.ParseMemoryToBytes(value));
+        RegressionCheck.ParseMemoryToBytes(value).ShouldBe(expected);
     }
 
     /// <summary>
@@ -74,8 +74,8 @@ public sealed class BenchmarkRegressionTests
     [InlineData("")]
     public void AbsentMeasurementsDoNotParseAsZero(string value)
     {
-        Assert.Null(RegressionCheck.ParseMemoryToBytes(value));
-        Assert.Null(RegressionCheck.ParseTimeToNanoseconds(value));
+        RegressionCheck.ParseMemoryToBytes(value).ShouldBeNull();
+        RegressionCheck.ParseTimeToNanoseconds(value).ShouldBeNull();
     }
 
     [Fact]
@@ -87,10 +87,10 @@ public sealed class BenchmarkRegressionTests
             "SourceGeneratorReadAsync,1000,2.5,1.5",
         };
 
-        BenchmarkMeasurement measurement = Assert.Single(RegressionCheck.ParseCsv(csv));
+        BenchmarkMeasurement measurement = RegressionCheck.ParseCsv(csv).ShouldHaveSingleItem();
 
-        Assert.Equal(2_500_000d, measurement.MeanNanoseconds);
-        Assert.Equal(1536L, measurement.AllocatedBytes);
+        measurement.MeanNanoseconds.ShouldBe(2_500_000d);
+        measurement.AllocatedBytes.ShouldBe(1536L);
     }
 
     [Fact]
@@ -105,13 +105,13 @@ public sealed class BenchmarkRegressionTests
 
         IReadOnlyList<BenchmarkMeasurement> measurements = RegressionCheck.ParseCsv(csv);
 
-        Assert.Equal(2, measurements.Count);
+        measurements.Count.ShouldBe(2);
         BenchmarkMeasurement generated = measurements.Single(m =>
             m.Method == "SourceGeneratorReadAsync"
         );
-        Assert.Equal(100_000, generated.Count);
-        Assert.Equal(1_234_500d, generated.MeanNanoseconds);
-        Assert.Equal(2_621_440L, generated.AllocatedBytes);
+        generated.Count.ShouldBe(100_000);
+        generated.MeanNanoseconds.ShouldBe(1_234_500d);
+        generated.AllocatedBytes.ShouldBe(2_621_440L);
     }
 
     // ──────────────────────────────────────────────────────────
@@ -133,9 +133,9 @@ public sealed class BenchmarkRegressionTests
             new[] { Measurement(1000, 1_500_000) }
         );
 
-        BenchmarkComparison result = Assert.Single(comparisons);
-        Assert.Equal(RegressionKind.AllocationRegression, result.Kind);
-        Assert.True(RegressionCheck.HasFailures(comparisons, failOnTime: false));
+        BenchmarkComparison result = comparisons.ShouldHaveSingleItem();
+        result.Kind.ShouldBe(RegressionKind.AllocationRegression);
+        RegressionCheck.HasFailures(comparisons, failOnTime: false).ShouldBeTrue();
     }
 
     [Fact]
@@ -146,8 +146,8 @@ public sealed class BenchmarkRegressionTests
             new[] { Measurement(1000, 1_020_000) }
         );
 
-        Assert.Equal(RegressionKind.Unchanged, Assert.Single(comparisons).Kind);
-        Assert.False(RegressionCheck.HasFailures(comparisons, failOnTime: false));
+        comparisons.ShouldHaveSingleItem().Kind.ShouldBe(RegressionKind.Unchanged);
+        RegressionCheck.HasFailures(comparisons, failOnTime: false).ShouldBeFalse();
     }
 
     /// <summary>
@@ -162,7 +162,7 @@ public sealed class BenchmarkRegressionTests
             new[] { Measurement(1000, 400) }
         );
 
-        Assert.Equal(RegressionKind.Unchanged, Assert.Single(comparisons).Kind);
+        comparisons.ShouldHaveSingleItem().Kind.ShouldBe(RegressionKind.Unchanged);
     }
 
     /// <summary>
@@ -177,9 +177,9 @@ public sealed class BenchmarkRegressionTests
             new[] { Measurement(3_000_000, 1000) }
         );
 
-        Assert.Equal(RegressionKind.TimeRegression, Assert.Single(comparisons).Kind);
-        Assert.False(RegressionCheck.HasFailures(comparisons, failOnTime: false));
-        Assert.True(RegressionCheck.HasFailures(comparisons, failOnTime: true));
+        comparisons.ShouldHaveSingleItem().Kind.ShouldBe(RegressionKind.TimeRegression);
+        RegressionCheck.HasFailures(comparisons, failOnTime: false).ShouldBeFalse();
+        RegressionCheck.HasFailures(comparisons, failOnTime: true).ShouldBeTrue();
     }
 
     /// <summary>
@@ -193,7 +193,7 @@ public sealed class BenchmarkRegressionTests
             new[] { Measurement(3_000_000, 2_000_000) }
         );
 
-        Assert.Equal(RegressionKind.AllocationRegression, Assert.Single(comparisons).Kind);
+        comparisons.ShouldHaveSingleItem().Kind.ShouldBe(RegressionKind.AllocationRegression);
     }
 
     [Fact]
@@ -204,8 +204,8 @@ public sealed class BenchmarkRegressionTests
             new[] { Measurement(1000, 1_000_000) }
         );
 
-        Assert.Equal(RegressionKind.Improved, Assert.Single(comparisons).Kind);
-        Assert.False(RegressionCheck.HasFailures(comparisons, failOnTime: false));
+        comparisons.ShouldHaveSingleItem().Kind.ShouldBe(RegressionKind.Improved);
+        RegressionCheck.HasFailures(comparisons, failOnTime: false).ShouldBeFalse();
     }
 
     /// <summary>
@@ -220,7 +220,7 @@ public sealed class BenchmarkRegressionTests
             new[] { Measurement(1_000_000, 1_000_000) }
         );
 
-        Assert.Equal(RegressionKind.Unchanged, Assert.Single(comparisons).Kind);
+        comparisons.ShouldHaveSingleItem().Kind.ShouldBe(RegressionKind.Unchanged);
     }
 
     // ──────────────────────────────────────────────────────────
@@ -238,11 +238,10 @@ public sealed class BenchmarkRegressionTests
             new[] { Measurement(1000, 1000, "Read") }
         );
 
-        BenchmarkComparison missing = Assert.Single(
-            comparisons,
-            c => c.Kind == RegressionKind.NotRun
-        );
-        Assert.Equal("Write", missing.Method);
+        BenchmarkComparison missing = comparisons
+            .Where(c => c.Kind == RegressionKind.NotRun)
+            .ShouldHaveSingleItem();
+        missing.Method.ShouldBe("Write");
     }
 
     [Fact]
@@ -253,9 +252,11 @@ public sealed class BenchmarkRegressionTests
             new[] { Measurement(1000, 1000, "Read"), Measurement(1000, 1000, "ReadParallel") }
         );
 
-        BenchmarkComparison added = Assert.Single(comparisons, c => c.Kind == RegressionKind.New);
-        Assert.Equal("ReadParallel", added.Method);
-        Assert.False(RegressionCheck.HasFailures(comparisons, failOnTime: false));
+        BenchmarkComparison added = comparisons
+            .Where(c => c.Kind == RegressionKind.New)
+            .ShouldHaveSingleItem();
+        added.Method.ShouldBe("ReadParallel");
+        RegressionCheck.HasFailures(comparisons, failOnTime: false).ShouldBeFalse();
     }
 
     /// <summary>
@@ -270,8 +271,8 @@ public sealed class BenchmarkRegressionTests
             new[] { Measurement(1000, 1_000_000, "Read", 100_000) }
         );
 
-        Assert.Contains(comparisons, c => c.Kind == RegressionKind.New && c.Count == 100_000);
-        Assert.Contains(comparisons, c => c.Kind == RegressionKind.NotRun && c.Count == 1_000);
+        comparisons.ShouldContain(c => c.Kind == RegressionKind.New && c.Count == 100_000);
+        comparisons.ShouldContain(c => c.Kind == RegressionKind.NotRun && c.Count == 1_000);
     }
 
     // ──────────────────────────────────────────────────────────
@@ -291,11 +292,11 @@ public sealed class BenchmarkRegressionTests
             RegressionCheck.WriteBaseline(original)
         );
 
-        Assert.Equal(2, restored.Count);
+        restored.Count.ShouldBe(2);
         BenchmarkMeasurement read = restored.Single(m => m.Method == "SourceGeneratorReadAsync");
-        Assert.Equal(100_000, read.Count);
-        Assert.Equal(2_621_440L, read.AllocatedBytes);
-        Assert.Equal(1_234_500d, read.MeanNanoseconds);
+        read.Count.ShouldBe(100_000);
+        read.AllocatedBytes.ShouldBe(2_621_440L);
+        read.MeanNanoseconds.ShouldBe(1_234_500d);
     }
 
     [Fact]
@@ -309,10 +310,10 @@ public sealed class BenchmarkRegressionTests
             RegressionCheck.WriteBaseline(measurements)
         );
 
-        Assert.Equal(
-            RegressionKind.Unchanged,
-            Assert.Single(RegressionCheck.Compare(restored, measurements)).Kind
-        );
+        RegressionCheck
+            .Compare(restored, measurements)
+            .ShouldHaveSingleItem()
+            .Kind.ShouldBe(RegressionKind.Unchanged);
     }
 
     [Fact]
@@ -325,7 +326,7 @@ public sealed class BenchmarkRegressionTests
 
         string report = RegressionCheck.BuildReport(comparisons);
 
-        Assert.Contains("SourceGeneratorReadAsync", report);
-        Assert.Contains("1 allocation regression(s)", report);
+        report.ShouldContain("SourceGeneratorReadAsync");
+        report.ShouldContain("1 allocation regression(s)");
     }
 }

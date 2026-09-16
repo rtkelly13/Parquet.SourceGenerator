@@ -6,6 +6,7 @@ using System.Reflection;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Parquet.SourceGenerator.Diagnostics;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -28,7 +29,7 @@ public sealed class DiagnosticTests
 
         var (diagnostics, _) = RunGenerator(source);
 
-        Assert.Contains(diagnostics, d => d.Id == DiagnosticDescriptors.MustBePartial.Id);
+        diagnostics.ShouldContain(d => d.Id == DiagnosticDescriptors.MustBePartial.Id);
     }
 
     [Fact]
@@ -50,7 +51,7 @@ public sealed class DiagnosticTests
 
         var (diagnostics, _) = RunGenerator(source);
 
-        Assert.Contains(diagnostics, d => d.Id == DiagnosticDescriptors.DuplicateColumnName.Id);
+        diagnostics.ShouldContain(d => d.Id == DiagnosticDescriptors.DuplicateColumnName.Id);
     }
 
     [Fact]
@@ -67,7 +68,7 @@ public sealed class DiagnosticTests
 
         var (diagnostics, _) = RunGenerator(source);
 
-        Assert.Contains(diagnostics, d => d.Id == DiagnosticDescriptors.NoPropertiesFound.Id);
+        diagnostics.ShouldContain(d => d.Id == DiagnosticDescriptors.NoPropertiesFound.Id);
     }
 
     [Fact]
@@ -89,10 +90,7 @@ public sealed class DiagnosticTests
 
         var (diagnostics, _) = RunGenerator(source);
 
-        Assert.Contains(
-            diagnostics,
-            d => d.Id == DiagnosticDescriptors.NonPublicPropertyIgnored.Id
-        );
+        diagnostics.ShouldContain(d => d.Id == DiagnosticDescriptors.NonPublicPropertyIgnored.Id);
     }
 
     [Fact]
@@ -112,9 +110,8 @@ public sealed class DiagnosticTests
 
         var (diagnostics, _) = RunGenerator(source);
 
-        Assert.Contains(
-            diagnostics,
-            d => d.Id == DiagnosticDescriptors.InvalidDecimalPrecisionScale.Id
+        diagnostics.ShouldContain(d =>
+            d.Id == DiagnosticDescriptors.InvalidDecimalPrecisionScale.Id
         );
     }
 
@@ -146,7 +143,7 @@ public sealed class DiagnosticTests
 
         var (diagnostics, _) = RunGenerator(source);
 
-        Assert.Contains(diagnostics, d => d.Id == DiagnosticDescriptors.UnsupportedPropertyType.Id);
+        diagnostics.ShouldContain(d => d.Id == DiagnosticDescriptors.UnsupportedPropertyType.Id);
     }
 
     [Theory]
@@ -196,10 +193,7 @@ public sealed class DiagnosticTests
 
         var (diagnostics, _) = RunGenerator(source);
 
-        Assert.DoesNotContain(
-            diagnostics,
-            d => d.Id == DiagnosticDescriptors.UnsupportedPropertyType.Id
-        );
+        diagnostics.ShouldNotContain(d => d.Id == DiagnosticDescriptors.UnsupportedPropertyType.Id);
     }
 
     [Fact]
@@ -223,7 +217,7 @@ public sealed class DiagnosticTests
 
         var (diagnostics, _) = RunGenerator(source);
 
-        Assert.Contains(diagnostics, d => d.Id == DiagnosticDescriptors.MemberNotAssignable.Id);
+        diagnostics.ShouldContain(d => d.Id == DiagnosticDescriptors.MemberNotAssignable.Id);
     }
 
     [Fact]
@@ -242,7 +236,7 @@ public sealed class DiagnosticTests
 
         var (diagnostics, _) = RunGenerator(source);
 
-        Assert.Contains(diagnostics, d => d.Id == DiagnosticDescriptors.MemberNotAssignable.Id);
+        diagnostics.ShouldContain(d => d.Id == DiagnosticDescriptors.MemberNotAssignable.Id);
     }
 
     [Fact]
@@ -269,14 +263,8 @@ public sealed class DiagnosticTests
 
         var (diagnostics, _) = RunGenerator(source);
 
-        Assert.DoesNotContain(
-            diagnostics,
-            d => d.Id == DiagnosticDescriptors.MemberNotAssignable.Id
-        );
-        Assert.DoesNotContain(
-            diagnostics,
-            d => d.Id == DiagnosticDescriptors.UnsupportedPropertyType.Id
-        );
+        diagnostics.ShouldNotContain(d => d.Id == DiagnosticDescriptors.MemberNotAssignable.Id);
+        diagnostics.ShouldNotContain(d => d.Id == DiagnosticDescriptors.UnsupportedPropertyType.Id);
     }
 
     [Fact]
@@ -294,10 +282,7 @@ public sealed class DiagnosticTests
 
         var (diagnostics, _) = RunGenerator(source);
 
-        Assert.Contains(
-            diagnostics,
-            d => d.Id == DiagnosticDescriptors.NoParameterlessConstructor.Id
-        );
+        diagnostics.ShouldContain(d => d.Id == DiagnosticDescriptors.NoParameterlessConstructor.Id);
     }
 
     [Fact]
@@ -318,10 +303,7 @@ public sealed class DiagnosticTests
 
         var (diagnostics, _) = RunGenerator(source);
 
-        Assert.Contains(
-            diagnostics,
-            d => d.Id == DiagnosticDescriptors.NoParameterlessConstructor.Id
-        );
+        diagnostics.ShouldContain(d => d.Id == DiagnosticDescriptors.NoParameterlessConstructor.Id);
     }
 
     [Fact]
@@ -341,9 +323,8 @@ public sealed class DiagnosticTests
 
         var (diagnostics, _) = RunGenerator(source);
 
-        Assert.DoesNotContain(
-            diagnostics,
-            d => d.Id == DiagnosticDescriptors.NoParameterlessConstructor.Id
+        diagnostics.ShouldNotContain(d =>
+            d.Id == DiagnosticDescriptors.NoParameterlessConstructor.Id
         );
     }
 
@@ -365,8 +346,8 @@ public sealed class DiagnosticTests
 
         var (diagnostics, _) = RunGenerator(source);
 
-        Assert.Contains(diagnostics, d => d.Id == DiagnosticDescriptors.UnsupportedPropertyType.Id);
-        Assert.DoesNotContain(diagnostics, d => d.Id == DiagnosticDescriptors.NoPropertiesFound.Id);
+        diagnostics.ShouldContain(d => d.Id == DiagnosticDescriptors.UnsupportedPropertyType.Id);
+        diagnostics.ShouldNotContain(d => d.Id == DiagnosticDescriptors.NoPropertiesFound.Id);
     }
 
     [Fact]
@@ -392,14 +373,11 @@ public sealed class DiagnosticTests
 
         var (diagnostics, outputTrees) = RunGenerator(source);
 
-        Assert.DoesNotContain(
-            diagnostics,
-            d => d.Id == DiagnosticDescriptors.NestedTypeNotSupported.Id
-        );
-        Assert.True(outputTrees.Count > 1, "expected generated source for the nested target");
+        diagnostics.ShouldNotContain(d => d.Id == DiagnosticDescriptors.NestedTypeNotSupported.Id);
+        (outputTrees.Count > 1).ShouldBeTrue("expected generated source for the nested target");
         string generated = outputTrees[^1].ToString();
-        Assert.Contains("ContainerNestedRowParquetExtensions", generated);
-        Assert.Contains("new Container.NestedRow", generated);
+        generated.ShouldContain("ContainerNestedRowParquetExtensions");
+        generated.ShouldContain("new Container.NestedRow");
     }
 
     [Fact]
@@ -422,7 +400,7 @@ public sealed class DiagnosticTests
 
         var (diagnostics, _) = RunGenerator(source);
 
-        Assert.Contains(diagnostics, d => d.Id == DiagnosticDescriptors.NestedTypeNotSupported.Id);
+        diagnostics.ShouldContain(d => d.Id == DiagnosticDescriptors.NestedTypeNotSupported.Id);
     }
 
     [Fact]
@@ -442,7 +420,7 @@ public sealed class DiagnosticTests
 
         var (diagnostics, _) = RunGenerator(source);
 
-        Assert.Contains(diagnostics, d => d.Id == DiagnosticDescriptors.GenericTypeNotSupported.Id);
+        diagnostics.ShouldContain(d => d.Id == DiagnosticDescriptors.GenericTypeNotSupported.Id);
     }
 
     [Fact]
@@ -461,14 +439,8 @@ public sealed class DiagnosticTests
 
         var (diagnostics, _) = RunGenerator(source);
 
-        Assert.DoesNotContain(
-            diagnostics,
-            d => d.Id == DiagnosticDescriptors.NestedTypeNotSupported.Id
-        );
-        Assert.DoesNotContain(
-            diagnostics,
-            d => d.Id == DiagnosticDescriptors.GenericTypeNotSupported.Id
-        );
+        diagnostics.ShouldNotContain(d => d.Id == DiagnosticDescriptors.NestedTypeNotSupported.Id);
+        diagnostics.ShouldNotContain(d => d.Id == DiagnosticDescriptors.GenericTypeNotSupported.Id);
     }
 
     [Fact]
@@ -490,15 +462,12 @@ public sealed class DiagnosticTests
 
         var (diagnostics, _) = RunGenerator(source);
 
-        Diagnostic reported = Assert.Single(
-            diagnostics,
-            d => d.Id == DiagnosticDescriptors.SortKeyNotEligible.Id
+        Diagnostic reported = diagnostics.Single(d =>
+            d.Id == DiagnosticDescriptors.SortKeyNotEligible.Id
         );
-        Assert.Contains(
-            "culture-sensitive",
-            reported.GetMessage(CultureInfo.InvariantCulture),
-            StringComparison.Ordinal
-        );
+        reported
+            .GetMessage(CultureInfo.InvariantCulture)
+            .ShouldContain("culture-sensitive", Case.Sensitive);
     }
 
     [Fact]
@@ -517,15 +486,10 @@ public sealed class DiagnosticTests
 
         var (diagnostics, _) = RunGenerator(source);
 
-        Diagnostic reported = Assert.Single(
-            diagnostics,
-            d => d.Id == DiagnosticDescriptors.SortKeyNotEligible.Id
+        Diagnostic reported = diagnostics.Single(d =>
+            d.Id == DiagnosticDescriptors.SortKeyNotEligible.Id
         );
-        Assert.Contains(
-            "nullable",
-            reported.GetMessage(CultureInfo.InvariantCulture),
-            StringComparison.Ordinal
-        );
+        reported.GetMessage(CultureInfo.InvariantCulture).ShouldContain("nullable", Case.Sensitive);
     }
 
     [Fact]
@@ -545,7 +509,7 @@ public sealed class DiagnosticTests
 
         var (diagnostics, _) = RunGenerator(source);
 
-        Assert.Contains(diagnostics, d => d.Id == DiagnosticDescriptors.SortKeyNotEligible.Id);
+        diagnostics.ShouldContain(d => d.Id == DiagnosticDescriptors.SortKeyNotEligible.Id);
     }
 
     [Fact]
@@ -565,7 +529,7 @@ public sealed class DiagnosticTests
 
         var (diagnostics, _) = RunGenerator(source);
 
-        Assert.Contains(diagnostics, d => d.Id == DiagnosticDescriptors.SortKeyNotEligible.Id);
+        diagnostics.ShouldContain(d => d.Id == DiagnosticDescriptors.SortKeyNotEligible.Id);
     }
 
     [Fact]
@@ -588,10 +552,7 @@ public sealed class DiagnosticTests
 
         var (diagnostics, _) = RunGenerator(source);
 
-        Assert.DoesNotContain(
-            diagnostics,
-            d => d.Id == DiagnosticDescriptors.SortKeyNotEligible.Id
-        );
+        diagnostics.ShouldNotContain(d => d.Id == DiagnosticDescriptors.SortKeyNotEligible.Id);
     }
 
     private static (

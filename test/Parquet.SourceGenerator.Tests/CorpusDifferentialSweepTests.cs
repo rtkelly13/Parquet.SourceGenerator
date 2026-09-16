@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Parquet.Serialization;
+using Shouldly;
 using Xunit;
 
 namespace Parquet.SourceGenerator.Tests;
@@ -98,13 +99,13 @@ public sealed class CorpusDifferentialSweepTests
 
         var result1 = await ParquetSerializer.DeserializeAsync<BaselineRecord>(stream1);
         IList<BaselineRecord> readViaReflection = result1.Data;
-        Assert.Equal(records.Count, readViaReflection.Count);
+        readViaReflection.Count.ShouldBe(records.Count);
         for (int i = 0; i < records.Count; i++)
         {
-            Assert.Equal(records[i].Id, readViaReflection[i].Id);
-            Assert.Equal(records[i].Name, readViaReflection[i].Name);
-            Assert.Equal(records[i].Score, readViaReflection[i].Score);
-            Assert.Equal(records[i].IsActive, readViaReflection[i].IsActive);
+            readViaReflection[i].Id.ShouldBe(records[i].Id);
+            readViaReflection[i].Name.ShouldBe(records[i].Name);
+            readViaReflection[i].Score.ShouldBe(records[i].Score);
+            readViaReflection[i].IsActive.ShouldBe(records[i].IsActive);
         }
 
         // 2. ParquetSerializer Write -> PSG Read
@@ -115,13 +116,13 @@ public sealed class CorpusDifferentialSweepTests
         List<BaselineRecord> readViaPsg = await BaselineRecordParquetExtensions.ReadParquetAsync(
             stream2
         );
-        Assert.Equal(records.Count, readViaPsg.Count);
+        readViaPsg.Count.ShouldBe(records.Count);
         for (int i = 0; i < records.Count; i++)
         {
-            Assert.Equal(records[i].Id, readViaPsg[i].Id);
-            Assert.Equal(records[i].Name, readViaPsg[i].Name);
-            Assert.Equal(records[i].Score, readViaPsg[i].Score);
-            Assert.Equal(records[i].IsActive, readViaPsg[i].IsActive);
+            readViaPsg[i].Id.ShouldBe(records[i].Id);
+            readViaPsg[i].Name.ShouldBe(records[i].Name);
+            readViaPsg[i].Score.ShouldBe(records[i].Score);
+            readViaPsg[i].IsActive.ShouldBe(records[i].IsActive);
         }
     }
 
@@ -155,19 +156,19 @@ public sealed class CorpusDifferentialSweepTests
             stream1
         );
         IList<CorpusComprehensiveScalarRecord> readViaReflection = result1.Data;
-        Assert.Equal(records.Count, readViaReflection.Count);
+        readViaReflection.Count.ShouldBe(records.Count);
         for (int i = 0; i < records.Count; i++)
         {
-            Assert.Equal(records[i].Id, readViaReflection[i].Id);
-            Assert.Equal(records[i].BigNumber, readViaReflection[i].BigNumber);
-            Assert.Equal(records[i].Rate, readViaReflection[i].Rate);
-            Assert.Equal(records[i].Score, readViaReflection[i].Score);
-            Assert.Equal(records[i].IsValid, readViaReflection[i].IsValid);
-            Assert.Equal(records[i].Description, readViaReflection[i].Description);
-            Assert.Equal(records[i].TraceId, readViaReflection[i].TraceId);
-            Assert.Equal(records[i].CreatedAt, readViaReflection[i].CreatedAt);
-            Assert.Equal(records[i].DurationSeconds, readViaReflection[i].DurationSeconds);
-            Assert.Equal(records[i].Payload, readViaReflection[i].Payload);
+            readViaReflection[i].Id.ShouldBe(records[i].Id);
+            readViaReflection[i].BigNumber.ShouldBe(records[i].BigNumber);
+            readViaReflection[i].Rate.ShouldBe(records[i].Rate);
+            readViaReflection[i].Score.ShouldBe(records[i].Score);
+            readViaReflection[i].IsValid.ShouldBe(records[i].IsValid);
+            readViaReflection[i].Description.ShouldBe(records[i].Description);
+            readViaReflection[i].TraceId.ShouldBe(records[i].TraceId);
+            readViaReflection[i].CreatedAt.ShouldBe(records[i].CreatedAt);
+            readViaReflection[i].DurationSeconds.ShouldBe(records[i].DurationSeconds);
+            readViaReflection[i].Payload.ShouldBe(records[i].Payload);
         }
 
         // 2. ParquetSerializer Write -> PSG Read
@@ -177,19 +178,19 @@ public sealed class CorpusDifferentialSweepTests
 
         List<CorpusComprehensiveScalarRecord> readViaPsg =
             await CorpusComprehensiveScalarRecordParquetExtensions.ReadParquetAsync(stream2);
-        Assert.Equal(records.Count, readViaPsg.Count);
+        readViaPsg.Count.ShouldBe(records.Count);
         for (int i = 0; i < records.Count; i++)
         {
-            Assert.Equal(records[i].Id, readViaPsg[i].Id);
-            Assert.Equal(records[i].BigNumber, readViaPsg[i].BigNumber);
-            Assert.Equal(records[i].Rate, readViaPsg[i].Rate);
-            Assert.Equal(records[i].Score, readViaPsg[i].Score);
-            Assert.Equal(records[i].IsValid, readViaPsg[i].IsValid);
-            Assert.Equal(records[i].Description, readViaPsg[i].Description);
-            Assert.Equal(records[i].TraceId, readViaPsg[i].TraceId);
-            Assert.Equal(records[i].CreatedAt, readViaPsg[i].CreatedAt);
-            Assert.Equal(records[i].DurationSeconds, readViaPsg[i].DurationSeconds);
-            Assert.Equal(records[i].Payload, readViaPsg[i].Payload);
+            readViaPsg[i].Id.ShouldBe(records[i].Id);
+            readViaPsg[i].BigNumber.ShouldBe(records[i].BigNumber);
+            readViaPsg[i].Rate.ShouldBe(records[i].Rate);
+            readViaPsg[i].Score.ShouldBe(records[i].Score);
+            readViaPsg[i].IsValid.ShouldBe(records[i].IsValid);
+            readViaPsg[i].Description.ShouldBe(records[i].Description);
+            readViaPsg[i].TraceId.ShouldBe(records[i].TraceId);
+            readViaPsg[i].CreatedAt.ShouldBe(records[i].CreatedAt);
+            readViaPsg[i].DurationSeconds.ShouldBe(records[i].DurationSeconds);
+            readViaPsg[i].Payload.ShouldBe(records[i].Payload);
         }
     }
 
@@ -241,17 +242,17 @@ public sealed class CorpusDifferentialSweepTests
 
         var result1 = await ParquetSerializer.DeserializeAsync<CorpusNullableRecord>(stream1);
         IList<CorpusNullableRecord> readViaReflection = result1.Data;
-        Assert.Equal(records.Count, readViaReflection.Count);
+        readViaReflection.Count.ShouldBe(records.Count);
         for (int i = 0; i < records.Count; i++)
         {
-            Assert.Equal(records[i].RequiredInt, readViaReflection[i].RequiredInt);
-            Assert.Equal(records[i].OptionalInt, readViaReflection[i].OptionalInt);
-            Assert.Equal(records[i].RequiredDouble, readViaReflection[i].RequiredDouble);
-            Assert.Equal(records[i].OptionalDouble, readViaReflection[i].OptionalDouble);
-            Assert.Equal(records[i].RequiredGuid, readViaReflection[i].RequiredGuid);
-            Assert.Equal(records[i].OptionalGuid, readViaReflection[i].OptionalGuid);
-            Assert.Equal(records[i].OptionalString1, readViaReflection[i].OptionalString1);
-            Assert.Equal(records[i].OptionalString2, readViaReflection[i].OptionalString2);
+            readViaReflection[i].RequiredInt.ShouldBe(records[i].RequiredInt);
+            readViaReflection[i].OptionalInt.ShouldBe(records[i].OptionalInt);
+            readViaReflection[i].RequiredDouble.ShouldBe(records[i].RequiredDouble);
+            readViaReflection[i].OptionalDouble.ShouldBe(records[i].OptionalDouble);
+            readViaReflection[i].RequiredGuid.ShouldBe(records[i].RequiredGuid);
+            readViaReflection[i].OptionalGuid.ShouldBe(records[i].OptionalGuid);
+            readViaReflection[i].OptionalString1.ShouldBe(records[i].OptionalString1);
+            readViaReflection[i].OptionalString2.ShouldBe(records[i].OptionalString2);
         }
 
         // 2. ParquetSerializer Write -> PSG Read
@@ -261,17 +262,17 @@ public sealed class CorpusDifferentialSweepTests
 
         List<CorpusNullableRecord> readViaPsg =
             await CorpusNullableRecordParquetExtensions.ReadParquetAsync(stream2);
-        Assert.Equal(records.Count, readViaPsg.Count);
+        readViaPsg.Count.ShouldBe(records.Count);
         for (int i = 0; i < records.Count; i++)
         {
-            Assert.Equal(records[i].RequiredInt, readViaPsg[i].RequiredInt);
-            Assert.Equal(records[i].OptionalInt, readViaPsg[i].OptionalInt);
-            Assert.Equal(records[i].RequiredDouble, readViaPsg[i].RequiredDouble);
-            Assert.Equal(records[i].OptionalDouble, readViaPsg[i].OptionalDouble);
-            Assert.Equal(records[i].RequiredGuid, readViaPsg[i].RequiredGuid);
-            Assert.Equal(records[i].OptionalGuid, readViaPsg[i].OptionalGuid);
-            Assert.Equal(records[i].OptionalString1, readViaPsg[i].OptionalString1);
-            Assert.Equal(records[i].OptionalString2, readViaPsg[i].OptionalString2);
+            readViaPsg[i].RequiredInt.ShouldBe(records[i].RequiredInt);
+            readViaPsg[i].OptionalInt.ShouldBe(records[i].OptionalInt);
+            readViaPsg[i].RequiredDouble.ShouldBe(records[i].RequiredDouble);
+            readViaPsg[i].OptionalDouble.ShouldBe(records[i].OptionalDouble);
+            readViaPsg[i].RequiredGuid.ShouldBe(records[i].RequiredGuid);
+            readViaPsg[i].OptionalGuid.ShouldBe(records[i].OptionalGuid);
+            readViaPsg[i].OptionalString1.ShouldBe(records[i].OptionalString1);
+            readViaPsg[i].OptionalString2.ShouldBe(records[i].OptionalString2);
         }
     }
 
@@ -307,12 +308,12 @@ public sealed class CorpusDifferentialSweepTests
 
         var result1 = await ParquetSerializer.DeserializeAsync<CorpusDecimalRecord>(stream1);
         IList<CorpusDecimalRecord> readViaReflection = result1.Data;
-        Assert.Equal(records.Count, readViaReflection.Count);
+        readViaReflection.Count.ShouldBe(records.Count);
         for (int i = 0; i < records.Count; i++)
         {
-            Assert.Equal(records[i].Id, readViaReflection[i].Id);
-            Assert.Equal(records[i].Amount, readViaReflection[i].Amount);
-            Assert.Equal(records[i].OptionalFee, readViaReflection[i].OptionalFee);
+            readViaReflection[i].Id.ShouldBe(records[i].Id);
+            readViaReflection[i].Amount.ShouldBe(records[i].Amount);
+            readViaReflection[i].OptionalFee.ShouldBe(records[i].OptionalFee);
         }
 
         // 2. ParquetSerializer Write -> PSG Read
@@ -322,12 +323,12 @@ public sealed class CorpusDifferentialSweepTests
 
         List<CorpusDecimalRecord> readViaPsg =
             await CorpusDecimalRecordParquetExtensions.ReadParquetAsync(stream2);
-        Assert.Equal(records.Count, readViaPsg.Count);
+        readViaPsg.Count.ShouldBe(records.Count);
         for (int i = 0; i < records.Count; i++)
         {
-            Assert.Equal(records[i].Id, readViaPsg[i].Id);
-            Assert.Equal(records[i].Amount, readViaPsg[i].Amount);
-            Assert.Equal(records[i].OptionalFee, readViaPsg[i].OptionalFee);
+            readViaPsg[i].Id.ShouldBe(records[i].Id);
+            readViaPsg[i].Amount.ShouldBe(records[i].Amount);
+            readViaPsg[i].OptionalFee.ShouldBe(records[i].OptionalFee);
         }
     }
 
@@ -351,13 +352,13 @@ public sealed class CorpusDifferentialSweepTests
 
         List<CorpusTimeSpanRecord> readViaPsg =
             await CorpusTimeSpanRecordParquetExtensions.ReadParquetAsync(ms);
-        Assert.Equal(2, readViaPsg.Count);
-        Assert.Equal(TimeSpan.FromSeconds(123), readViaPsg[0].Elapsed);
-        Assert.Equal(TimeSpan.FromHours(1.5), readViaPsg[1].Elapsed);
+        readViaPsg.Count.ShouldBe(2);
+        readViaPsg[0].Elapsed.ShouldBe(TimeSpan.FromSeconds(123));
+        readViaPsg[1].Elapsed.ShouldBe(TimeSpan.FromHours(1.5));
 
         // 2. ParquetSerializer fails on deserialization because reflection schema generator has no TimeSpan field mapping
         ms.Position = 0;
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        await Should.ThrowAsync<InvalidOperationException>(() =>
             ParquetSerializer.DeserializeAsync<CorpusTimeSpanRecord>(ms)
         );
     }
@@ -381,30 +382,30 @@ public sealed class CorpusDifferentialSweepTests
         // 1. Sequential Stream Reader
         ms.Position = 0;
         List<SingleLongStruct> seq = await SingleLongStructParquetExtensions.ReadParquetAsync(ms);
-        Assert.Equal(records.Count, seq.Count);
+        seq.Count.ShouldBe(records.Count);
         for (int i = 0; i < records.Count; i++)
         {
-            Assert.Equal(records[i].Value, seq[i].Value);
+            seq[i].Value.ShouldBe(records[i].Value);
         }
 
         // 2. Parallel Array Reader
         ms.Position = 0;
         SingleLongStruct[] parallel =
             await SingleLongStructParquetExtensions.ReadParquetParallelArrayAsync(ms);
-        Assert.Equal(records.Count, parallel.Length);
+        parallel.Length.ShouldBe(records.Count);
         for (int i = 0; i < records.Count; i++)
         {
-            Assert.Equal(records[i].Value, parallel[i].Value);
+            parallel[i].Value.ShouldBe(records[i].Value);
         }
 
         // 3. Memory Reader
         List<SingleLongStruct> fromMem = await SingleLongStructParquetExtensions.ReadParquetAsync(
             payload
         );
-        Assert.Equal(records.Count, fromMem.Count);
+        fromMem.Count.ShouldBe(records.Count);
         for (int i = 0; i < records.Count; i++)
         {
-            Assert.Equal(records[i].Value, fromMem[i].Value);
+            fromMem[i].Value.ShouldBe(records[i].Value);
         }
     }
 
@@ -428,34 +429,34 @@ public sealed class CorpusDifferentialSweepTests
         // 1. Sequential Stream Reader
         ms.Position = 0;
         List<Point3DStruct> seq = await Point3DStructParquetExtensions.ReadParquetAsync(ms);
-        Assert.Equal(records.Count, seq.Count);
+        seq.Count.ShouldBe(records.Count);
         for (int i = 0; i < records.Count; i++)
         {
-            Assert.Equal(records[i].X, seq[i].X);
-            Assert.Equal(records[i].Y, seq[i].Y);
-            Assert.Equal(records[i].Z, seq[i].Z);
+            seq[i].X.ShouldBe(records[i].X);
+            seq[i].Y.ShouldBe(records[i].Y);
+            seq[i].Z.ShouldBe(records[i].Z);
         }
 
         // 2. Parallel Array Reader
         ms.Position = 0;
         Point3DStruct[] parallel =
             await Point3DStructParquetExtensions.ReadParquetParallelArrayAsync(ms);
-        Assert.Equal(records.Count, parallel.Length);
+        parallel.Length.ShouldBe(records.Count);
         for (int i = 0; i < records.Count; i++)
         {
-            Assert.Equal(records[i].X, parallel[i].X);
-            Assert.Equal(records[i].Y, parallel[i].Y);
-            Assert.Equal(records[i].Z, parallel[i].Z);
+            parallel[i].X.ShouldBe(records[i].X);
+            parallel[i].Y.ShouldBe(records[i].Y);
+            parallel[i].Z.ShouldBe(records[i].Z);
         }
 
         // 3. Memory Reader
         List<Point3DStruct> fromMem = await Point3DStructParquetExtensions.ReadParquetAsync(
             payload
         );
-        Assert.Equal(records.Count, fromMem.Count);
+        fromMem.Count.ShouldBe(records.Count);
         for (int i = 0; i < records.Count; i++)
         {
-            Assert.Equal(records[i].X, fromMem[i].X);
+            fromMem[i].X.ShouldBe(records[i].X);
         }
     }
 
@@ -495,21 +496,21 @@ public sealed class CorpusDifferentialSweepTests
         // 1. Sequential Stream Reader
         ms.Position = 0;
         List<NestedOrder> sequential = await NestedOrderParquetExtensions.ReadParquetAsync(ms);
-        Assert.Equal(3, sequential.Count);
-        Assert.Equal("Seattle", sequential[0].Ship?.City);
-        Assert.Equal(98101, sequential[0].Ship?.Zip);
-        Assert.Null(sequential[1].Ship);
-        Assert.Equal("Chicago", sequential[1].Bill.City);
-        Assert.Null(sequential[1].Bill.Zip);
+        sequential.Count.ShouldBe(3);
+        sequential[0].Ship?.City.ShouldBe("Seattle");
+        sequential[0].Ship?.Zip.ShouldBe(98101);
+        sequential[1].Ship.ShouldBeNull();
+        sequential[1].Bill.City.ShouldBe("Chicago");
+        sequential[1].Bill.Zip.ShouldBeNull();
 
         // 2. Parallel Array Reader
         ms.Position = 0;
         NestedOrder[] parallel = await NestedOrderParquetExtensions.ReadParquetParallelArrayAsync(
             ms
         );
-        Assert.Equal(3, parallel.Length);
-        Assert.Equal(sequential[0].Ship?.City, parallel[0].Ship?.City);
-        Assert.Equal(sequential[1].Bill.City, parallel[1].Bill.City);
+        parallel.Length.ShouldBe(3);
+        parallel[0].Ship?.City.ShouldBe(sequential[0].Ship?.City);
+        parallel[1].Bill.City.ShouldBe(sequential[1].Bill.City);
 
         // 3. Streaming AsyncEnumerable Reader
         ms.Position = 0;
@@ -518,13 +519,13 @@ public sealed class CorpusDifferentialSweepTests
         {
             streamed.Add(item);
         }
-        Assert.Equal(3, streamed.Count);
-        Assert.Equal(sequential[0].Ship?.City, streamed[0].Ship?.City);
+        streamed.Count.ShouldBe(3);
+        streamed[0].Ship?.City.ShouldBe(sequential[0].Ship?.City);
 
         // 4. Memory-backed Reader
         List<NestedOrder> fromMem = await NestedOrderParquetExtensions.ReadParquetAsync(payload);
-        Assert.Equal(3, fromMem.Count);
-        Assert.Equal(sequential[0].Ship?.City, fromMem[0].Ship?.City);
+        fromMem.Count.ShouldBe(3);
+        fromMem[0].Ship?.City.ShouldBe(sequential[0].Ship?.City);
     }
 
     [Fact]
@@ -569,28 +570,28 @@ public sealed class CorpusDifferentialSweepTests
         // 1. Sequential Reader
         ms.Position = 0;
         List<ListRow> seq = await ListRowParquetExtensions.ReadParquetAsync(ms);
-        Assert.Equal(3, seq.Count);
+        seq.Count.ShouldBe(3);
 
         // Row 0 has items with null
-        Assert.Equal(3, seq[0].Tags!.Count);
-        Assert.Equal("alpha", seq[0].Tags![0]);
-        Assert.Null(seq[0].Tags![1]);
-        Assert.Equal("beta", seq[0].Tags![2]);
+        seq[0].Tags!.Count.ShouldBe(3);
+        seq[0].Tags![0].ShouldBe("alpha");
+        seq[0].Tags![1].ShouldBeNull();
+        seq[0].Tags![2].ShouldBe("beta");
 
         // Row 1 is empty list (not null)
-        Assert.NotNull(seq[1].Tags);
-        Assert.Empty(seq[1].Tags!);
+        seq[1].Tags.ShouldNotBeNull();
+        seq[1].Tags!.ShouldBeEmpty();
 
         // Row 2 is null
-        Assert.Null(seq[2].Tags);
+        seq[2].Tags.ShouldBeNull();
 
         // 2. Parallel Array Reader
         ms.Position = 0;
         ListRow[] par = await ListRowParquetExtensions.ReadParquetParallelArrayAsync(ms);
-        Assert.Equal(3, par.Length);
-        Assert.Equal(seq[0].Tags!.Count, par[0].Tags!.Count);
-        Assert.Empty(par[1].Tags!);
-        Assert.Null(par[2].Tags);
+        par.Length.ShouldBe(3);
+        par[0].Tags!.Count.ShouldBe(seq[0].Tags!.Count);
+        par[1].Tags!.ShouldBeEmpty();
+        par[2].Tags.ShouldBeNull();
 
         // 3. Streaming AsyncEnumerable Reader
         ms.Position = 0;
@@ -599,8 +600,8 @@ public sealed class CorpusDifferentialSweepTests
         {
             streamed.Add(row);
         }
-        Assert.Equal(3, streamed.Count);
-        Assert.Equal(seq[0].Tags!.Count, streamed[0].Tags!.Count);
+        streamed.Count.ShouldBe(3);
+        streamed[0].Tags!.Count.ShouldBe(seq[0].Tags!.Count);
     }
 
     [Fact]
@@ -661,20 +662,20 @@ public sealed class CorpusDifferentialSweepTests
         // 1. Sequential Reader
         ms.Position = 0;
         List<TripRow> seq = await TripRowParquetExtensions.ReadParquetAsync(ms);
-        Assert.Equal(3, seq.Count);
-        Assert.Equal(2, seq[0].Stops!.Count);
-        Assert.Equal("Austin", seq[0].Stops![0].City);
-        Assert.Null(seq[0].Stops![1].City);
-        Assert.Empty(seq[1].Stops!);
-        Assert.Null(seq[2].Stops);
+        seq.Count.ShouldBe(3);
+        seq[0].Stops!.Count.ShouldBe(2);
+        seq[0].Stops![0].City.ShouldBe("Austin");
+        seq[0].Stops![1].City.ShouldBeNull();
+        seq[1].Stops!.ShouldBeEmpty();
+        seq[2].Stops.ShouldBeNull();
 
         // 2. Parallel Reader
         ms.Position = 0;
         TripRow[] par = await TripRowParquetExtensions.ReadParquetParallelArrayAsync(ms);
-        Assert.Equal(3, par.Length);
-        Assert.Equal("Austin", par[0].Stops![0].City);
-        Assert.Empty(par[1].Stops!);
-        Assert.Null(par[2].Stops);
+        par.Length.ShouldBe(3);
+        par[0].Stops![0].City.ShouldBe("Austin");
+        par[1].Stops!.ShouldBeEmpty();
+        par[2].Stops.ShouldBeNull();
     }
 
     #endregion
