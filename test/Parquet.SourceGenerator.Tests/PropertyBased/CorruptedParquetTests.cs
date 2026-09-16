@@ -12,16 +12,6 @@ using Xunit;
 namespace Parquet.SourceGenerator.Tests.PropertyBased;
 
 /// <summary>
-/// Serialises the corruption suite against every other collection so its allocation ceiling is
-/// measured against a quiet process rather than whatever else happened to be running.
-/// </summary>
-[CollectionDefinition(Name, DisableParallelization = true)]
-public sealed class CorruptedParquetSuite
-{
-    public const string Name = "corrupted-parquet";
-}
-
-/// <summary>
 /// Controlled corruption of otherwise valid Parquet files.
 /// </summary>
 /// <remarks>
@@ -31,7 +21,7 @@ public sealed class CorruptedParquetSuite
 /// data that differs from the truth without saying so. Silent corruption is the only outcome that is
 /// always a bug.
 /// </remarks>
-[Collection(CorruptedParquetSuite.Name)]
+[Collection(AllocationMeasurementSuite.Name)]
 public sealed class CorruptedParquetTests
 {
     /// <summary>How long a read of a small corrupt file may take before it counts as a hang.</summary>
@@ -311,18 +301,10 @@ public sealed class CorruptedParquetTests
 
     private static async Task<ReadOutcome> ReadAsync(byte[] bytes)
     {
-        long before = GC.GetTotalAllocatedBytes(precise: true);
         using var cts = new CancellationTokenSource(ReadTimeout);
 
-        Task<List<FuzzWideRecord>> read = Task.Run(
-            async () =>
-            {
-                using var stream = new MemoryStream(bytes, writable: false);
-                return await FuzzWideRecordParquetExtensions.ReadParquetAsync(
-                    stream,
-                    cancellationToken: cts.Token
-                );
-            },
+        Task<AllocationMeasurementResult<ReadOutcome>> read = Task.Run(
+            () => AllocationMeasurement.MeasureAsync(() => ReadAttemptAsync(bytes, cts.Token)),
             CancellationToken.None
         );
 
@@ -332,14 +314,27 @@ public sealed class CorruptedParquetTests
             return new ReadOutcome(null, null, TimedOut: true, 0);
         }
 
-        long allocated = GC.GetTotalAllocatedBytes(precise: true) - before;
+        AllocationMeasurementResult<ReadOutcome> measurement = await read;
+        return measurement.Result with { AllocatedBytes = measurement.AllocatedBytes };
+    }
+
+    private static async Task<ReadOutcome> ReadAttemptAsync(
+        byte[] bytes,
+        CancellationToken cancellationToken
+    )
+    {
         try
         {
-            return new ReadOutcome(await read, null, TimedOut: false, allocated);
+            using var stream = new MemoryStream(bytes, writable: false);
+            List<FuzzWideRecord> rows = await FuzzWideRecordParquetExtensions.ReadParquetAsync(
+                stream,
+                cancellationToken: cancellationToken
+            );
+            return new ReadOutcome(rows, null, TimedOut: false, 0);
         }
         catch (Exception ex)
         {
-            return new ReadOutcome(null, ex, TimedOut: false, allocated);
+            return new ReadOutcome(null, ex, TimedOut: false, 0);
         }
     }
 
