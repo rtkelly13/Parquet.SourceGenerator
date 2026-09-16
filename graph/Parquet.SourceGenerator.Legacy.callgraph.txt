@@ -6,7 +6,7 @@
 #        components-must-not-call-the-emitter-hub layering.
 # Unresolved call sites (delegates, virtuals, framework): measured in the
 # header below so the blind spot is visible, never silently absent.
-# stats: nodes=105 edges=120 call-sites=1081 unresolved=936
+# stats: nodes=105 edges=120 call-sites=1099 unresolved=954
 E:Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.IsSupported/(TargetClassModel) | Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.TryMap/(PropertyModel)
 E:Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.MapIntegral/(string) | Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.Fixed/(string,string,string,string)
 E:Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.TryMap/(PropertyModel) | Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.Fixed/(string,string,string,string)

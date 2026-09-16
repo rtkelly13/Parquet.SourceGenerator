@@ -141,7 +141,14 @@ internal static class SchemaComponent
                 "            && string.Equals(fileFields[index].Path.ToString(), expectedPath, global::System.StringComparison.OrdinalIgnoreCase))"
             );
             builder.AppendLine("        {");
-            builder.AppendLine("            return fileFields[index];");
+            builder.AppendLine("            var field = fileFields[index];");
+            builder.AppendLine("            if (field.ClrType != expected.ClrType)");
+            builder.AppendLine("            {");
+            builder.AppendLine(
+                "                throw new global::System.IO.InvalidDataException($\"Column '{field.Path}' type '{field.ClrType}' does not match expected '{expected.ClrType}'.\");"
+            );
+            builder.AppendLine("            }");
+            builder.AppendLine("            return field;");
             builder.AppendLine("        }");
             builder.AppendLine();
             builder.AppendLine("        if (byName is null)");
@@ -170,6 +177,12 @@ internal static class SchemaComponent
             builder.AppendLine();
             builder.AppendLine("        if (byName.TryGetValue(expectedPath, out var matched))");
             builder.AppendLine("        {");
+            builder.AppendLine("            if (matched.ClrType != expected.ClrType)");
+            builder.AppendLine("            {");
+            builder.AppendLine(
+                "                throw new global::System.IO.InvalidDataException($\"Column '{matched.Path}' type '{matched.ClrType}' does not match expected '{expected.ClrType}'.\");"
+            );
+            builder.AppendLine("            }");
             builder.AppendLine("            return matched;");
             builder.AppendLine("        }");
             builder.AppendLine();
@@ -203,7 +216,14 @@ internal static class SchemaComponent
                 "            && string.Equals(fileFields[index].Name, expected.Name, global::System.StringComparison.OrdinalIgnoreCase))"
             );
             builder.AppendLine("        {");
-            builder.AppendLine("            return fileFields[index];");
+            builder.AppendLine("            var field = fileFields[index];");
+            builder.AppendLine("            if (field.ClrType != expected.ClrType)");
+            builder.AppendLine("            {");
+            builder.AppendLine(
+                "                throw new global::System.IO.InvalidDataException($\"Column '{field.Name}' type '{field.ClrType}' does not match expected '{expected.ClrType}'.\");"
+            );
+            builder.AppendLine("            }");
+            builder.AppendLine("            return field;");
             builder.AppendLine("        }");
             builder.AppendLine();
             builder.AppendLine(
@@ -240,6 +260,12 @@ internal static class SchemaComponent
             builder.AppendLine();
             builder.AppendLine("        if (byName.TryGetValue(expected.Name, out var match))");
             builder.AppendLine("        {");
+            builder.AppendLine("            if (match.ClrType != expected.ClrType)");
+            builder.AppendLine("            {");
+            builder.AppendLine(
+                "                throw new global::System.IO.InvalidDataException($\"Column '{match.Name}' type '{match.ClrType}' does not match expected '{expected.ClrType}'.\");"
+            );
+            builder.AppendLine("            }");
             builder.AppendLine("            return match;");
             builder.AppendLine("        }");
             builder.AppendLine();

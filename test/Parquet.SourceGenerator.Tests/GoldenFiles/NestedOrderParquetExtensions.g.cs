@@ -62,7 +62,12 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
         if ((uint)index < (uint)fileFields.Length
             && string.Equals(fileFields[index].Path.ToString(), expectedPath, global::System.StringComparison.OrdinalIgnoreCase))
         {
-            return fileFields[index];
+            var field = fileFields[index];
+            if (field.ClrType != expected.ClrType)
+            {
+                throw new global::System.IO.InvalidDataException($"Column '{field.Path}' type '{field.ClrType}' does not match expected '{expected.ClrType}'.");
+            }
+            return field;
         }
 
         if (byName is null)
@@ -83,6 +88,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
 
         if (byName.TryGetValue(expectedPath, out var matched))
         {
+            if (matched.ClrType != expected.ClrType)
+            {
+                throw new global::System.IO.InvalidDataException($"Column '{matched.Path}' type '{matched.ClrType}' does not match expected '{expected.ClrType}'.");
+            }
             return matched;
         }
 

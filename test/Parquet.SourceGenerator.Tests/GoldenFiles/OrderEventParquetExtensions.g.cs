@@ -47,7 +47,12 @@ public static partial class OrderEventParquetExtensions
         if ((uint)index < (uint)fileFields.Length
             && string.Equals(fileFields[index].Name, expected.Name, global::System.StringComparison.OrdinalIgnoreCase))
         {
-            return fileFields[index];
+            var field = fileFields[index];
+            if (field.ClrType != expected.ClrType)
+            {
+                throw new global::System.IO.InvalidDataException($"Column '{field.Name}' type '{field.ClrType}' does not match expected '{expected.ClrType}'.");
+            }
+            return field;
         }
 
         // Only a file whose column order differs reaches here. The name index is built at most once
@@ -70,6 +75,10 @@ public static partial class OrderEventParquetExtensions
 
         if (byName.TryGetValue(expected.Name, out var match))
         {
+            if (match.ClrType != expected.ClrType)
+            {
+                throw new global::System.IO.InvalidDataException($"Column '{match.Name}' type '{match.ClrType}' does not match expected '{expected.ClrType}'.");
+            }
             return match;
         }
 

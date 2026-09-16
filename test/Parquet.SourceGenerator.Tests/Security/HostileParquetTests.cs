@@ -361,6 +361,38 @@ public class HostileParquetTests
         Assert.Equal(100, restored[0].Id);
     }
 
+    [Fact]
+    public async Task PhysicalTypeMismatchPositionalThrowsInvalidDataException()
+    {
+        var schema = new ParquetSchema(new DataField<long>("id"), new DataField<string>("name"));
+        using var ms = new MemoryStream();
+        await using (var writer = await ParquetWriter.CreateAsync(schema, ms)) { }
+
+        ms.Position = 0;
+        var ex = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            MultiRowGroupModelParquetExtensions.ReadParquetAsync(ms)
+        );
+        Assert.Contains(
+            "Column 'id' type 'System.Int64' does not match expected 'System.Int32'",
+            ex.Message
+        );
+    }
+
+    [Fact]
+    public async Task PhysicalTypeMismatchReorderedThrowsInvalidDataException()
+    {
+        var schema = new ParquetSchema(new DataField<string>("name"), new DataField<string>("id"));
+        using var ms = new MemoryStream();
+        await using (var writer = await ParquetWriter.CreateAsync(schema, ms)) { }
+
+        ms.Position = 0;
+        var ex = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            MultiRowGroupModelParquetExtensions.ReadParquetAsync(ms)
+        );
+        Assert.Contains("Column 'id' type", ex.Message);
+        Assert.Contains("does not match expected 'System.Int32'", ex.Message);
+    }
+
     private static async Task WriteEmptyListColumnsAsync(
         ParquetRowGroupWriter groupWriter,
         ParquetSchema schema

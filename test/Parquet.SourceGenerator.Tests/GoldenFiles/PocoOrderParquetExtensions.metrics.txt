@@ -9,7 +9,7 @@
 # ELOC_PER_MEMBER emitted executable lines per emitted public member.
 # Ordinal-sorted. CC, CL, SLOC, ELOC, DIT, ERRORS and MEMBERS are gated exactly; MI is
 # REPORTED BUT NOT GATED for generated code. See docs/22-GENERATED-CODE-METRICS.md.
-S:PocoOrderParquetExtensions | EMITTER=v6 MEMBERS=47 CC=752 CL=75 SLOC=5191 ELOC=2646 ERRORS=0 METHODS=51 MAXCC=208 ELOC_PER_MEMBER=56.3
+S:PocoOrderParquetExtensions | EMITTER=v6 MEMBERS=47 CC=754 CL=75 SLOC=5200 ELOC=2651 ERRORS=0 METHODS=51 MAXCC=208 ELOC_PER_MEMBER=56.4
 M:SampleDomain.Models.PocoOrderParquet.From(System.IO.Stream) | MI=90 CC=2 CL=5 DIT=- SLOC=3 ELOC=1
 M:SampleDomain.Models.PocoOrderParquet.From(System.ReadOnlyMemory<byte>) | MI=94 CC=1 CL=3 DIT=- SLOC=3 ELOC=1
 M:SampleDomain.Models.PocoOrderParquetExtensions.AcceptRowGroup(System.Func<SampleDomain.Models.PocoOrderRowGroupMetadata, bool>, Parquet.ParquetRowGroupReader, int, Parquet.Schema.DataField) | MI=65 CC=5 CL=8 DIT=- SLOC=34 ELOC=6
@@ -28,7 +28,7 @@ M:SampleDomain.Models.PocoOrderParquetExtensions.ReadParquetParallelAsync(System
 M:SampleDomain.Models.PocoOrderParquetExtensions.ReadParquetStreamAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.PocoOrderRowGroupMetadata, bool>) | MI=12 CC=66 CL=28 DIT=- SLOC=297 ELOC=205
 M:SampleDomain.Models.PocoOrderParquetExtensions.ReadParquetStreamAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.PocoOrderRowGroupMetadata, bool>) | MI=67 CC=2 CL=10 DIT=- SLOC=15 ELOC=6
 M:SampleDomain.Models.PocoOrderParquetExtensions.ReadRowGroupsIntoAsync(System.ReadOnlyMemory<byte>, Parquet.ParquetOptions, SampleDomain.Models.PocoOrder[], int[], int[], int, int, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationTokenSource, System.Threading.CancellationToken) | MI=13 CC=65 CL=27 DIT=- SLOC=317 ELOC=205
-M:SampleDomain.Models.PocoOrderParquetExtensions.ResolveSchemaField(Parquet.Schema.DataField[], int, Parquet.Schema.DataField, ref System.Collections.Generic.Dictionary<string, Parquet.Schema.DataField>, out bool) | MI=54 CC=8 CL=8 DIT=- SLOC=53 ELOC=16
+M:SampleDomain.Models.PocoOrderParquetExtensions.ResolveSchemaField(Parquet.Schema.DataField[], int, Parquet.Schema.DataField, ref System.Collections.Generic.Dictionary<string, Parquet.Schema.DataField>, out bool) | MI=50 CC=10 CL=9 DIT=- SLOC=62 ELOC=21
 M:SampleDomain.Models.PocoOrderParquetExtensions.ValidateReader(Parquet.ParquetReader, Parquet.SourceGenerator.ParquetSerializerOptions) | MI=62 CC=6 CL=7 DIT=- SLOC=23 ELOC=9
 M:SampleDomain.Models.PocoOrderParquetExtensions.WriteParquetAsync(System.Collections.Generic.IAsyncEnumerable<SampleDomain.Models.PocoOrder>, System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=54 CC=7 CL=15 DIT=- SLOC=35 ELOC=16
 M:SampleDomain.Models.PocoOrderParquetExtensions.WriteParquetAsync(System.Collections.Generic.IReadOnlyCollection<SampleDomain.Models.PocoOrder>, System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=62 CC=3 CL=12 DIT=- SLOC=22 ELOC=8
@@ -66,7 +66,7 @@ P:SampleDomain.Models.PocoOrderRowGroupMetadata.Id | MI=100 CC=1 CL=1 DIT=- SLOC
 P:SampleDomain.Models.PocoOrderRowGroupMetadata.RowCount | MI=100 CC=1 CL=0 DIT=- SLOC=2 ELOC=0
 P:SampleDomain.Models.PocoOrderRowGroupMetadata.RowGroupIndex | MI=100 CC=1 CL=0 DIT=- SLOC=2 ELOC=0
 T:SampleDomain.Models.PocoOrderParquet | MI=91 CC=3 CL=7 DIT=1 SLOC=13 ELOC=2
-T:SampleDomain.Models.PocoOrderParquetExtensions | MI=27 CC=712 CL=69 DIT=1 SLOC=4975 ELOC=2597
+T:SampleDomain.Models.PocoOrderParquetExtensions | MI=27 CC=714 CL=69 DIT=1 SLOC=4984 ELOC=2602
 T:SampleDomain.Models.PocoOrderParquetFilteredSource | MI=73 CC=10 CL=14 DIT=1 SLOC=53 ELOC=15
 T:SampleDomain.Models.PocoOrderParquetMemorySource | MI=82 CC=9 CL=15 DIT=1 SLOC=45 ELOC=11
 T:SampleDomain.Models.PocoOrderParquetParallelSource | MI=82 CC=5 CL=9 DIT=1 SLOC=31 ELOC=7
