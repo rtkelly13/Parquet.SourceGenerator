@@ -504,10 +504,10 @@ public class HostileParquetTests
         );
 
         using var hostileStream = new MemoryStream(hostileBytes, writable: false);
-        var ex = await Assert.ThrowsAsync<InvalidDataException>(() =>
+        var ex = await Should.ThrowAsync<InvalidDataException>(() =>
             MultiRowGroupModelParquetExtensions.ReadParquetAsync(hostileStream)
         );
-        Assert.Contains(expectedMessage, ex.Message);
+        ex.Message.ShouldContain(expectedMessage);
     }
 
     private static async Task<byte[]> RewriteFirstColumnPhysicalTypeAsync(
