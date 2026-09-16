@@ -97,6 +97,15 @@ Changes since `0.0.4`; this section becomes the next release entry when one is c
   14 → 27. Behaviour-preserving by construction: every golden file and emitted-API baseline is
   byte-identical.
 
+### Fixed
+- **Coexistence of the two row-group pruning mechanisms is now pinned by a behavioural
+  test** (`PredicatePushdownAndSortedLookupCoexistOnOneModel`, completes #264's coverage).
+  `SortedEvent` carries both the predicate zone-map path and three sort-key binary-search
+  paths; the test asserts full-scan, pushdown, and lookup all agree on one file, and that
+  co-location does not disable either mechanism. The #281 merge landed the combined golden
+  and the convergence-constraint comments but not this test — the correctness floor the
+  actual footer-read convergence will need.
+
 ---
 
 ## [0.0.4] - 2026-09-11
