@@ -564,6 +564,8 @@ public static class CodeEmitter
         string indent = "                "
     )
     {
+        EmitDictionaryEntryLimitValidation(builder, col, fieldAccess, indent);
+
         if (col.IsListLeaf)
         {
             // Entries run ahead of rowCount for multi-element lists: size from the column
@@ -617,6 +619,13 @@ public static class CodeEmitter
                 $"{indent}    new global::System.Memory<int>(repLevels_{col.Slot}, 0, entries_{col.Slot}),"
             );
             builder.AppendLine($"{indent}    cancellationToken);");
+            EmitPackedStringLengthValidation(
+                builder,
+                col,
+                bufName,
+                indent,
+                entriesVariable: $"entries_{col.Slot}"
+            );
             return;
         }
 
@@ -635,6 +644,13 @@ public static class CodeEmitter
             );
             builder.AppendLine($"{indent}    null,");
             builder.AppendLine($"{indent}    cancellationToken);");
+            EmitPackedStringLengthValidation(
+                builder,
+                col,
+                bufName,
+                indent,
+                entriesVariable: "rowCount"
+            );
             return;
         }
 
@@ -667,6 +683,103 @@ public static class CodeEmitter
         builder.AppendLine($"{indent}}}");
     }
 
+    private static void EmitDictionaryEntryLimitValidation(
+        StringBuilder builder,
+        LeafColumn col,
+        string fieldAccess,
+        string indent
+    )
+    {
+        if (SupportsMissingColumn(col))
+        {
+            builder.AppendLine($"{indent}if (!missing_{col.Slot})");
+            builder.AppendLine($"{indent}{{");
+            EmitDictionaryEntryLimitValidationCore(builder, col, fieldAccess, indent + "    ");
+            builder.AppendLine($"{indent}}}");
+            return;
+        }
+
+        EmitDictionaryEntryLimitValidationCore(builder, col, fieldAccess, indent);
+    }
+
+    private static void EmitDictionaryEntryLimitValidationCore(
+        StringBuilder builder,
+        LeafColumn col,
+        string fieldAccess,
+        string indent
+    )
+    {
+        builder.AppendLine(
+            $"{indent}var metadata_{col.Slot} = groupReader.GetMetadata({fieldAccess}).MetaData;"
+        );
+        builder.AppendLine($"{indent}bool dictionaryEncoded_{col.Slot} = false;");
+        builder.AppendLine(
+            $"{indent}foreach (var encoding_{col.Slot} in metadata_{col.Slot}.Encodings)"
+        );
+        builder.AppendLine($"{indent}{{");
+        builder.AppendLine(
+            $"{indent}    if (encoding_{col.Slot} == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_{col.Slot} == global::Parquet.Meta.Encoding.RLE_DICTIONARY)"
+        );
+        builder.AppendLine($"{indent}    {{");
+        builder.AppendLine($"{indent}        dictionaryEncoded_{col.Slot} = true;");
+        builder.AppendLine($"{indent}        break;");
+        builder.AppendLine($"{indent}    }}");
+        builder.AppendLine($"{indent}}}");
+        builder.AppendLine(
+            $"{indent}if (dictionaryEncoded_{col.Slot} && metadata_{col.Slot}.NumValues > options.MaxDictionaryEntries)"
+        );
+        builder.AppendLine($"{indent}{{");
+        builder.AppendLine(
+            $"{indent}    throw new global::System.IO.InvalidDataException($\"Dictionary column '{col.Leaf.Name}' value count {{metadata_{col.Slot}.NumValues}} exceeds maximum allowed {{options.MaxDictionaryEntries}}.\");"
+        );
+        builder.AppendLine($"{indent}}}");
+    }
+
+    private static void EmitPackedStringLengthValidation(
+        StringBuilder builder,
+        LeafColumn col,
+        string bufName,
+        string indent,
+        string entriesVariable
+    )
+    {
+        if (
+            col.Leaf.Kind != PropertyKind.Primitive
+            || col.Leaf.TypeName.IndexOf("string", StringComparison.Ordinal) < 0
+        )
+        {
+            return;
+        }
+
+        builder.AppendLine($"{indent}int packedString_{col.Slot} = 0;");
+        builder.AppendLine(
+            $"{indent}for (int levelIndex_{col.Slot} = 0; levelIndex_{col.Slot} < {entriesVariable}; levelIndex_{col.Slot}++)"
+        );
+        builder.AppendLine($"{indent}{{");
+        builder.AppendLine(
+            $"{indent}    if (defLevels_{col.Slot}[levelIndex_{col.Slot}] != {col.MaxDef}) continue;"
+        );
+        builder.AppendLine($"{indent}    if (packedString_{col.Slot} >= {entriesVariable})");
+        builder.AppendLine($"{indent}    {{");
+        builder.AppendLine(
+            $"{indent}        throw new global::System.IO.InvalidDataException(\"Definition levels in column '{col.Leaf.Name}' exceeded values count.\");"
+        );
+        builder.AppendLine($"{indent}    }}");
+        builder.AppendLine(
+            $"{indent}    int stringByteCount_{col.Slot} = global::System.Text.Encoding.UTF8.GetByteCount({bufName}[packedString_{col.Slot}++].Span);"
+        );
+        builder.AppendLine(
+            $"{indent}    if (stringByteCount_{col.Slot} > options.MaxStringLengthBytes)"
+        );
+        builder.AppendLine($"{indent}    {{");
+        string columnName = col.IsListLeaf ? col.ListMemberName : col.Leaf.Name;
+        builder.AppendLine(
+            $"{indent}        throw new global::System.IO.InvalidDataException($\"String column '{columnName}' value at index {{levelIndex_{col.Slot}}} UTF-8 length {{stringByteCount_{col.Slot}}} exceeds maximum allowed {{options.MaxStringLengthBytes}}.\");"
+        );
+        builder.AppendLine($"{indent}    }}");
+        builder.AppendLine($"{indent}}}");
+    }
+
     private static string GetReadPrimitiveCall(
         PropertyModel prop,
         string fieldAccess,
@@ -679,16 +792,9 @@ public static class CodeEmitter
 
         if (isString)
         {
-            // Deduplicating path reads raw UTF-16 spans so cache hits never instantiate a string.
-            // Repeated (list) leaves are excluded: their packed lane is not row-aligned.
-            return $"{indent}if (deduplicateStrings && {fieldAccess}.MaxRepetitionLevel == 0)\n"
-                + $"{indent}{{\n"
-                + $"{indent}    await ReadDeduplicatedStringColumnAsync(\n{indent}        groupReader,\n{indent}        {fieldAccess},\n{indent}        {bufName},\n{indent}        rowCount,\n{indent}        stringDeduplicator,\n{indent}        cancellationToken);\n"
-                + $"{indent}}}\n"
-                + $"{indent}else\n"
-                + $"{indent}{{\n"
-                + $"{indent}    await groupReader.ReadAsync(\n{indent}        {fieldAccess},\n{indent}        new global::System.Memory<string?>({bufName}, 0, rowCount),\n{indent}        cancellationToken: cancellationToken);\n"
-                + $"{indent}}}";
+            // Every string uses the raw UTF-16 lane so the byte-length guard runs before any string
+            // materialization, while the existing optional deduplication behavior is retained.
+            return $"{indent}await ReadBoundedStringColumnAsync(\n{indent}    groupReader,\n{indent}    {fieldAccess},\n{indent}    {bufName},\n{indent}    rowCount,\n{indent}    deduplicateStrings,\n{indent}    stringDeduplicator,\n{indent}    options.MaxStringLengthBytes,\n{indent}    cancellationToken);";
         }
         else if (isByteArray)
         {

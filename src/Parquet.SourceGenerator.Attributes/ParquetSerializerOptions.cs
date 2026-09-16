@@ -173,6 +173,18 @@ public sealed class ParquetSerializerOptions
     public int MaxAllocationValues { get; set; } = 10_000_000;
 
     /// <summary>
+    /// Gets or sets the maximum number of values permitted in a dictionary page before the reader
+    /// rejects the column (default is 1,000,000).
+    /// </summary>
+    public int MaxDictionaryEntries { get; set; } = 1_000_000;
+
+    /// <summary>
+    /// Gets or sets the maximum UTF-8 byte length permitted for a decoded string value before the
+    /// reader materializes it (default is 1,048,576 bytes).
+    /// </summary>
+    public int MaxStringLengthBytes { get; set; } = 1_048_576;
+
+    /// <summary>
     /// Gets or sets the maximum number of row groups permitted in a single Parquet file (default is 100,000).
     /// </summary>
     public int MaxRowGroupCount { get; set; } = 100_000;

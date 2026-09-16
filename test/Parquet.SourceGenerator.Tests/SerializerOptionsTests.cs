@@ -39,6 +39,28 @@ public sealed class SerializerOptionsTests
         options.MaxDecompressionExpansionRatio.ShouldBe(500);
     }
 
+    [Fact]
+    public void DefensiveReadLimitsHaveBoundedDefaults()
+    {
+        var options = ParquetSerializerOptions.Default;
+
+        options.MaxDictionaryEntries.ShouldBe(1_000_000);
+        options.MaxStringLengthBytes.ShouldBe(1_048_576);
+    }
+
+    [Fact]
+    public void DefensiveReadLimitsCanBeOverridden()
+    {
+        var options = new ParquetSerializerOptions
+        {
+            MaxDictionaryEntries = 17,
+            MaxStringLengthBytes = 23,
+        };
+
+        options.MaxDictionaryEntries.ShouldBe(17);
+        options.MaxStringLengthBytes.ShouldBe(23);
+    }
+
     private static List<CompressibleRecord> HighlyCompressibleRows(int count)
     {
         var rows = new List<CompressibleRecord>(count);

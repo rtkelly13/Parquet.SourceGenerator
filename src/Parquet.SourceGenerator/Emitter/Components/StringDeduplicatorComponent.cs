@@ -223,13 +223,15 @@ internal static class StringDeduplicatorComponent
         );
         builder.AppendLine("    /// </summary>");
         builder.AppendLine(
-            "    private static async global::System.Threading.Tasks.ValueTask ReadDeduplicatedStringColumnAsync("
+            "    private static async global::System.Threading.Tasks.ValueTask ReadBoundedStringColumnAsync("
         );
         builder.AppendLine("        global::Parquet.ParquetRowGroupReader groupReader,");
         builder.AppendLine("        global::Parquet.Schema.DataField field,");
         builder.AppendLine("        string?[] destination,");
         builder.AppendLine("        int rowCount,");
+        builder.AppendLine("        bool deduplicateStrings,");
         builder.AppendLine("        StringDeduplicator deduplicator,");
+        builder.AppendLine("        int maxStringLengthBytes,");
         builder.AppendLine("        global::System.Threading.CancellationToken cancellationToken)");
         builder.AppendLine("    {");
         builder.AppendLine(
@@ -257,7 +259,7 @@ internal static class StringDeduplicatorComponent
         builder.AppendLine("                cancellationToken);");
         builder.AppendLine();
         builder.AppendLine(
-            "            MaterializeDeduplicatedStrings(raw, definitionLevels, destination, rowCount, maxDefinitionLevel, deduplicator);"
+            "            MaterializeBoundedStrings(raw, definitionLevels, destination, rowCount, maxDefinitionLevel, deduplicateStrings, deduplicator, maxStringLengthBytes, field.Name);"
         );
         builder.AppendLine("        }");
         builder.AppendLine("        finally");
@@ -276,22 +278,37 @@ internal static class StringDeduplicatorComponent
         builder.AppendLine();
         builder.AppendLine("    /// <summary>");
         builder.AppendLine(
-            "    /// Spreads the packed raw span lane back over the row lane, interning each value."
+            "    /// Spreads the packed raw span lane back over the row lane, validating and materializing each value."
         );
         builder.AppendLine("    /// </summary>");
-        builder.AppendLine("    private static void MaterializeDeduplicatedStrings(");
+        builder.AppendLine("    private static void MaterializeBoundedStrings(");
         builder.AppendLine("        global::System.ReadOnlyMemory<char>[] raw,");
         builder.AppendLine("        int[]? definitionLevels,");
         builder.AppendLine("        string?[] destination,");
         builder.AppendLine("        int rowCount,");
         builder.AppendLine("        int maxDefinitionLevel,");
-        builder.AppendLine("        StringDeduplicator deduplicator)");
+        builder.AppendLine("        bool deduplicateStrings,");
+        builder.AppendLine("        StringDeduplicator deduplicator,");
+        builder.AppendLine("        int maxStringLengthBytes,");
+        builder.AppendLine("        string fieldName)");
         builder.AppendLine("    {");
         builder.AppendLine("        if (definitionLevels is null)");
         builder.AppendLine("        {");
         builder.AppendLine("            for (int i = 0; i < rowCount; i++)");
         builder.AppendLine("            {");
-        builder.AppendLine("                destination[i] = deduplicator.GetOrAdd(raw[i].Span);");
+        builder.AppendLine("                var value = raw[i].Span;");
+        builder.AppendLine(
+            "                int byteCount = global::System.Text.Encoding.UTF8.GetByteCount(value);"
+        );
+        builder.AppendLine("                if (byteCount > maxStringLengthBytes)");
+        builder.AppendLine("                {");
+        builder.AppendLine(
+            "                    throw new global::System.IO.InvalidDataException($\"String column '{fieldName}' value at index {i} UTF-8 length {byteCount} exceeds maximum allowed {maxStringLengthBytes}.\");"
+        );
+        builder.AppendLine("                }");
+        builder.AppendLine(
+            "                destination[i] = deduplicateStrings ? deduplicator.GetOrAdd(value) : value.ToString();"
+        );
         builder.AppendLine("            }");
         builder.AppendLine("            return;");
         builder.AppendLine("        }");
@@ -301,9 +318,20 @@ internal static class StringDeduplicatorComponent
         builder.AppendLine("        {");
         builder.AppendLine("            if (definitionLevels[i] == maxDefinitionLevel)");
         builder.AppendLine("            {");
+        builder.AppendLine("                var value = raw[packed].Span;");
         builder.AppendLine(
-            "                destination[i] = deduplicator.GetOrAdd(raw[packed++].Span);"
+            "                int byteCount = global::System.Text.Encoding.UTF8.GetByteCount(value);"
         );
+        builder.AppendLine("                if (byteCount > maxStringLengthBytes)");
+        builder.AppendLine("                {");
+        builder.AppendLine(
+            "                    throw new global::System.IO.InvalidDataException($\"String column '{fieldName}' value at index {i} UTF-8 length {byteCount} exceeds maximum allowed {maxStringLengthBytes}.\");"
+        );
+        builder.AppendLine("                }");
+        builder.AppendLine(
+            "                destination[i] = deduplicateStrings ? deduplicator.GetOrAdd(value) : value.ToString();"
+        );
+        builder.AppendLine("                packed++;");
         builder.AppendLine("            }");
         builder.AppendLine("            else");
         builder.AppendLine("            {");

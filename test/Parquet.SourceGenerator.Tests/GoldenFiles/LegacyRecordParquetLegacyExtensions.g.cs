@@ -418,6 +418,44 @@ public static partial class LegacyRecordParquetLegacyExtensions
         ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_3, footerStart);
     }
 
+    private static void ValidateDictionaryEntries(
+        global::Parquet.ParquetRowGroupReader groupReader,
+        global::Parquet.Schema.DataField field,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions options)
+    {
+        var metadata = groupReader.GetMetadata(field).MetaData;
+        bool dictionaryEncoded = false;
+        foreach (var encoding in metadata.Encodings)
+        {
+            if (encoding == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+            {
+                dictionaryEncoded = true;
+                break;
+            }
+        }
+        if (dictionaryEncoded && metadata.NumValues > options.MaxDictionaryEntries)
+        {
+            throw new global::System.IO.InvalidDataException($"Dictionary column '{field.Name}' value count {metadata.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+        }
+    }
+
+    private static void ValidateStringLengths(
+        string?[] values,
+        string fieldName,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions options)
+    {
+        for (int i = 0; i < values.Length; i++)
+        {
+            string? value = values[i];
+            if (value is null) continue;
+            int byteCount = global::System.Text.Encoding.UTF8.GetByteCount(value);
+            if (byteCount > options.MaxStringLengthBytes)
+            {
+                throw new global::System.IO.InvalidDataException($"String column '{fieldName}' value at index {i} UTF-8 length {byteCount} exceeds maximum allowed {options.MaxStringLengthBytes}.");
+            }
+        }
+    }
+
     /// <summary>
     /// Lightweight L1 string cache keyed directly on <see cref="global::System.ReadOnlySpan{T}"/>
     /// of <see cref="char"/>, backed by a pooled open-addressed table.
@@ -788,14 +826,19 @@ public static partial class LegacyRecordParquetLegacyExtensions
                     int groupRows = (int)rgReader.RowCount;
                     if (groupRows == 0) continue;
 
+                    ValidateDictionaryEntries(rgReader, field_0, options);
                     var col_0 = await rgReader.ReadColumnAsync(field_0, cancellationToken).ConfigureAwait(false);
                     var data_0 = (int[])col_0.Data;
+                    if (!missing_1) ValidateDictionaryEntries(rgReader, field_1, options);
                     var data_1 = missing_1
                         ? new string[groupRows]
                         : (string[])(await rgReader.ReadColumnAsync(field_1, cancellationToken).ConfigureAwait(false)).Data;
+                    if (!missing_1) ValidateStringLengths(data_1, field_1.Name, options);
+                    if (!missing_2) ValidateDictionaryEntries(rgReader, field_2, options);
                     var data_2 = missing_2
                         ? new byte[groupRows][]
                         : (byte[][])(await rgReader.ReadColumnAsync(field_2, cancellationToken).ConfigureAwait(false)).Data;
+                    ValidateDictionaryEntries(rgReader, field_3, options);
                     var col_3 = await rgReader.ReadColumnAsync(field_3, cancellationToken).ConfigureAwait(false);
                     var data_3 = (int[])col_3.Data;
 

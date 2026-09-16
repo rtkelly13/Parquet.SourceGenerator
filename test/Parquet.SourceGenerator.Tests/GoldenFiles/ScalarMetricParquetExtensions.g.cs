@@ -1110,14 +1110,59 @@ public static partial class ScalarMetricParquetExtensions
 
             try
             {
+                var metadata_0 = groupReader.GetMetadata(field_0).MetaData;
+                bool dictionaryEncoded_0 = false;
+                foreach (var encoding_0 in metadata_0.Encodings)
+                {
+                    if (encoding_0 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_0 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_0 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_0 && metadata_0.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'RowId' value count {metadata_0.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<long>(
                     field_0,
                     new global::System.Memory<long>(buffer_0, 0, rowCount),
                     cancellationToken: cancellationToken);
+                var metadata_1 = groupReader.GetMetadata(field_1).MetaData;
+                bool dictionaryEncoded_1 = false;
+                foreach (var encoding_1 in metadata_1.Encodings)
+                {
+                    if (encoding_1 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_1 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_1 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_1 && metadata_1.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Flag' value count {metadata_1.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<bool>(
                     field_1,
                     new global::System.Memory<bool>(buffer_1, 0, rowCount),
                     cancellationToken: cancellationToken);
+                if (!missing_2)
+                {
+                    var metadata_2 = groupReader.GetMetadata(field_2).MetaData;
+                    bool dictionaryEncoded_2 = false;
+                    foreach (var encoding_2 in metadata_2.Encodings)
+                    {
+                        if (encoding_2 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_2 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                        {
+                            dictionaryEncoded_2 = true;
+                            break;
+                        }
+                    }
+                    if (dictionaryEncoded_2 && metadata_2.NumValues > options.MaxDictionaryEntries)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'NullableFlag' value count {metadata_2.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    }
+                }
                 // The column is absent from the file (optional-column schema evolution) or the chunk is
                 // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
                 var chunkStats_2 = missing_2 ? null : groupReader.GetStatistics(field_2);
@@ -1132,10 +1177,41 @@ public static partial class ScalarMetricParquetExtensions
                         new global::System.Memory<bool?>(buffer_2, 0, rowCount),
                         cancellationToken: cancellationToken);
                 }
+                var metadata_3 = groupReader.GetMetadata(field_3).MetaData;
+                bool dictionaryEncoded_3 = false;
+                foreach (var encoding_3 in metadata_3.Encodings)
+                {
+                    if (encoding_3 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_3 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_3 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_3 && metadata_3.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'StatusCode' value count {metadata_3.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<int>(
                     field_3,
                     new global::System.Memory<int>(buffer_3, 0, rowCount),
                     cancellationToken: cancellationToken);
+                if (!missing_4)
+                {
+                    var metadata_4 = groupReader.GetMetadata(field_4).MetaData;
+                    bool dictionaryEncoded_4 = false;
+                    foreach (var encoding_4 in metadata_4.Encodings)
+                    {
+                        if (encoding_4 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_4 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                        {
+                            dictionaryEncoded_4 = true;
+                            break;
+                        }
+                    }
+                    if (dictionaryEncoded_4 && metadata_4.NumValues > options.MaxDictionaryEntries)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'OptionalStatus' value count {metadata_4.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    }
+                }
                 // The column is absent from the file (optional-column schema evolution) or the chunk is
                 // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
                 var chunkStats_4 = missing_4 ? null : groupReader.GetStatistics(field_4);
@@ -1150,14 +1226,56 @@ public static partial class ScalarMetricParquetExtensions
                         new global::System.Memory<int?>(buffer_4, 0, rowCount),
                         cancellationToken: cancellationToken);
                 }
+                var metadata_5 = groupReader.GetMetadata(field_5).MetaData;
+                bool dictionaryEncoded_5 = false;
+                foreach (var encoding_5 in metadata_5.Encodings)
+                {
+                    if (encoding_5 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_5 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_5 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_5 && metadata_5.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'TinyNum' value count {metadata_5.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<byte>(
                     field_5,
                     new global::System.Memory<byte>(buffer_5, 0, rowCount),
                     cancellationToken: cancellationToken);
+                var metadata_6 = groupReader.GetMetadata(field_6).MetaData;
+                bool dictionaryEncoded_6 = false;
+                foreach (var encoding_6 in metadata_6.Encodings)
+                {
+                    if (encoding_6 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_6 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_6 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_6 && metadata_6.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'ShortNum' value count {metadata_6.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<short>(
                     field_6,
                     new global::System.Memory<short>(buffer_6, 0, rowCount),
                     cancellationToken: cancellationToken);
+                var metadata_7 = groupReader.GetMetadata(field_7).MetaData;
+                bool dictionaryEncoded_7 = false;
+                foreach (var encoding_7 in metadata_7.Encodings)
+                {
+                    if (encoding_7 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_7 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_7 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_7 && metadata_7.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'FloatVal' value count {metadata_7.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<float>(
                     field_7,
                     new global::System.Memory<float>(buffer_7, 0, rowCount),
@@ -1324,14 +1442,59 @@ public static partial class ScalarMetricParquetExtensions
 
             try
             {
+                var metadata_0 = groupReader.GetMetadata(field_0).MetaData;
+                bool dictionaryEncoded_0 = false;
+                foreach (var encoding_0 in metadata_0.Encodings)
+                {
+                    if (encoding_0 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_0 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_0 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_0 && metadata_0.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'RowId' value count {metadata_0.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<long>(
                     field_0,
                     new global::System.Memory<long>(buffer_0, 0, rowCount),
                     cancellationToken: cancellationToken);
+                var metadata_1 = groupReader.GetMetadata(field_1).MetaData;
+                bool dictionaryEncoded_1 = false;
+                foreach (var encoding_1 in metadata_1.Encodings)
+                {
+                    if (encoding_1 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_1 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_1 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_1 && metadata_1.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Flag' value count {metadata_1.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<bool>(
                     field_1,
                     new global::System.Memory<bool>(buffer_1, 0, rowCount),
                     cancellationToken: cancellationToken);
+                if (!missing_2)
+                {
+                    var metadata_2 = groupReader.GetMetadata(field_2).MetaData;
+                    bool dictionaryEncoded_2 = false;
+                    foreach (var encoding_2 in metadata_2.Encodings)
+                    {
+                        if (encoding_2 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_2 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                        {
+                            dictionaryEncoded_2 = true;
+                            break;
+                        }
+                    }
+                    if (dictionaryEncoded_2 && metadata_2.NumValues > options.MaxDictionaryEntries)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'NullableFlag' value count {metadata_2.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    }
+                }
                 // The column is absent from the file (optional-column schema evolution) or the chunk is
                 // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
                 var chunkStats_2 = missing_2 ? null : groupReader.GetStatistics(field_2);
@@ -1346,10 +1509,41 @@ public static partial class ScalarMetricParquetExtensions
                         new global::System.Memory<bool?>(buffer_2, 0, rowCount),
                         cancellationToken: cancellationToken);
                 }
+                var metadata_3 = groupReader.GetMetadata(field_3).MetaData;
+                bool dictionaryEncoded_3 = false;
+                foreach (var encoding_3 in metadata_3.Encodings)
+                {
+                    if (encoding_3 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_3 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_3 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_3 && metadata_3.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'StatusCode' value count {metadata_3.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<int>(
                     field_3,
                     new global::System.Memory<int>(buffer_3, 0, rowCount),
                     cancellationToken: cancellationToken);
+                if (!missing_4)
+                {
+                    var metadata_4 = groupReader.GetMetadata(field_4).MetaData;
+                    bool dictionaryEncoded_4 = false;
+                    foreach (var encoding_4 in metadata_4.Encodings)
+                    {
+                        if (encoding_4 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_4 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                        {
+                            dictionaryEncoded_4 = true;
+                            break;
+                        }
+                    }
+                    if (dictionaryEncoded_4 && metadata_4.NumValues > options.MaxDictionaryEntries)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'OptionalStatus' value count {metadata_4.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    }
+                }
                 // The column is absent from the file (optional-column schema evolution) or the chunk is
                 // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
                 var chunkStats_4 = missing_4 ? null : groupReader.GetStatistics(field_4);
@@ -1364,14 +1558,56 @@ public static partial class ScalarMetricParquetExtensions
                         new global::System.Memory<int?>(buffer_4, 0, rowCount),
                         cancellationToken: cancellationToken);
                 }
+                var metadata_5 = groupReader.GetMetadata(field_5).MetaData;
+                bool dictionaryEncoded_5 = false;
+                foreach (var encoding_5 in metadata_5.Encodings)
+                {
+                    if (encoding_5 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_5 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_5 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_5 && metadata_5.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'TinyNum' value count {metadata_5.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<byte>(
                     field_5,
                     new global::System.Memory<byte>(buffer_5, 0, rowCount),
                     cancellationToken: cancellationToken);
+                var metadata_6 = groupReader.GetMetadata(field_6).MetaData;
+                bool dictionaryEncoded_6 = false;
+                foreach (var encoding_6 in metadata_6.Encodings)
+                {
+                    if (encoding_6 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_6 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_6 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_6 && metadata_6.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'ShortNum' value count {metadata_6.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<short>(
                     field_6,
                     new global::System.Memory<short>(buffer_6, 0, rowCount),
                     cancellationToken: cancellationToken);
+                var metadata_7 = groupReader.GetMetadata(field_7).MetaData;
+                bool dictionaryEncoded_7 = false;
+                foreach (var encoding_7 in metadata_7.Encodings)
+                {
+                    if (encoding_7 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_7 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_7 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_7 && metadata_7.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'FloatVal' value count {metadata_7.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<float>(
                     field_7,
                     new global::System.Memory<float>(buffer_7, 0, rowCount),
@@ -1495,14 +1731,59 @@ public static partial class ScalarMetricParquetExtensions
 
             try
             {
+                var metadata_0 = groupReader.GetMetadata(field_0).MetaData;
+                bool dictionaryEncoded_0 = false;
+                foreach (var encoding_0 in metadata_0.Encodings)
+                {
+                    if (encoding_0 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_0 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_0 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_0 && metadata_0.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'RowId' value count {metadata_0.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<long>(
                     field_0,
                     new global::System.Memory<long>(buffer_0, 0, rowCount),
                     cancellationToken: cancellationToken);
+                var metadata_1 = groupReader.GetMetadata(field_1).MetaData;
+                bool dictionaryEncoded_1 = false;
+                foreach (var encoding_1 in metadata_1.Encodings)
+                {
+                    if (encoding_1 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_1 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_1 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_1 && metadata_1.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Flag' value count {metadata_1.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<bool>(
                     field_1,
                     new global::System.Memory<bool>(buffer_1, 0, rowCount),
                     cancellationToken: cancellationToken);
+                if (!missing_2)
+                {
+                    var metadata_2 = groupReader.GetMetadata(field_2).MetaData;
+                    bool dictionaryEncoded_2 = false;
+                    foreach (var encoding_2 in metadata_2.Encodings)
+                    {
+                        if (encoding_2 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_2 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                        {
+                            dictionaryEncoded_2 = true;
+                            break;
+                        }
+                    }
+                    if (dictionaryEncoded_2 && metadata_2.NumValues > options.MaxDictionaryEntries)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'NullableFlag' value count {metadata_2.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    }
+                }
                 // The column is absent from the file (optional-column schema evolution) or the chunk is
                 // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
                 var chunkStats_2 = missing_2 ? null : groupReader.GetStatistics(field_2);
@@ -1517,10 +1798,41 @@ public static partial class ScalarMetricParquetExtensions
                         new global::System.Memory<bool?>(buffer_2, 0, rowCount),
                         cancellationToken: cancellationToken);
                 }
+                var metadata_3 = groupReader.GetMetadata(field_3).MetaData;
+                bool dictionaryEncoded_3 = false;
+                foreach (var encoding_3 in metadata_3.Encodings)
+                {
+                    if (encoding_3 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_3 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_3 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_3 && metadata_3.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'StatusCode' value count {metadata_3.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<int>(
                     field_3,
                     new global::System.Memory<int>(buffer_3, 0, rowCount),
                     cancellationToken: cancellationToken);
+                if (!missing_4)
+                {
+                    var metadata_4 = groupReader.GetMetadata(field_4).MetaData;
+                    bool dictionaryEncoded_4 = false;
+                    foreach (var encoding_4 in metadata_4.Encodings)
+                    {
+                        if (encoding_4 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_4 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                        {
+                            dictionaryEncoded_4 = true;
+                            break;
+                        }
+                    }
+                    if (dictionaryEncoded_4 && metadata_4.NumValues > options.MaxDictionaryEntries)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'OptionalStatus' value count {metadata_4.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    }
+                }
                 // The column is absent from the file (optional-column schema evolution) or the chunk is
                 // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
                 var chunkStats_4 = missing_4 ? null : groupReader.GetStatistics(field_4);
@@ -1535,14 +1847,56 @@ public static partial class ScalarMetricParquetExtensions
                         new global::System.Memory<int?>(buffer_4, 0, rowCount),
                         cancellationToken: cancellationToken);
                 }
+                var metadata_5 = groupReader.GetMetadata(field_5).MetaData;
+                bool dictionaryEncoded_5 = false;
+                foreach (var encoding_5 in metadata_5.Encodings)
+                {
+                    if (encoding_5 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_5 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_5 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_5 && metadata_5.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'TinyNum' value count {metadata_5.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<byte>(
                     field_5,
                     new global::System.Memory<byte>(buffer_5, 0, rowCount),
                     cancellationToken: cancellationToken);
+                var metadata_6 = groupReader.GetMetadata(field_6).MetaData;
+                bool dictionaryEncoded_6 = false;
+                foreach (var encoding_6 in metadata_6.Encodings)
+                {
+                    if (encoding_6 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_6 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_6 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_6 && metadata_6.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'ShortNum' value count {metadata_6.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<short>(
                     field_6,
                     new global::System.Memory<short>(buffer_6, 0, rowCount),
                     cancellationToken: cancellationToken);
+                var metadata_7 = groupReader.GetMetadata(field_7).MetaData;
+                bool dictionaryEncoded_7 = false;
+                foreach (var encoding_7 in metadata_7.Encodings)
+                {
+                    if (encoding_7 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_7 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_7 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_7 && metadata_7.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'FloatVal' value count {metadata_7.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<float>(
                     field_7,
                     new global::System.Memory<float>(buffer_7, 0, rowCount),
@@ -1646,14 +2000,59 @@ public static partial class ScalarMetricParquetExtensions
             var buffer_7 = global::System.Buffers.ArrayPool<float>.Shared.Rent(rowCount);
             try
             {
+                var metadata_0 = groupReader.GetMetadata(field_0).MetaData;
+                bool dictionaryEncoded_0 = false;
+                foreach (var encoding_0 in metadata_0.Encodings)
+                {
+                    if (encoding_0 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_0 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_0 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_0 && metadata_0.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'RowId' value count {metadata_0.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<long>(
                     field_0,
                     new global::System.Memory<long>(buffer_0, 0, rowCount),
                     cancellationToken: cancellationToken);
+                var metadata_1 = groupReader.GetMetadata(field_1).MetaData;
+                bool dictionaryEncoded_1 = false;
+                foreach (var encoding_1 in metadata_1.Encodings)
+                {
+                    if (encoding_1 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_1 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_1 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_1 && metadata_1.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Flag' value count {metadata_1.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<bool>(
                     field_1,
                     new global::System.Memory<bool>(buffer_1, 0, rowCount),
                     cancellationToken: cancellationToken);
+                if (!missing_2)
+                {
+                    var metadata_2 = groupReader.GetMetadata(field_2).MetaData;
+                    bool dictionaryEncoded_2 = false;
+                    foreach (var encoding_2 in metadata_2.Encodings)
+                    {
+                        if (encoding_2 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_2 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                        {
+                            dictionaryEncoded_2 = true;
+                            break;
+                        }
+                    }
+                    if (dictionaryEncoded_2 && metadata_2.NumValues > options.MaxDictionaryEntries)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'NullableFlag' value count {metadata_2.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    }
+                }
                 // The column is absent from the file (optional-column schema evolution) or the chunk is
                 // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
                 var chunkStats_2 = missing_2 ? null : groupReader.GetStatistics(field_2);
@@ -1668,10 +2067,41 @@ public static partial class ScalarMetricParquetExtensions
                         new global::System.Memory<bool?>(buffer_2, 0, rowCount),
                         cancellationToken: cancellationToken);
                 }
+                var metadata_3 = groupReader.GetMetadata(field_3).MetaData;
+                bool dictionaryEncoded_3 = false;
+                foreach (var encoding_3 in metadata_3.Encodings)
+                {
+                    if (encoding_3 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_3 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_3 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_3 && metadata_3.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'StatusCode' value count {metadata_3.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<int>(
                     field_3,
                     new global::System.Memory<int>(buffer_3, 0, rowCount),
                     cancellationToken: cancellationToken);
+                if (!missing_4)
+                {
+                    var metadata_4 = groupReader.GetMetadata(field_4).MetaData;
+                    bool dictionaryEncoded_4 = false;
+                    foreach (var encoding_4 in metadata_4.Encodings)
+                    {
+                        if (encoding_4 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_4 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                        {
+                            dictionaryEncoded_4 = true;
+                            break;
+                        }
+                    }
+                    if (dictionaryEncoded_4 && metadata_4.NumValues > options.MaxDictionaryEntries)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'OptionalStatus' value count {metadata_4.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    }
+                }
                 // The column is absent from the file (optional-column schema evolution) or the chunk is
                 // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
                 var chunkStats_4 = missing_4 ? null : groupReader.GetStatistics(field_4);
@@ -1686,14 +2116,56 @@ public static partial class ScalarMetricParquetExtensions
                         new global::System.Memory<int?>(buffer_4, 0, rowCount),
                         cancellationToken: cancellationToken);
                 }
+                var metadata_5 = groupReader.GetMetadata(field_5).MetaData;
+                bool dictionaryEncoded_5 = false;
+                foreach (var encoding_5 in metadata_5.Encodings)
+                {
+                    if (encoding_5 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_5 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_5 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_5 && metadata_5.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'TinyNum' value count {metadata_5.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<byte>(
                     field_5,
                     new global::System.Memory<byte>(buffer_5, 0, rowCount),
                     cancellationToken: cancellationToken);
+                var metadata_6 = groupReader.GetMetadata(field_6).MetaData;
+                bool dictionaryEncoded_6 = false;
+                foreach (var encoding_6 in metadata_6.Encodings)
+                {
+                    if (encoding_6 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_6 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_6 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_6 && metadata_6.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'ShortNum' value count {metadata_6.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<short>(
                     field_6,
                     new global::System.Memory<short>(buffer_6, 0, rowCount),
                     cancellationToken: cancellationToken);
+                var metadata_7 = groupReader.GetMetadata(field_7).MetaData;
+                bool dictionaryEncoded_7 = false;
+                foreach (var encoding_7 in metadata_7.Encodings)
+                {
+                    if (encoding_7 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_7 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_7 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_7 && metadata_7.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'FloatVal' value count {metadata_7.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<float>(
                     field_7,
                     new global::System.Memory<float>(buffer_7, 0, rowCount),
@@ -1951,14 +2423,59 @@ public static partial class ScalarMetricParquetExtensions
                     }
                     int startIdx = rowOffsets[r];
 
+                    var metadata_0 = groupReader.GetMetadata(field_0).MetaData;
+                    bool dictionaryEncoded_0 = false;
+                    foreach (var encoding_0 in metadata_0.Encodings)
+                    {
+                        if (encoding_0 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_0 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                        {
+                            dictionaryEncoded_0 = true;
+                            break;
+                        }
+                    }
+                    if (dictionaryEncoded_0 && metadata_0.NumValues > options.MaxDictionaryEntries)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'RowId' value count {metadata_0.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    }
                     await groupReader.ReadAsync<long>(
                         field_0,
                         new global::System.Memory<long>(buffer_0, 0, rowCount),
                         cancellationToken: cancellationToken);
+                    var metadata_1 = groupReader.GetMetadata(field_1).MetaData;
+                    bool dictionaryEncoded_1 = false;
+                    foreach (var encoding_1 in metadata_1.Encodings)
+                    {
+                        if (encoding_1 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_1 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                        {
+                            dictionaryEncoded_1 = true;
+                            break;
+                        }
+                    }
+                    if (dictionaryEncoded_1 && metadata_1.NumValues > options.MaxDictionaryEntries)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'Flag' value count {metadata_1.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    }
                     await groupReader.ReadAsync<bool>(
                         field_1,
                         new global::System.Memory<bool>(buffer_1, 0, rowCount),
                         cancellationToken: cancellationToken);
+                    if (!missing_2)
+                    {
+                        var metadata_2 = groupReader.GetMetadata(field_2).MetaData;
+                        bool dictionaryEncoded_2 = false;
+                        foreach (var encoding_2 in metadata_2.Encodings)
+                        {
+                            if (encoding_2 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_2 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                            {
+                                dictionaryEncoded_2 = true;
+                                break;
+                            }
+                        }
+                        if (dictionaryEncoded_2 && metadata_2.NumValues > options.MaxDictionaryEntries)
+                        {
+                            throw new global::System.IO.InvalidDataException($"Dictionary column 'NullableFlag' value count {metadata_2.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                        }
+                    }
                     // The column is absent from the file (optional-column schema evolution) or the chunk is
                     // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
                     var chunkStats_2 = missing_2 ? null : groupReader.GetStatistics(field_2);
@@ -1973,10 +2490,41 @@ public static partial class ScalarMetricParquetExtensions
                             new global::System.Memory<bool?>(buffer_2, 0, rowCount),
                             cancellationToken: cancellationToken);
                     }
+                    var metadata_3 = groupReader.GetMetadata(field_3).MetaData;
+                    bool dictionaryEncoded_3 = false;
+                    foreach (var encoding_3 in metadata_3.Encodings)
+                    {
+                        if (encoding_3 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_3 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                        {
+                            dictionaryEncoded_3 = true;
+                            break;
+                        }
+                    }
+                    if (dictionaryEncoded_3 && metadata_3.NumValues > options.MaxDictionaryEntries)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'StatusCode' value count {metadata_3.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    }
                     await groupReader.ReadAsync<int>(
                         field_3,
                         new global::System.Memory<int>(buffer_3, 0, rowCount),
                         cancellationToken: cancellationToken);
+                    if (!missing_4)
+                    {
+                        var metadata_4 = groupReader.GetMetadata(field_4).MetaData;
+                        bool dictionaryEncoded_4 = false;
+                        foreach (var encoding_4 in metadata_4.Encodings)
+                        {
+                            if (encoding_4 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_4 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                            {
+                                dictionaryEncoded_4 = true;
+                                break;
+                            }
+                        }
+                        if (dictionaryEncoded_4 && metadata_4.NumValues > options.MaxDictionaryEntries)
+                        {
+                            throw new global::System.IO.InvalidDataException($"Dictionary column 'OptionalStatus' value count {metadata_4.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                        }
+                    }
                     // The column is absent from the file (optional-column schema evolution) or the chunk is
                     // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
                     var chunkStats_4 = missing_4 ? null : groupReader.GetStatistics(field_4);
@@ -1991,14 +2539,56 @@ public static partial class ScalarMetricParquetExtensions
                             new global::System.Memory<int?>(buffer_4, 0, rowCount),
                             cancellationToken: cancellationToken);
                     }
+                    var metadata_5 = groupReader.GetMetadata(field_5).MetaData;
+                    bool dictionaryEncoded_5 = false;
+                    foreach (var encoding_5 in metadata_5.Encodings)
+                    {
+                        if (encoding_5 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_5 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                        {
+                            dictionaryEncoded_5 = true;
+                            break;
+                        }
+                    }
+                    if (dictionaryEncoded_5 && metadata_5.NumValues > options.MaxDictionaryEntries)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'TinyNum' value count {metadata_5.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    }
                     await groupReader.ReadAsync<byte>(
                         field_5,
                         new global::System.Memory<byte>(buffer_5, 0, rowCount),
                         cancellationToken: cancellationToken);
+                    var metadata_6 = groupReader.GetMetadata(field_6).MetaData;
+                    bool dictionaryEncoded_6 = false;
+                    foreach (var encoding_6 in metadata_6.Encodings)
+                    {
+                        if (encoding_6 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_6 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                        {
+                            dictionaryEncoded_6 = true;
+                            break;
+                        }
+                    }
+                    if (dictionaryEncoded_6 && metadata_6.NumValues > options.MaxDictionaryEntries)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'ShortNum' value count {metadata_6.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    }
                     await groupReader.ReadAsync<short>(
                         field_6,
                         new global::System.Memory<short>(buffer_6, 0, rowCount),
                         cancellationToken: cancellationToken);
+                    var metadata_7 = groupReader.GetMetadata(field_7).MetaData;
+                    bool dictionaryEncoded_7 = false;
+                    foreach (var encoding_7 in metadata_7.Encodings)
+                    {
+                        if (encoding_7 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_7 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                        {
+                            dictionaryEncoded_7 = true;
+                            break;
+                        }
+                    }
+                    if (dictionaryEncoded_7 && metadata_7.NumValues > options.MaxDictionaryEntries)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'FloatVal' value count {metadata_7.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    }
                     await groupReader.ReadAsync<float>(
                         field_7,
                         new global::System.Memory<float>(buffer_7, 0, rowCount),
@@ -2118,14 +2708,59 @@ public static partial class ScalarMetricParquetExtensions
                 }
                 if (rowCount == 0) continue;
 
+                var metadata_0 = groupReader.GetMetadata(field_0).MetaData;
+                bool dictionaryEncoded_0 = false;
+                foreach (var encoding_0 in metadata_0.Encodings)
+                {
+                    if (encoding_0 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_0 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_0 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_0 && metadata_0.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'RowId' value count {metadata_0.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<long>(
                     field_0,
                     new global::System.Memory<long>(buffer_0, 0, rowCount),
                     cancellationToken: cancellationToken);
+                var metadata_1 = groupReader.GetMetadata(field_1).MetaData;
+                bool dictionaryEncoded_1 = false;
+                foreach (var encoding_1 in metadata_1.Encodings)
+                {
+                    if (encoding_1 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_1 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_1 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_1 && metadata_1.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Flag' value count {metadata_1.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<bool>(
                     field_1,
                     new global::System.Memory<bool>(buffer_1, 0, rowCount),
                     cancellationToken: cancellationToken);
+                if (!missing_2)
+                {
+                    var metadata_2 = groupReader.GetMetadata(field_2).MetaData;
+                    bool dictionaryEncoded_2 = false;
+                    foreach (var encoding_2 in metadata_2.Encodings)
+                    {
+                        if (encoding_2 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_2 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                        {
+                            dictionaryEncoded_2 = true;
+                            break;
+                        }
+                    }
+                    if (dictionaryEncoded_2 && metadata_2.NumValues > options.MaxDictionaryEntries)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'NullableFlag' value count {metadata_2.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    }
+                }
                 // The column is absent from the file (optional-column schema evolution) or the chunk is
                 // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
                 var chunkStats_2 = missing_2 ? null : groupReader.GetStatistics(field_2);
@@ -2140,10 +2775,41 @@ public static partial class ScalarMetricParquetExtensions
                         new global::System.Memory<bool?>(buffer_2, 0, rowCount),
                         cancellationToken: cancellationToken);
                 }
+                var metadata_3 = groupReader.GetMetadata(field_3).MetaData;
+                bool dictionaryEncoded_3 = false;
+                foreach (var encoding_3 in metadata_3.Encodings)
+                {
+                    if (encoding_3 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_3 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_3 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_3 && metadata_3.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'StatusCode' value count {metadata_3.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<int>(
                     field_3,
                     new global::System.Memory<int>(buffer_3, 0, rowCount),
                     cancellationToken: cancellationToken);
+                if (!missing_4)
+                {
+                    var metadata_4 = groupReader.GetMetadata(field_4).MetaData;
+                    bool dictionaryEncoded_4 = false;
+                    foreach (var encoding_4 in metadata_4.Encodings)
+                    {
+                        if (encoding_4 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_4 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                        {
+                            dictionaryEncoded_4 = true;
+                            break;
+                        }
+                    }
+                    if (dictionaryEncoded_4 && metadata_4.NumValues > options.MaxDictionaryEntries)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'OptionalStatus' value count {metadata_4.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    }
+                }
                 // The column is absent from the file (optional-column schema evolution) or the chunk is
                 // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
                 var chunkStats_4 = missing_4 ? null : groupReader.GetStatistics(field_4);
@@ -2158,14 +2824,56 @@ public static partial class ScalarMetricParquetExtensions
                         new global::System.Memory<int?>(buffer_4, 0, rowCount),
                         cancellationToken: cancellationToken);
                 }
+                var metadata_5 = groupReader.GetMetadata(field_5).MetaData;
+                bool dictionaryEncoded_5 = false;
+                foreach (var encoding_5 in metadata_5.Encodings)
+                {
+                    if (encoding_5 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_5 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_5 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_5 && metadata_5.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'TinyNum' value count {metadata_5.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<byte>(
                     field_5,
                     new global::System.Memory<byte>(buffer_5, 0, rowCount),
                     cancellationToken: cancellationToken);
+                var metadata_6 = groupReader.GetMetadata(field_6).MetaData;
+                bool dictionaryEncoded_6 = false;
+                foreach (var encoding_6 in metadata_6.Encodings)
+                {
+                    if (encoding_6 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_6 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_6 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_6 && metadata_6.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'ShortNum' value count {metadata_6.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<short>(
                     field_6,
                     new global::System.Memory<short>(buffer_6, 0, rowCount),
                     cancellationToken: cancellationToken);
+                var metadata_7 = groupReader.GetMetadata(field_7).MetaData;
+                bool dictionaryEncoded_7 = false;
+                foreach (var encoding_7 in metadata_7.Encodings)
+                {
+                    if (encoding_7 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_7 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_7 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_7 && metadata_7.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'FloatVal' value count {metadata_7.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<float>(
                     field_7,
                     new global::System.Memory<float>(buffer_7, 0, rowCount),
@@ -2377,14 +3085,59 @@ public static partial class ScalarMetricParquetExtensions
 
             try
             {
+                var metadata_0 = groupReader.GetMetadata(field_0).MetaData;
+                bool dictionaryEncoded_0 = false;
+                foreach (var encoding_0 in metadata_0.Encodings)
+                {
+                    if (encoding_0 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_0 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_0 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_0 && metadata_0.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'RowId' value count {metadata_0.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<long>(
                     field_0,
                     new global::System.Memory<long>(buffer_0, 0, rowCount),
                     cancellationToken: cancellationToken);
+                var metadata_1 = groupReader.GetMetadata(field_1).MetaData;
+                bool dictionaryEncoded_1 = false;
+                foreach (var encoding_1 in metadata_1.Encodings)
+                {
+                    if (encoding_1 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_1 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_1 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_1 && metadata_1.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Flag' value count {metadata_1.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<bool>(
                     field_1,
                     new global::System.Memory<bool>(buffer_1, 0, rowCount),
                     cancellationToken: cancellationToken);
+                if (!missing_2)
+                {
+                    var metadata_2 = groupReader.GetMetadata(field_2).MetaData;
+                    bool dictionaryEncoded_2 = false;
+                    foreach (var encoding_2 in metadata_2.Encodings)
+                    {
+                        if (encoding_2 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_2 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                        {
+                            dictionaryEncoded_2 = true;
+                            break;
+                        }
+                    }
+                    if (dictionaryEncoded_2 && metadata_2.NumValues > options.MaxDictionaryEntries)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'NullableFlag' value count {metadata_2.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    }
+                }
                 // The column is absent from the file (optional-column schema evolution) or the chunk is
                 // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
                 var chunkStats_2 = missing_2 ? null : groupReader.GetStatistics(field_2);
@@ -2399,10 +3152,41 @@ public static partial class ScalarMetricParquetExtensions
                         new global::System.Memory<bool?>(buffer_2, 0, rowCount),
                         cancellationToken: cancellationToken);
                 }
+                var metadata_3 = groupReader.GetMetadata(field_3).MetaData;
+                bool dictionaryEncoded_3 = false;
+                foreach (var encoding_3 in metadata_3.Encodings)
+                {
+                    if (encoding_3 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_3 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_3 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_3 && metadata_3.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'StatusCode' value count {metadata_3.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<int>(
                     field_3,
                     new global::System.Memory<int>(buffer_3, 0, rowCount),
                     cancellationToken: cancellationToken);
+                if (!missing_4)
+                {
+                    var metadata_4 = groupReader.GetMetadata(field_4).MetaData;
+                    bool dictionaryEncoded_4 = false;
+                    foreach (var encoding_4 in metadata_4.Encodings)
+                    {
+                        if (encoding_4 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_4 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                        {
+                            dictionaryEncoded_4 = true;
+                            break;
+                        }
+                    }
+                    if (dictionaryEncoded_4 && metadata_4.NumValues > options.MaxDictionaryEntries)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'OptionalStatus' value count {metadata_4.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    }
+                }
                 // The column is absent from the file (optional-column schema evolution) or the chunk is
                 // entirely null: either way the answer is nulls, with no page read, decompression or decoding.
                 var chunkStats_4 = missing_4 ? null : groupReader.GetStatistics(field_4);
@@ -2417,14 +3201,56 @@ public static partial class ScalarMetricParquetExtensions
                         new global::System.Memory<int?>(buffer_4, 0, rowCount),
                         cancellationToken: cancellationToken);
                 }
+                var metadata_5 = groupReader.GetMetadata(field_5).MetaData;
+                bool dictionaryEncoded_5 = false;
+                foreach (var encoding_5 in metadata_5.Encodings)
+                {
+                    if (encoding_5 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_5 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_5 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_5 && metadata_5.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'TinyNum' value count {metadata_5.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<byte>(
                     field_5,
                     new global::System.Memory<byte>(buffer_5, 0, rowCount),
                     cancellationToken: cancellationToken);
+                var metadata_6 = groupReader.GetMetadata(field_6).MetaData;
+                bool dictionaryEncoded_6 = false;
+                foreach (var encoding_6 in metadata_6.Encodings)
+                {
+                    if (encoding_6 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_6 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_6 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_6 && metadata_6.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'ShortNum' value count {metadata_6.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<short>(
                     field_6,
                     new global::System.Memory<short>(buffer_6, 0, rowCount),
                     cancellationToken: cancellationToken);
+                var metadata_7 = groupReader.GetMetadata(field_7).MetaData;
+                bool dictionaryEncoded_7 = false;
+                foreach (var encoding_7 in metadata_7.Encodings)
+                {
+                    if (encoding_7 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_7 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_7 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_7 && metadata_7.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'FloatVal' value count {metadata_7.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<float>(
                     field_7,
                     new global::System.Memory<float>(buffer_7, 0, rowCount),

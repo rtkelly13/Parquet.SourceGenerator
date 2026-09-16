@@ -168,6 +168,32 @@ public class LegacyEmitterTests
         code.ShouldContain("BuildFormatOptions(options)");
     }
 
+    [Fact]
+    public void LegacyReaderEmitsDictionaryAndStringSafetyGuards()
+    {
+        string code = Emit(
+            Prop("Category", "category", "string", LegacyModels::PropertyKind.Primitive, false),
+            Prop("Description", "description", "string", LegacyModels::PropertyKind.Primitive, true)
+        );
+
+        Assert.Contains("ValidateDictionaryEntries(rgReader, field_0, options);", code);
+        Assert.Contains(
+            "if (!missing_1) ValidateDictionaryEntries(rgReader, field_1, options);",
+            code
+        );
+        Assert.Contains(
+            "dictionaryEncoded && metadata.NumValues > options.MaxDictionaryEntries",
+            code
+        );
+        Assert.Contains("ValidateStringLengths(data_0, field_0.Name, options);", code);
+        Assert.Contains(
+            "if (!missing_1) ValidateStringLengths(data_1, field_1.Name, options);",
+            code
+        );
+        Assert.Contains("options.MaxStringLengthBytes", code);
+        Assert.Contains("throw new global::System.IO.InvalidDataException", code);
+    }
+
     /// <summary>
     /// Field resolution is a property of the file, not of a row group. Doing it per row group also
     /// re-invoked <c>GetDataFields()</c>, which allocates a fresh array on every call.

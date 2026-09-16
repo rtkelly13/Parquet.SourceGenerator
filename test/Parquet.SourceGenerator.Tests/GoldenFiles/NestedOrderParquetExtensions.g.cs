@@ -1427,52 +1427,206 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
 
             try
             {
+                var metadata_0 = groupReader.GetMetadata(field_0).MetaData;
+                bool dictionaryEncoded_0 = false;
+                foreach (var encoding_0 in metadata_0.Encodings)
+                {
+                    if (encoding_0 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_0 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_0 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_0 && metadata_0.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Id' value count {metadata_0.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<int>(
                     field_0,
                     new global::System.Memory<int>(buffer_0, 0, rowCount),
                     cancellationToken: cancellationToken);
+                var metadata_1 = groupReader.GetMetadata(field_1).MetaData;
+                bool dictionaryEncoded_1 = false;
+                foreach (var encoding_1 in metadata_1.Encodings)
+                {
+                    if (encoding_1 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_1 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_1 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_1 && metadata_1.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'City' value count {metadata_1.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<global::System.ReadOnlyMemory<char>>(
                     field_1,
                     new global::System.Memory<global::System.ReadOnlyMemory<char>>(buffer_1, 0, rowCount),
                     new global::System.Memory<int>(defLevels_1, 0, rowCount),
                     null,
                     cancellationToken);
+                int packedString_1 = 0;
+                for (int levelIndex_1 = 0; levelIndex_1 < rowCount; levelIndex_1++)
+                {
+                    if (defLevels_1[levelIndex_1] != 2) continue;
+                    if (packedString_1 >= rowCount)
+                    {
+                        throw new global::System.IO.InvalidDataException("Definition levels in column 'City' exceeded values count.");
+                    }
+                    int stringByteCount_1 = global::System.Text.Encoding.UTF8.GetByteCount(buffer_1[packedString_1++].Span);
+                    if (stringByteCount_1 > options.MaxStringLengthBytes)
+                    {
+                        throw new global::System.IO.InvalidDataException($"String column 'City' value at index {levelIndex_1} UTF-8 length {stringByteCount_1} exceeds maximum allowed {options.MaxStringLengthBytes}.");
+                    }
+                }
+                var metadata_2 = groupReader.GetMetadata(field_2).MetaData;
+                bool dictionaryEncoded_2 = false;
+                foreach (var encoding_2 in metadata_2.Encodings)
+                {
+                    if (encoding_2 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_2 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_2 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_2 && metadata_2.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' value count {metadata_2.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<int>(
                     field_2,
                     new global::System.Memory<int>(buffer_2, 0, rowCount),
                     new global::System.Memory<int>(defLevels_2, 0, rowCount),
                     null,
                     cancellationToken);
+                var metadata_3 = groupReader.GetMetadata(field_3).MetaData;
+                bool dictionaryEncoded_3 = false;
+                foreach (var encoding_3 in metadata_3.Encodings)
+                {
+                    if (encoding_3 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_3 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_3 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_3 && metadata_3.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'City' value count {metadata_3.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<global::System.ReadOnlyMemory<char>>(
                     field_3,
                     new global::System.Memory<global::System.ReadOnlyMemory<char>>(buffer_3, 0, rowCount),
                     new global::System.Memory<int>(defLevels_3, 0, rowCount),
                     null,
                     cancellationToken);
+                int packedString_3 = 0;
+                for (int levelIndex_3 = 0; levelIndex_3 < rowCount; levelIndex_3++)
+                {
+                    if (defLevels_3[levelIndex_3] != 2) continue;
+                    if (packedString_3 >= rowCount)
+                    {
+                        throw new global::System.IO.InvalidDataException("Definition levels in column 'City' exceeded values count.");
+                    }
+                    int stringByteCount_3 = global::System.Text.Encoding.UTF8.GetByteCount(buffer_3[packedString_3++].Span);
+                    if (stringByteCount_3 > options.MaxStringLengthBytes)
+                    {
+                        throw new global::System.IO.InvalidDataException($"String column 'City' value at index {levelIndex_3} UTF-8 length {stringByteCount_3} exceeds maximum allowed {options.MaxStringLengthBytes}.");
+                    }
+                }
+                var metadata_4 = groupReader.GetMetadata(field_4).MetaData;
+                bool dictionaryEncoded_4 = false;
+                foreach (var encoding_4 in metadata_4.Encodings)
+                {
+                    if (encoding_4 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_4 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_4 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_4 && metadata_4.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' value count {metadata_4.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<int>(
                     field_4,
                     new global::System.Memory<int>(buffer_4, 0, rowCount),
                     new global::System.Memory<int>(defLevels_4, 0, rowCount),
                     null,
                     cancellationToken);
+                var metadata_5 = groupReader.GetMetadata(field_5).MetaData;
+                bool dictionaryEncoded_5 = false;
+                foreach (var encoding_5 in metadata_5.Encodings)
+                {
+                    if (encoding_5 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_5 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_5 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_5 && metadata_5.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'X' value count {metadata_5.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<int>(
                     field_5,
                     new global::System.Memory<int>(buffer_5, 0, rowCount),
                     new global::System.Memory<int>(defLevels_5, 0, rowCount),
                     null,
                     cancellationToken);
+                var metadata_6 = groupReader.GetMetadata(field_6).MetaData;
+                bool dictionaryEncoded_6 = false;
+                foreach (var encoding_6 in metadata_6.Encodings)
+                {
+                    if (encoding_6 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_6 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_6 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_6 && metadata_6.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' value count {metadata_6.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<int>(
                     field_6,
                     new global::System.Memory<int>(buffer_6, 0, rowCount),
                     new global::System.Memory<int>(defLevels_6, 0, rowCount),
                     null,
                     cancellationToken);
+                var metadata_7 = groupReader.GetMetadata(field_7).MetaData;
+                bool dictionaryEncoded_7 = false;
+                foreach (var encoding_7 in metadata_7.Encodings)
+                {
+                    if (encoding_7 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_7 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_7 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_7 && metadata_7.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'X' value count {metadata_7.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<int>(
                     field_7,
                     new global::System.Memory<int>(buffer_7, 0, rowCount),
                     new global::System.Memory<int>(defLevels_7, 0, rowCount),
                     null,
                     cancellationToken);
+                var metadata_8 = groupReader.GetMetadata(field_8).MetaData;
+                bool dictionaryEncoded_8 = false;
+                foreach (var encoding_8 in metadata_8.Encodings)
+                {
+                    if (encoding_8 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_8 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_8 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_8 && metadata_8.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' value count {metadata_8.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<int>(
                     field_8,
                     new global::System.Memory<int>(buffer_8, 0, rowCount),
@@ -1714,52 +1868,206 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
 
             try
             {
+                var metadata_0 = groupReader.GetMetadata(field_0).MetaData;
+                bool dictionaryEncoded_0 = false;
+                foreach (var encoding_0 in metadata_0.Encodings)
+                {
+                    if (encoding_0 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_0 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_0 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_0 && metadata_0.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Id' value count {metadata_0.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<int>(
                     field_0,
                     new global::System.Memory<int>(buffer_0, 0, rowCount),
                     cancellationToken: cancellationToken);
+                var metadata_1 = groupReader.GetMetadata(field_1).MetaData;
+                bool dictionaryEncoded_1 = false;
+                foreach (var encoding_1 in metadata_1.Encodings)
+                {
+                    if (encoding_1 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_1 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_1 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_1 && metadata_1.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'City' value count {metadata_1.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<global::System.ReadOnlyMemory<char>>(
                     field_1,
                     new global::System.Memory<global::System.ReadOnlyMemory<char>>(buffer_1, 0, rowCount),
                     new global::System.Memory<int>(defLevels_1, 0, rowCount),
                     null,
                     cancellationToken);
+                int packedString_1 = 0;
+                for (int levelIndex_1 = 0; levelIndex_1 < rowCount; levelIndex_1++)
+                {
+                    if (defLevels_1[levelIndex_1] != 2) continue;
+                    if (packedString_1 >= rowCount)
+                    {
+                        throw new global::System.IO.InvalidDataException("Definition levels in column 'City' exceeded values count.");
+                    }
+                    int stringByteCount_1 = global::System.Text.Encoding.UTF8.GetByteCount(buffer_1[packedString_1++].Span);
+                    if (stringByteCount_1 > options.MaxStringLengthBytes)
+                    {
+                        throw new global::System.IO.InvalidDataException($"String column 'City' value at index {levelIndex_1} UTF-8 length {stringByteCount_1} exceeds maximum allowed {options.MaxStringLengthBytes}.");
+                    }
+                }
+                var metadata_2 = groupReader.GetMetadata(field_2).MetaData;
+                bool dictionaryEncoded_2 = false;
+                foreach (var encoding_2 in metadata_2.Encodings)
+                {
+                    if (encoding_2 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_2 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_2 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_2 && metadata_2.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' value count {metadata_2.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<int>(
                     field_2,
                     new global::System.Memory<int>(buffer_2, 0, rowCount),
                     new global::System.Memory<int>(defLevels_2, 0, rowCount),
                     null,
                     cancellationToken);
+                var metadata_3 = groupReader.GetMetadata(field_3).MetaData;
+                bool dictionaryEncoded_3 = false;
+                foreach (var encoding_3 in metadata_3.Encodings)
+                {
+                    if (encoding_3 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_3 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_3 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_3 && metadata_3.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'City' value count {metadata_3.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<global::System.ReadOnlyMemory<char>>(
                     field_3,
                     new global::System.Memory<global::System.ReadOnlyMemory<char>>(buffer_3, 0, rowCount),
                     new global::System.Memory<int>(defLevels_3, 0, rowCount),
                     null,
                     cancellationToken);
+                int packedString_3 = 0;
+                for (int levelIndex_3 = 0; levelIndex_3 < rowCount; levelIndex_3++)
+                {
+                    if (defLevels_3[levelIndex_3] != 2) continue;
+                    if (packedString_3 >= rowCount)
+                    {
+                        throw new global::System.IO.InvalidDataException("Definition levels in column 'City' exceeded values count.");
+                    }
+                    int stringByteCount_3 = global::System.Text.Encoding.UTF8.GetByteCount(buffer_3[packedString_3++].Span);
+                    if (stringByteCount_3 > options.MaxStringLengthBytes)
+                    {
+                        throw new global::System.IO.InvalidDataException($"String column 'City' value at index {levelIndex_3} UTF-8 length {stringByteCount_3} exceeds maximum allowed {options.MaxStringLengthBytes}.");
+                    }
+                }
+                var metadata_4 = groupReader.GetMetadata(field_4).MetaData;
+                bool dictionaryEncoded_4 = false;
+                foreach (var encoding_4 in metadata_4.Encodings)
+                {
+                    if (encoding_4 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_4 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_4 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_4 && metadata_4.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' value count {metadata_4.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<int>(
                     field_4,
                     new global::System.Memory<int>(buffer_4, 0, rowCount),
                     new global::System.Memory<int>(defLevels_4, 0, rowCount),
                     null,
                     cancellationToken);
+                var metadata_5 = groupReader.GetMetadata(field_5).MetaData;
+                bool dictionaryEncoded_5 = false;
+                foreach (var encoding_5 in metadata_5.Encodings)
+                {
+                    if (encoding_5 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_5 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_5 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_5 && metadata_5.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'X' value count {metadata_5.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<int>(
                     field_5,
                     new global::System.Memory<int>(buffer_5, 0, rowCount),
                     new global::System.Memory<int>(defLevels_5, 0, rowCount),
                     null,
                     cancellationToken);
+                var metadata_6 = groupReader.GetMetadata(field_6).MetaData;
+                bool dictionaryEncoded_6 = false;
+                foreach (var encoding_6 in metadata_6.Encodings)
+                {
+                    if (encoding_6 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_6 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_6 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_6 && metadata_6.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' value count {metadata_6.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<int>(
                     field_6,
                     new global::System.Memory<int>(buffer_6, 0, rowCount),
                     new global::System.Memory<int>(defLevels_6, 0, rowCount),
                     null,
                     cancellationToken);
+                var metadata_7 = groupReader.GetMetadata(field_7).MetaData;
+                bool dictionaryEncoded_7 = false;
+                foreach (var encoding_7 in metadata_7.Encodings)
+                {
+                    if (encoding_7 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_7 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_7 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_7 && metadata_7.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'X' value count {metadata_7.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<int>(
                     field_7,
                     new global::System.Memory<int>(buffer_7, 0, rowCount),
                     new global::System.Memory<int>(defLevels_7, 0, rowCount),
                     null,
                     cancellationToken);
+                var metadata_8 = groupReader.GetMetadata(field_8).MetaData;
+                bool dictionaryEncoded_8 = false;
+                foreach (var encoding_8 in metadata_8.Encodings)
+                {
+                    if (encoding_8 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_8 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_8 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_8 && metadata_8.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' value count {metadata_8.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<int>(
                     field_8,
                     new global::System.Memory<int>(buffer_8, 0, rowCount),
@@ -1961,52 +2269,206 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
 
             try
             {
+                var metadata_0 = groupReader.GetMetadata(field_0).MetaData;
+                bool dictionaryEncoded_0 = false;
+                foreach (var encoding_0 in metadata_0.Encodings)
+                {
+                    if (encoding_0 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_0 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_0 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_0 && metadata_0.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Id' value count {metadata_0.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<int>(
                     field_0,
                     new global::System.Memory<int>(buffer_0, 0, rowCount),
                     cancellationToken: cancellationToken);
+                var metadata_1 = groupReader.GetMetadata(field_1).MetaData;
+                bool dictionaryEncoded_1 = false;
+                foreach (var encoding_1 in metadata_1.Encodings)
+                {
+                    if (encoding_1 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_1 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_1 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_1 && metadata_1.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'City' value count {metadata_1.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<global::System.ReadOnlyMemory<char>>(
                     field_1,
                     new global::System.Memory<global::System.ReadOnlyMemory<char>>(buffer_1, 0, rowCount),
                     new global::System.Memory<int>(defLevels_1, 0, rowCount),
                     null,
                     cancellationToken);
+                int packedString_1 = 0;
+                for (int levelIndex_1 = 0; levelIndex_1 < rowCount; levelIndex_1++)
+                {
+                    if (defLevels_1[levelIndex_1] != 2) continue;
+                    if (packedString_1 >= rowCount)
+                    {
+                        throw new global::System.IO.InvalidDataException("Definition levels in column 'City' exceeded values count.");
+                    }
+                    int stringByteCount_1 = global::System.Text.Encoding.UTF8.GetByteCount(buffer_1[packedString_1++].Span);
+                    if (stringByteCount_1 > options.MaxStringLengthBytes)
+                    {
+                        throw new global::System.IO.InvalidDataException($"String column 'City' value at index {levelIndex_1} UTF-8 length {stringByteCount_1} exceeds maximum allowed {options.MaxStringLengthBytes}.");
+                    }
+                }
+                var metadata_2 = groupReader.GetMetadata(field_2).MetaData;
+                bool dictionaryEncoded_2 = false;
+                foreach (var encoding_2 in metadata_2.Encodings)
+                {
+                    if (encoding_2 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_2 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_2 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_2 && metadata_2.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' value count {metadata_2.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<int>(
                     field_2,
                     new global::System.Memory<int>(buffer_2, 0, rowCount),
                     new global::System.Memory<int>(defLevels_2, 0, rowCount),
                     null,
                     cancellationToken);
+                var metadata_3 = groupReader.GetMetadata(field_3).MetaData;
+                bool dictionaryEncoded_3 = false;
+                foreach (var encoding_3 in metadata_3.Encodings)
+                {
+                    if (encoding_3 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_3 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_3 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_3 && metadata_3.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'City' value count {metadata_3.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<global::System.ReadOnlyMemory<char>>(
                     field_3,
                     new global::System.Memory<global::System.ReadOnlyMemory<char>>(buffer_3, 0, rowCount),
                     new global::System.Memory<int>(defLevels_3, 0, rowCount),
                     null,
                     cancellationToken);
+                int packedString_3 = 0;
+                for (int levelIndex_3 = 0; levelIndex_3 < rowCount; levelIndex_3++)
+                {
+                    if (defLevels_3[levelIndex_3] != 2) continue;
+                    if (packedString_3 >= rowCount)
+                    {
+                        throw new global::System.IO.InvalidDataException("Definition levels in column 'City' exceeded values count.");
+                    }
+                    int stringByteCount_3 = global::System.Text.Encoding.UTF8.GetByteCount(buffer_3[packedString_3++].Span);
+                    if (stringByteCount_3 > options.MaxStringLengthBytes)
+                    {
+                        throw new global::System.IO.InvalidDataException($"String column 'City' value at index {levelIndex_3} UTF-8 length {stringByteCount_3} exceeds maximum allowed {options.MaxStringLengthBytes}.");
+                    }
+                }
+                var metadata_4 = groupReader.GetMetadata(field_4).MetaData;
+                bool dictionaryEncoded_4 = false;
+                foreach (var encoding_4 in metadata_4.Encodings)
+                {
+                    if (encoding_4 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_4 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_4 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_4 && metadata_4.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' value count {metadata_4.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<int>(
                     field_4,
                     new global::System.Memory<int>(buffer_4, 0, rowCount),
                     new global::System.Memory<int>(defLevels_4, 0, rowCount),
                     null,
                     cancellationToken);
+                var metadata_5 = groupReader.GetMetadata(field_5).MetaData;
+                bool dictionaryEncoded_5 = false;
+                foreach (var encoding_5 in metadata_5.Encodings)
+                {
+                    if (encoding_5 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_5 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_5 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_5 && metadata_5.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'X' value count {metadata_5.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<int>(
                     field_5,
                     new global::System.Memory<int>(buffer_5, 0, rowCount),
                     new global::System.Memory<int>(defLevels_5, 0, rowCount),
                     null,
                     cancellationToken);
+                var metadata_6 = groupReader.GetMetadata(field_6).MetaData;
+                bool dictionaryEncoded_6 = false;
+                foreach (var encoding_6 in metadata_6.Encodings)
+                {
+                    if (encoding_6 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_6 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_6 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_6 && metadata_6.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' value count {metadata_6.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<int>(
                     field_6,
                     new global::System.Memory<int>(buffer_6, 0, rowCount),
                     new global::System.Memory<int>(defLevels_6, 0, rowCount),
                     null,
                     cancellationToken);
+                var metadata_7 = groupReader.GetMetadata(field_7).MetaData;
+                bool dictionaryEncoded_7 = false;
+                foreach (var encoding_7 in metadata_7.Encodings)
+                {
+                    if (encoding_7 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_7 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_7 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_7 && metadata_7.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'X' value count {metadata_7.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<int>(
                     field_7,
                     new global::System.Memory<int>(buffer_7, 0, rowCount),
                     new global::System.Memory<int>(defLevels_7, 0, rowCount),
                     null,
                     cancellationToken);
+                var metadata_8 = groupReader.GetMetadata(field_8).MetaData;
+                bool dictionaryEncoded_8 = false;
+                foreach (var encoding_8 in metadata_8.Encodings)
+                {
+                    if (encoding_8 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_8 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_8 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_8 && metadata_8.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' value count {metadata_8.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<int>(
                     field_8,
                     new global::System.Memory<int>(buffer_8, 0, rowCount),
@@ -2188,52 +2650,206 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
             var defLevels_8 = global::System.Buffers.ArrayPool<int>.Shared.Rent(rowCount);
             try
             {
+                var metadata_0 = groupReader.GetMetadata(field_0).MetaData;
+                bool dictionaryEncoded_0 = false;
+                foreach (var encoding_0 in metadata_0.Encodings)
+                {
+                    if (encoding_0 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_0 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_0 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_0 && metadata_0.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Id' value count {metadata_0.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<int>(
                     field_0,
                     new global::System.Memory<int>(buffer_0, 0, rowCount),
                     cancellationToken: cancellationToken);
+                var metadata_1 = groupReader.GetMetadata(field_1).MetaData;
+                bool dictionaryEncoded_1 = false;
+                foreach (var encoding_1 in metadata_1.Encodings)
+                {
+                    if (encoding_1 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_1 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_1 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_1 && metadata_1.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'City' value count {metadata_1.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<global::System.ReadOnlyMemory<char>>(
                     field_1,
                     new global::System.Memory<global::System.ReadOnlyMemory<char>>(buffer_1, 0, rowCount),
                     new global::System.Memory<int>(defLevels_1, 0, rowCount),
                     null,
                     cancellationToken);
+                int packedString_1 = 0;
+                for (int levelIndex_1 = 0; levelIndex_1 < rowCount; levelIndex_1++)
+                {
+                    if (defLevels_1[levelIndex_1] != 2) continue;
+                    if (packedString_1 >= rowCount)
+                    {
+                        throw new global::System.IO.InvalidDataException("Definition levels in column 'City' exceeded values count.");
+                    }
+                    int stringByteCount_1 = global::System.Text.Encoding.UTF8.GetByteCount(buffer_1[packedString_1++].Span);
+                    if (stringByteCount_1 > options.MaxStringLengthBytes)
+                    {
+                        throw new global::System.IO.InvalidDataException($"String column 'City' value at index {levelIndex_1} UTF-8 length {stringByteCount_1} exceeds maximum allowed {options.MaxStringLengthBytes}.");
+                    }
+                }
+                var metadata_2 = groupReader.GetMetadata(field_2).MetaData;
+                bool dictionaryEncoded_2 = false;
+                foreach (var encoding_2 in metadata_2.Encodings)
+                {
+                    if (encoding_2 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_2 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_2 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_2 && metadata_2.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' value count {metadata_2.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<int>(
                     field_2,
                     new global::System.Memory<int>(buffer_2, 0, rowCount),
                     new global::System.Memory<int>(defLevels_2, 0, rowCount),
                     null,
                     cancellationToken);
+                var metadata_3 = groupReader.GetMetadata(field_3).MetaData;
+                bool dictionaryEncoded_3 = false;
+                foreach (var encoding_3 in metadata_3.Encodings)
+                {
+                    if (encoding_3 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_3 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_3 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_3 && metadata_3.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'City' value count {metadata_3.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<global::System.ReadOnlyMemory<char>>(
                     field_3,
                     new global::System.Memory<global::System.ReadOnlyMemory<char>>(buffer_3, 0, rowCount),
                     new global::System.Memory<int>(defLevels_3, 0, rowCount),
                     null,
                     cancellationToken);
+                int packedString_3 = 0;
+                for (int levelIndex_3 = 0; levelIndex_3 < rowCount; levelIndex_3++)
+                {
+                    if (defLevels_3[levelIndex_3] != 2) continue;
+                    if (packedString_3 >= rowCount)
+                    {
+                        throw new global::System.IO.InvalidDataException("Definition levels in column 'City' exceeded values count.");
+                    }
+                    int stringByteCount_3 = global::System.Text.Encoding.UTF8.GetByteCount(buffer_3[packedString_3++].Span);
+                    if (stringByteCount_3 > options.MaxStringLengthBytes)
+                    {
+                        throw new global::System.IO.InvalidDataException($"String column 'City' value at index {levelIndex_3} UTF-8 length {stringByteCount_3} exceeds maximum allowed {options.MaxStringLengthBytes}.");
+                    }
+                }
+                var metadata_4 = groupReader.GetMetadata(field_4).MetaData;
+                bool dictionaryEncoded_4 = false;
+                foreach (var encoding_4 in metadata_4.Encodings)
+                {
+                    if (encoding_4 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_4 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_4 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_4 && metadata_4.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' value count {metadata_4.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<int>(
                     field_4,
                     new global::System.Memory<int>(buffer_4, 0, rowCount),
                     new global::System.Memory<int>(defLevels_4, 0, rowCount),
                     null,
                     cancellationToken);
+                var metadata_5 = groupReader.GetMetadata(field_5).MetaData;
+                bool dictionaryEncoded_5 = false;
+                foreach (var encoding_5 in metadata_5.Encodings)
+                {
+                    if (encoding_5 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_5 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_5 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_5 && metadata_5.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'X' value count {metadata_5.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<int>(
                     field_5,
                     new global::System.Memory<int>(buffer_5, 0, rowCount),
                     new global::System.Memory<int>(defLevels_5, 0, rowCount),
                     null,
                     cancellationToken);
+                var metadata_6 = groupReader.GetMetadata(field_6).MetaData;
+                bool dictionaryEncoded_6 = false;
+                foreach (var encoding_6 in metadata_6.Encodings)
+                {
+                    if (encoding_6 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_6 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_6 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_6 && metadata_6.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' value count {metadata_6.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<int>(
                     field_6,
                     new global::System.Memory<int>(buffer_6, 0, rowCount),
                     new global::System.Memory<int>(defLevels_6, 0, rowCount),
                     null,
                     cancellationToken);
+                var metadata_7 = groupReader.GetMetadata(field_7).MetaData;
+                bool dictionaryEncoded_7 = false;
+                foreach (var encoding_7 in metadata_7.Encodings)
+                {
+                    if (encoding_7 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_7 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_7 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_7 && metadata_7.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'X' value count {metadata_7.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<int>(
                     field_7,
                     new global::System.Memory<int>(buffer_7, 0, rowCount),
                     new global::System.Memory<int>(defLevels_7, 0, rowCount),
                     null,
                     cancellationToken);
+                var metadata_8 = groupReader.GetMetadata(field_8).MetaData;
+                bool dictionaryEncoded_8 = false;
+                foreach (var encoding_8 in metadata_8.Encodings)
+                {
+                    if (encoding_8 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_8 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_8 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_8 && metadata_8.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' value count {metadata_8.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<int>(
                     field_8,
                     new global::System.Memory<int>(buffer_8, 0, rowCount),
@@ -2569,52 +3185,206 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                     }
                     int startIdx = rowOffsets[r];
 
+                    var metadata_0 = groupReader.GetMetadata(field_0).MetaData;
+                    bool dictionaryEncoded_0 = false;
+                    foreach (var encoding_0 in metadata_0.Encodings)
+                    {
+                        if (encoding_0 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_0 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                        {
+                            dictionaryEncoded_0 = true;
+                            break;
+                        }
+                    }
+                    if (dictionaryEncoded_0 && metadata_0.NumValues > options.MaxDictionaryEntries)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'Id' value count {metadata_0.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    }
                     await groupReader.ReadAsync<int>(
                         field_0,
                         new global::System.Memory<int>(buffer_0, 0, rowCount),
                         cancellationToken: cancellationToken);
+                    var metadata_1 = groupReader.GetMetadata(field_1).MetaData;
+                    bool dictionaryEncoded_1 = false;
+                    foreach (var encoding_1 in metadata_1.Encodings)
+                    {
+                        if (encoding_1 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_1 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                        {
+                            dictionaryEncoded_1 = true;
+                            break;
+                        }
+                    }
+                    if (dictionaryEncoded_1 && metadata_1.NumValues > options.MaxDictionaryEntries)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'City' value count {metadata_1.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    }
                     await groupReader.ReadRawAsync<global::System.ReadOnlyMemory<char>>(
                         field_1,
                         new global::System.Memory<global::System.ReadOnlyMemory<char>>(buffer_1, 0, rowCount),
                         new global::System.Memory<int>(defLevels_1, 0, rowCount),
                         null,
                         cancellationToken);
+                    int packedString_1 = 0;
+                    for (int levelIndex_1 = 0; levelIndex_1 < rowCount; levelIndex_1++)
+                    {
+                        if (defLevels_1[levelIndex_1] != 2) continue;
+                        if (packedString_1 >= rowCount)
+                        {
+                            throw new global::System.IO.InvalidDataException("Definition levels in column 'City' exceeded values count.");
+                        }
+                        int stringByteCount_1 = global::System.Text.Encoding.UTF8.GetByteCount(buffer_1[packedString_1++].Span);
+                        if (stringByteCount_1 > options.MaxStringLengthBytes)
+                        {
+                            throw new global::System.IO.InvalidDataException($"String column 'City' value at index {levelIndex_1} UTF-8 length {stringByteCount_1} exceeds maximum allowed {options.MaxStringLengthBytes}.");
+                        }
+                    }
+                    var metadata_2 = groupReader.GetMetadata(field_2).MetaData;
+                    bool dictionaryEncoded_2 = false;
+                    foreach (var encoding_2 in metadata_2.Encodings)
+                    {
+                        if (encoding_2 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_2 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                        {
+                            dictionaryEncoded_2 = true;
+                            break;
+                        }
+                    }
+                    if (dictionaryEncoded_2 && metadata_2.NumValues > options.MaxDictionaryEntries)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' value count {metadata_2.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    }
                     await groupReader.ReadRawAsync<int>(
                         field_2,
                         new global::System.Memory<int>(buffer_2, 0, rowCount),
                         new global::System.Memory<int>(defLevels_2, 0, rowCount),
                         null,
                         cancellationToken);
+                    var metadata_3 = groupReader.GetMetadata(field_3).MetaData;
+                    bool dictionaryEncoded_3 = false;
+                    foreach (var encoding_3 in metadata_3.Encodings)
+                    {
+                        if (encoding_3 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_3 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                        {
+                            dictionaryEncoded_3 = true;
+                            break;
+                        }
+                    }
+                    if (dictionaryEncoded_3 && metadata_3.NumValues > options.MaxDictionaryEntries)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'City' value count {metadata_3.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    }
                     await groupReader.ReadRawAsync<global::System.ReadOnlyMemory<char>>(
                         field_3,
                         new global::System.Memory<global::System.ReadOnlyMemory<char>>(buffer_3, 0, rowCount),
                         new global::System.Memory<int>(defLevels_3, 0, rowCount),
                         null,
                         cancellationToken);
+                    int packedString_3 = 0;
+                    for (int levelIndex_3 = 0; levelIndex_3 < rowCount; levelIndex_3++)
+                    {
+                        if (defLevels_3[levelIndex_3] != 2) continue;
+                        if (packedString_3 >= rowCount)
+                        {
+                            throw new global::System.IO.InvalidDataException("Definition levels in column 'City' exceeded values count.");
+                        }
+                        int stringByteCount_3 = global::System.Text.Encoding.UTF8.GetByteCount(buffer_3[packedString_3++].Span);
+                        if (stringByteCount_3 > options.MaxStringLengthBytes)
+                        {
+                            throw new global::System.IO.InvalidDataException($"String column 'City' value at index {levelIndex_3} UTF-8 length {stringByteCount_3} exceeds maximum allowed {options.MaxStringLengthBytes}.");
+                        }
+                    }
+                    var metadata_4 = groupReader.GetMetadata(field_4).MetaData;
+                    bool dictionaryEncoded_4 = false;
+                    foreach (var encoding_4 in metadata_4.Encodings)
+                    {
+                        if (encoding_4 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_4 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                        {
+                            dictionaryEncoded_4 = true;
+                            break;
+                        }
+                    }
+                    if (dictionaryEncoded_4 && metadata_4.NumValues > options.MaxDictionaryEntries)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' value count {metadata_4.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    }
                     await groupReader.ReadRawAsync<int>(
                         field_4,
                         new global::System.Memory<int>(buffer_4, 0, rowCount),
                         new global::System.Memory<int>(defLevels_4, 0, rowCount),
                         null,
                         cancellationToken);
+                    var metadata_5 = groupReader.GetMetadata(field_5).MetaData;
+                    bool dictionaryEncoded_5 = false;
+                    foreach (var encoding_5 in metadata_5.Encodings)
+                    {
+                        if (encoding_5 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_5 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                        {
+                            dictionaryEncoded_5 = true;
+                            break;
+                        }
+                    }
+                    if (dictionaryEncoded_5 && metadata_5.NumValues > options.MaxDictionaryEntries)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'X' value count {metadata_5.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    }
                     await groupReader.ReadRawAsync<int>(
                         field_5,
                         new global::System.Memory<int>(buffer_5, 0, rowCount),
                         new global::System.Memory<int>(defLevels_5, 0, rowCount),
                         null,
                         cancellationToken);
+                    var metadata_6 = groupReader.GetMetadata(field_6).MetaData;
+                    bool dictionaryEncoded_6 = false;
+                    foreach (var encoding_6 in metadata_6.Encodings)
+                    {
+                        if (encoding_6 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_6 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                        {
+                            dictionaryEncoded_6 = true;
+                            break;
+                        }
+                    }
+                    if (dictionaryEncoded_6 && metadata_6.NumValues > options.MaxDictionaryEntries)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' value count {metadata_6.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    }
                     await groupReader.ReadRawAsync<int>(
                         field_6,
                         new global::System.Memory<int>(buffer_6, 0, rowCount),
                         new global::System.Memory<int>(defLevels_6, 0, rowCount),
                         null,
                         cancellationToken);
+                    var metadata_7 = groupReader.GetMetadata(field_7).MetaData;
+                    bool dictionaryEncoded_7 = false;
+                    foreach (var encoding_7 in metadata_7.Encodings)
+                    {
+                        if (encoding_7 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_7 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                        {
+                            dictionaryEncoded_7 = true;
+                            break;
+                        }
+                    }
+                    if (dictionaryEncoded_7 && metadata_7.NumValues > options.MaxDictionaryEntries)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'X' value count {metadata_7.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    }
                     await groupReader.ReadRawAsync<int>(
                         field_7,
                         new global::System.Memory<int>(buffer_7, 0, rowCount),
                         new global::System.Memory<int>(defLevels_7, 0, rowCount),
                         null,
                         cancellationToken);
+                    var metadata_8 = groupReader.GetMetadata(field_8).MetaData;
+                    bool dictionaryEncoded_8 = false;
+                    foreach (var encoding_8 in metadata_8.Encodings)
+                    {
+                        if (encoding_8 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_8 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                        {
+                            dictionaryEncoded_8 = true;
+                            break;
+                        }
+                    }
+                    if (dictionaryEncoded_8 && metadata_8.NumValues > options.MaxDictionaryEntries)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' value count {metadata_8.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    }
                     await groupReader.ReadRawAsync<int>(
                         field_8,
                         new global::System.Memory<int>(buffer_8, 0, rowCount),
@@ -2812,52 +3582,206 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                 }
                 if (rowCount == 0) continue;
 
+                var metadata_0 = groupReader.GetMetadata(field_0).MetaData;
+                bool dictionaryEncoded_0 = false;
+                foreach (var encoding_0 in metadata_0.Encodings)
+                {
+                    if (encoding_0 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_0 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_0 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_0 && metadata_0.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Id' value count {metadata_0.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadAsync<int>(
                     field_0,
                     new global::System.Memory<int>(buffer_0, 0, rowCount),
                     cancellationToken: cancellationToken);
+                var metadata_1 = groupReader.GetMetadata(field_1).MetaData;
+                bool dictionaryEncoded_1 = false;
+                foreach (var encoding_1 in metadata_1.Encodings)
+                {
+                    if (encoding_1 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_1 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_1 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_1 && metadata_1.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'City' value count {metadata_1.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<global::System.ReadOnlyMemory<char>>(
                     field_1,
                     new global::System.Memory<global::System.ReadOnlyMemory<char>>(buffer_1, 0, rowCount),
                     new global::System.Memory<int>(defLevels_1, 0, rowCount),
                     null,
                     cancellationToken);
+                int packedString_1 = 0;
+                for (int levelIndex_1 = 0; levelIndex_1 < rowCount; levelIndex_1++)
+                {
+                    if (defLevels_1[levelIndex_1] != 2) continue;
+                    if (packedString_1 >= rowCount)
+                    {
+                        throw new global::System.IO.InvalidDataException("Definition levels in column 'City' exceeded values count.");
+                    }
+                    int stringByteCount_1 = global::System.Text.Encoding.UTF8.GetByteCount(buffer_1[packedString_1++].Span);
+                    if (stringByteCount_1 > options.MaxStringLengthBytes)
+                    {
+                        throw new global::System.IO.InvalidDataException($"String column 'City' value at index {levelIndex_1} UTF-8 length {stringByteCount_1} exceeds maximum allowed {options.MaxStringLengthBytes}.");
+                    }
+                }
+                var metadata_2 = groupReader.GetMetadata(field_2).MetaData;
+                bool dictionaryEncoded_2 = false;
+                foreach (var encoding_2 in metadata_2.Encodings)
+                {
+                    if (encoding_2 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_2 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_2 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_2 && metadata_2.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' value count {metadata_2.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<int>(
                     field_2,
                     new global::System.Memory<int>(buffer_2, 0, rowCount),
                     new global::System.Memory<int>(defLevels_2, 0, rowCount),
                     null,
                     cancellationToken);
+                var metadata_3 = groupReader.GetMetadata(field_3).MetaData;
+                bool dictionaryEncoded_3 = false;
+                foreach (var encoding_3 in metadata_3.Encodings)
+                {
+                    if (encoding_3 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_3 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_3 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_3 && metadata_3.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'City' value count {metadata_3.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<global::System.ReadOnlyMemory<char>>(
                     field_3,
                     new global::System.Memory<global::System.ReadOnlyMemory<char>>(buffer_3, 0, rowCount),
                     new global::System.Memory<int>(defLevels_3, 0, rowCount),
                     null,
                     cancellationToken);
+                int packedString_3 = 0;
+                for (int levelIndex_3 = 0; levelIndex_3 < rowCount; levelIndex_3++)
+                {
+                    if (defLevels_3[levelIndex_3] != 2) continue;
+                    if (packedString_3 >= rowCount)
+                    {
+                        throw new global::System.IO.InvalidDataException("Definition levels in column 'City' exceeded values count.");
+                    }
+                    int stringByteCount_3 = global::System.Text.Encoding.UTF8.GetByteCount(buffer_3[packedString_3++].Span);
+                    if (stringByteCount_3 > options.MaxStringLengthBytes)
+                    {
+                        throw new global::System.IO.InvalidDataException($"String column 'City' value at index {levelIndex_3} UTF-8 length {stringByteCount_3} exceeds maximum allowed {options.MaxStringLengthBytes}.");
+                    }
+                }
+                var metadata_4 = groupReader.GetMetadata(field_4).MetaData;
+                bool dictionaryEncoded_4 = false;
+                foreach (var encoding_4 in metadata_4.Encodings)
+                {
+                    if (encoding_4 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_4 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_4 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_4 && metadata_4.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' value count {metadata_4.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<int>(
                     field_4,
                     new global::System.Memory<int>(buffer_4, 0, rowCount),
                     new global::System.Memory<int>(defLevels_4, 0, rowCount),
                     null,
                     cancellationToken);
+                var metadata_5 = groupReader.GetMetadata(field_5).MetaData;
+                bool dictionaryEncoded_5 = false;
+                foreach (var encoding_5 in metadata_5.Encodings)
+                {
+                    if (encoding_5 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_5 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_5 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_5 && metadata_5.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'X' value count {metadata_5.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<int>(
                     field_5,
                     new global::System.Memory<int>(buffer_5, 0, rowCount),
                     new global::System.Memory<int>(defLevels_5, 0, rowCount),
                     null,
                     cancellationToken);
+                var metadata_6 = groupReader.GetMetadata(field_6).MetaData;
+                bool dictionaryEncoded_6 = false;
+                foreach (var encoding_6 in metadata_6.Encodings)
+                {
+                    if (encoding_6 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_6 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_6 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_6 && metadata_6.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' value count {metadata_6.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<int>(
                     field_6,
                     new global::System.Memory<int>(buffer_6, 0, rowCount),
                     new global::System.Memory<int>(defLevels_6, 0, rowCount),
                     null,
                     cancellationToken);
+                var metadata_7 = groupReader.GetMetadata(field_7).MetaData;
+                bool dictionaryEncoded_7 = false;
+                foreach (var encoding_7 in metadata_7.Encodings)
+                {
+                    if (encoding_7 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_7 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_7 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_7 && metadata_7.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'X' value count {metadata_7.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<int>(
                     field_7,
                     new global::System.Memory<int>(buffer_7, 0, rowCount),
                     new global::System.Memory<int>(defLevels_7, 0, rowCount),
                     null,
                     cancellationToken);
+                var metadata_8 = groupReader.GetMetadata(field_8).MetaData;
+                bool dictionaryEncoded_8 = false;
+                foreach (var encoding_8 in metadata_8.Encodings)
+                {
+                    if (encoding_8 == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding_8 == global::Parquet.Meta.Encoding.RLE_DICTIONARY)
+                    {
+                        dictionaryEncoded_8 = true;
+                        break;
+                    }
+                }
+                if (dictionaryEncoded_8 && metadata_8.NumValues > options.MaxDictionaryEntries)
+                {
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' value count {metadata_8.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                }
                 await groupReader.ReadRawAsync<int>(
                     field_8,
                     new global::System.Memory<int>(buffer_8, 0, rowCount),
