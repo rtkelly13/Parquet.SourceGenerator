@@ -71,6 +71,10 @@ public sealed class GoldenCodeGenRegressionTests
         // 3. Signature-only public API baseline, from the same emitted string as the golden file
         //    above, so the two physically cannot drift (issue #215).
         AssertApiBaselineMatch(fileName, emittedSource, updateGolden);
+
+        // 4. Compact parameter-shape summary, from the same emitted string as both baselines, so
+        //    parameter-level shrinkage is visible without hand-maintained counts (issue #244).
+        AssertApiShapeSummaryMatch(fileName, emittedSource, updateGolden);
     }
 
     /// <summary>
@@ -112,6 +116,44 @@ public sealed class GoldenCodeGenRegressionTests
             ? goldenFileName.Substring(0, goldenFileName.Length - GeneratedSuffix.Length)
             : IOPath.GetFileNameWithoutExtension(goldenFileName);
         return stem + ".api.txt";
+    }
+
+    /// <summary>Maps <c>Name.g.cs</c> to its generated API shape summary companion.</summary>
+    private static string ShapeSummaryFileNameFor(string goldenFileName)
+    {
+        const string GeneratedSuffix = ".g.cs";
+        string stem = goldenFileName.EndsWith(GeneratedSuffix, StringComparison.Ordinal)
+            ? goldenFileName.Substring(0, goldenFileName.Length - GeneratedSuffix.Length)
+            : IOPath.GetFileNameWithoutExtension(goldenFileName);
+        return stem + ".api.shape.txt";
+    }
+
+    private static void AssertApiShapeSummaryMatch(
+        string goldenFileName,
+        string emittedSource,
+        bool updateGolden
+    )
+    {
+        string summaryFileName = ShapeSummaryFileNameFor(goldenFileName);
+        string summaryPath = IOPath.Combine(GoldenFilesDir, summaryFileName);
+        string actual = GeneratedApiBaseline.CreateShapeSummary(emittedSource);
+
+        if (updateGolden || !IOFile.Exists(summaryPath))
+        {
+            IODirectory.CreateDirectory(GoldenFilesDir);
+            IOFile.WriteAllText(summaryPath, actual);
+        }
+
+        string expected = IOFile.ReadAllText(summaryPath).Replace("\r\n", "\n");
+        if (!string.Equals(expected, actual, StringComparison.Ordinal))
+        {
+            throw new ShouldAssertException(
+                $"Generated API shape summary drifted: GoldenFiles/{summaryFileName}\n"
+                    + "The parameter-slot summary is generated from the emitted source. Refresh it "
+                    + "with UPDATE_GOLDEN_FILES=true rather than editing the count by hand.\n"
+                    + $"Expected:\n{expected}Actual:\n{actual}"
+            );
+        }
     }
 
     /// <summary>

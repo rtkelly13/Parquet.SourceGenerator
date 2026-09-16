@@ -203,6 +203,34 @@ Every claim in this document is checkable against
 future feature that attaches itself unevenly — as pushdown did — shows up as a baseline diff in
 the pull request that does it.
 
+### D5 — Parameter-level shrinkage is measured by callable parameter slots (#244)
+
+The member count is necessary but insufficient: changing a signature removes no `.api.txt` line,
+even when it removes a duplicate configuration entry point from the API a caller must understand.
+The chosen companion metric is **`PARAMETERS`**, the total number of parameter slots across every
+externally reachable method, constructor, operator, conversion, indexer and delegate in one
+generated file. Each overload contributes its own slots; types, fields and properties contribute
+none. A signature change can therefore leave `MEMBERS` unchanged while changing `PARAMETERS` from,
+for example, `2` to `1`.
+
+Each `Name.g.cs` golden file now has a generated `Name.api.shape.txt` companion:
+
+```
+# generated API shape summary
+MEMBERS=82 PARAMETERS=111
+```
+
+`GeneratedApiBaseline.CreateShapeSummary` derives both values from the same emitted source string
+used to write and verify `Name.g.cs` and `Name.api.txt`. The summary is deliberately separate from
+the signature grammar: it is a measurement of the API shape, not another catalogue of public
+members. Ordering and numeric formatting are invariant and the golden test regenerates it under
+`UPDATE_GOLDEN_FILES=true`; a hand-edited count fails the normal golden suite.
+
+This is a burden metric, not a claim that every parameter has equal user value. #217's shrinkage
+claim is now numeric in the review diff: the relevant `PARAMETERS=` line moves alongside the
+`.api.txt` signature diff, while `MEMBERS=` remains available to show whether the change was an
+addition, removal or signature consolidation.
+
 ---
 
 ## A note on this document's own number

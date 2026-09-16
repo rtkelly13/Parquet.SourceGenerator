@@ -158,6 +158,61 @@ public sealed class GeneratedApiBaselineTests
     }
 
     [Fact]
+    public void ShapeSummaryCountsPublicCallableParameterSlots()
+    {
+        string summary = GeneratedApiBaseline.CreateShapeSummary(Sample);
+
+        summary.ShouldBe(GeneratedApiBaseline.ShapeSummaryHeader + "\nMEMBERS=9 PARAMETERS=5\n");
+        GeneratedApiBaseline.CountParameterSlots(Sample).ShouldBe(5);
+    }
+
+    [Fact]
+    public void ParameterMetricMakesAChangedSignatureNumericWithoutChangingMemberCount()
+    {
+        const string Before = """
+            namespace N;
+
+            public static class Reader
+            {
+                public static void Read(System.IO.Stream stream, int max = -1) { }
+            }
+            """;
+        const string After = """
+            namespace N;
+
+            public static class Reader
+            {
+                public static void Read(System.IO.Stream stream) { }
+            }
+            """;
+
+        GeneratedApiBaseline
+            .CountMembers(GeneratedApiBaseline.Create(Before))
+            .ShouldBe(GeneratedApiBaseline.CountMembers(GeneratedApiBaseline.Create(After)));
+        GeneratedApiBaseline
+            .CreateShapeSummary(Before)
+            .ShouldBe(GeneratedApiBaseline.ShapeSummaryHeader + "\nMEMBERS=2 PARAMETERS=2\n");
+        GeneratedApiBaseline
+            .CreateShapeSummary(After)
+            .ShouldBe(GeneratedApiBaseline.ShapeSummaryHeader + "\nMEMBERS=2 PARAMETERS=1\n");
+    }
+
+    [Fact]
+    public void ParameterMetricCountsSyntaxParametersRatherThanCommasInGenericTypes()
+    {
+        const string GenericParameter = """
+            namespace N;
+
+            public static class Reader
+            {
+                public static void Read(System.Collections.Generic.Dictionary<string, int> values) { }
+            }
+            """;
+
+        GeneratedApiBaseline.CountParameterSlots(GenericParameter).ShouldBe(1);
+    }
+
+    [Fact]
     public void PartialTypeSplitAcrossTwoDeclarationsYieldsASingleTypeEntry()
     {
         const string Partials = """
