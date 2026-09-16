@@ -373,12 +373,11 @@ public class HostileParquetTests
         await using (var writer = await ParquetWriter.CreateAsync(schema, ms)) { }
 
         ms.Position = 0;
-        var ex = await Assert.ThrowsAsync<InvalidDataException>(() =>
+        var ex = await Should.ThrowAsync<InvalidDataException>(() =>
             MultiRowGroupModelParquetExtensions.ReadParquetAsync(ms)
         );
-        Assert.Contains(
-            "Column 'id' type 'System.Int64' does not match expected 'System.Int32'",
-            ex.Message
+        ex.Message.ShouldContain(
+            "Column 'id' type 'System.Int64' does not match expected 'System.Int32'"
         );
     }
 
@@ -390,11 +389,11 @@ public class HostileParquetTests
         await using (var writer = await ParquetWriter.CreateAsync(schema, ms)) { }
 
         ms.Position = 0;
-        var ex = await Assert.ThrowsAsync<InvalidDataException>(() =>
+        var ex = await Should.ThrowAsync<InvalidDataException>(() =>
             MultiRowGroupModelParquetExtensions.ReadParquetAsync(ms)
         );
-        Assert.Contains("Column 'id' type", ex.Message);
-        Assert.Contains("does not match expected 'System.Int32'", ex.Message);
+        ex.Message.ShouldContain("Column 'id' type");
+        ex.Message.ShouldContain("does not match expected 'System.Int32'");
     }
 
     [Fact]
@@ -414,38 +413,38 @@ public class HostileParquetTests
 
         using (var listStream = new MemoryStream(hostileBytes, writable: false))
         {
-            var ex = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            var ex = await Should.ThrowAsync<InvalidDataException>(() =>
                 MultiRowGroupModelParquetExtensions.ReadParquetAsync(listStream)
             );
-            Assert.Contains("physical type 'BYTE_ARRAY'", ex.Message);
-            Assert.Contains("expected 'INT32'", ex.Message);
+            ex.Message.ShouldContain("physical type 'BYTE_ARRAY'");
+            ex.Message.ShouldContain("expected 'INT32'");
         }
 
         using (var arrayStream = new MemoryStream(hostileBytes, writable: false))
         {
-            var ex = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            var ex = await Should.ThrowAsync<InvalidDataException>(() =>
                 MultiRowGroupModelParquetExtensions.ReadParquetArrayAsync(arrayStream)
             );
-            Assert.Contains("physical type 'BYTE_ARRAY'", ex.Message);
+            ex.Message.ShouldContain("physical type 'BYTE_ARRAY'");
         }
 
         using (var parallelStream = new MemoryStream(hostileBytes, writable: false))
         {
-            var ex = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            var ex = await Should.ThrowAsync<InvalidDataException>(() =>
                 MultiRowGroupModelParquetExtensions.ReadParquetParallelArrayAsync(parallelStream)
             );
-            Assert.Contains("physical type 'BYTE_ARRAY'", ex.Message);
+            ex.Message.ShouldContain("physical type 'BYTE_ARRAY'");
         }
 
         using (var stream = new MemoryStream(hostileBytes, writable: false))
         {
-            var ex = await Assert.ThrowsAsync<InvalidDataException>(async () =>
+            var ex = await Should.ThrowAsync<InvalidDataException>(async () =>
             {
                 await foreach (
                     var _ in MultiRowGroupModelParquetExtensions.ReadParquetStreamAsync(stream)
                 ) { }
             });
-            Assert.Contains("physical type 'BYTE_ARRAY'", ex.Message);
+            ex.Message.ShouldContain("physical type 'BYTE_ARRAY'");
         }
     }
 
