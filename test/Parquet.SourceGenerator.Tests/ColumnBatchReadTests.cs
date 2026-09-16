@@ -61,6 +61,7 @@ public partial record ColumnBatchWithList
     public List<int> Tags { get; init; } = new();
 }
 
+[Collection(AllocationMeasurementSuite.Name)]
 public sealed class ColumnBatchReadTests
 {
     private static readonly int[] ExpectedGroupSizes = { 2, 2, 2, 1 };
@@ -327,13 +328,13 @@ public sealed class ColumnBatchReadTests
         await SumViaBatchesAsync(bytes);
         await SumViaPocoAsync(bytes);
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        await SumViaBatchesAsync(bytes);
-        long batchAllocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        long batchAllocated = (
+            await AllocationMeasurement.MeasureAsync(() => SumViaBatchesAsync(bytes))
+        ).AllocatedBytes;
 
-        before = GC.GetAllocatedBytesForCurrentThread();
-        await SumViaPocoAsync(bytes);
-        long pocoAllocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        long pocoAllocated = (
+            await AllocationMeasurement.MeasureAsync(() => SumViaPocoAsync(bytes))
+        ).AllocatedBytes;
 
         // The batch path never pays for the 20k records or the List backing them: measured on an
         // Apple M1 under .NET 9 the split is ~0.5 MB versus ~1.5 MB, a saving of ~48 bytes per
@@ -443,13 +444,13 @@ public sealed class ColumnBatchReadTests
         await SumViaBatchesAsync(fewBytes);
         await SumViaBatchesAsync(manyBytes);
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        await SumViaBatchesAsync(fewBytes);
-        long twoGroups = GC.GetAllocatedBytesForCurrentThread() - before;
+        long twoGroups = (
+            await AllocationMeasurement.MeasureAsync(() => SumViaBatchesAsync(fewBytes))
+        ).AllocatedBytes;
 
-        before = GC.GetAllocatedBytesForCurrentThread();
-        await SumViaBatchesAsync(manyBytes);
-        long twentyGroups = GC.GetAllocatedBytesForCurrentThread() - before;
+        long twentyGroups = (
+            await AllocationMeasurement.MeasureAsync(() => SumViaBatchesAsync(manyBytes))
+        ).AllocatedBytes;
 
         // 10x the row groups must not cost 10x the allocation: the column buffers are recycled,
         // so only the per-group Parquet.Net bookkeeping scales.

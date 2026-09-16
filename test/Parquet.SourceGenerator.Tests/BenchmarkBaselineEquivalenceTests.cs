@@ -43,6 +43,7 @@ public partial record BenchmarkGuidModel
 /// the reflection-based serializer (<see cref="ParquetSerializer"/>) and the source generator.
 /// Prevents silent column omission or schema mismatches from corrupting performance baselines.
 /// </summary>
+[Collection(AllocationMeasurementSuite.Name)]
 public sealed class BenchmarkBaselineEquivalenceTests
 {
     [Fact]
@@ -173,24 +174,27 @@ public sealed class BenchmarkBaselineEquivalenceTests
         }
 
         // Measure reflection baseline
-        long b0 = GC.GetAllocatedBytesForCurrentThread();
-        using (var s = new MemoryStream(bytes))
+        var baseline = await AllocationMeasurement.MeasureAsync(async () =>
         {
-            var res = await ParquetSerializer.DeserializeAsync<BenchmarkScaleModel>(s);
-            res.Data.Count.ShouldBe(count);
-            res.Data[count - 1].Id.ShouldBe(count - 1);
-        }
-        long allocBaseline = GC.GetAllocatedBytesForCurrentThread() - b0;
+            using var s = new MemoryStream(bytes);
+            return await ParquetSerializer.DeserializeAsync<BenchmarkScaleModel>(s);
+        });
+        var baselineResult = baseline.Result;
+        baselineResult.Data.Count.ShouldBe(count);
+        baselineResult.Data[count - 1].Id.ShouldBe(count - 1);
+        long allocBaseline = baseline.AllocatedBytes;
 
         // Measure source generator array read
-        long b1 = GC.GetAllocatedBytesForCurrentThread();
-        using (var s = new MemoryStream(bytes))
-        {
-            var res = await BenchmarkScaleModelParquetExtensions.ReadParquetArrayAsync(s);
-            res.Length.ShouldBe(count);
-            res[count - 1].Id.ShouldBe(count - 1);
-        }
-        long allocSGArray = GC.GetAllocatedBytesForCurrentThread() - b1;
+        AllocationMeasurementResult<BenchmarkScaleModel[]> generated =
+            await AllocationMeasurement.MeasureAsync(async () =>
+            {
+                using var s = new MemoryStream(bytes);
+                return await BenchmarkScaleModelParquetExtensions.ReadParquetArrayAsync(s);
+            });
+        BenchmarkScaleModel[] generatedResult = generated.Result;
+        generatedResult.Length.ShouldBe(count);
+        generatedResult[count - 1].Id.ShouldBe(count - 1);
+        long allocSGArray = generated.AllocatedBytes;
 
         // Source generator array deserializer must allocate less than or equal to reflection baseline
         (allocSGArray <= allocBaseline).ShouldBeTrue(
