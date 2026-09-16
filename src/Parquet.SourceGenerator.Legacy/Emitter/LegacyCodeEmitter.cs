@@ -46,12 +46,18 @@ public static class LegacyCodeEmitter
 
         if (model.Properties.Length > 0)
         {
-            EmitResolveSchemaField(builder);
+            EmitSchemaHelpers(builder);
             builder.AppendLine();
         }
 
         EmitBuildFormatOptions(builder);
         builder.AppendLine();
+
+        if (model.Properties.Length > 0)
+        {
+            EmitValidateReader(builder, model);
+            builder.AppendLine();
+        }
 
         if (StringDeduplicatorComponent.HasStringProperties(model))
         {
@@ -102,6 +108,35 @@ public static class LegacyCodeEmitter
     private static void EmitResolveSchemaField(StringBuilder builder)
     {
         SchemaComponent.EmitResolveSchemaField(builder, usePath: true);
+    }
+
+    private static void EmitSchemaHelpers(StringBuilder builder)
+    {
+        EmitResolveSchemaField(builder);
+        builder.AppendLine();
+        SchemaComponent.EmitValidatePhysicalType(builder);
+    }
+
+    private static void EmitValidateReader(StringBuilder builder, TargetClassModel model)
+    {
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine(
+            "    /// Validates row-group column metadata before the legacy reader allocates result buffers."
+        );
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    private static void ValidateReader(");
+        builder.AppendLine("        global::Parquet.ParquetReader reader,");
+        builder.AppendLine(
+            "        global::Parquet.Schema.DataField[] fileFieldsForTypeValidation)"
+        );
+        builder.AppendLine("    {");
+        for (int i = 0; i < model.Properties.Length; i++)
+        {
+            builder.AppendLine(
+                $"        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_{i});"
+            );
+        }
+        builder.AppendLine("    }");
     }
 
     // ──────────────────────────────────────────────────────────
@@ -599,6 +634,11 @@ public static class LegacyCodeEmitter
             "            cancellationToken: cancellationToken).ConfigureAwait(false))"
         );
         builder.AppendLine("        {");
+        if (model.Properties.Length > 0)
+        {
+            builder.AppendLine("            var fileFields = reader.Schema.GetDataFields();");
+            builder.AppendLine("            ValidateReader(reader, fileFields);");
+        }
 
         if (model.Properties.Length == 0)
         {
@@ -619,7 +659,6 @@ public static class LegacyCodeEmitter
         builder.AppendLine($"            var results = new {model.ClassName}[totalRows];");
         builder.AppendLine("            int currentOffset = 0;");
         builder.AppendLine();
-        builder.AppendLine("            var fileFields = reader.Schema.GetDataFields();");
         builder.AppendLine(
             "            global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;"
         );

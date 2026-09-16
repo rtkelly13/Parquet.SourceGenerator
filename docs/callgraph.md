@@ -37,12 +37,12 @@ graph TD
     tparquetsourcegeneratoremittercodeemitter_043 -->|11| tparquetsourcegeneratoremittercomponentsbufferpoolcomponent_062
     tparquetsourcegeneratoremittercodeemitter_043 -->|6| tparquetsourcegeneratoremittercomponentspropertymappingcomponent_067
     tparquetsourcegeneratoremittercodeemitter_043 -->|1| tparquetsourcegeneratoremittercomponentsrowgrouplayoutcomponent_066
-    tparquetsourcegeneratoremittercodeemitter_043 -->|4| tparquetsourcegeneratoremittercomponentsschemacomponent_058
+    tparquetsourcegeneratoremittercodeemitter_043 -->|5| tparquetsourcegeneratoremittercomponentsschemacomponent_058
     tparquetsourcegeneratoremittercodeemitter_043 -->|2| tparquetsourcegeneratoremittercomponentsstringdeduplicatorcomponent_070
     tparquetsourcegeneratoremittercodeemitter_043 -->|3| tparquetsourcegeneratoremittercompoundcompoundbuffers_056
     tparquetsourcegeneratoremittercodeemitter_043 -->|10| tparquetsourcegeneratoremittercompoundcompoundmapping_056
     tparquetsourcegeneratoremittercodeemitter_043 -->|2| tparquetsourcegeneratoremittercompoundcompoundschema_055
-    tparquetsourcegeneratoremittercodeemitter_043 -->|20| tparquetsourcegeneratoremittercompoundemissionplan_053
+    tparquetsourcegeneratoremittercodeemitter_043 -->|21| tparquetsourcegeneratoremittercompoundemissionplan_053
     tparquetsourcegeneratoremittercodeemitter_043 -->|1| tparquetsourcegeneratoremitterreadbuildercomponent_052
     tparquetsourcegeneratoremittercodeemitter_043 -->|12| tparquetsourcegeneratoremitterrowgrouppruningcomponent_056
     tparquetsourcegeneratoremittercodeemitter_043 -->|3| tparquetsourcegeneratoremittersortedrowgrouppruningcomponent_062

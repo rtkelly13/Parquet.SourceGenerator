@@ -52,7 +52,7 @@ public static class CodeEmitter
 
         if (model.Properties.Length > 0)
         {
-            EmitResolveSchemaField(builder, usePath: EmissionPlan.For(model).HasCompound);
+            EmitSchemaHelpers(builder, usePath: EmissionPlan.For(model).HasCompound);
             builder.AppendLine();
         }
 
@@ -186,6 +186,13 @@ public static class CodeEmitter
         SchemaComponent.EmitResolveSchemaField(builder, usePath: usePath);
     }
 
+    private static void EmitSchemaHelpers(StringBuilder builder, bool usePath)
+    {
+        EmitResolveSchemaField(builder, usePath);
+        builder.AppendLine();
+        SchemaComponent.EmitValidatePhysicalType(builder);
+    }
+
     // ──────────────────────────────────────────────────────────
     //  FORMAT OPTIONS & PRIMITIVES
     // ──────────────────────────────────────────────────────────
@@ -197,7 +204,7 @@ public static class CodeEmitter
     {
         EmitBuildFormatOptions(builder, model);
         builder.AppendLine();
-        EmitValidateReader(builder);
+        EmitValidateReader(builder, model);
     }
 
     private static void EmitBuildFormatOptions(StringBuilder builder, TargetClassModel model)
@@ -330,7 +337,7 @@ public static class CodeEmitter
         builder.AppendLine("    }");
     }
 
-    private static void EmitValidateReader(StringBuilder builder)
+    private static void EmitValidateReader(StringBuilder builder, TargetClassModel model)
     {
         builder.AppendLine("    /// <summary>");
         builder.AppendLine(
@@ -364,6 +371,19 @@ public static class CodeEmitter
             "            throw new global::System.IO.InvalidDataException($\"Schema nesting depth {maxDepth} exceeds maximum allowed {options.MaxNestingDepth}.\");"
         );
         builder.AppendLine("        }");
+        if (model.Properties.Length > 0)
+        {
+            builder.AppendLine();
+            builder.AppendLine(
+                "        var fileFieldsForTypeValidation = reader.Schema.DataFields;"
+            );
+            foreach (LeafColumn col in EmissionPlan.For(model).Columns)
+            {
+                builder.AppendLine(
+                    $"        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_{col.Slot});"
+                );
+            }
+        }
         builder.AppendLine("    }");
         builder.AppendLine();
         builder.AppendLine(

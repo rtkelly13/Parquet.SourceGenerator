@@ -141,7 +141,14 @@ internal static class SchemaComponent
                 "            && string.Equals(fileFields[index].Path.ToString(), expectedPath, global::System.StringComparison.OrdinalIgnoreCase))"
             );
             builder.AppendLine("        {");
-            builder.AppendLine("            return fileFields[index];");
+            builder.AppendLine("            var field = fileFields[index];");
+            builder.AppendLine("            if (field.ClrType != expected.ClrType)");
+            builder.AppendLine("            {");
+            builder.AppendLine(
+                "                throw new global::System.IO.InvalidDataException($\"Column '{field.Path}' type '{field.ClrType}' does not match expected '{expected.ClrType}'.\");"
+            );
+            builder.AppendLine("            }");
+            builder.AppendLine("            return field;");
             builder.AppendLine("        }");
             builder.AppendLine();
             builder.AppendLine("        if (byName is null)");
@@ -170,6 +177,12 @@ internal static class SchemaComponent
             builder.AppendLine();
             builder.AppendLine("        if (byName.TryGetValue(expectedPath, out var matched))");
             builder.AppendLine("        {");
+            builder.AppendLine("            if (matched.ClrType != expected.ClrType)");
+            builder.AppendLine("            {");
+            builder.AppendLine(
+                "                throw new global::System.IO.InvalidDataException($\"Column '{matched.Path}' type '{matched.ClrType}' does not match expected '{expected.ClrType}'.\");"
+            );
+            builder.AppendLine("            }");
             builder.AppendLine("            return matched;");
             builder.AppendLine("        }");
             builder.AppendLine();
@@ -203,7 +216,14 @@ internal static class SchemaComponent
                 "            && string.Equals(fileFields[index].Name, expected.Name, global::System.StringComparison.OrdinalIgnoreCase))"
             );
             builder.AppendLine("        {");
-            builder.AppendLine("            return fileFields[index];");
+            builder.AppendLine("            var field = fileFields[index];");
+            builder.AppendLine("            if (field.ClrType != expected.ClrType)");
+            builder.AppendLine("            {");
+            builder.AppendLine(
+                "                throw new global::System.IO.InvalidDataException($\"Column '{field.Name}' type '{field.ClrType}' does not match expected '{expected.ClrType}'.\");"
+            );
+            builder.AppendLine("            }");
+            builder.AppendLine("            return field;");
             builder.AppendLine("        }");
             builder.AppendLine();
             builder.AppendLine(
@@ -240,6 +260,12 @@ internal static class SchemaComponent
             builder.AppendLine();
             builder.AppendLine("        if (byName.TryGetValue(expected.Name, out var match))");
             builder.AppendLine("        {");
+            builder.AppendLine("            if (match.ClrType != expected.ClrType)");
+            builder.AppendLine("            {");
+            builder.AppendLine(
+                "                throw new global::System.IO.InvalidDataException($\"Column '{match.Name}' type '{match.ClrType}' does not match expected '{expected.ClrType}'.\");"
+            );
+            builder.AppendLine("            }");
             builder.AppendLine("            return match;");
             builder.AppendLine("        }");
             builder.AppendLine();
@@ -260,5 +286,77 @@ internal static class SchemaComponent
             builder.AppendLine("        return expected;");
             builder.AppendLine("    }");
         }
+    }
+
+    /// <summary>
+    /// Emits validation for the physical type recorded in every row-group column chunk.
+    /// </summary>
+    /// <remarks>
+    /// Schema fields expose a CLR projection, but a hostile footer can retain the expected schema
+    /// while changing a column chunk's physical type. The generated readers must reject that
+    /// mismatch before asking Parquet.Net to allocate or decode a column buffer.
+    /// </remarks>
+    public static void EmitValidatePhysicalType(StringBuilder builder)
+    {
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine(
+            "    /// Validates that a present column chunk retains the physical type declared by the generated schema."
+        );
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    private static void ValidatePhysicalType(");
+        builder.AppendLine("        global::Parquet.ParquetReader reader,");
+        builder.AppendLine("        global::Parquet.Schema.DataField[] fileFields,");
+        builder.AppendLine("        global::Parquet.Schema.DataField expected)");
+        builder.AppendLine("    {");
+        builder.AppendLine("        string expectedPath = expected.Path.ToString();");
+        builder.AppendLine("        int fieldIndex = -1;");
+        builder.AppendLine("        for (int i = 0; i < fileFields.Length; i++)");
+        builder.AppendLine("        {");
+        builder.AppendLine(
+            "            if (string.Equals(fileFields[i].Path.ToString(), expectedPath, global::System.StringComparison.OrdinalIgnoreCase))"
+        );
+        builder.AppendLine("            {");
+        builder.AppendLine("                fieldIndex = i;");
+        builder.AppendLine("                break;");
+        builder.AppendLine("            }");
+        builder.AppendLine("        }");
+        builder.AppendLine("        if (fieldIndex < 0)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            if (expected.IsNullable) return;");
+        builder.AppendLine(
+            "            throw new global::System.IO.InvalidDataException($\"Required column '{expectedPath}' was not found in the Parquet file schema.\");"
+        );
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        var schemaElement = fileFields[fieldIndex].SchemaElement;");
+        builder.AppendLine(
+            "        if (schemaElement is null) throw new global::System.IO.InvalidDataException($\"Column '{expectedPath}' has no physical type in the Parquet file schema.\");"
+        );
+        builder.AppendLine("        var expectedPhysicalType = schemaElement.Type;");
+        builder.AppendLine(
+            "        for (int rowGroup = 0; rowGroup < reader.RowGroupCount; rowGroup++)"
+        );
+        builder.AppendLine("        {");
+        builder.AppendLine(
+            "            if ((uint)rowGroup >= (uint)reader.Metadata.RowGroups.Count) throw new global::System.IO.InvalidDataException($\"Row group {rowGroup} is missing from the Parquet footer metadata.\");"
+        );
+        builder.AppendLine(
+            "            var columns = reader.Metadata.RowGroups[rowGroup].Columns;"
+        );
+        builder.AppendLine(
+            "            if ((uint)fieldIndex >= (uint)columns.Count) throw new global::System.IO.InvalidDataException($\"Column '{expectedPath}' is missing from row group {rowGroup} metadata.\");"
+        );
+        builder.AppendLine("            var metadata = columns[fieldIndex].MetaData;");
+        builder.AppendLine(
+            "            if (metadata is null) throw new global::System.IO.InvalidDataException($\"Column '{expectedPath}' has no metadata in row group {rowGroup}.\");"
+        );
+        builder.AppendLine("            if (metadata.Type != expectedPhysicalType)");
+        builder.AppendLine("            {");
+        builder.AppendLine(
+            "                throw new global::System.IO.InvalidDataException($\"Column '{expectedPath}' physical type '{metadata.Type}' does not match expected '{expectedPhysicalType}' for CLR type '{expected.ClrType}' in row group {rowGroup}.\");"
+        );
+        builder.AppendLine("            }");
+        builder.AppendLine("        }");
+        builder.AppendLine("    }");
     }
 }
