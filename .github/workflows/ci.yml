@@ -185,6 +185,12 @@ jobs:
           fi
           exit $status
 
+      # #259: accepted property kinds and nesting shapes are derived from the parser and backend
+      # dials, then checked against the committed evidence map. A source change cannot silently
+      # widen the coverage envelope without adding evidence and reviewing its risk.
+      - name: Verify Coverage Envelope Map
+        run: dotnet run scripts/CoverageMap.cs
+
       # The shared action keeps the committed-byte hash gate ahead of generation and sends all
       # generated compatibility data to RUNNER_TEMP. Its structure is covered by a consistency test.
       - name: Verify and Generate Test Data
