@@ -31,6 +31,9 @@ jobs:
     runs-on: windows-latest
     env:
       METRICS_VERSION: 5.6.0
+      # Metrics 5.6.0 embeds the Roslyn 4.12.0 Workspaces.MSBuild assembly but
+      # omits its BuildHost-netcore content from the package.
+      METRICS_WORKSPACES_VERSION: 4.12.0
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -50,9 +53,23 @@ jobs:
         run: |
           set -euo pipefail
           nuget install Microsoft.CodeAnalysis.Metrics -Version "$METRICS_VERSION" -OutputDirectory "$RUNNER_TEMP/pkg"
-          test -x "$RUNNER_TEMP/pkg/Microsoft.CodeAnalysis.Metrics.$METRICS_VERSION/Metrics/Metrics.exe"
+          nuget install Microsoft.CodeAnalysis.Workspaces.MSBuild -Version "$METRICS_WORKSPACES_VERSION" -OutputDirectory "$RUNNER_TEMP/pkg"
+
+          metrics_root="$RUNNER_TEMP/pkg/Microsoft.CodeAnalysis.Metrics.$METRICS_VERSION"
+          build_host_source="$RUNNER_TEMP/pkg/Microsoft.CodeAnalysis.Workspaces.MSBuild.$METRICS_WORKSPACES_VERSION/contentFiles/any/any/BuildHost-netcore"
+          build_host_destination="$metrics_root/Metrics/BuildHost-netcore"
+
+          test -s "$metrics_root/Metrics/Metrics.exe"
+          test -s "$build_host_source/Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.dll"
+          test -s "$build_host_source/Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.deps.json"
+          test -s "$build_host_source/Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.runtimeconfig.json"
+
+          mkdir -p "$build_host_destination"
+          cp -R "$build_host_source/." "$build_host_destination/"
+          test -s "$build_host_destination/Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.dll"
 
       - name: Run Metrics.exe over both generator projects
+        id: run_metrics
         shell: bash
         run: |
           set -euo pipefail
@@ -64,6 +81,7 @@ jobs:
           test -s "$RUNNER_TEMP/oracle.xml"
 
       - name: Compare against checked-in baselines
+        id: compare
         shell: bash
         run: |
           set -uo pipefail
@@ -94,7 +112,7 @@ jobs:
             oracle-report.md
           if-no-files-found: warn
 
-      - name: Open or update the disagreement issue
+      - name: Open or update the oracle failure issue
         if: failure()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -102,20 +120,35 @@ jobs:
         shell: bash
         run: |
           set -uo pipefail
-          gh label create metrics-oracle --color B60205 \
-            --description "Metrics.exe and scripts/CodeMetrics.cs disagree" --force >/dev/null 2>&1 || true
-          title="metrics oracle: Metrics.exe disagrees with CodeMetrics.cs baselines"
-          body="The nightly Metrics.exe oracle (#254) did not agree with the checked-in
-          \`metrics/*.metrics.txt\` baselines. The per-PR gate may be measuring the wrong
-          numbers until this is resolved.
+          metrics_outcome="${{ steps.run_metrics.outcome }}"
+          compare_outcome="${{ steps.compare.outcome }}"
 
-          [Run]($RUN_URL) — full report in the \`metrics-oracle-report\` artifact.
+          if [ "$metrics_outcome" = "success" ] && [ "$compare_outcome" != "success" ]; then
+            label=metrics-oracle
+            title="metrics oracle: Metrics.exe disagrees with CodeMetrics.cs baselines"
+            body="The nightly Metrics.exe oracle (#254) did not agree with the checked-in
+            \`metrics/*.metrics.txt\` baselines. The per-PR gate may be measuring the wrong
+            numbers until this is resolved.
 
-          Tolerance: MI ±2, every other metric exact; type-level only (see
-          docs/24-METRICS-ORACLE.md for why)."
-          existing=$(gh issue list --state open --label metrics-oracle --json number --jq '.[0].number // empty')
-          if [ -n "$existing" ]; then
-            gh issue comment "$existing" --body "Disagreement recurred: [run]($RUN_URL)"
+            [Run]($RUN_URL) — full report in the \`metrics-oracle-report\` artifact.
+
+            Tolerance: MI ±2, every other metric exact; type-level only (see
+            docs/24-METRICS-ORACLE.md for why)."
           else
-            gh issue create --title "$title" --body "$body" --label metrics-oracle
+            label=metrics-oracle-infrastructure
+            title="metrics oracle: Metrics.exe execution failed"
+            body="The nightly Metrics.exe oracle could not complete its tool execution, so no metric comparison was performed.
+
+            [Run]($RUN_URL) — inspect the Metrics.exe provisioning and execution logs.
+
+            This is an oracle infrastructure failure, not evidence that Metrics.exe disagrees with CodeMetrics.cs."
+          fi
+
+          gh label create "$label" --color B60205 \
+            --description "Metrics oracle failure requiring investigation" --force >/dev/null 2>&1 || true
+          existing=$(gh issue list --state open --label "$label" --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh issue create --title "$title" --body "$body" --label "$label"
           fi
