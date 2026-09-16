@@ -23,8 +23,9 @@ last self-reported number in the quality stack without a cross-check.
 
 `.github/workflows/metrics-oracle.yml`, nightly (`30 5 * * *`) plus manual dispatch:
 
-1. `nuget install Microsoft.CodeAnalysis.Metrics` (version pinned in the workflow env) and
-   run `Metrics.exe` over both generator projects in one invocation, emitting one XML report.
+1. `nuget install Microsoft.CodeAnalysis.Metrics` (version pinned in the workflow env), stage
+   the matching Roslyn MSBuild build host, and run `Metrics.exe` over both generator projects in
+   one invocation, emitting one XML report.
 2. `scripts/MetricsOracleCompare.cs` reads the XML and the matching `metrics/*.metrics.txt`
    baseline and compares them **per type**: MI within ±2 (the layer-1 cross-machine policy —
    the index bottoms out in a cube root), CC / CL / SLOC exact.
@@ -62,6 +63,29 @@ This comparison has been exercised against a synthetic report built from the rea
 first night, the issue it opens *is* the deliverable: per #254's acceptance criteria, the
 discrepancy is investigated and documented **before the job is marked green**, and a
 tolerance is never chosen to make an existing disagreement pass.
+
+## Provisioning the vendor tool
+
+The `Microsoft.CodeAnalysis.Metrics` 5.6.0 package contains `Metrics.exe` and its Roslyn
+assemblies, but it does not contain the `BuildHost-netcore` payload required by its embedded
+`Microsoft.CodeAnalysis.Workspaces.MSBuild` assembly. That assembly resolves the host relative to
+its application directory, so merely installing the Metrics package leaves the executable
+unusable with the recurring error:
+
+```
+The build host could not be found at '.../Metrics/BuildHost-netcore/Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.dll'
+```
+
+The workflow therefore installs `Microsoft.CodeAnalysis.Workspaces.MSBuild` **4.12.0** — the
+version matching the Workspaces assembly embedded in Metrics 5.6.0 — and copies its complete
+`contentFiles/any/any/BuildHost-netcore` directory next to `Metrics.exe`. The host directory is
+copied in full because its runtime configuration, dependency manifest and companion assemblies
+are part of the launch contract. The workflow checks those files before invoking the vendor tool,
+so a future package change fails at provisioning with an actionable error.
+
+Failures before the comparison are reported with the separate `metrics-oracle-infrastructure`
+label. Only a successful Metrics.exe run followed by a failed comparison is reported as a genuine
+`metrics-oracle` disagreement.
 
 Refs: #251 (epic), #253 (layer 1), #254 (this oracle), #21 (the tooling split this page
 schedules around).

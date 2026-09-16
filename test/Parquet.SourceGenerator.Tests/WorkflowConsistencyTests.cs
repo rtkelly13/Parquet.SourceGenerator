@@ -51,6 +51,52 @@ public sealed class WorkflowConsistencyTests
         );
     }
 
+    [Fact]
+    public void MetricsOracleStagesTheMatchingRoslynBuildHostAndClassifiesProvisioningFailures()
+    {
+        string root = FindRepositoryRoot();
+        string workflow = Read(root, ".github", "workflows", "metrics-oracle.yml");
+
+        workflow.ShouldContain("METRICS_VERSION: 5.6.0");
+        workflow.ShouldContain("METRICS_WORKSPACES_VERSION: 4.12.0");
+        workflow.ShouldContain(
+            "nuget install Microsoft.CodeAnalysis.Workspaces.MSBuild -Version \"$METRICS_WORKSPACES_VERSION\""
+        );
+        workflow.ShouldContain("contentFiles/any/any/BuildHost-netcore");
+        workflow.ShouldContain(
+            "test -s \"$build_host_source/Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.dll\""
+        );
+        workflow.ShouldContain("cp -R \"$build_host_source/.\" \"$build_host_destination/\"");
+        workflow.ShouldContain(
+            "test -s \"$build_host_destination/Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.dll\""
+        );
+        workflow.ShouldContain("metrics_outcome=\"${{ steps.run_metrics.outcome }}\"");
+        workflow.ShouldContain(
+            "if [ \"$metrics_outcome\" = \"success\" ] && [ \"$compare_outcome\" != \"success\" ]; then"
+        );
+        workflow.ShouldContain("label=metrics-oracle-infrastructure");
+        workflow.ShouldContain("Metrics.exe execution failed");
+        workflow.ShouldContain(
+            "gh issue create --title \"$title\" --body \"$body\" --label \"$label\""
+        );
+
+        int installIndex = workflow.IndexOf(
+            "nuget install Microsoft.CodeAnalysis.Workspaces.MSBuild",
+            StringComparison.Ordinal
+        );
+        int hostCheckIndex = workflow.IndexOf(
+            "test -s \"$build_host_destination/Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.dll\"",
+            StringComparison.Ordinal
+        );
+        int runIndex = workflow.IndexOf(
+            "- name: Run Metrics.exe over both generator projects",
+            StringComparison.Ordinal
+        );
+        installIndex.ShouldBeGreaterThanOrEqualTo(0);
+        hostCheckIndex.ShouldBeGreaterThan(installIndex);
+        runIndex.ShouldBeGreaterThan(hostCheckIndex);
+    }
+
     private static void AssertWorkflowDelegatesOnce(string workflow)
     {
         Count(workflow, $"uses: {SharedAction}").ShouldBe(1);
