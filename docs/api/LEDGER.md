@@ -24,6 +24,19 @@ The rule, the three surfaces and the author process are in
 - **Rationale:** Threads the value-equatable MSBuild configuration through both incremental
   generators into their emitters without exposing the configuration type to package consumers.
 
+### 2026-09-16 — `ParquetSerializerOptions` page decompression limits (#315)
+
+- **Surface:** unshipped
+- **Semver:** additive-minor
+- **Issue:** [#315](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/315)
+- **Rationale:** Adds `MaxDecompressedPageSize` (default 67,108,864 bytes / 64 MiB) and
+  `MaxDecompressionExpansionRatio` (default 500) to bound hostile compressed-page allocations and
+  decompression amplification before Parquet.Net reads page payloads.
+- **Alternatives considered:** Passing limits through `ParquetOptions` was rejected because
+  Parquet.Net 6.1.0 exposes no decompression-limit hook and the legacy API has the same gap.
+  Checking whole-column metadata was rejected because it would reject valid multi-page columns;
+  the generated reader instead guards each page header at the upstream reader's seek boundary.
+
 ### 2026-09-14 — `ParquetSerializerOptions` defensive bounds and DoS mitigation limits (#287)
 
 - **Surface:** unshipped

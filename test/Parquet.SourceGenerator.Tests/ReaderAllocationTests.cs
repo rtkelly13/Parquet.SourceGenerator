@@ -49,6 +49,23 @@ public sealed class ReaderAllocationTests
     }
 
     [Fact]
+    public void EmittedReaderGuardsPageDecompressionBeforeParquetNetReadsIt()
+    {
+        var model = new TargetClassModel(
+            Namespace: "TestNamespace",
+            ClassName: "TestEntity",
+            Properties: new EquatableArray<PropertyModel>(SingleProperty)
+        );
+
+        string source = CodeEmitter.EmitSource(model);
+
+        source.ShouldContain("CreateGuardedReadStream");
+        source.ShouldContain("guardedStream.Activate()");
+        source.ShouldContain("MaxDecompressedPageSize");
+        source.ShouldContain("MaxDecompressionExpansionRatio");
+    }
+
+    [Fact]
     public async Task ReadsEveryRowAcrossManyRowGroups()
     {
         // 7 rows at 2 per group => 4 row groups, the last one partial. Reading back the full set in

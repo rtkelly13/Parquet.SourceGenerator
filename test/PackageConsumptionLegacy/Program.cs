@@ -127,6 +127,7 @@ internal static class Program
             !await CompressionIsAppliedAsync()
             || !await BatchedWriteRoundTripsAsync()
             || !await SchemaEvolutionRoundTripsAsync()
+            || !await DecompressionLimitIsAppliedAsync()
         )
         {
             return 1;
@@ -168,6 +169,55 @@ internal static class Program
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// The classic generated reader must reject a page from its header before Parquet.Net allocates
+    /// the decompression buffer. This runs against the actual Parquet.Net 4.25 package path rather
+    /// than only checking the emitted source text.
+    /// </summary>
+    private static async Task<bool> DecompressionLimitIsAppliedAsync()
+    {
+        List<Measurement> rows = Enumerable
+            .Range(0, 2_000)
+            .Select(i => new Measurement { Id = i, Label = new string('x', 512) })
+            .ToList();
+
+        using var stream = new MemoryStream();
+        await rows.WriteParquetAsync(stream);
+        var options = new ParquetSerializerOptions { MaxDecompressedPageSize = 1 };
+
+        try
+        {
+            stream.Position = 0;
+            await MeasurementParquetLegacyExtensions.ReadParquetAsync(stream, options);
+            Console.Error.WriteLine("FAILED: legacy page-size limit did not reject the page.");
+            return false;
+        }
+        catch (InvalidDataException exception)
+        {
+            if (!exception.Message.Contains("uncompressed size", StringComparison.Ordinal))
+            {
+                Console.Error.WriteLine(
+                    $"FAILED: legacy page-size limit raised the wrong error: {exception.Message}"
+                );
+                return false;
+            }
+        }
+
+        try
+        {
+            stream.Position = 0;
+            await MeasurementParquetLegacyExtensions.ReadParquetArrayAsync(stream, options);
+            Console.Error.WriteLine(
+                "FAILED: legacy array page-size limit did not reject the page."
+            );
+            return false;
+        }
+        catch (InvalidDataException)
+        {
+            return true;
+        }
     }
 
     /// <summary>
