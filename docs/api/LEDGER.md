@@ -16,6 +16,14 @@ The rule, the three surfaces and the author process are in
 
 <!-- Add new entries directly below this line, newest first. -->
 
+### 2026-09-17 — analyzer-config generator configuration seam (#224)
+
+- **Surface:** seam
+- **Semver:** internal
+- **Issue:** [#224](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/224)
+- **Rationale:** Threads the value-equatable MSBuild configuration through both incremental
+  generators into their emitters without exposing the configuration type to package consumers.
+
 ### 2026-09-14 — `ParquetSerializerOptions` defensive bounds and DoS mitigation limits (#287)
 
 - **Surface:** unshipped

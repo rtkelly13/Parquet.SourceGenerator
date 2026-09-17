@@ -35,10 +35,16 @@ public sealed class ParquetIncrementalGenerator : IIncrementalGenerator
             );
 
         // 2. Register source output emission & diagnostic reporting
+        IncrementalValueProvider<GeneratorConfiguration> configuration =
+            context.AnalyzerConfigOptionsProvider.Select(
+                static (provider, _) => GeneratorConfiguration.From(provider)
+            );
+
         context.RegisterSourceOutput(
-            targets,
-            static (spc, result) =>
+            targets.Combine(configuration),
+            static (spc, pair) =>
             {
+                TargetParserResult result = pair.Left;
                 // Report compiler diagnostics (PARQ001, PARQ002, PARQ003)
                 for (int i = 0; i < result.Diagnostics.Length; i++)
                 {
@@ -57,7 +63,7 @@ public sealed class ParquetIncrementalGenerator : IIncrementalGenerator
                         ? result.Model.ClassName
                         : $"{result.Model.Namespace}.{result.Model.ClassName}";
                     string hintName = $"{prefix}.ParquetSerializer.g.cs";
-                    string sourceCode = CodeEmitter.EmitSource(result.Model);
+                    string sourceCode = CodeEmitter.EmitSource(result.Model, pair.Right);
                     spc.AddSource(hintName, sourceCode);
                 }
             }

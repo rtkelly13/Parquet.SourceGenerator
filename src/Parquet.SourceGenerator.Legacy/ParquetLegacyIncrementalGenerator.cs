@@ -27,10 +27,16 @@ public sealed class ParquetLegacyIncrementalGenerator : IIncrementalGenerator
             );
 
         // 2. Register source output emission & diagnostic reporting
+        IncrementalValueProvider<GeneratorConfiguration> configuration =
+            context.AnalyzerConfigOptionsProvider.Select(
+                static (provider, _) => GeneratorConfiguration.From(provider)
+            );
+
         context.RegisterSourceOutput(
-            targets,
-            static (spc, result) =>
+            targets.Combine(configuration),
+            static (spc, pair) =>
             {
+                TargetParserResult result = pair.Left;
                 // Report compiler diagnostics
                 for (int i = 0; i < result.Diagnostics.Length; i++)
                 {
@@ -44,7 +50,7 @@ public sealed class ParquetLegacyIncrementalGenerator : IIncrementalGenerator
                         ? result.Model.ClassName
                         : $"{result.Model.Namespace}.{result.Model.ClassName}";
                     string hintName = $"{prefix}.ParquetLegacySerializer.g.cs";
-                    string sourceCode = LegacyCodeEmitter.EmitSource(result.Model);
+                    string sourceCode = LegacyCodeEmitter.EmitSource(result.Model, pair.Right);
                     spc.AddSource(hintName, sourceCode);
                 }
             }
