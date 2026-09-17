@@ -97,6 +97,10 @@ public readonly struct ParquetColumn<T>
 `Path` rather than `Name` alone is the primary key, because #176 M2 has landed and leaf columns
 inside nested groups exist on `main` today.
 
+The column catalog in #220 is deferred. This catalog-dependent part of the pushdown proposal is
+therefore post-freeze work, not a `0.1.0` delivery commitment. Keep the current generated surface
+until the follow-up settles the descriptor contract.
+
 ### 3.2 Filters — shipped, inspectable, allocation-irrelevant
 
 ```csharp
