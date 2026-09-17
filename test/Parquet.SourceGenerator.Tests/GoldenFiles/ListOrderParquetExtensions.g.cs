@@ -3544,7 +3544,7 @@ public readonly struct ListOrderParquetMemorySource
 /// </summary>
 /// <remarks>
 /// There is deliberately no <c>Parallel</c> member: no parallel reader accepts a
-/// predicate yet (issue #222). When one does, this type gains the member.
+/// predicate yet. Parallel predicate selection is a post-freeze follow-up tracked by #222.
 /// </remarks>
 public readonly struct ListOrderParquetFilteredSource
 {
