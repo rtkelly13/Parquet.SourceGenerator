@@ -64,6 +64,10 @@
         <ProjectReference Include="..\Parquet.SourceGenerator.Attributes\Parquet.SourceGenerator.Attributes.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+        <None Include="build/Parquet.SourceGenerator.props" Pack="true" PackagePath="build/" />
+    </ItemGroup>
+
     <Target Name="PackBuildOutputs">
         <ItemGroup>
             <TfmSpecificPackageFile Include="$(TargetPath)" PackagePath="analyzers/dotnet/cs" />

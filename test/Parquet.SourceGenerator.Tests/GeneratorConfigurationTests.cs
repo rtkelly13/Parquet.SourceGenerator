@@ -1,0 +1,71 @@
+using System.Collections.Generic;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Diagnostics;
+using Parquet.SourceGenerator.Emitter;
+using Parquet.SourceGenerator.Models;
+using Shouldly;
+using Xunit;
+
+namespace Parquet.SourceGenerator.Tests;
+
+public sealed class GeneratorConfigurationTests
+{
+    [Fact]
+    public void ReadsFeatureLevelFromGlobalAnalyzerConfig()
+    {
+        var provider = new TestOptionsProvider(
+            new Dictionary<string, string>
+            {
+                ["build_property.ParquetGeneratorFeatureLevel"] = "Level3_ModernCSharp",
+            }
+        );
+
+        GeneratorConfiguration.From(provider).FeatureLevel.ShouldBe("Level3_ModernCSharp");
+    }
+
+    [Fact]
+    public void ConfiguredFeatureLevelIsStampedInEmittedSource()
+    {
+        var model = new TargetClassModel(
+            Namespace: "TestNamespace",
+            ClassName: "Widget",
+            Properties: EquatableArray<PropertyModel>.Empty
+        );
+
+        string source = CodeEmitter.EmitSource(
+            model,
+            new GeneratorConfiguration("Level2_CompoundPreview")
+        );
+
+        source.ShouldContain("// ParquetGeneratorFeatureLevel: Level2_CompoundPreview");
+    }
+
+    private sealed class TestOptionsProvider : AnalyzerConfigOptionsProvider
+    {
+        private readonly AnalyzerConfigOptions options;
+
+        public TestOptionsProvider(IReadOnlyDictionary<string, string> values)
+        {
+            options = new TestOptions(values);
+        }
+
+        public override AnalyzerConfigOptions GlobalOptions => options;
+
+        public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) => options;
+
+        public override AnalyzerConfigOptions GetOptions(AdditionalText text) => options;
+    }
+
+    private sealed class TestOptions : AnalyzerConfigOptions
+    {
+        private readonly IReadOnlyDictionary<string, string> values;
+
+        public TestOptions(IReadOnlyDictionary<string, string> values)
+        {
+            this.values = values;
+        }
+
+        public override bool TryGetValue(string key, out string value) =>
+            values.TryGetValue(key, out value!);
+    }
+}

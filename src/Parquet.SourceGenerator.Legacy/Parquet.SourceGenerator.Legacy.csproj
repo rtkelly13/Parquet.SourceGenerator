@@ -36,6 +36,14 @@
     </ItemGroup>
 
     <ItemGroup>
+        <None
+            Include="build/Parquet.SourceGenerator.Legacy.props"
+            Pack="true"
+            PackagePath="build/"
+        />
+    </ItemGroup>
+
+    <ItemGroup>
         <Compile
             Include="..\Parquet.SourceGenerator\Diagnostics\*.cs"
             Link="Diagnostics\%(Filename)%(Extension)"

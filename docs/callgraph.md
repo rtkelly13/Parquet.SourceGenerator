@@ -27,6 +27,7 @@ graph TD
     tparquetsourcegeneratoremitterreadbuildercomponent_052["Parquet.SourceGenerator.Emitter.ReadBuilderComponent"]
     tparquetsourcegeneratoremitterrowgrouppruningcomponent_056["Parquet.SourceGenerator.Emitter.RowGroupPruningComponent"]
     tparquetsourcegeneratoremittersortedrowgrouppruningcomponent_062["Parquet.SourceGenerator.Emitter.SortedRowGroupPruningComponent"]
+    tparquetsourcegeneratormodelsgeneratorconfiguration_053["Parquet.SourceGenerator.Models.GeneratorConfiguration"]
     tparquetsourcegeneratormodelssortkeyeligibility_049["Parquet.SourceGenerator.Models.SortKeyEligibility"]
     tparquetsourcegeneratorparquetincrementalgenerator_051["Parquet.SourceGenerator.ParquetIncrementalGenerator"]
     tparquetsourcegeneratorparsertargetparser_043["Parquet.SourceGenerator.Parser.TargetParser"]
@@ -64,6 +65,7 @@ graph TD
     tparquetsourcegeneratoremittersortedrowgrouppruningcomponent_062 -->|1| tparquetsourcegeneratormodelssortkeyeligibility_049
     tparquetsourcegeneratorparquetincrementalgenerator_051 -->|2| tparquetsourcegeneratoremitterarrowbridgeemitter_050
     tparquetsourcegeneratorparquetincrementalgenerator_051 -->|1| tparquetsourcegeneratoremittercodeemitter_043
+    tparquetsourcegeneratorparquetincrementalgenerator_051 -->|1| tparquetsourcegeneratormodelsgeneratorconfiguration_053
     tparquetsourcegeneratorparquetincrementalgenerator_051 -->|1| tparquetsourcegeneratorparsertargetparser_043
     tparquetsourcegeneratorparsertargetparser_043 -->|1| tparquetsourcegeneratormodelssortkeyeligibility_049
 ```
