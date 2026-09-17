@@ -4,8 +4,11 @@
 
 Keep format-shaped orchestration in generated code. The generated extension owns
 the `ParquetReader`/`ParquetWriter` calls, backend-specific field handling, and the typed
-materialization loop. The shipped Attributes package owns only consumer-facing annotations,
-options, and value types.
+materialization loop. The shipped Attributes package owns consumer-facing annotations, options,
+value types, and the existing low-level extraction and column-transformation helpers
+(`NullableColumnExtractor` and `VectorizedColumnTransforms`). Those helpers are retained in the
+Attributes package as existing runtime behavior; this decision does not reclassify them as
+annotations or propose removing them.
 
 This is a deliberate scope decision, not a claim that a shared boundary could never work. The
 modern and classic emitters target materially different Parquet.Net APIs, while the current public
@@ -22,4 +25,6 @@ allocation/time denominator. End-to-end throughput alone is insufficient because
 encoding and compression dominate that measurement.
 
 Until that evidence exists, generated code remains the lower-risk boundary. Issues #220–#222 remain
-design work for a later release rather than dependencies of the current release.
+design work for a later release rather than dependencies of the current release. The earlier
+pushdown proposal is retained as a future design reference and is explicitly superseded for the
+current release by this decision.

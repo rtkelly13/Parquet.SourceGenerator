@@ -116,6 +116,7 @@ The documentation is organized into three distinct tiers based on audience and i
 14. **[20 - Unified Pushdown & the Generated/Shipped Boundary](./20-UNIFIED-PUSHDOWN-API.md)**
      - One inspectable filter replacing four pushdown mechanisms; capability declared by attribute, not at the call site.
      - What stays generated, what ships, and the measurements that decide it.
+     - Its current-release boundary decision is recorded in [31 - Generated/Shipped Boundary Decision](./31-GENERATED-SHIPPED-BOUNDARY-DECISION.md).
 
 15. **[21 - Code Metrics Baselines & The Complexity Ratchet](./21-CODE-METRICS.md)**
      - Checked-in Roslyn metrics baselines under `metrics/`, gated on drift rather than on absolute values.
