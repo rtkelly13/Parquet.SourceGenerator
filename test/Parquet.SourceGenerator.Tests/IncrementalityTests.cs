@@ -245,6 +245,10 @@ public sealed class IncrementalityTests
         nested.ShouldBe(equalNested);
         nested.GetHashCode().ShouldBe(equalNested.GetHashCode());
         nested.ShouldNotBe(changedNested);
+        nested.ShouldNotBe(nested with { Element = leaf });
+        nested.ShouldNotBe(nested with { MapValue = leaf });
+        nested.ShouldNotBe(nested with { IsSortKey = true });
+        nested.ShouldNotBe(nested with { CompoundIsValueType = false });
 
         TargetClassModel first = new("Demo", "Model", new EquatableArray<PropertyModel>([nested]));
         TargetClassModel equal = new(
