@@ -10,8 +10,8 @@ generated-code metrics. It emitted a descriptor table and a one-time materialize
 same `Field` tree during static initialization. The generated read and write paths remained
 unchanged and the complete golden regression suite continued to compile and pass.
 
-The descriptor table is not a useful 0.1 optimization when emitted into every generated extension:
-the per-type descriptor struct, arrays, and materializer cost more executable code than the
+The descriptor table is not an effective optimization when emitted into every generated extension.
+The per-type descriptor struct, arrays, and materializer cost more executable code than the
 constructor tree they replace.
 
 | Golden model | Direct schema ELOC | Descriptor schema ELOC | Result |
@@ -27,11 +27,10 @@ not appropriate to claim a throughput improvement from a static-initialization-o
 
 ## Decision
 
-Close #291 for the 0.1 release as evaluated and deferred. Keep the direct constructor form as the
-smaller generated representation. Revisit descriptor encoding only with a shared runtime schema
-factory (or an equivalent support assembly) that can be amortized across generated types. That
-follow-up must measure both generated ELOC and cold-start/static-initialization cost before it can
-become a release requirement.
+Close #291 as evaluated and deferred. Keep the direct constructor form as the smaller generated
+representation. Revisit descriptor encoding only with a shared runtime schema factory, or an
+equivalent support assembly, that can be amortized across generated types.
 
-This preserves the existing `GoldenCodeGenRegressionTests`, generated API baselines, metrics
-baselines, Native AOT surface, and both backend compatibility paths for 0.1.
+The follow-up must measure generated ELOC and cold-start/static-initialization cost before it can
+become a release requirement. The current form preserves the existing `GoldenCodeGenRegressionTests`,
+generated API baselines, metrics baselines, Native AOT surface, and both backend compatibility paths.
