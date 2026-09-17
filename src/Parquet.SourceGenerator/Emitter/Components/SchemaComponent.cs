@@ -367,7 +367,7 @@ internal static class SchemaComponent
     public static void EmitValidateColumnChunkBounds(StringBuilder builder)
     {
         builder.AppendLine(
-            "    private static long GetFooterStart(global::System.IO.Stream stream)"
+            "    private static async global::System.Threading.Tasks.Task<long> GetFooterStartAsync(global::System.IO.Stream stream, global::System.Threading.CancellationToken cancellationToken)"
         );
         builder.AppendLine("    {");
         builder.AppendLine("        if (!stream.CanSeek || stream.Length < 8)");
@@ -385,7 +385,7 @@ internal static class SchemaComponent
         builder.AppendLine("            while (read < footerLengthBytes.Length)");
         builder.AppendLine("            {");
         builder.AppendLine(
-            "                int count = stream.Read(footerLengthBytes, read, footerLengthBytes.Length - read);"
+            "                int count = await stream.ReadAsync(footerLengthBytes, read, footerLengthBytes.Length - read, cancellationToken).ConfigureAwait(false);"
         );
         builder.AppendLine("                if (count == 0)");
         builder.AppendLine("                {");
@@ -414,7 +414,7 @@ internal static class SchemaComponent
         builder.AppendLine("    }");
         builder.AppendLine();
         builder.AppendLine(
-            "    private static void ValidateColumnChunkBounds(global::Parquet.ParquetReader reader, long footerStart)"
+            "    private static void ValidateColumnChunkBounds(global::Parquet.ParquetReader reader, long footerStart, int maxChunkCount)"
         );
         builder.AppendLine("    {");
         builder.AppendLine("        var fileMetadata = reader.Metadata;");
@@ -424,19 +424,19 @@ internal static class SchemaComponent
             "            throw new global::System.IO.InvalidDataException(\"Parquet footer metadata is missing.\");"
         );
         builder.AppendLine("        }");
-        builder.AppendLine("        int chunkCount = 0;");
+        builder.AppendLine("        long chunkCount = 0;");
         builder.AppendLine("        foreach (var rowGroup in fileMetadata.RowGroups)");
         builder.AppendLine("        {");
-        builder.AppendLine("            if (rowGroup.Columns.Count > int.MaxValue - chunkCount)");
+        builder.AppendLine("            if (maxChunkCount < 0 || rowGroup.Columns.Count > maxChunkCount - chunkCount)");
         builder.AppendLine("            {");
         builder.AppendLine(
-            "                throw new global::System.IO.InvalidDataException(\"Parquet footer contains too many column chunks.\");"
+            "                throw new global::System.IO.InvalidDataException($\"Parquet footer contains more than the maximum allowed {maxChunkCount} column chunks.\");"
         );
         builder.AppendLine("            }");
         builder.AppendLine("            chunkCount += rowGroup.Columns.Count;");
         builder.AppendLine("        }");
-        builder.AppendLine("        var starts = new long[chunkCount];");
-        builder.AppendLine("        var ends = new long[chunkCount];");
+        builder.AppendLine("        var starts = new long[checked((int)chunkCount)];");
+        builder.AppendLine("        var ends = new long[checked((int)chunkCount)];");
         builder.AppendLine("        int rangeCount = 0;");
         builder.AppendLine(
             "        for (int rowGroupIndex = 0; rowGroupIndex < fileMetadata.RowGroups.Count; rowGroupIndex++)"
@@ -481,6 +481,25 @@ internal static class SchemaComponent
         );
         builder.AppendLine("                }");
         builder.AppendLine("                long chunkStart = dataPageOffset;");
+        builder.AppendLine("                if (metadata.IndexPageOffset.HasValue)");
+        builder.AppendLine("                {");
+        builder.AppendLine("                    long indexPageOffset = metadata.IndexPageOffset.Value;");
+        builder.AppendLine(
+            "                    if (indexPageOffset < 4 || indexPageOffset >= footerStart)"
+        );
+        builder.AppendLine("                    {");
+        builder.AppendLine(
+            "                        throw new global::System.IO.InvalidDataException($\"Column chunk {columnIndex} in row group {rowGroupIndex} has index page offset {indexPageOffset} outside the file data bounds.\");"
+        );
+        builder.AppendLine("                    }");
+        builder.AppendLine("                    if (indexPageOffset > dataPageOffset)");
+        builder.AppendLine("                    {");
+        builder.AppendLine(
+            "                        throw new global::System.IO.InvalidDataException($\"Column chunk {columnIndex} in row group {rowGroupIndex} has an index page after its first data page.\");"
+        );
+        builder.AppendLine("                    }");
+        builder.AppendLine("                    chunkStart = indexPageOffset;");
+        builder.AppendLine("                }");
         builder.AppendLine("                if (metadata.DictionaryPageOffset.HasValue)");
         builder.AppendLine("                {");
         builder.AppendLine(
@@ -500,7 +519,7 @@ internal static class SchemaComponent
             "                        throw new global::System.IO.InvalidDataException($\"Column chunk {columnIndex} in row group {rowGroupIndex} has a dictionary page after its data page.\");"
         );
         builder.AppendLine("                    }");
-        builder.AppendLine("                    chunkStart = dictionaryPageOffset;");
+        builder.AppendLine("                    if (dictionaryPageOffset < chunkStart) chunkStart = dictionaryPageOffset;");
         builder.AppendLine("                }");
         builder.AppendLine(
             "                if (metadata.TotalCompressedSize > footerStart - chunkStart)"

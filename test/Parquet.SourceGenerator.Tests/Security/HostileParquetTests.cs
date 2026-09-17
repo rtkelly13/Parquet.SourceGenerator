@@ -25,6 +25,45 @@ public class HostileParquetTests
     private static readonly int[] TwoValuesArray = [100, 200];
 
     [Fact]
+    public async Task FooterValidationUsesAsynchronousReads()
+    {
+        using var written = new MemoryStream();
+        await new List<MultiRowGroupModel>
+        {
+            new() { Id = 1, Name = "async" },
+        }.WriteParquetAsync(written);
+
+        using var stream = new AsyncOnlySeekableStream(written.ToArray());
+        List<MultiRowGroupModel> rows =
+            await MultiRowGroupModelParquetExtensions.ReadParquetAsync(stream);
+
+        rows.ShouldHaveSingleItem();
+        rows[0].Id.ShouldBe(1);
+        rows[0].Name.ShouldBe("async");
+    }
+
+    private sealed class AsyncOnlySeekableStream : MemoryStream
+    {
+        public AsyncOnlySeekableStream(byte[] bytes)
+            : base(bytes, writable: false) { }
+
+        public override int Read(byte[] buffer, int offset, int count) =>
+            throw new NotSupportedException("Synchronous reads are disabled for this test stream.");
+
+        public override Task<int> ReadAsync(
+            byte[] buffer,
+            int offset,
+            int count,
+            System.Threading.CancellationToken cancellationToken
+        ) => base.ReadAsync(buffer, offset, count, cancellationToken);
+
+        public override ValueTask<int> ReadAsync(
+            Memory<byte> buffer,
+            System.Threading.CancellationToken cancellationToken = default
+        ) => base.ReadAsync(buffer, cancellationToken);
+    }
+
+    [Fact]
     public async Task RowGroupCountExceedsMaxThrowsInvalidDataException()
     {
         // Generate a valid file with 3 row groups (each size 2)
