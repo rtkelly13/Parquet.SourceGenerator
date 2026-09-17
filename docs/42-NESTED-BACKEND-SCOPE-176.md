@@ -3,10 +3,12 @@
 ## Decision
 
 The functional scope is declared by backend rather than by an unsupported promise of full parity.
+The AOT matrix currently proves flat models only, so this document does not claim AOT coverage for
+compound shapes.
 
 | Backend | Supported generated shapes |
 | --- | --- |
-| Modern Parquet.Net v6 | `StructField` and list-of-leaf/POCO paths covered by the golden and AOT work |
+| Modern Parquet.Net v6 | `StructField` and list-of-leaf/POCO paths covered by the golden corpus; Native AOT coverage remains flat-only |
 | Classic Parquet.Net v4/v5 | Flat generated models only |
 | Both backends | Maps and nested compound shapes outside the modern golden corpus are unsupported and must produce the existing diagnostic |
 
