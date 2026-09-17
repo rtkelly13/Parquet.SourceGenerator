@@ -277,7 +277,7 @@ public class HostileParquetTests
             DictionaryEncodedRecordParquetExtensions.ReadParquetAsync(ms, hostileOptions)
         );
         listException.Message.ShouldBe(
-            "Dictionary column 'Category' value count 1000 exceeds maximum allowed 1."
+            "Dictionary column 'Category' entry count 2 exceeds maximum allowed 1."
         );
 
         var arrayException = await Should.ThrowAsync<InvalidDataException>(() =>
@@ -304,6 +304,33 @@ public class HostileParquetTests
             ) { }
         });
         streamException.Message.ShouldBe(listException.Message);
+    }
+
+    [Fact]
+    public async Task LowCardinalityDictionaryColumnIsComparedByDictionaryEntries()
+    {
+        var items = Enumerable
+            .Range(0, 1_000)
+            .Select(i => new DictionaryEncodedRecord
+            {
+                Category = i % 2 == 0 ? "first" : "second",
+                Value = i,
+            })
+            .ToList();
+
+        using var ms = new MemoryStream();
+        await items.WriteParquetAsync(ms);
+        ms.Position = 0;
+
+        List<DictionaryEncodedRecord> actual =
+            await DictionaryEncodedRecordParquetExtensions.ReadParquetAsync(
+                ms,
+                new ParquetSerializerOptions { MaxDictionaryEntries = 2 }
+            );
+
+        actual.Count.ShouldBe(items.Count);
+        actual[0].Category.ShouldBe("first");
+        actual[^1].Category.ShouldBe("second");
     }
 
     [Fact]

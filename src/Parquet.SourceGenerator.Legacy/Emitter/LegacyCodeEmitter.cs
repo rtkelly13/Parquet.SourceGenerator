@@ -124,6 +124,7 @@ public static class LegacyCodeEmitter
         SchemaComponent.EmitValidatePhysicalType(builder);
         builder.AppendLine();
         SchemaComponent.EmitValidateColumnChunkBounds(builder);
+        DictionaryPageComponent.EmitHelpers(builder);
     }
 
     private static void EmitValidateReader(StringBuilder builder, TargetClassModel model)
@@ -169,6 +170,7 @@ public static class LegacyCodeEmitter
         builder.AppendLine();
         builder.AppendLine("    private static void ValidateDictionaryEntries(");
         builder.AppendLine("        global::Parquet.ParquetRowGroupReader groupReader,");
+        builder.AppendLine("        global::System.IO.Stream stream,");
         builder.AppendLine("        global::Parquet.Schema.DataField field,");
         builder.AppendLine(
             "        global::Parquet.SourceGenerator.ParquetSerializerOptions options)"
@@ -187,11 +189,14 @@ public static class LegacyCodeEmitter
         builder.AppendLine("            }");
         builder.AppendLine("        }");
         builder.AppendLine(
-            "        if (dictionaryEncoded && metadata.NumValues > options.MaxDictionaryEntries)"
+            "        int? dictionaryEntries = dictionaryEncoded ? ReadDictionaryEntryCount(groupReader, stream, field) : null;"
+        );
+        builder.AppendLine(
+            "        if (dictionaryEntries.HasValue && dictionaryEntries.Value > options.MaxDictionaryEntries)"
         );
         builder.AppendLine("        {");
         builder.AppendLine(
-            "            throw new global::System.IO.InvalidDataException($\"Dictionary column '{field.Name}' value count {metadata.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.\");"
+            "            throw new global::System.IO.InvalidDataException($\"Dictionary column '{field.Name}' entry count {dictionaryEntries.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.\");"
         );
         builder.AppendLine("        }");
         builder.AppendLine("    }");
@@ -782,13 +787,13 @@ public static class LegacyCodeEmitter
             if (prop.IsNullable)
             {
                 builder.AppendLine(
-                    $"                    if (!missing_{i}) ValidateDictionaryEntries(rgReader, field_{i}, options);"
+                    $"                    if (!missing_{i}) ValidateDictionaryEntries(rgReader, stream, field_{i}, options);"
                 );
             }
             else
             {
                 builder.AppendLine(
-                    $"                    ValidateDictionaryEntries(rgReader, field_{i}, options);"
+                    $"                    ValidateDictionaryEntries(rgReader, stream, field_{i}, options);"
                 );
             }
             if (prop.IsNullable)

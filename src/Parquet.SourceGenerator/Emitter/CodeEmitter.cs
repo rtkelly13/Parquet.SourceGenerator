@@ -200,6 +200,7 @@ public static class CodeEmitter
         SchemaComponent.EmitValidatePhysicalType(builder);
         builder.AppendLine();
         SchemaComponent.EmitValidateColumnChunkBounds(builder);
+        DictionaryPageComponent.EmitHelpers(builder);
     }
 
     // ──────────────────────────────────────────────────────────
@@ -564,7 +565,7 @@ public static class CodeEmitter
         string indent = "                "
     )
     {
-        EmitDictionaryEntryLimitValidation(builder, col, fieldAccess, indent);
+        EmitDictionaryEntryLimitValidation(builder, col, fieldAccess, "stream", indent);
 
         if (col.IsListLeaf)
         {
@@ -687,6 +688,7 @@ public static class CodeEmitter
         StringBuilder builder,
         LeafColumn col,
         string fieldAccess,
+        string streamVariable,
         string indent
     )
     {
@@ -694,18 +696,19 @@ public static class CodeEmitter
         {
             builder.AppendLine($"{indent}if (!missing_{col.Slot})");
             builder.AppendLine($"{indent}{{");
-            EmitDictionaryEntryLimitValidationCore(builder, col, fieldAccess, indent + "    ");
+            EmitDictionaryEntryLimitValidationCore(builder, col, fieldAccess, streamVariable, indent + "    ");
             builder.AppendLine($"{indent}}}");
             return;
         }
 
-        EmitDictionaryEntryLimitValidationCore(builder, col, fieldAccess, indent);
+        EmitDictionaryEntryLimitValidationCore(builder, col, fieldAccess, streamVariable, indent);
     }
 
     private static void EmitDictionaryEntryLimitValidationCore(
         StringBuilder builder,
         LeafColumn col,
         string fieldAccess,
+        string streamVariable,
         string indent
     )
     {
@@ -726,11 +729,14 @@ public static class CodeEmitter
         builder.AppendLine($"{indent}    }}");
         builder.AppendLine($"{indent}}}");
         builder.AppendLine(
-            $"{indent}if (dictionaryEncoded_{col.Slot} && metadata_{col.Slot}.NumValues > options.MaxDictionaryEntries)"
+            $"{indent}int? dictionaryEntries_{col.Slot} = dictionaryEncoded_{col.Slot} ? ReadDictionaryEntryCount(groupReader, {streamVariable}, {fieldAccess}) : null;"
+        );
+        builder.AppendLine(
+            $"{indent}if (dictionaryEntries_{col.Slot}.HasValue && dictionaryEntries_{col.Slot}.Value > options.MaxDictionaryEntries)"
         );
         builder.AppendLine($"{indent}{{");
         builder.AppendLine(
-            $"{indent}    throw new global::System.IO.InvalidDataException($\"Dictionary column '{col.Leaf.Name}' value count {{metadata_{col.Slot}.NumValues}} exceeds maximum allowed {{options.MaxDictionaryEntries}}.\");"
+            $"{indent}    throw new global::System.IO.InvalidDataException($\"Dictionary column '{col.Leaf.Name}' entry count {{dictionaryEntries_{col.Slot}.Value}} exceeds maximum allowed {{options.MaxDictionaryEntries}}.\");"
         );
         builder.AppendLine($"{indent}}}");
     }

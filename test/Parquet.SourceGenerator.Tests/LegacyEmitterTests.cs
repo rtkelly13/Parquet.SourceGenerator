@@ -176,12 +176,12 @@ public class LegacyEmitterTests
             Prop("Description", "description", "string", LegacyModels::PropertyKind.Primitive, true)
         );
 
-        code.ShouldContain("ValidateDictionaryEntries(rgReader, field_0, options);");
+        code.ShouldContain("ValidateDictionaryEntries(rgReader, stream, field_0, options);");
         code.ShouldContain(
-            "if (!missing_1) ValidateDictionaryEntries(rgReader, field_1, options);"
+            "if (!missing_1) ValidateDictionaryEntries(rgReader, stream, field_1, options);"
         );
         code.ShouldContain(
-            "dictionaryEncoded && metadata.NumValues > options.MaxDictionaryEntries"
+            "ReadDictionaryEntryCount(groupReader, stream, field)"
         );
         code.ShouldContain("ValidateStringLengths(data_0, field_0.Name, options);");
         code.ShouldContain("if (!missing_1) ValidateStringLengths(data_1, field_1.Name, options);");
