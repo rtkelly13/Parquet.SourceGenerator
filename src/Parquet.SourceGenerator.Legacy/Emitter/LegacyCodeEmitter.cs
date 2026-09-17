@@ -146,8 +146,6 @@ public static class LegacyCodeEmitter
             );
         }
         builder.AppendLine("    }");
-        builder.AppendLine();
-        DecompressionGuardComponent.Emit(builder);
     }
 
     // ──────────────────────────────────────────────────────────
