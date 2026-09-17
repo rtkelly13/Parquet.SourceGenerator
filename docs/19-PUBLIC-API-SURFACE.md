@@ -191,9 +191,10 @@ types belongs with #220's column catalog, and the positional columnar write form
 
 ### D3 — Fate of the existing flat methods
 
-They are retained as forwarders for one release and removed at the `0.1.0` freeze. The package is
-`0.0.x` with a stated continuous-release cadence, so the cost of the break is low and the cost of
-carrying two surfaces past the freeze is high.
+They remain as forwarders through the `0.1.0` compatibility window. Remove them only after a later
+release provides the replacement seams and migration path described in [document 41](41-FLAT-READ-FREEZE-SCOPE-262.md).
+The package is `0.0.x` with a stated continuous-release cadence, so the compatibility window can
+close after callers have a supported migration path.
 
 ### D4 — The decision is kept honest by the baselines
 

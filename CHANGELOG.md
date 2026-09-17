@@ -111,9 +111,10 @@ Changes since `0.0.4`; this section becomes the next release entry when one is c
 ## [0.0.4] - 2026-09-11
 
 This release introduces the generated read builder (`{T}Parquet.From(...)`) and keeps every
-existing flat read method working as a forwarder. Both surfaces ship together **deliberately and
-for this release only**: `docs/19-PUBLIC-API-SURFACE.md` decision D3 removes the flat methods at
-the `0.1.0` freeze. Callers should adopt the builder now; the flat methods are not yet marked
+existing flat read method working as a forwarder. Both surfaces ship together while the compatibility
+window remains open. `docs/19-PUBLIC-API-SURFACE.md` decision D3 retains the flat methods through
+the `0.1.0` window; document 41 records the later removal gate. Callers can adopt the builder now;
+the flat methods are not yet marked
 `[Obsolete]` because the two surfaces are still being validated against each other.
 
 ### Added
