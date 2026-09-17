@@ -39,7 +39,7 @@ if (args.Any(argument => argument is not "--update"))
 
 SourceContract contract = SourceContract.Read();
 List<CoverageRow> rows = BuildRows(contract);
-string rendered = Render(contract, rows);
+string rendered = Render(contract, rows).Replace("\r\n", "\n", StringComparison.Ordinal);
 
 if (update)
 {
@@ -172,6 +172,17 @@ static List<CoverageRow> BuildRows(SourceContract contract)
                 backend,
                 accepted: false,
                 parserOnly: contract.ListValueStructParserPath,
+                highRisk: true
+            )
+        );
+        rows.Add(
+            EvidenceCatalog.Compound(
+                "List",
+                "list of nested lists",
+                "collection nullable",
+                backend,
+                accepted: false,
+                parserOnly: true,
                 highRisk: true
             )
         );

@@ -1102,7 +1102,11 @@ public static class TargetParser
     /// </summary>
     private static bool ListElementShapeSupported(PropertyModel listModel)
     {
-        if (listModel.Element is not { Kind: PropertyKind.Struct } element)
+        if (listModel.Element is not { } element)
+            return false;
+        if (element.Kind is PropertyKind.List or PropertyKind.Map)
+            return false;
+        if (element.Kind != PropertyKind.Struct)
             return true;
         if (element.CompoundIsValueType)
             return false;
