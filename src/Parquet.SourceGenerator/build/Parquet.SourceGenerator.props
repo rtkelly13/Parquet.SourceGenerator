@@ -1,5 +1,5 @@
 <Project>
-  <ItemGroup>
-    <CompilerVisibleProperty Include="ParquetGeneratorFeatureLevel" />
-  </ItemGroup>
+    <ItemGroup>
+        <CompilerVisibleProperty Include="ParquetGeneratorFeatureLevel" />
+    </ItemGroup>
 </Project>
