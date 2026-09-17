@@ -3,6 +3,8 @@
 > **Status**: decision record for issue #216, part of the `0.1.0` API freeze (#230).
 > The surface described here is the one emitted by `Parquet.SourceGenerator` for a flat model;
 > it is reproduced verbatim in `test/Parquet.SourceGenerator.Tests/GoldenFiles/*.api.txt`.
+> The read builder is proposed for the freeze; a symmetric write builder remains a post-freeze
+> proposal tracked by #219, and the current write entry points remain in the compatibility window.
 
 ## Why this document exists
 
