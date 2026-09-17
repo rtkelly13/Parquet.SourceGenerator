@@ -268,7 +268,7 @@ public sealed class ArrowConditionalEmissionTests
         idBlock.ShouldNotContain("ArrayPool", Case.Sensitive);
 
         // The nullable long column cannot be zero-copy: values are packed and def levels derived
-        // from the validity bitmap, which does rent before the shared columnar writer is called.
+        // from the validity bitmap, which does rent before the column is written.
         string qtyBlock = ColumnBlock(arrow, "// column 2: qty");
         qtyBlock.ShouldContain("columnarBatch.Qty =", Case.Sensitive);
         qtyBlock.ShouldContain("columnarBatch.QtyDefinitionLevels =", Case.Sensitive);
@@ -276,7 +276,7 @@ public sealed class ArrowConditionalEmissionTests
     }
 
     [Fact]
-    public void ArrowBridgeDelegatesTheFinalWriteToTheGeneratedColumnarBatchSurface()
+    public void ArrowBridgeWritesAndReleasesEachColumnBeforeMaterializingTheNext()
     {
         ImmutableArray<GeneratedSourceResult> sources = Run(
             CreateDriver(),
@@ -288,16 +288,15 @@ public sealed class ArrowConditionalEmissionTests
             .Single(s => s.HintName.EndsWith(".Arrow.g.cs", StringComparison.Ordinal))
             .SourceText.ToString();
 
-        arrow.ShouldContain(
-            "var columnarBatch = new TradeColumnarBatch { RowCount = count };",
-            Case.Sensitive
-        );
-        arrow.ShouldContain(
-            "await writer.WriteParquetRowGroupAsync(columnarBatch, cancellationToken);",
-            Case.Sensitive
-        );
-        arrow.ShouldNotContain("groupWriter", Case.Sensitive);
-        arrow.ShouldNotContain("WriteAllPartsAsync<long>", Case.Sensitive);
+        arrow.ShouldContain("var columnarBatch = new TradeColumnarBatch { RowCount = count };", Case.Sensitive);
+        arrow.ShouldContain("using (var groupWriter = writer.CreateRowGroup())", Case.Sensitive);
+        arrow.ShouldContain("await groupWriter.WriteAsync<int>(", Case.Sensitive);
+        arrow.ShouldContain("await groupWriter.WriteAllPartsAsync<long>(", Case.Sensitive);
+        arrow.ShouldNotContain("await writer.WriteParquetRowGroupAsync(columnarBatch, cancellationToken);", Case.Sensitive);
+
+        int write = arrow.IndexOf("await groupWriter.WriteAsync<int>(", StringComparison.Ordinal);
+        int cleanup = arrow.IndexOf("ArrayPool<int>.Shared.Return", write, StringComparison.Ordinal);
+        (cleanup > write).ShouldBeTrue("the first pooled Arrow column must be returned after its write");
     }
 
     private static string ColumnBlock(string source, string marker)

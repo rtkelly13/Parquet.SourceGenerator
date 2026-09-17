@@ -284,27 +284,52 @@ internal static class ArrowBridgeEmitter
             EmitColumnDeclarations(builder, model.Properties[i], i);
         }
         builder.AppendLine();
-        builder.AppendLine("        try");
+        builder.AppendLine("        using (var groupWriter = writer.CreateRowGroup())");
         builder.AppendLine("        {");
 
         for (int i = 0; i < model.Properties.Length; i++)
         {
+            builder.AppendLine("            try");
+            builder.AppendLine("            {");
             EmitColumn(builder, model.Properties[i], i);
+            EmitColumnWrite(builder, model.Properties[i], i);
+            builder.AppendLine("            }");
+            builder.AppendLine("            finally");
+            builder.AppendLine("            {");
+            EmitColumnCleanup(builder, model.Properties[i], i);
+            builder.AppendLine("            }");
         }
 
-        builder.AppendLine();
-        builder.AppendLine(
-            "            await writer.WriteParquetRowGroupAsync(columnarBatch, cancellationToken);"
-        );
-        builder.AppendLine("        }");
-        builder.AppendLine("        finally");
-        builder.AppendLine("        {");
-        for (int i = 0; i < model.Properties.Length; i++)
-        {
-            EmitColumnCleanup(builder, model.Properties[i], i);
-        }
         builder.AppendLine("        }");
         builder.AppendLine("    }");
+    }
+
+    private static void EmitColumnWrite(StringBuilder builder, PropertyModel prop, int slot)
+    {
+        string fieldAccess = $"_field_{slot}";
+        if (BufferPoolComponent.UsesWriteAllParts(prop))
+        {
+            string nonNullableElementType = BufferPoolComponent.GetNonNullableBufferType(prop);
+            builder.AppendLine(
+                $"                await groupWriter.WriteAllPartsAsync<{nonNullableElementType}>("
+            );
+            builder.AppendLine($"                    {fieldAccess},");
+            builder.AppendLine(
+                $"                    columnarBatch.{prop.Name},"
+            );
+            builder.AppendLine(
+                $"                    columnarBatch.{prop.Name}DefinitionLevels.Slice(0, count),"
+            );
+            builder.AppendLine("                    null,");
+            builder.AppendLine("                    cancellationToken: cancellationToken);");
+            return;
+        }
+
+        string columnElementType = BufferPoolComponent.GetWriteBufferElementType(prop).TrimEnd('?');
+        builder.AppendLine($"                await groupWriter.WriteAsync<{columnElementType}>(");
+        builder.AppendLine($"                    {fieldAccess},");
+        builder.AppendLine($"                    columnarBatch.{prop.Name}.Slice(0, count),");
+        builder.AppendLine("                    cancellationToken: cancellationToken);");
     }
 
     private static void EmitColumn(StringBuilder builder, PropertyModel prop, int slot)
