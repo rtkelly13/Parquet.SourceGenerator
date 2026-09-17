@@ -92,13 +92,13 @@ public sealed class GoldenCodeGenRegressionTests
         string baselinePath = IOPath.Combine(GoldenFilesDir, baselineFileName);
         string actual = GeneratedApiBaseline.Create(emittedSource);
 
-        if (updateGolden || !IOFile.Exists(baselinePath))
+        if (updateGolden)
         {
             IODirectory.CreateDirectory(GoldenFilesDir);
             IOFile.WriteAllText(baselinePath, actual);
         }
 
-        string expected = IOFile.ReadAllText(baselinePath).Replace("\r\n", "\n");
+        string expected = ReadRequiredBaseline(baselinePath, baselineFileName, "API baseline");
 
         if (!string.Equals(expected, actual, StringComparison.Ordinal))
         {
@@ -138,13 +138,13 @@ public sealed class GoldenCodeGenRegressionTests
         string summaryPath = IOPath.Combine(GoldenFilesDir, summaryFileName);
         string actual = GeneratedApiBaseline.CreateShapeSummary(emittedSource);
 
-        if (updateGolden || !IOFile.Exists(summaryPath))
+        if (updateGolden)
         {
             IODirectory.CreateDirectory(GoldenFilesDir);
             IOFile.WriteAllText(summaryPath, actual);
         }
 
-        string expected = IOFile.ReadAllText(summaryPath).Replace("\r\n", "\n");
+        string expected = ReadRequiredBaseline(summaryPath, summaryFileName, "API shape summary");
         if (!string.Equals(expected, actual, StringComparison.Ordinal))
         {
             throw new ShouldAssertException(
@@ -153,6 +153,49 @@ public sealed class GoldenCodeGenRegressionTests
                     + "with UPDATE_GOLDEN_FILES=true rather than editing the count by hand.\n"
                     + $"Expected:\n{expected}Actual:\n{actual}"
             );
+        }
+    }
+
+    private static string ReadRequiredBaseline(
+        string baselinePath,
+        string baselineFileName,
+        string baselineDescription
+    )
+    {
+        if (!IOFile.Exists(baselinePath))
+        {
+            throw new ShouldAssertException(
+                $"Generated {baselineDescription} is missing: GoldenFiles/{baselineFileName}\n"
+                    + "A normal regression run never creates baselines. Refresh it with "
+                    + "UPDATE_GOLDEN_FILES=true (or comment /update-golden on the PR) and commit "
+                    + "the result."
+            );
+        }
+
+        return IOFile.ReadAllText(baselinePath).Replace("\r\n", "\n");
+    }
+
+    [Fact]
+    public void MissingBaselineReportsRefreshInstructionsWithoutCreatingAFile()
+    {
+        string baselineFileName = $"missing-{Guid.NewGuid():N}.api.shape.txt";
+        string baselinePath = IOPath.Combine(IOPath.GetTempPath(), baselineFileName);
+
+        try
+        {
+            Should
+                .Throw<ShouldAssertException>(() =>
+                    ReadRequiredBaseline(baselinePath, baselineFileName, "API shape summary")
+                )
+                .Message.ShouldContain("UPDATE_GOLDEN_FILES=true");
+            IOFile.Exists(baselinePath).ShouldBeFalse();
+        }
+        finally
+        {
+            if (IOFile.Exists(baselinePath))
+            {
+                IOFile.Delete(baselinePath);
+            }
         }
     }
 
