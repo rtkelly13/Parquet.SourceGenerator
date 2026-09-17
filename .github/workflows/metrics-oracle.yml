@@ -92,7 +92,7 @@ jobs:
             "Parquet.SourceGenerator.Legacy:metrics/Parquet.SourceGenerator.Legacy.metrics.txt:Parquet.SourceGenerator.Legacy.csproj"
           do
             baseline=$(printf '%s' "$pair" | cut -d: -f2)
-            target=$(printf '%s' "$pair" | rev | cut -d: -f1 | rev)
+            target=$(printf '%s' "$pair" | cut -d: -f3)
             dotnet run scripts/MetricsOracleCompare.cs -- \
               --xml "$RUNNER_TEMP/oracle.xml" \
               --baseline "$baseline" \
