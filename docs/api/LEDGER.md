@@ -16,6 +16,14 @@ The rule, the three surfaces and the author process are in
 
 <!-- Add new entries directly below this line, newest first. -->
 
+### 2026-09-17 — generator feature-level configuration (#290)
+
+- **Surface:** unshipped
+- **Semver:** additive-minor
+- **Issue:** [#290](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/290)
+- **Rationale:** Adds named feature-level configuration and an assembly-level fallback so consumers
+  can pin generated dialect behavior without changing the existing default.
+
 ### 2026-09-17 — analyzer-config generator configuration seam (#224)
 
 - **Surface:** seam

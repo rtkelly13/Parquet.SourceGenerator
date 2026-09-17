@@ -85,6 +85,10 @@ Every ledger entry carries exactly one.
 
 ### Pre-1.0 stance
 
+Feature-level changes are governed as generated-shape changes. The default remains
+`Level2CompoundPreview`; consumers can pin `Level1Flat` or opt into `Level3ModernCSharp` through the
+shared MSBuild/assembly configuration channel documented in [29](./29-FEATURE-LEVELS.md).
+
 `0.0.x` permits breaking changes without a major bump; the release-cadence note in
 [04 - Roadmap](./04-ROADMAP-AND-CONTRIBUTING.md) says so, and that is not changing here. The bucket
 on an entry therefore does not gate a release today. **It is recorded anyway, because the point is

@@ -162,6 +162,9 @@ To enable Native AOT:
 </PropertyGroup>
 ```
 
+Feature output can be pinned project-wide with `ParquetGeneratorFeatureLevel` in MSBuild or with
+`[assembly: ParquetGeneratorOptions(FeatureLevel = ...)]`; see the feature-level documentation.
+
 ## 🔗 Links & Resources
 
 * [Documentation Portal](https://docs.ryankelly.dev/parquet-sourcegenerator)

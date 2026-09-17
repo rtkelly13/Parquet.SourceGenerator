@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Parquet.SourceGenerator.Emitter;
 using Parquet.SourceGenerator.Models;
@@ -16,11 +17,13 @@ public sealed class GeneratorConfigurationTests
         var provider = new TestOptionsProvider(
             new Dictionary<string, string>
             {
-                ["build_property.ParquetGeneratorFeatureLevel"] = "Level3_ModernCSharp",
+                ["build_property.ParquetGeneratorFeatureLevel"] = "Level3ModernCSharp",
             }
         );
 
-        GeneratorConfiguration.From(provider).FeatureLevel.ShouldBe("Level3_ModernCSharp");
+        GeneratorConfiguration
+            .From(CSharpCompilation.Create("test"), provider)
+            .FeatureLevel.ShouldBe(GeneratorFeatureLevel.Level3ModernCSharp);
     }
 
     [Fact]
@@ -34,10 +37,11 @@ public sealed class GeneratorConfigurationTests
 
         string source = CodeEmitter.EmitSource(
             model,
-            new GeneratorConfiguration("Level2_CompoundPreview")
+            new GeneratorConfiguration(GeneratorFeatureLevel.Level2CompoundPreview, "test-version")
         );
 
-        source.ShouldContain("// ParquetGeneratorFeatureLevel: Level2_CompoundPreview");
+        source.ShouldContain("// ParquetGeneratorFeatureLevel: Level2CompoundPreview");
+        source.ShouldContain("// ParquetGeneratorVersion:");
     }
 
     private sealed class TestOptionsProvider : AnalyzerConfigOptionsProvider

@@ -27,10 +27,9 @@ public sealed class ParquetLegacyIncrementalGenerator : IIncrementalGenerator
             );
 
         // 2. Register source output emission & diagnostic reporting
-        IncrementalValueProvider<GeneratorConfiguration> configuration =
-            context.AnalyzerConfigOptionsProvider.Select(
-                static (provider, _) => GeneratorConfiguration.From(provider)
-            );
+        IncrementalValueProvider<GeneratorConfiguration> configuration = context
+            .CompilationProvider.Combine(context.AnalyzerConfigOptionsProvider)
+            .Select(static (pair, _) => GeneratorConfiguration.From(pair.Left, pair.Right));
 
         context.RegisterSourceOutput(
             targets.Combine(configuration),
