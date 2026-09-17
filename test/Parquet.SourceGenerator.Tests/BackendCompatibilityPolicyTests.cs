@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Parquet.SourceGenerator.ApiGates;
 using Shouldly;
 using Xunit;
 
@@ -22,35 +21,48 @@ public sealed class BackendCompatibilityPolicyTests
         "GoldenFiles"
     );
 
-    private static readonly HashSet<string> ClassicCoreMembers = new(StringComparer.Ordinal)
+    private static readonly HashSet<string> ClassicCoreSignatures = new(StringComparer.Ordinal)
     {
-        "Schema",
-        "ReadParquetAsync",
-        "ReadParquetArrayAsync",
-        "WriteParquetAsync",
-        "WriteParquetBatchedAsync",
-        "WriteRowGroupAsync",
+        "static ClassicExtensions.ReadParquetArrayAsync(System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default) -> System.Threading.Tasks.Task<T[]>",
+        "static ClassicExtensions.ReadParquetAsync(System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default) -> System.Threading.Tasks.Task<System.Collections.Generic.List<T>>",
+        "static ClassicExtensions.WriteParquetAsync(this System.Collections.Generic.IReadOnlyList<T> items, System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default) -> System.Threading.Tasks.Task",
+        "static ClassicExtensions.WriteParquetBatchedAsync(this System.Collections.Generic.IEnumerable<T> items, System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default) -> System.Threading.Tasks.Task",
+        "static ClassicExtensions.WriteRowGroupAsync(this Parquet.ParquetWriter writer, System.Collections.Generic.IReadOnlyList<T> items, System.Threading.CancellationToken cancellationToken = default) -> System.Threading.Tasks.Task",
+        "static readonly ClassicExtensions.Schema -> Parquet.Schema.ParquetSchema",
     };
 
     [Fact]
-    public void ClassicBaselineContainsOnlyTheDeclaredCoreSurface()
+    public void EveryClassicBaselineContainsOnlyTheDeclaredCoreSurface()
     {
-        string path = Directory.GetFiles(GoldenFilesDir, "*LegacyExtensions.api.txt").Single();
-        string[] members = ReadMembers(path);
+        string[] paths = Directory.GetFiles(GoldenFilesDir, "*LegacyExtensions.api.txt");
+        paths.Length.ShouldBeGreaterThan(0, "At least one classic API baseline must be checked.");
 
-        members
-            .Select(ApiCatalogue.SimpleName)
-            .Distinct(StringComparer.Ordinal)
-            .Except(ClassicCoreMembers, StringComparer.Ordinal)
-            .ShouldBeEmpty(
-                "The classic backend is a declared core subset. A new member requires an explicit "
-                    + "compatibility-policy decision in docs/14-COMPATIBILITY-MATRIX.md."
-            );
-
-        foreach (string required in ClassicCoreMembers)
+        foreach (string path in paths)
         {
-            members.Select(ApiCatalogue.SimpleName).ShouldContain(required);
+            string[] signatures = ReadMembers(path).Select(NormalizeClassicSignature).ToArray();
+
+            signatures
+                .Except(ClassicCoreSignatures, StringComparer.Ordinal)
+                .ShouldBeEmpty(
+                    $"The classic backend baseline {Path.GetFileName(path)} contains a signature "
+                        + "outside the declared core surface. A new member or overload requires an "
+                        + "explicit compatibility-policy decision in docs/14-COMPATIBILITY-MATRIX.md."
+                );
+
+            foreach (string required in ClassicCoreSignatures)
+            {
+                signatures.ShouldContain(required, $"Missing from {Path.GetFileName(path)}");
+            }
         }
+    }
+
+    [Fact]
+    public void ModernOnlyOverloadWithAClassicMemberNameIsRejected()
+    {
+        const string modernStreamingOverload =
+            "static SampleDomain.Models.LegacyRecordParquetLegacyExtensions.ReadParquetAsync(System.Collections.Generic.IAsyncEnumerable<LegacyRecord> items) -> System.Threading.Tasks.Task";
+
+        ClassicCoreSignatures.ShouldNotContain(NormalizeClassicSignature(modernStreamingOverload));
     }
 
     [Fact]
@@ -80,4 +92,38 @@ public sealed class BackendCompatibilityPolicyTests
                 && line.Contains(" -> ", StringComparison.Ordinal)
             )
             .ToArray();
+
+    private static string NormalizeClassicSignature(string signature)
+    {
+        const string NamespacePrefix = "SampleDomain.Models.";
+        const string ExtensionSuffix = "ParquetLegacyExtensions";
+        const string ExtensionMemberSeparator = ExtensionSuffix + ".";
+
+        int ownerStart = signature.IndexOf(NamespacePrefix, StringComparison.Ordinal);
+        if (ownerStart < 0)
+        {
+            return signature;
+        }
+
+        int ownerEnd = signature.IndexOf(
+            ExtensionMemberSeparator,
+            ownerStart,
+            StringComparison.Ordinal
+        );
+        if (ownerEnd < 0)
+        {
+            return signature;
+        }
+
+        int modelStart = ownerStart + NamespacePrefix.Length;
+        string modelName = signature.Substring(modelStart, ownerEnd - modelStart);
+        string ownerName = signature.Substring(
+            ownerStart,
+            ownerEnd + ExtensionSuffix.Length - ownerStart
+        );
+
+        return signature
+            .Replace(ownerName, "ClassicExtensions", StringComparison.Ordinal)
+            .Replace(modelName, "T", StringComparison.Ordinal);
+    }
 }
