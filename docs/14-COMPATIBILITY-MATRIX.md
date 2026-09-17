@@ -66,18 +66,22 @@ enabled. In an oblivious context, reference types remain conservatively optional
 | `DateTimeOffset` | Unsupported | Rejected by `PARQ006`; callers should model the instant and offset explicitly |
 | `System.Numerics.BigInteger` | Unsupported | Parquet.Net accepts the schema type but its plain encoder cannot safely encode the managed struct; rejected by `PARQ006` |
 | `BigDecimal` | Unsupported | The current Parquet.Net public type is not in the generator's supported model envelope |
-| Arrays other than `byte[]` | Unsupported | Rejected by `PARQ006` |
-| `List<T>`, `Dictionary<TKey,TValue>`, and other collections | Unsupported | Rejected by `PARQ006` |
-| Nested user-defined objects | Unsupported | Rejected by `PARQ006` |
+| Arrays other than `byte[]` | Unverified | Modern generated coverage is limited to the documented golden models; Native AOT coverage is not established. Classic remains unsupported. |
+| `List<T>`, `Dictionary<TKey,TValue>`, and other collections | Unverified | Modern generated coverage is limited to the documented golden models; Native AOT coverage is not established. Classic remains unsupported. |
+| Nested user-defined objects | Unverified | Modern generated coverage is limited to the documented golden models; Native AOT coverage is not established. Classic remains unsupported. |
 | Nested target types | Unsupported | Rejected by `PARQ009` |
 | Generic target types | Unsupported | Rejected by `PARQ010` |
 | Members without an accessible setter or initializer | Unsupported | Rejected by `PARQ007` |
 | Reference types without an accessible parameterless constructor | Unsupported | Rejected by `PARQ008` |
 | Positional records | Unsupported | Rejected when no accessible parameterless construction is available |
 
+The backend-specific boundary in [document 42](42-NESTED-BACKEND-SCOPE-176.md) qualifies these rows:
+modern generated nested paths are limited to the tested golden models, while classic generated models
+remain flat-only. Native AOT evidence is currently limited to flat models.
+
 These restrictions describe generated model support. A valid external Parquet file containing nested
-or repeated columns may still be inspected by an external tool, but it is not a supported input for a
-generated model unless its required fields fit the supported flat envelope.
+or repeated columns may still be inspected by an external tool, but it is not a general compatibility
+promise for generated models.
 
 ## Schema And File Features
 
@@ -90,8 +94,8 @@ generated model unless its required fields fit the supported flat envelope.
 | Additional file columns | Supported for reading | Generated readers resolve the fields they know; additional columns are not materialized |
 | Missing required generated column | Supported failure | The reader throws a descriptive `InvalidDataException` |
 | Missing optional generated column | Supported | The column materialises as all-null; see [document 16](16-VERSION-AND-SCHEMA-EVOLUTION.md) |
-| Nested and repeated fields | Unsupported for generated models | No generated collection or repetition-level model exists |
-| Lists and maps | Unsupported for generated models | External files are fixture/conformance inputs, not generated-model inputs |
+| Nested and repeated fields | Unverified for modern generated models; unsupported for classic | Modern coverage is limited to the documented golden models; no full two-backend parity promise exists |
+| Lists and maps | Unverified for modern generated models; unsupported for classic | External files remain fixture/conformance inputs outside the documented generated-model scope |
 | Encrypted Parquet files | Unknown/future | No compatibility promise |
 | Page indexes and bloom filters | Unknown/future | Metadata features are not currently required for ordinary generated reads |
 | Arbitrary producer metadata | Supported if semantically irrelevant | Metadata must not alter supported schema/value interpretation |

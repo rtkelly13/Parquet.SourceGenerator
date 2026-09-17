@@ -29,9 +29,9 @@
 - [x] Implement Roslyn compiler diagnostics `PARQ001`–`PARQ011`.
 - [x] Support custom decimal precision/scale (`[ParquetDecimal]`) and timestamp units (`[ParquetTimestamp]`).
 - [x] Collect inherited members from base types declared in source.
-- [ ] Support nested collections (`List<T>`, arrays) and nested POCO structs (`StructField`).
-      Currently rejected at compile time by `PARQ006` rather than failing at runtime.
-      Tracked as [issue #176](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/176).
+- [ ] Complete nested collections (`List<T>`, arrays) and nested POCO structs (`StructField`) on
+      both backends. The 0.1 boundary is limited to the tested modern shapes; classic remains
+      flat-only. See [document 42](42-NESTED-BACKEND-SCOPE-176.md).
 
 ### Phase 4: Native AOT, Performance Optimization & Benchmarking ✅
 - [x] Create `Parquet.SourceGenerator.Benchmarks` using `BenchmarkDotNet`.
@@ -90,13 +90,13 @@ in the normal CI run means a broken gate surfaces there rather than the next tim
 the benchmark workflow.
 
 ### Phase 8: Compound Types & the Apache Arrow bridge
-All three items below add public API surface (compound schema/level behavior, and the generated
-Arrow bridge methods), so together — not #176 alone — they are the functional gate for the `0.1.0`
-API freeze.
+The backend-specific #176 boundary is recorded in [document 42](42-NESTED-BACKEND-SCOPE-176.md).
+Full two-backend parity remains later work. The Arrow bridge issues below remain separate API-freeze
+gates.
 
-- [ ] [Issue #176](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/176) — serialise
-      nested POCOs, collections, and maps as true Parquet nested groups (`StructField`, `ListField`,
-      `MapField`) on both backends. Closes the Phase 3 gap; prerequisite for the Arrow bridge below.
+- [ ] [Issue #176](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/176) — complete
+      nested POCOs, collections, and maps as true Parquet nested groups on both backends. This is
+      later work beyond the documented 0.1 boundary and remains a prerequisite for the Arrow bridge.
 - [ ] [Issue #177](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/177) — Apache Arrow
       `RecordBatch` ingestion, via a conditionally emitted bridge gated on the consumer's
       `Apache.Arrow` reference (no companion package). Resolves Option C of #137.

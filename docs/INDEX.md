@@ -33,6 +33,7 @@ The documentation is organized into three distinct tiers based on audience and i
 
 4. **[15 - Nested Types & Compound Models](./15-NESTED-TYPES-SPIKE-FINDINGS.md)**
    - Serializing nested POCOs, struct fields, and collections (`List<T>`, arrays) without runtime reflection.
+   - Backend-specific compatibility boundary and remaining parity work in [document 42](./42-NESTED-BACKEND-SCOPE-176.md).
 
 5. **[Performance Benchmarks & Baselines](./BENCHMARKS.md)**
    - BenchmarkDotNet performance numbers, zero-boxing verification, and memory savings over reflection serializers.
