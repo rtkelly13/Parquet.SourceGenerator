@@ -38,8 +38,10 @@ public class ColumnarNullExtractionProbe
     private int[] _definitionLevels = null!;
     private byte[] _presence = null!;
 
-    [Params(50_000)]
+    [ParamsSource(nameof(Counts))]
     public int Count { get; set; }
+
+    public static IEnumerable<int> Counts => BenchmarkParameterSource.GetCounts(50_000);
 
     /// <summary>Share of slots that are null. Density changes which path the compaction takes.</summary>
     [Params(0, 6, 50)]
