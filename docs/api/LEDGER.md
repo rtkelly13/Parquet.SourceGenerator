@@ -16,6 +16,14 @@ The rule, the three surfaces and the author process are in
 
 <!-- Add new entries directly below this line, newest first. -->
 
+### 2026-09-17 — dictionary and string payload safety limits (#307)
+
+- **Surface:** unshipped
+- **Semver:** additive-minor
+- **Issue:** [#307](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/307)
+- **Rationale:** Adds `MaxDictionaryEntries` and `MaxStringLengthBytes` to bound hostile dictionary
+  pages and oversized string payloads before they can exhaust consumer memory.
+
 ### 2026-09-17 — generator feature-level configuration (#290)
 
 - **Surface:** unshipped
