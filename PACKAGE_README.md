@@ -165,6 +165,13 @@ To enable Native AOT:
 Feature output can be pinned project-wide with `ParquetGeneratorFeatureLevel` in MSBuild or with
 `[assembly: ParquetGeneratorOptions(FeatureLevel = ...)]`; see the feature-level documentation.
 
+## Compatibility
+
+The V5/classic generator is a declared core subset for Parquet.Net 4.x/5.x: flat read/write,
+batched write, row-group write, and schema. The modern v6 generator additionally provides builder,
+filtering, parallel, streaming, column-batch, and experimental Arrow surfaces. The compatibility
+matrix documents the supported model and file envelope.
+
 ## 🔗 Links & Resources
 
 * [Documentation Portal](https://docs.ryankelly.dev/parquet-sourcegenerator)

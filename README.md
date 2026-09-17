@@ -337,6 +337,7 @@ OrderEventParquetExtensions.WriteParquetRowGroupAsync(writer, recordBatch);
 | **.NET Framework (net472)** | ✅ Supported via V5 | Use `Parquet.SourceGenerator.V5` for Parquet.Net 4.x/5.x support. |
 | **Apache Arrow ingestion** | 🧪 Experimental (v6 only) | Emitted only when the consumer references Apache.Arrow. Flat models only; Native AOT exercised by the repository's published AOT harness. |
 | **Generator feature level** | ✅ Configurable | Defaults to `Level2CompoundPreview`; pin `Level1Flat` or opt into `Level3ModernCSharp` with `ParquetGeneratorFeatureLevel`. |
+| **V5 generated API** | ✅ Declared core subset | V5 intentionally exposes flat read/write, batched write, row-group write, and schema; modern builder, filtering, parallel, streaming, column-batch, and Arrow members are v6-only. |
 
 > A complete audit of limitations and remediation roadmap is in **[`docs/07-KNOWN-LIMITATIONS.md`](https://github.com/rtkelly13/Parquet.SourceGenerator/blob/main/docs/07-KNOWN-LIMITATIONS.md)**.
 
