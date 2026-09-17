@@ -10,7 +10,12 @@ call-graph baselines: `UPDATE_GOLDEN_FILES=true dotnet run scripts/CallGraph.cs`
 ```mermaid
 graph TD
     tsampledomainmodelslegacyrecordparquetlegacyextensions_055["SampleDomain.Models.LegacyRecordParquetLegacyExtensions"]
+    tsampledomainmodelslegacyrecordparquetlegacyextensionsdecompressionguardstream_080["SampleDomain.Models.LegacyRecordParquetLegacyExtensions.DecompressionGuardStream"]
+    tsampledomainmodelslegacyrecordparquetlegacyextensionsdecompressionguardstreamcompactprotocolreader_102["SampleDomain.Models.LegacyRecordParquetLegacyExtensions.DecompressionGuardStream.CompactProtocolReader"]
     tsampledomainmodelslegacyrecordparquetlegacyextensionsstringdeduplicator_074["SampleDomain.Models.LegacyRecordParquetLegacyExtensions.StringDeduplicator"]
+    tsampledomainmodelslegacyrecordparquetlegacyextensionsdecompressionguardstreamcompactprotocolreader_102 -->|2| tsampledomainmodelslegacyrecordparquetlegacyextensionsdecompressionguardstream_080
+    tsampledomainmodelslegacyrecordparquetlegacyextensionsdecompressionguardstream_080 -->|1| tsampledomainmodelslegacyrecordparquetlegacyextensionsdecompressionguardstreamcompactprotocolreader_102
+    tsampledomainmodelslegacyrecordparquetlegacyextensions_055 -->|1| tsampledomainmodelslegacyrecordparquetlegacyextensionsdecompressionguardstream_080
     tsampledomainmodelslegacyrecordparquetlegacyextensions_055 -->|1| tsampledomainmodelslegacyrecordparquetlegacyextensionsstringdeduplicator_074
 ```
 
@@ -19,9 +24,14 @@ graph TD
 ```mermaid
 graph TD
     tsampledomainmodelslistorderparquetextensions_046["SampleDomain.Models.ListOrderParquetExtensions"]
+    tsampledomainmodelslistorderparquetextensionsdecompressionguardstream_071["SampleDomain.Models.ListOrderParquetExtensions.DecompressionGuardStream"]
+    tsampledomainmodelslistorderparquetextensionsdecompressionguardstreamcompactprotocolreader_093["SampleDomain.Models.ListOrderParquetExtensions.DecompressionGuardStream.CompactProtocolReader"]
     tsampledomainmodelslistorderparquetmemorysource_048["SampleDomain.Models.ListOrderParquetMemorySource"]
     tsampledomainmodelslistorderparquetparallelsource_050["SampleDomain.Models.ListOrderParquetParallelSource"]
     tsampledomainmodelslistorderparquetstreamsource_048["SampleDomain.Models.ListOrderParquetStreamSource"]
+    tsampledomainmodelslistorderparquetextensionsdecompressionguardstreamcompactprotocolreader_093 -->|2| tsampledomainmodelslistorderparquetextensionsdecompressionguardstream_071
+    tsampledomainmodelslistorderparquetextensionsdecompressionguardstream_071 -->|1| tsampledomainmodelslistorderparquetextensionsdecompressionguardstreamcompactprotocolreader_093
+    tsampledomainmodelslistorderparquetextensions_046 -->|7| tsampledomainmodelslistorderparquetextensionsdecompressionguardstream_071
     tsampledomainmodelslistorderparquetmemorysource_048 -->|2| tsampledomainmodelslistorderparquetextensions_046
     tsampledomainmodelslistorderparquetparallelsource_050 -->|2| tsampledomainmodelslistorderparquetextensions_046
     tsampledomainmodelslistorderparquetstreamsource_048 -->|2| tsampledomainmodelslistorderparquetextensions_046
@@ -32,9 +42,14 @@ graph TD
 ```mermaid
 graph TD
     tsampledomainmodelsnestedorderparquetextensions_048["SampleDomain.Models.NestedOrderParquetExtensions"]
+    tsampledomainmodelsnestedorderparquetextensionsdecompressionguardstream_073["SampleDomain.Models.NestedOrderParquetExtensions.DecompressionGuardStream"]
+    tsampledomainmodelsnestedorderparquetextensionsdecompressionguardstreamcompactprotocolreader_095["SampleDomain.Models.NestedOrderParquetExtensions.DecompressionGuardStream.CompactProtocolReader"]
     tsampledomainmodelsnestedorderparquetmemorysource_050["SampleDomain.Models.NestedOrderParquetMemorySource"]
     tsampledomainmodelsnestedorderparquetparallelsource_052["SampleDomain.Models.NestedOrderParquetParallelSource"]
     tsampledomainmodelsnestedorderparquetstreamsource_050["SampleDomain.Models.NestedOrderParquetStreamSource"]
+    tsampledomainmodelsnestedorderparquetextensionsdecompressionguardstreamcompactprotocolreader_095 -->|2| tsampledomainmodelsnestedorderparquetextensionsdecompressionguardstream_073
+    tsampledomainmodelsnestedorderparquetextensionsdecompressionguardstream_073 -->|1| tsampledomainmodelsnestedorderparquetextensionsdecompressionguardstreamcompactprotocolreader_095
+    tsampledomainmodelsnestedorderparquetextensions_048 -->|7| tsampledomainmodelsnestedorderparquetextensionsdecompressionguardstream_073
     tsampledomainmodelsnestedorderparquetmemorysource_050 -->|2| tsampledomainmodelsnestedorderparquetextensions_048
     tsampledomainmodelsnestedorderparquetparallelsource_052 -->|2| tsampledomainmodelsnestedorderparquetextensions_048
     tsampledomainmodelsnestedorderparquetstreamsource_050 -->|2| tsampledomainmodelsnestedorderparquetextensions_048
@@ -45,10 +60,15 @@ graph TD
 ```mermaid
 graph TD
     tsampledomainmodelsordereventparquetextensions_047["SampleDomain.Models.OrderEventParquetExtensions"]
+    tsampledomainmodelsordereventparquetextensionsdecompressionguardstream_072["SampleDomain.Models.OrderEventParquetExtensions.DecompressionGuardStream"]
+    tsampledomainmodelsordereventparquetextensionsdecompressionguardstreamcompactprotocolreader_094["SampleDomain.Models.OrderEventParquetExtensions.DecompressionGuardStream.CompactProtocolReader"]
     tsampledomainmodelsordereventparquetextensionsstringdeduplicator_066["SampleDomain.Models.OrderEventParquetExtensions.StringDeduplicator"]
     tsampledomainmodelsordereventparquetmemorysource_049["SampleDomain.Models.OrderEventParquetMemorySource"]
     tsampledomainmodelsordereventparquetparallelsource_051["SampleDomain.Models.OrderEventParquetParallelSource"]
     tsampledomainmodelsordereventparquetstreamsource_049["SampleDomain.Models.OrderEventParquetStreamSource"]
+    tsampledomainmodelsordereventparquetextensionsdecompressionguardstreamcompactprotocolreader_094 -->|2| tsampledomainmodelsordereventparquetextensionsdecompressionguardstream_072
+    tsampledomainmodelsordereventparquetextensionsdecompressionguardstream_072 -->|1| tsampledomainmodelsordereventparquetextensionsdecompressionguardstreamcompactprotocolreader_094
+    tsampledomainmodelsordereventparquetextensions_047 -->|7| tsampledomainmodelsordereventparquetextensionsdecompressionguardstream_072
     tsampledomainmodelsordereventparquetextensions_047 -->|7| tsampledomainmodelsordereventparquetextensionsstringdeduplicator_066
     tsampledomainmodelsordereventparquetmemorysource_049 -->|3| tsampledomainmodelsordereventparquetextensions_047
     tsampledomainmodelsordereventparquetparallelsource_051 -->|2| tsampledomainmodelsordereventparquetextensions_047
@@ -60,9 +80,14 @@ graph TD
 ```mermaid
 graph TD
     tsampledomainmodelspocoorderparquetextensions_046["SampleDomain.Models.PocoOrderParquetExtensions"]
+    tsampledomainmodelspocoorderparquetextensionsdecompressionguardstream_071["SampleDomain.Models.PocoOrderParquetExtensions.DecompressionGuardStream"]
+    tsampledomainmodelspocoorderparquetextensionsdecompressionguardstreamcompactprotocolreader_093["SampleDomain.Models.PocoOrderParquetExtensions.DecompressionGuardStream.CompactProtocolReader"]
     tsampledomainmodelspocoorderparquetmemorysource_048["SampleDomain.Models.PocoOrderParquetMemorySource"]
     tsampledomainmodelspocoorderparquetparallelsource_050["SampleDomain.Models.PocoOrderParquetParallelSource"]
     tsampledomainmodelspocoorderparquetstreamsource_048["SampleDomain.Models.PocoOrderParquetStreamSource"]
+    tsampledomainmodelspocoorderparquetextensionsdecompressionguardstreamcompactprotocolreader_093 -->|2| tsampledomainmodelspocoorderparquetextensionsdecompressionguardstream_071
+    tsampledomainmodelspocoorderparquetextensionsdecompressionguardstream_071 -->|1| tsampledomainmodelspocoorderparquetextensionsdecompressionguardstreamcompactprotocolreader_093
+    tsampledomainmodelspocoorderparquetextensions_046 -->|7| tsampledomainmodelspocoorderparquetextensionsdecompressionguardstream_071
     tsampledomainmodelspocoorderparquetmemorysource_048 -->|2| tsampledomainmodelspocoorderparquetextensions_046
     tsampledomainmodelspocoorderparquetparallelsource_050 -->|2| tsampledomainmodelspocoorderparquetextensions_046
     tsampledomainmodelspocoorderparquetstreamsource_048 -->|2| tsampledomainmodelspocoorderparquetextensions_046
@@ -73,9 +98,14 @@ graph TD
 ```mermaid
 graph TD
     tsampledomainmodelsscalarmetricparquetextensions_049["SampleDomain.Models.ScalarMetricParquetExtensions"]
+    tsampledomainmodelsscalarmetricparquetextensionsdecompressionguardstream_074["SampleDomain.Models.ScalarMetricParquetExtensions.DecompressionGuardStream"]
+    tsampledomainmodelsscalarmetricparquetextensionsdecompressionguardstreamcompactprotocolreader_096["SampleDomain.Models.ScalarMetricParquetExtensions.DecompressionGuardStream.CompactProtocolReader"]
     tsampledomainmodelsscalarmetricparquetmemorysource_051["SampleDomain.Models.ScalarMetricParquetMemorySource"]
     tsampledomainmodelsscalarmetricparquetparallelsource_053["SampleDomain.Models.ScalarMetricParquetParallelSource"]
     tsampledomainmodelsscalarmetricparquetstreamsource_051["SampleDomain.Models.ScalarMetricParquetStreamSource"]
+    tsampledomainmodelsscalarmetricparquetextensionsdecompressionguardstreamcompactprotocolreader_096 -->|2| tsampledomainmodelsscalarmetricparquetextensionsdecompressionguardstream_074
+    tsampledomainmodelsscalarmetricparquetextensionsdecompressionguardstream_074 -->|1| tsampledomainmodelsscalarmetricparquetextensionsdecompressionguardstreamcompactprotocolreader_096
+    tsampledomainmodelsscalarmetricparquetextensions_049 -->|7| tsampledomainmodelsscalarmetricparquetextensionsdecompressionguardstream_074
     tsampledomainmodelsscalarmetricparquetmemorysource_051 -->|3| tsampledomainmodelsscalarmetricparquetextensions_049
     tsampledomainmodelsscalarmetricparquetparallelsource_053 -->|2| tsampledomainmodelsscalarmetricparquetextensions_049
     tsampledomainmodelsscalarmetricparquetstreamsource_051 -->|3| tsampledomainmodelsscalarmetricparquetextensions_049
@@ -86,10 +116,15 @@ graph TD
 ```mermaid
 graph TD
     tsampledomainmodelssortedshipmentparquetextensions_051["SampleDomain.Models.SortedShipmentParquetExtensions"]
+    tsampledomainmodelssortedshipmentparquetextensionsdecompressionguardstream_076["SampleDomain.Models.SortedShipmentParquetExtensions.DecompressionGuardStream"]
+    tsampledomainmodelssortedshipmentparquetextensionsdecompressionguardstreamcompactprotocolreader_098["SampleDomain.Models.SortedShipmentParquetExtensions.DecompressionGuardStream.CompactProtocolReader"]
     tsampledomainmodelssortedshipmentparquetextensionsstringdeduplicator_070["SampleDomain.Models.SortedShipmentParquetExtensions.StringDeduplicator"]
     tsampledomainmodelssortedshipmentparquetmemorysource_053["SampleDomain.Models.SortedShipmentParquetMemorySource"]
     tsampledomainmodelssortedshipmentparquetparallelsource_055["SampleDomain.Models.SortedShipmentParquetParallelSource"]
     tsampledomainmodelssortedshipmentparquetstreamsource_053["SampleDomain.Models.SortedShipmentParquetStreamSource"]
+    tsampledomainmodelssortedshipmentparquetextensionsdecompressionguardstreamcompactprotocolreader_098 -->|2| tsampledomainmodelssortedshipmentparquetextensionsdecompressionguardstream_076
+    tsampledomainmodelssortedshipmentparquetextensionsdecompressionguardstream_076 -->|1| tsampledomainmodelssortedshipmentparquetextensionsdecompressionguardstreamcompactprotocolreader_098
+    tsampledomainmodelssortedshipmentparquetextensions_051 -->|8| tsampledomainmodelssortedshipmentparquetextensionsdecompressionguardstream_076
     tsampledomainmodelssortedshipmentparquetextensions_051 -->|8| tsampledomainmodelssortedshipmentparquetextensionsstringdeduplicator_070
     tsampledomainmodelssortedshipmentparquetmemorysource_053 -->|3| tsampledomainmodelssortedshipmentparquetextensions_051
     tsampledomainmodelssortedshipmentparquetparallelsource_055 -->|2| tsampledomainmodelssortedshipmentparquetextensions_051

@@ -9,25 +9,47 @@
 # ELOC_PER_MEMBER emitted executable lines per emitted public member.
 # Ordinal-sorted. CC, CL, SLOC, ELOC, DIT, ERRORS and MEMBERS are gated exactly; MI is
 # REPORTED BUT NOT GATED for generated code. See docs/22-GENERATED-CODE-METRICS.md.
-S:NestedOrderParquetExtensions | EMITTER=v6 MEMBERS=47 CC=367 CL=78 SLOC=2966 ELOC=1213 ERRORS=0 METHODS=52 MAXCC=62 ELOC_PER_MEMBER=25.8
+S:NestedOrderParquetExtensions | EMITTER=v6 MEMBERS=47 CC=368 CL=79 SLOC=3100 ELOC=1228 ERRORS=0 METHODS=74 MAXCC=62 ELOC_PER_MEMBER=26.1
 M:SampleDomain.Models.NestedOrderParquet.From(System.IO.Stream) | MI=90 CC=2 CL=5 DIT=- SLOC=3 ELOC=1
 M:SampleDomain.Models.NestedOrderParquet.From(System.ReadOnlyMemory<byte>) | MI=94 CC=1 CL=3 DIT=- SLOC=3 ELOC=1
 M:SampleDomain.Models.NestedOrderParquetExtensions.AcceptRowGroup(System.Func<SampleDomain.Models.NestedOrderRowGroupMetadata, bool>, Parquet.ParquetRowGroupReader, int, Parquet.Schema.DataField) | MI=65 CC=5 CL=8 DIT=- SLOC=34 ELOC=6
 M:SampleDomain.Models.NestedOrderParquetExtensions.BuildFormatOptions(Parquet.SourceGenerator.ParquetSerializerOptions) | MI=59 CC=5 CL=11 DIT=- SLOC=64 ELOC=10
 M:SampleDomain.Models.NestedOrderParquetExtensions.CreateBufferStream(System.ReadOnlyMemory<byte>) | MI=87 CC=2 CL=4 DIT=- SLOC=13 ELOC=1
+M:SampleDomain.Models.NestedOrderParquetExtensions.CreateGuardedReadStream(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions) | MI=91 CC=1 CL=3 DIT=- SLOC=1 ELOC=1
+M:SampleDomain.Models.NestedOrderParquetExtensions.DecompressionGuardStream.Activate() | MI=96 CC=1 CL=0 DIT=- SLOC=1 ELOC=1
+M:SampleDomain.Models.NestedOrderParquetExtensions.DecompressionGuardStream.CanRead.get | MI=96 CC=1 CL=1 DIT=- SLOC=1 ELOC=1
+M:SampleDomain.Models.NestedOrderParquetExtensions.DecompressionGuardStream.CanSeek.get | MI=96 CC=1 CL=1 DIT=- SLOC=1 ELOC=1
+M:SampleDomain.Models.NestedOrderParquetExtensions.DecompressionGuardStream.CanWrite.get | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=1
+M:SampleDomain.Models.NestedOrderParquetExtensions.DecompressionGuardStream.CompactProtocolReader.CompactProtocolReader(System.IO.Stream) | MI=96 CC=1 CL=1 DIT=- SLOC=1 ELOC=1
+M:SampleDomain.Models.NestedOrderParquetExtensions.DecompressionGuardStream.CompactProtocolReader.TryReadPageHeader(out int, out int, out int) | MI=74 CC=3 CL=0 DIT=- SLOC=7 ELOC=4
+M:SampleDomain.Models.NestedOrderParquetExtensions.DecompressionGuardStream.CompactProtocolReader.TryReadRequiredField(out int) | MI=72 CC=4 CL=1 DIT=- SLOC=7 ELOC=4
+M:SampleDomain.Models.NestedOrderParquetExtensions.DecompressionGuardStream.CompactProtocolReader.TryReadZigZagInt32(out int) | MI=61 CC=4 CL=1 DIT=- SLOC=17 ELOC=10
+M:SampleDomain.Models.NestedOrderParquetExtensions.DecompressionGuardStream.DecompressionGuardStream(System.IO.Stream, int, int) | MI=77 CC=2 CL=3 DIT=- SLOC=6 ELOC=3
+M:SampleDomain.Models.NestedOrderParquetExtensions.DecompressionGuardStream.Dispose(bool) | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
+M:SampleDomain.Models.NestedOrderParquetExtensions.DecompressionGuardStream.Flush() | MI=100 CC=1 CL=2 DIT=- SLOC=1 ELOC=1
+M:SampleDomain.Models.NestedOrderParquetExtensions.DecompressionGuardStream.Length.get | MI=96 CC=1 CL=1 DIT=- SLOC=1 ELOC=1
+M:SampleDomain.Models.NestedOrderParquetExtensions.DecompressionGuardStream.Position.get | MI=96 CC=1 CL=1 DIT=- SLOC=1 ELOC=1
+M:SampleDomain.Models.NestedOrderParquetExtensions.DecompressionGuardStream.Position.set | MI=94 CC=1 CL=1 DIT=- SLOC=1 ELOC=1
+M:SampleDomain.Models.NestedOrderParquetExtensions.DecompressionGuardStream.Read(byte[], int, int) | MI=91 CC=1 CL=1 DIT=- SLOC=1 ELOC=1
+M:SampleDomain.Models.NestedOrderParquetExtensions.DecompressionGuardStream.ReadAsync(byte[], int, int, System.Threading.CancellationToken) | MI=91 CC=1 CL=3 DIT=- SLOC=1 ELOC=1
+M:SampleDomain.Models.NestedOrderParquetExtensions.DecompressionGuardStream.ReadByte() | MI=96 CC=1 CL=1 DIT=- SLOC=1 ELOC=1
+M:SampleDomain.Models.NestedOrderParquetExtensions.DecompressionGuardStream.Seek(long, System.IO.SeekOrigin) | MI=78 CC=2 CL=2 DIT=- SLOC=6 ELOC=3
+M:SampleDomain.Models.NestedOrderParquetExtensions.DecompressionGuardStream.SetLength(long) | MI=100 CC=1 CL=2 DIT=- SLOC=1 ELOC=1
+M:SampleDomain.Models.NestedOrderParquetExtensions.DecompressionGuardStream.ValidatePageAt(long) | MI=55 CC=10 CL=4 DIT=- SLOC=32 ELOC=14
+M:SampleDomain.Models.NestedOrderParquetExtensions.DecompressionGuardStream.Write(byte[], int, int) | MI=100 CC=1 CL=2 DIT=- SLOC=1 ELOC=1
 M:SampleDomain.Models.NestedOrderParquetExtensions.GetFieldDepth(Parquet.Schema.Field) | MI=60 CC=6 CL=6 DIT=- SLOC=22 ELOC=11
-M:SampleDomain.Models.NestedOrderParquetExtensions.ReadBufferSequentialArrayAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=24 CC=31 CL=23 DIT=- SLOC=237 ELOC=118
-M:SampleDomain.Models.NestedOrderParquetExtensions.ReadParquetArrayAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.NestedOrderRowGroupMetadata, bool>) | MI=22 CC=37 CL=24 DIT=- SLOC=265 ELOC=130
+M:SampleDomain.Models.NestedOrderParquetExtensions.ReadBufferSequentialArrayAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=24 CC=31 CL=24 DIT=- SLOC=239 ELOC=120
+M:SampleDomain.Models.NestedOrderParquetExtensions.ReadParquetArrayAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.NestedOrderRowGroupMetadata, bool>) | MI=22 CC=37 CL=25 DIT=- SLOC=267 ELOC=132
 M:SampleDomain.Models.NestedOrderParquetExtensions.ReadParquetArrayAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=76 CC=1 CL=4 DIT=- SLOC=10 ELOC=3
-M:SampleDomain.Models.NestedOrderParquetExtensions.ReadParquetAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.NestedOrderRowGroupMetadata, bool>) | MI=21 CC=37 CL=27 DIT=- SLOC=289 ELOC=134
+M:SampleDomain.Models.NestedOrderParquetExtensions.ReadParquetAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.NestedOrderRowGroupMetadata, bool>) | MI=21 CC=37 CL=28 DIT=- SLOC=291 ELOC=136
 M:SampleDomain.Models.NestedOrderParquetExtensions.ReadParquetAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=72 CC=1 CL=7 DIT=- SLOC=11 ELOC=4
-M:SampleDomain.Models.NestedOrderParquetExtensions.ReadParquetParallelArrayAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=25 CC=28 CL=23 DIT=- SLOC=243 ELOC=113
-M:SampleDomain.Models.NestedOrderParquetExtensions.ReadParquetParallelArrayAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=39 CC=15 CL=20 DIT=- SLOC=116 ELOC=45
+M:SampleDomain.Models.NestedOrderParquetExtensions.ReadParquetParallelArrayAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=24 CC=28 CL=24 DIT=- SLOC=245 ELOC=115
+M:SampleDomain.Models.NestedOrderParquetExtensions.ReadParquetParallelArrayAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=39 CC=15 CL=21 DIT=- SLOC=118 ELOC=47
 M:SampleDomain.Models.NestedOrderParquetExtensions.ReadParquetParallelAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=72 CC=1 CL=7 DIT=- SLOC=12 ELOC=4
 M:SampleDomain.Models.NestedOrderParquetExtensions.ReadParquetParallelAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=72 CC=1 CL=7 DIT=- SLOC=12 ELOC=4
-M:SampleDomain.Models.NestedOrderParquetExtensions.ReadParquetStreamAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.NestedOrderRowGroupMetadata, bool>) | MI=27 CC=24 CL=25 DIT=- SLOC=209 ELOC=99
+M:SampleDomain.Models.NestedOrderParquetExtensions.ReadParquetStreamAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.NestedOrderRowGroupMetadata, bool>) | MI=27 CC=24 CL=26 DIT=- SLOC=211 ELOC=101
 M:SampleDomain.Models.NestedOrderParquetExtensions.ReadParquetStreamAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.NestedOrderRowGroupMetadata, bool>) | MI=67 CC=2 CL=10 DIT=- SLOC=15 ELOC=6
-M:SampleDomain.Models.NestedOrderParquetExtensions.ReadRowGroupsIntoAsync(System.ReadOnlyMemory<byte>, Parquet.ParquetOptions, SampleDomain.Models.NestedOrder[], int[], int[], int, int, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationTokenSource, System.Threading.CancellationToken) | MI=27 CC=23 CL=24 DIT=- SLOC=229 ELOC=99
+M:SampleDomain.Models.NestedOrderParquetExtensions.ReadRowGroupsIntoAsync(System.ReadOnlyMemory<byte>, Parquet.ParquetOptions, SampleDomain.Models.NestedOrder[], int[], int[], int, int, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationTokenSource, System.Threading.CancellationToken) | MI=27 CC=23 CL=25 DIT=- SLOC=231 ELOC=101
 M:SampleDomain.Models.NestedOrderParquetExtensions.ResolveSchemaField(Parquet.Schema.DataField[], int, Parquet.Schema.DataField, ref System.Collections.Generic.Dictionary<string, Parquet.Schema.DataField>, out bool) | MI=50 CC=10 CL=9 DIT=- SLOC=62 ELOC=21
 M:SampleDomain.Models.NestedOrderParquetExtensions.ValidatePhysicalType(Parquet.ParquetReader, Parquet.Schema.DataField[], Parquet.Schema.DataField) | MI=50 CC=11 CL=15 DIT=- SLOC=40 ELOC=20
 M:SampleDomain.Models.NestedOrderParquetExtensions.ValidateReader(Parquet.ParquetReader, Parquet.SourceGenerator.ParquetSerializerOptions) | MI=52 CC=6 CL=8 DIT=- SLOC=34 ELOC=19
@@ -62,12 +84,19 @@ M:SampleDomain.Models.NestedOrderRowGroupMetadata.Id.get | MI=100 CC=1 CL=1 DIT=
 M:SampleDomain.Models.NestedOrderRowGroupMetadata.NestedOrderRowGroupMetadata(int, long, bool, Parquet.SourceGenerator.ParquetColumnStatistics<int>) | MI=75 CC=1 CL=1 DIT=- SLOC=12 ELOC=4
 M:SampleDomain.Models.NestedOrderRowGroupMetadata.RowCount.get | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
 M:SampleDomain.Models.NestedOrderRowGroupMetadata.RowGroupIndex.get | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
+P:SampleDomain.Models.NestedOrderParquetExtensions.DecompressionGuardStream.CanRead | MI=96 CC=2 CL=1 DIT=- SLOC=1 ELOC=2
+P:SampleDomain.Models.NestedOrderParquetExtensions.DecompressionGuardStream.CanSeek | MI=96 CC=2 CL=1 DIT=- SLOC=1 ELOC=2
+P:SampleDomain.Models.NestedOrderParquetExtensions.DecompressionGuardStream.CanWrite | MI=100 CC=2 CL=0 DIT=- SLOC=1 ELOC=2
+P:SampleDomain.Models.NestedOrderParquetExtensions.DecompressionGuardStream.Length | MI=96 CC=2 CL=1 DIT=- SLOC=1 ELOC=2
+P:SampleDomain.Models.NestedOrderParquetExtensions.DecompressionGuardStream.Position | MI=95 CC=2 CL=2 DIT=- SLOC=5 ELOC=2
 P:SampleDomain.Models.NestedOrderRowGroupMetadata.HasStatistics | MI=100 CC=1 CL=0 DIT=- SLOC=3 ELOC=0
 P:SampleDomain.Models.NestedOrderRowGroupMetadata.Id | MI=100 CC=1 CL=1 DIT=- SLOC=2 ELOC=0
 P:SampleDomain.Models.NestedOrderRowGroupMetadata.RowCount | MI=100 CC=1 CL=0 DIT=- SLOC=2 ELOC=0
 P:SampleDomain.Models.NestedOrderRowGroupMetadata.RowGroupIndex | MI=100 CC=1 CL=0 DIT=- SLOC=2 ELOC=0
 T:SampleDomain.Models.NestedOrderParquet | MI=91 CC=3 CL=7 DIT=1 SLOC=13 ELOC=2
-T:SampleDomain.Models.NestedOrderParquetExtensions | MI=39 CC=327 CL=72 DIT=1 SLOC=2750 ELOC=1164
+T:SampleDomain.Models.NestedOrderParquetExtensions | MI=39 CC=328 CL=73 DIT=1 SLOC=2884 ELOC=1179
+T:SampleDomain.Models.NestedOrderParquetExtensions.DecompressionGuardStream | MI=79 CC=32 CL=9 DIT=3 SLOC=117 ELOC=37
+T:SampleDomain.Models.NestedOrderParquetExtensions.DecompressionGuardStream.CompactProtocolReader | MI=70 CC=12 CL=1 DIT=1 SLOC=40 ELOC=19
 T:SampleDomain.Models.NestedOrderParquetFilteredSource | MI=73 CC=10 CL=14 DIT=1 SLOC=53 ELOC=15
 T:SampleDomain.Models.NestedOrderParquetMemorySource | MI=82 CC=9 CL=15 DIT=1 SLOC=45 ELOC=11
 T:SampleDomain.Models.NestedOrderParquetParallelSource | MI=82 CC=5 CL=9 DIT=1 SLOC=31 ELOC=7

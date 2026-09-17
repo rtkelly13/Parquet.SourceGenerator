@@ -68,9 +68,6 @@ public static class CodeEmitter
         EmitFormatOptionsAndValidation(builder, model);
         builder.AppendLine();
 
-        DecompressionGuardComponent.Emit(builder);
-        builder.AppendLine();
-
         if (StringDeduplicatorComponent.HasStringProperties(model))
         {
             StringDeduplicatorComponent.EmitStringDeduplicator(builder);
@@ -217,6 +214,8 @@ public static class CodeEmitter
         EmitBuildFormatOptions(builder, model);
         builder.AppendLine();
         EmitValidateReader(builder, model);
+        builder.AppendLine();
+        DecompressionGuardComponent.Emit(builder);
     }
 
     private static void EmitBuildFormatOptions(StringBuilder builder, TargetClassModel model)
