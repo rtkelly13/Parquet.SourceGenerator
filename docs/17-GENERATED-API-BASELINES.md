@@ -23,8 +23,9 @@ holding **only** the signatures of the public members that file emits: no bodies
 `#nullable` scaffolding beyond the header.
 
 > Introduced by issue #215. #216 (the API surface audit) reads these files rather than
-> hand-transcribing signatures; #217 uses them to demonstrate the surface *shrinking*; #227 extends
-> them into a per-profile matrix; #229 renders the docs-site API grid from them.
+> hand-transcribing signatures; #217 uses them to demonstrate the surface *shrinking*; #227's
+> profile matrix is a post-freeze follow-up recorded in [document 38](38-FEATURE-PROFILE-MATRIX-SCOPE-227.md);
+> #229 renders the docs-site API grid from the checked-in contracts.
 
 ## The grammar
 
