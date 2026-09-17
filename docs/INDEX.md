@@ -167,6 +167,9 @@ The documentation is organized into three distinct tiers based on audience and i
      - Comparative analysis of Google.Protobuf, protobuf-net, and Parquet.SourceGenerator.
      - Architectural trade-offs, where PSG leads, peer mechanisms worth stealing (ABI matrix, corpus sweeps, defensive DoS limits), and why runtime engine seams are rejected.
 
+22. **[30 - Schema Descriptor Evaluation](./30-SCHEMA-DESCRIPTOR-EVALUATION.md)**
+     - Measured decision on compact generated schema metadata for issue #291.
+
 ---
 
 ## ⚡ Quick Summary of Intent
