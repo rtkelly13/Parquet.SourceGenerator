@@ -89,7 +89,9 @@ degenerates to a flat dark stroke.
 
 ## 4. The earlier direction, preserved & modernized
 
-The project began with a different mark: a rhombille or herringbone tiling inside a glowing hexagon
+### 4.1 Historical Hexagon & Circuit Mark
+
+The project originally began with a different mark: a rhombille or herringbone tiling inside a glowing hexagon
 frame, with a seam-locked circuit network, a notched socket dot and etched `{}` / `</>` emblems.
 
 While historically parked due to high drift with hand-coded manual builders (27.77% SSIM), the mark
@@ -111,11 +113,22 @@ It shares every geometry helper with the adopted mark, so fixes to the common pa
 Its measured constants — frame radius 186.2 fitted per edge, wood radius 173, the socket dot
 projected onto the frame edge — are documented in that module.
 
+### 4.2 Minimalist Diamond Parquet Mark (Candidate 3)
+
+Revisiting the best elements of the original concept (interlocking parquet planks and git commit branching lineage)
+while stripping away artificial circuit clutter and badges led to the **Minimalist Diamond Parquet Mark**:
+- **Reference Raster**: [`docs/assets/diamond/parquet-diamond-reference.png`](./diamond/parquet-diamond-reference.png)
+- **Modern Vector SVG**: [`docs/assets/diamond/parquet-diamond.svg`](./diamond/parquet-diamond.svg) (achieves **87.99% SSIM** and **5.62% RMSE**)
+- **Diagnostic Evaluation**: [`docs/assets/diamond/parquet-diamond-diagnostic-sheet.png`](./diamond/parquet-diamond-diagnostic-sheet.png)
+- **Dedicated Builder**: `shared_utilities.image_drift.diamond_parquet_builder`
+- **Detailed Trade-off Analysis**: See [`docs/assets/diamond/README.md`](./diamond/README.md).
+
 ---
 
 ## 5. Tooling
 
 * **Builder (adopted)**: `shared_utilities.image_drift.svg_builder`
+* **Builder (diamond)**: `shared_utilities.image_drift.diamond_parquet_builder`
 * **Builder (preserved)**: `shared_utilities.image_drift.rhombille_builder`
 * **Shared imaging**: `imaging.py` (rendering, cropping, contact sheets), `metrics.py` (drift scoring)
 * **CLI**: `image-reconcile` — `build`, `favicon`, `compare`, `extract-feature`, `contact-sheet`,
