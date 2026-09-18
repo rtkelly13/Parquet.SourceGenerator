@@ -634,22 +634,26 @@
   </g>
 
   <!-- Definitions -->
-  <defs>
-    <linearGradient id="neon-cyan" x1="0" y1="1" x2="0" y2="0">
-      <stop offset="0%" stop-color="#00d2ff" />
-      <stop offset="100%" stop-color="#4facfe" />
-    </linearGradient>
-    
-    <linearGradient id="neon-violet" x1="1" y1="1" x2="0" y2="0">
-      <stop offset="0%" stop-color="#00d2ff" />
-      <stop offset="40%" stop-color="#7209b7" />
-      <stop offset="100%" stop-color="#c77dff" />
+    <defs>
+    <!-- Vibrant electric cyan for trunk and right branch (consistent luminous cyan, no dark-blue fade) -->
+    <linearGradient id="neon-cyan" x1="0" y1="340" x2="0" y2="730" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38BDF8" />
+      <stop offset="50%" stop-color="#00F5FF" />
+      <stop offset="100%" stop-color="#00E5FF" />
     </linearGradient>
 
-    <!-- Gaussian Glow filter for smooth radiant light -->
-    <filter id="neon-glow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur_wide" />
-      <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur_tight" />
+    <!-- Harmonious violet-to-cyan gradient along the left branch (blending seamlessly into the trunk) -->
+    <linearGradient id="neon-violet" x1="372" y1="433" x2="512" y2="620" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#E879F9" />
+      <stop offset="35%" stop-color="#C084FC" />
+      <stop offset="75%" stop-color="#818CF8" />
+      <stop offset="100%" stop-color="#00F5FF" />
+    </linearGradient>
+
+    <!-- Crisp multi-stage glow: radiant intensity contained inside the 40px casing groove -->
+    <filter id="neon-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3.2" result="blur_wide" />
+      <feGaussianBlur in="SourceGraphic" stdDeviation="1.2" result="blur_tight" />
       <feMerge>
         <feMergeNode in="blur_wide" />
         <feMergeNode in="blur_tight" />
@@ -658,50 +662,50 @@
     </filter>
   </defs>
 
-  <!-- Clean Mathematical Git Tree -->
+  <!-- Clean Mathematical Git Tree (20% Wider Lines, Zero Colour Bleed, Harmonious Gradients) -->
   <g id="git-tree-clean">
-    <!-- 1. Dark Channel / Casing Carved through Wood -->
-    <g id="git-casing" fill="none" stroke="#162232" stroke-width="34" stroke-linecap="round" stroke-linejoin="round">
+    <!-- 1. Dark Channel / Casing Carved through Wood (40px wide) -->
+    <g id="git-casing" fill="none" stroke="#162232" stroke-width="40" stroke-linecap="round" stroke-linejoin="round">
       <path d="M 512,730 L 512,342" />
       <path d="M 512,620 C 512,600 372,535 372,505 L 372,433" />
       <path d="M 512,620 C 512,600 652,535 652,505 L 652,433" />
-      <!-- Node casing disks -->
-      <circle cx="512" cy="730" r="35" fill="#162232" stroke="none" />
-      <circle cx="512" cy="342" r="35" fill="#162232" stroke="none" />
-      <circle cx="372" cy="433" r="35" fill="#162232" stroke="none" />
-      <circle cx="652" cy="433" r="35" fill="#162232" stroke="none" />
+      <!-- Node casing well disks (radius 38px) -->
+      <circle cx="512" cy="730" r="38" fill="#162232" stroke="none" />
+      <circle cx="512" cy="342" r="38" fill="#162232" stroke="none" />
+      <circle cx="372" cy="433" r="38" fill="#162232" stroke="none" />
+      <circle cx="652" cy="433" r="38" fill="#162232" stroke="none" />
     </g>
 
-    <!-- 2. Radiant Neon Traces with SVG Glow Filter -->
+    <!-- 2. Radiant Neon Traces with SVG Glow Filter (14.5px wide = 20% wider) -->
     <g id="git-neon-traces" filter="url(#neon-glow)" fill="none" stroke-linecap="round" stroke-linejoin="round">
       <!-- Outer trunk (cyan) -->
-      <path d="M 512,730 L 512,342" stroke="url(#neon-cyan)" stroke-width="12" />
-      <!-- Left branch (violet) -->
-      <path d="M 512,620 C 512,600 372,535 372,505 L 372,433" stroke="url(#neon-violet)" stroke-width="12" />
+      <path d="M 512,730 L 512,342" stroke="url(#neon-cyan)" stroke-width="14.5" />
       <!-- Right branch (cyan) -->
-      <path d="M 512,620 C 512,600 652,535 652,505 L 652,433" stroke="url(#neon-cyan)" stroke-width="12" />
+      <path d="M 512,620 C 512,600 652,535 652,505 L 652,433" stroke="url(#neon-cyan)" stroke-width="14.5" />
+      <!-- Left branch (violet smoothly transitioning into cyan trunk) -->
+      <path d="M 512,620 C 512,600 372,535 372,505 L 372,433" stroke="url(#neon-violet)" stroke-width="14.5" />
 
-      <!-- Inner high-intensity center trace -->
-      <path d="M 512,730 L 512,342" stroke="#ffffff" stroke-width="3.5" opacity="0.95" />
-      <path d="M 512,620 C 512,600 372,535 372,505 L 372,433" stroke="#ffffff" stroke-width="3.5" opacity="0.9" />
-      <path d="M 512,620 C 512,600 652,535 652,505 L 652,433" stroke="#ffffff" stroke-width="3.5" opacity="0.9" />
+      <!-- Inner high-intensity center trace (4.2px wide = 20% wider) -->
+      <path d="M 512,730 L 512,342" stroke="#ffffff" stroke-width="4.2" opacity="0.95" />
+      <path d="M 512,620 C 512,600 652,535 652,505 L 652,433" stroke="#ffffff" stroke-width="4.2" opacity="0.95" />
+      <path d="M 512,620 C 512,600 372,535 372,505 L 372,433" stroke="#ffffff" stroke-width="4.2" opacity="0.9" />
 
-      <!-- Commit Node Rings -->
+      <!-- Commit Node Rings (11px wide stroke = 20% wider, radius 24px) -->
       <!-- Bottom Root Node -->
-      <circle cx="512" cy="730" r="24" stroke="url(#neon-cyan)" stroke-width="9" fill="#1b2535" />
-      <circle cx="512" cy="730" r="24" stroke="#ffffff" stroke-width="2.5" fill="none" opacity="0.95" />
+      <circle cx="512" cy="730" r="24" stroke="url(#neon-cyan)" stroke-width="11" fill="#162232" />
+      <circle cx="512" cy="730" r="24" stroke="#ffffff" stroke-width="3" fill="none" opacity="0.95" />
 
       <!-- Top Center Node -->
-      <circle cx="512" cy="342" r="24" stroke="url(#neon-cyan)" stroke-width="9" fill="#1b2535" />
-      <circle cx="512" cy="342" r="24" stroke="#ffffff" stroke-width="2.5" fill="none" opacity="0.95" />
+      <circle cx="512" cy="342" r="24" stroke="url(#neon-cyan)" stroke-width="11" fill="#162232" />
+      <circle cx="512" cy="342" r="24" stroke="#ffffff" stroke-width="3" fill="none" opacity="0.95" />
 
       <!-- Left Node (Violet) -->
-      <circle cx="372" cy="433" r="24" stroke="url(#neon-violet)" stroke-width="9" fill="#1b2535" />
-      <circle cx="372" cy="433" r="24" stroke="#ffffff" stroke-width="2.5" fill="none" opacity="0.95" />
+      <circle cx="372" cy="433" r="24" stroke="#C084FC" stroke-width="11" fill="#162232" />
+      <circle cx="372" cy="433" r="24" stroke="#ffffff" stroke-width="3" fill="none" opacity="0.95" />
 
       <!-- Right Node (Cyan) -->
-      <circle cx="652" cy="433" r="24" stroke="url(#neon-cyan)" stroke-width="9" fill="#1b2535" />
-      <circle cx="652" cy="433" r="24" stroke="#ffffff" stroke-width="2.5" fill="none" opacity="0.95" />
+      <circle cx="652" cy="433" r="24" stroke="url(#neon-cyan)" stroke-width="11" fill="#162232" />
+      <circle cx="652" cy="433" r="24" stroke="#ffffff" stroke-width="3" fill="none" opacity="0.95" />
     </g>
   </g>
 </svg>
