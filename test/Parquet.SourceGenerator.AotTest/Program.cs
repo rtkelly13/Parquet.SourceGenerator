@@ -25,6 +25,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Apache.Arrow;
+using Apache.Arrow.Arrays;
+using Apache.Arrow.Types;
+using Parquet;
 using Parquet.SourceGenerator;
 
 namespace Parquet.SourceGenerator.AotTest;
@@ -79,7 +83,7 @@ public sealed partial record AotWideRecord
     public AotStatus EnumValue { get; init; }
 
     [ParquetColumn("f_bytes", Order = 13)]
-    public byte[] ByteArrayValue { get; init; } = Array.Empty<byte>();
+    public byte[] ByteArrayValue { get; init; } = global::System.Array.Empty<byte>();
 
     [ParquetIgnore]
     public string NotPersisted { get; init; } = "ignored";
@@ -147,6 +151,16 @@ public sealed partial record AotNarrowRecord
     public string Label { get; init; } = string.Empty;
 }
 
+[ParquetSerializable]
+public sealed partial record AotArrowRecord
+{
+    [ParquetColumn("id", Order = 1)]
+    public int Id { get; init; }
+
+    [ParquetColumn("label", Order = 2)]
+    public string Label { get; init; } = string.Empty;
+}
+
 internal static class Program
 {
     private static int _failures;
@@ -191,6 +205,10 @@ internal static class Program
             StringDeduplicationAsync
         );
         await CheckAsync("direct columnar hand-off round-trips (issue #137)", ColumnarHandoffAsync);
+        await CheckAsync(
+            "Arrow RecordBatch ingestion under Native AOT (#267)",
+            ArrowIngestionAsync
+        );
 
         Console.WriteLine("=================================================");
         if (_failures == 0)
@@ -872,5 +890,53 @@ internal static class Program
             ExpectWideEqual(written[0], read[0], 0);
             ExpectWideEqual(written[1], read[1], 1);
         }
+    }
+
+    private static RecordBatch BuildArrowBatch()
+    {
+        var ids = new Int32Array.Builder();
+        ids.Append(11);
+        ids.Append(12);
+        ids.Append(13);
+
+        var labels = new StringArray.Builder();
+        labels.Append("one");
+        labels.Append("two");
+        labels.Append("three");
+
+        var schema = new Apache.Arrow.Schema.Builder()
+            .Field(f => f.Name("id").DataType(Int32Type.Default).Nullable(false))
+            .Field(f => f.Name("label").DataType(StringType.Default).Nullable(false))
+            .Build();
+
+        return new RecordBatch(schema, new IArrowArray[] { ids.Build(), labels.Build() }, 3);
+    }
+
+    /// <summary>
+    /// Exercises the conditionally emitted RecordBatch ingestion bridge in the published native
+    /// binary. The bridge materializes the Arrow columns into the generated columnar batch and
+    /// delegates the Parquet write through that shared surface.
+    /// </summary>
+    private static async Task ArrowIngestionAsync()
+    {
+        using RecordBatch batch = BuildArrowBatch();
+        using var stream = new MemoryStream();
+        await using (
+            ParquetWriter writer = await ParquetWriter.CreateAsync(
+                AotArrowRecordParquetExtensions.Schema,
+                stream
+            )
+        )
+        {
+            await AotArrowRecordParquetExtensions.WriteParquetRowGroupAsync(writer, batch);
+        }
+
+        stream.Position = 0;
+        List<AotArrowRecord> read = await AotArrowRecordParquetExtensions.ReadParquetAsync(stream);
+
+        Expect(read.Count == 3, $"expected 3 Arrow rows, read {read.Count}");
+        Expect(read[0].Id == 11 && read[0].Label == "one", "Arrow row 0 mismatch");
+        Expect(read[1].Id == 12 && read[1].Label == "two", "Arrow row 1 mismatch");
+        Expect(read[2].Id == 13 && read[2].Label == "three", "Arrow row 2 mismatch");
     }
 }

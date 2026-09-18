@@ -9,6 +9,11 @@
 
     <ItemGroup>
         <PackageReference Include="Parquet.Net" />
+        <!--
+      This reference switches on the generator's conditional Arrow ingestion bridge so the
+      published native binary exercises the same surface a consumer would compile.
+    -->
+        <PackageReference Include="Apache.Arrow" />
     </ItemGroup>
 
     <ItemGroup>
