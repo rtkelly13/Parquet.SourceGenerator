@@ -1,8 +1,9 @@
 # 20 - Unified Pushdown & the Generated/Shipped Boundary
 
-> **Status**: proposal for the `0.1.0` API freeze (#230). Specifies the public API shape only;
-> the implementation plan and its blocking spike are in #237.
-> Prerequisites: #220 (column catalog), #221 (accessor interface).
+> **Status**: future design proposal, superseded for the current release by the
+> [generated/shipped boundary decision](./31-GENERATED-SHIPPED-BOUNDARY-DECISION.md). It specifies
+> the public API shape only; the portability experiment remains tracked in #237.
+> Prerequisites for a future implementation: #220 (column catalog), #221 (accessor interface).
 >
 > Numbered 20, not 18: `docs/17` and `docs/18` were taken by #235 and #236 while this was being
 > written. That is the third such collision in a week — see #228.
@@ -323,9 +324,10 @@ rather than end-to-end. Running the spike against the current gate would prove n
 
 ---
 
-## 6. Open question the spike must answer
+## 6. Open question the future experiment must answer
 
-Tracked in #237, blocking #220/#221/#222.
+Tracked in #237, but no longer blocking the current release or the design work in #220/#221/#222.
+The experiment may be reopened after those seams are stable.
 
 1. **Throughput.** Port one read path to the shipped shape; measure against the generated one on the
    TPC-H LineItem model. Expected within noise, by §5's 92% finding.
@@ -339,8 +341,9 @@ Neither question is "is interface dispatch fast enough". §5 rule 3 answers that
 
 ## 7. Migration
 
-1. #220 column catalog and #221 accessor land first; both are prerequisites, not parallel work.
-2. Spike (#237) answers §6. **If throughput regresses, this proposal is withdrawn** and pushdown
+1. For a future implementation, #220 column catalog and #221 accessor land first; both are
+   prerequisites, not parallel work.
+2. If reopened, spike (#237) answers §6. **If throughput regresses, this proposal is withdrawn** and pushdown
    unification proceeds with generated code — §3's API shape is independent of §2's boundary and
    remains worth doing on its own.
 3. Filters, planner and `.Explain()` ship; `.Where(Func<...>)` and the ordered-lookup families are
