@@ -177,6 +177,9 @@ The documentation is organized into three distinct tiers based on audience and i
 23. **[28 - Coverage Envelope Map](./28-COVERAGE-MAP.md)**
      - Source-derived accepted property kinds, nesting and nullability shapes, backend evidence, and risk-ranked gaps.
      - Refresh with `dotnet run scripts/CoverageMap.cs -- --update`; CI rejects drift from the parser and generator dials.
+24. **[28 - Build Incrementality Spike (#258)](./28-BUILD-INCREMENTALITY-258.md)**
+     - CSharpGeneratorDriver throughput and managed allocation measurements for initial, unrelated-file, and per-model edits.
+     - Public Roslyn tracked-output evidence, model value-equality proof, and the resolved `WithTrackingName` compatibility limitation.
 
 23. **[36 - Feature Profiles and Per-Type Overrides](./36-FEATURE-PROFILES-SCOPE-225.md)**
      - Scope decision for named profiles and per-type configuration overrides.

@@ -94,7 +94,7 @@ public sealed record PropertyModel(
     bool IsNullable,
     bool Deduplicate = false,
     ColumnEncoding Encoding = ColumnEncoding.Default
-) : IEquatable<PropertyModel>
+)
 {
     /// <summary>
     /// Struct members: the child property models, in schema order. Value-equal via

@@ -9,6 +9,7 @@
 
     <ItemGroup>
         <PackageReference Include="BenchmarkDotNet" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
         <PackageReference Include="Parquet.Net" />
     </ItemGroup>
 
@@ -17,7 +18,7 @@
         <ProjectReference
             Include="..\..\src\Parquet.SourceGenerator\Parquet.SourceGenerator.csproj"
             OutputItemType="Analyzer"
-            ReferenceOutputAssembly="false"
+            ReferenceOutputAssembly="true"
         />
     </ItemGroup>
 
