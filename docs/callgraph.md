@@ -16,6 +16,7 @@ graph TD
     tparquetsourcegeneratoremittercomponentsarrowmappingcomponent_064["Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent"]
     tparquetsourcegeneratoremittercomponentsbatchvalidationcomponent_067["Parquet.SourceGenerator.Emitter.Components.BatchValidationComponent"]
     tparquetsourcegeneratoremittercomponentsbufferpoolcomponent_062["Parquet.SourceGenerator.Emitter.Components.BufferPoolComponent"]
+    tparquetsourcegeneratoremittercomponentsdecompressionguardcomponent_070["Parquet.SourceGenerator.Emitter.Components.DecompressionGuardComponent"]
     tparquetsourcegeneratoremittercomponentspropertymappingcomponent_067["Parquet.SourceGenerator.Emitter.Components.PropertyMappingComponent"]
     tparquetsourcegeneratoremittercomponentsrowgrouplayoutcomponent_066["Parquet.SourceGenerator.Emitter.Components.RowGroupLayoutComponent"]
     tparquetsourcegeneratoremittercomponentsschemacomponent_058["Parquet.SourceGenerator.Emitter.Components.SchemaComponent"]
@@ -36,6 +37,7 @@ graph TD
     tparquetsourcegeneratoremittercodeemitter_043 -->|3| tparquetsourcegeneratoremittercolumnarcolumnarbatchcomponent_063
     tparquetsourcegeneratoremittercodeemitter_043 -->|1| tparquetsourcegeneratoremittercomponentsbatchvalidationcomponent_067
     tparquetsourcegeneratoremittercodeemitter_043 -->|11| tparquetsourcegeneratoremittercomponentsbufferpoolcomponent_062
+    tparquetsourcegeneratoremittercodeemitter_043 -->|1| tparquetsourcegeneratoremittercomponentsdecompressionguardcomponent_070
     tparquetsourcegeneratoremittercodeemitter_043 -->|6| tparquetsourcegeneratoremittercomponentspropertymappingcomponent_067
     tparquetsourcegeneratoremittercodeemitter_043 -->|1| tparquetsourcegeneratoremittercomponentsrowgrouplayoutcomponent_066
     tparquetsourcegeneratoremittercodeemitter_043 -->|6| tparquetsourcegeneratoremittercomponentsschemacomponent_058

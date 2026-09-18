@@ -62,9 +62,6 @@ public static class LegacyCodeEmitter
         EmitBuildFormatOptions(builder);
         builder.AppendLine();
 
-        DecompressionGuardComponent.Emit(builder);
-        builder.AppendLine();
-
         if (model.Properties.Length > 0)
         {
             EmitValidateReader(builder, model);
@@ -204,6 +201,8 @@ public static class LegacyCodeEmitter
         builder.AppendLine("    {");
         builder.AppendLine("        return new global::Parquet.ParquetOptions();");
         builder.AppendLine("    }");
+        builder.AppendLine();
+        DecompressionGuardComponent.Emit(builder);
     }
 
     private static void EmitApplyCompression(StringBuilder builder)
