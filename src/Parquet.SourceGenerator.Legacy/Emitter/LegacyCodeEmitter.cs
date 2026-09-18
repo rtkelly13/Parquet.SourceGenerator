@@ -124,6 +124,7 @@ public static class LegacyCodeEmitter
         SchemaComponent.EmitValidatePhysicalType(builder);
         builder.AppendLine();
         SchemaComponent.EmitValidateColumnChunkBounds(builder);
+        DictionaryPageComponent.EmitHelpers(builder);
     }
 
     private static void EmitValidateReader(StringBuilder builder, TargetClassModel model)
@@ -165,6 +166,62 @@ public static class LegacyCodeEmitter
                 $"        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_{i}, footerStart);"
             );
         }
+        builder.AppendLine("    }");
+        builder.AppendLine();
+        builder.AppendLine("    private static void ValidateDictionaryEntries(");
+        builder.AppendLine("        global::Parquet.ParquetRowGroupReader groupReader,");
+        builder.AppendLine("        global::System.IO.Stream stream,");
+        builder.AppendLine("        global::Parquet.Schema.DataField field,");
+        builder.AppendLine(
+            "        global::Parquet.SourceGenerator.ParquetSerializerOptions options)"
+        );
+        builder.AppendLine("    {");
+        builder.AppendLine("        var metadata = groupReader.GetMetadata(field).MetaData;");
+        builder.AppendLine("        bool dictionaryEncoded = false;");
+        builder.AppendLine("        foreach (var encoding in metadata.Encodings)");
+        builder.AppendLine("        {");
+        builder.AppendLine(
+            "            if (encoding == global::Parquet.Meta.Encoding.PLAIN_DICTIONARY || encoding == global::Parquet.Meta.Encoding.RLE_DICTIONARY)"
+        );
+        builder.AppendLine("            {");
+        builder.AppendLine("                dictionaryEncoded = true;");
+        builder.AppendLine("                break;");
+        builder.AppendLine("            }");
+        builder.AppendLine("        }");
+        builder.AppendLine(
+            "        int? dictionaryEntries = dictionaryEncoded ? ReadDictionaryEntryCount(groupReader, stream, field) : null;"
+        );
+        builder.AppendLine(
+            "        if (dictionaryEntries.HasValue && dictionaryEntries.Value > options.MaxDictionaryEntries)"
+        );
+        builder.AppendLine("        {");
+        builder.AppendLine(
+            "            throw new global::System.IO.InvalidDataException($\"Dictionary column '{field.Name}' entry count {dictionaryEntries.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.\");"
+        );
+        builder.AppendLine("        }");
+        builder.AppendLine("    }");
+        builder.AppendLine();
+        builder.AppendLine("    private static void ValidateStringLengths(");
+        builder.AppendLine("        string?[] values,");
+        builder.AppendLine("        string fieldName,");
+        builder.AppendLine(
+            "        global::Parquet.SourceGenerator.ParquetSerializerOptions options)"
+        );
+        builder.AppendLine("    {");
+        builder.AppendLine("        for (int i = 0; i < values.Length; i++)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            string? value = values[i];");
+        builder.AppendLine("            if (value is null) continue;");
+        builder.AppendLine(
+            "            int byteCount = global::System.Text.Encoding.UTF8.GetByteCount(value);"
+        );
+        builder.AppendLine("            if (byteCount > options.MaxStringLengthBytes)");
+        builder.AppendLine("            {");
+        builder.AppendLine(
+            "                throw new global::System.IO.InvalidDataException($\"String column '{fieldName}' value at index {i} UTF-8 length {byteCount} exceeds maximum allowed {options.MaxStringLengthBytes}.\");"
+        );
+        builder.AppendLine("            }");
+        builder.AppendLine("        }");
         builder.AppendLine("    }");
     }
 
@@ -729,15 +786,43 @@ public static class LegacyCodeEmitter
             string elementType = GetColumnElementType(prop);
             if (prop.IsNullable)
             {
+                builder.AppendLine(
+                    $"                    if (!missing_{i}) ValidateDictionaryEntries(rgReader, stream, field_{i}, options);"
+                );
+            }
+            else
+            {
+                builder.AppendLine(
+                    $"                    ValidateDictionaryEntries(rgReader, stream, field_{i}, options);"
+                );
+            }
+            if (prop.IsNullable)
+            {
                 // An optional column the file does not carry reads as all-nulls rather than as a
                 // failed column lookup: the documented schema-evolution behaviour.
-                builder.AppendLine($"                    var data_{i} = missing_{i}");
-                builder.AppendLine(
-                    $"                        ? {GetArrayCreationExpression(prop, "groupRows")}"
-                );
-                builder.AppendLine(
-                    $"                        : ({elementType}[])(await rgReader.ReadColumnAsync(field_{i}, cancellationToken).ConfigureAwait(false)).Data;"
-                );
+                if (IsStringColumn(prop))
+                {
+                    builder.AppendLine($"                    var data_{i} = missing_{i}");
+                    builder.AppendLine(
+                        $"                        ? {GetArrayCreationExpression(prop, "groupRows")}"
+                    );
+                    builder.AppendLine(
+                        $"                        : ({elementType}[])(await rgReader.ReadColumnAsync(field_{i}, cancellationToken).ConfigureAwait(false)).Data;"
+                    );
+                    builder.AppendLine(
+                        $"                    if (!missing_{i}) ValidateStringLengths(data_{i}, field_{i}.Name, options);"
+                    );
+                }
+                else
+                {
+                    builder.AppendLine($"                    var data_{i} = missing_{i}");
+                    builder.AppendLine(
+                        $"                        ? {GetArrayCreationExpression(prop, "groupRows")}"
+                    );
+                    builder.AppendLine(
+                        $"                        : ({elementType}[])(await rgReader.ReadColumnAsync(field_{i}, cancellationToken).ConfigureAwait(false)).Data;"
+                    );
+                }
             }
             else
             {
@@ -747,6 +832,12 @@ public static class LegacyCodeEmitter
                 builder.AppendLine(
                     $"                    var data_{i} = ({elementType}[])col_{i}.Data;"
                 );
+                if (IsStringColumn(prop))
+                {
+                    builder.AppendLine(
+                        $"                    ValidateStringLengths(data_{i}, field_{i}.Name, options);"
+                    );
+                }
             }
         }
 
@@ -812,6 +903,10 @@ public static class LegacyCodeEmitter
     {
         return BufferPoolComponent.IsReferenceTypeBuffer(prop);
     }
+
+    private static bool IsStringColumn(PropertyModel prop) =>
+        prop.Kind == PropertyKind.Primitive
+        && prop.TypeName.IndexOf("string", StringComparison.Ordinal) >= 0;
 
     private static string GetWriteExpression(PropertyModel prop, string valueExpression) =>
         PropertyMappingComponent.GetWriteExpression(

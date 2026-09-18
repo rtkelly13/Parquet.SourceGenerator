@@ -168,6 +168,42 @@ public class LegacyEmitterTests
         code.ShouldContain("BuildFormatOptions(options)");
     }
 
+    [Fact]
+    public void LegacyReaderEmitsDictionaryAndStringSafetyGuards()
+    {
+        string code = Emit(
+            Prop("Category", "category", "string", LegacyModels::PropertyKind.Primitive, false),
+            Prop("Description", "description", "string", LegacyModels::PropertyKind.Primitive, true)
+        );
+
+        code.ShouldContain("ValidateDictionaryEntries(rgReader, stream, field_0, options);");
+        code.ShouldContain(
+            "if (!missing_1) ValidateDictionaryEntries(rgReader, stream, field_1, options);"
+        );
+        code.ShouldContain("ReadDictionaryEntryCount(groupReader, stream, field)");
+        code.ShouldContain("ValidateStringLengths(data_0, field_0.Name, options);");
+        code.ShouldContain("if (!missing_1) ValidateStringLengths(data_1, field_1.Name, options);");
+        code.ShouldContain("options.MaxStringLengthBytes");
+        code.ShouldContain("throw new global::System.IO.InvalidDataException");
+    }
+
+    [Fact]
+    public void LegacyStringLimitIsPostMaterializationValidation()
+    {
+        string code = Emit(
+            Prop("Description", "description", "string", LegacyModels::PropertyKind.Primitive, true)
+        );
+
+        int read = code.IndexOf("ReadColumnAsync(field_0", StringComparison.Ordinal);
+        int validate = code.IndexOf(
+            "ValidateStringLengths(data_0, field_0.Name, options);",
+            StringComparison.Ordinal
+        );
+
+        read.ShouldBeGreaterThanOrEqualTo(0);
+        validate.ShouldBeGreaterThan(read);
+    }
+
     /// <summary>
     /// Field resolution is a property of the file, not of a row group. Doing it per row group also
     /// re-invoked <c>GetDataFields()</c>, which allocates a fresh array on every call.

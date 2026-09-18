@@ -11,6 +11,12 @@ commit's behaviour described inline.
 **Status key**: 🔴 broken / emits wrong or uncompilable code · 🟠 silently does nothing ·
 🟡 missing capability · ⚪ hygiene or documentation drift
 
+The classic backend's `MaxStringLengthBytes` option validates decoded values after
+`ReadColumnAsync` returns because Parquet.Net 4.25 does not expose a bounded or raw string-column
+read. It is therefore a deterministic validation limit on that backend, not a guarantee that an
+oversized string was never materialized. The upstream dependency and the required API shape are
+recorded in [`UPSTREAM_DEPENDENCY_LIMITATIONS.md`](../UPSTREAM_DEPENDENCY_LIMITATIONS.md).
+
 ---
 
 ## 1. Parquet.Net version support and .NET Framework

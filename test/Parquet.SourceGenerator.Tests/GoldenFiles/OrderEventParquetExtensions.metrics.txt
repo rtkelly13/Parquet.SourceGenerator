@@ -9,7 +9,7 @@
 # ELOC_PER_MEMBER emitted executable lines per emitted public member.
 # Ordinal-sorted. CC, CL, SLOC, ELOC, DIT, ERRORS and MEMBERS are gated exactly; MI is
 # REPORTED BUT NOT GATED for generated code. See docs/22-GENERATED-CODE-METRICS.md.
-S:OrderEventParquetExtensions | EMITTER=v6 MEMBERS=82 CC=415 CL=93 SLOC=3246 ELOC=1109 ERRORS=0 METHODS=108 MAXCC=35 ELOC_PER_MEMBER=13.5
+S:OrderEventParquetExtensions | EMITTER=v6 MEMBERS=82 CC=841 CL=96 SLOC=4328 ELOC=1741 ERRORS=0 METHODS=117 MAXCC=90 ELOC_PER_MEMBER=21.2
 M:SampleDomain.Models.OrderEventParquet.From(System.IO.Stream) | MI=90 CC=2 CL=5 DIT=- SLOC=3 ELOC=1
 M:SampleDomain.Models.OrderEventParquet.From(System.ReadOnlyMemory<byte>) | MI=94 CC=1 CL=3 DIT=- SLOC=3 ELOC=1
 M:SampleDomain.Models.OrderEventParquetExtensions.AcceptRowGroup(System.Func<SampleDomain.Models.OrderEventRowGroupMetadata, bool>, Parquet.ParquetRowGroupReader, int, Parquet.Schema.DataField, Parquet.Schema.DataField, Parquet.Schema.DataField) | MI=59 CC=11 CL=8 DIT=- SLOC=42 ELOC=8
@@ -53,22 +53,27 @@ M:SampleDomain.Models.OrderEventParquetExtensions.DecompressionGuardStream.Valid
 M:SampleDomain.Models.OrderEventParquetExtensions.DecompressionGuardStream.Write(byte[], int, int) | MI=100 CC=1 CL=2 DIT=- SLOC=1 ELOC=1
 M:SampleDomain.Models.OrderEventParquetExtensions.GetFieldDepth(Parquet.Schema.Field) | MI=60 CC=6 CL=6 DIT=- SLOC=22 ELOC=11
 M:SampleDomain.Models.OrderEventParquetExtensions.GetFooterStartAsync(System.IO.Stream, System.Threading.CancellationToken) | MI=52 CC=7 CL=6 DIT=- SLOC=34 ELOC=18
-M:SampleDomain.Models.OrderEventParquetExtensions.MaterializeDeduplicatedStrings(System.ReadOnlyMemory<char>[], int[], string[], int, int, SampleDomain.Models.OrderEventParquetExtensions.StringDeduplicator) | MI=63 CC=5 CL=3 DIT=- SLOC=33 ELOC=8
-M:SampleDomain.Models.OrderEventParquetExtensions.ReadBufferSequentialArrayAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=28 CC=29 CL=30 DIT=- SLOC=197 ELOC=89
-M:SampleDomain.Models.OrderEventParquetExtensions.ReadDeduplicatedStringColumnAsync(Parquet.ParquetRowGroupReader, Parquet.Schema.DataField, string[], int, SampleDomain.Models.OrderEventParquetExtensions.StringDeduplicator, System.Threading.CancellationToken) | MI=61 CC=4 CL=9 DIT=- SLOC=39 ELOC=9
-M:SampleDomain.Models.OrderEventParquetExtensions.ReadParquetArrayAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.OrderEventRowGroupMetadata, bool>) | MI=25 CC=35 CL=31 DIT=- SLOC=225 ELOC=101
+M:SampleDomain.Models.OrderEventParquetExtensions.MaterializeBoundedStrings(System.ReadOnlyMemory<char>[], int[], string[], int, int, bool, SampleDomain.Models.OrderEventParquetExtensions.StringDeduplicator, int, string) | MI=53 CC=9 CL=6 DIT=- SLOC=49 ELOC=17
+M:SampleDomain.Models.OrderEventParquetExtensions.ReadBoundedStringColumnAsync(Parquet.ParquetRowGroupReader, Parquet.Schema.DataField, string[], int, bool, SampleDomain.Models.OrderEventParquetExtensions.StringDeduplicator, int, System.Threading.CancellationToken) | MI=61 CC=4 CL=9 DIT=- SLOC=41 ELOC=9
+M:SampleDomain.Models.OrderEventParquetExtensions.ReadBufferSequentialArrayAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=12 CC=84 CL=34 DIT=- SLOC=333 ELOC=171
+M:SampleDomain.Models.OrderEventParquetExtensions.ReadCompactI32(System.IO.Stream) | MI=80 CC=2 CL=2 DIT=- SLOC=5 ELOC=2
+M:SampleDomain.Models.OrderEventParquetExtensions.ReadCompactVarUInt(System.IO.Stream) | MI=65 CC=4 CL=2 DIT=- SLOC=12 ELOC=7
+M:SampleDomain.Models.OrderEventParquetExtensions.ReadDictionaryEntryCount(Parquet.ParquetRowGroupReader, System.IO.Stream, Parquet.Schema.DataField) | MI=62 CC=8 CL=7 DIT=- SLOC=20 ELOC=8
+M:SampleDomain.Models.OrderEventParquetExtensions.ReadDictionaryPageHeader(System.IO.Stream) | MI=70 CC=5 CL=2 DIT=- SLOC=11 ELOC=5
+M:SampleDomain.Models.OrderEventParquetExtensions.ReadDictionaryPageHeaderBody(System.IO.Stream) | MI=62 CC=7 CL=2 DIT=- SLOC=16 ELOC=9
+M:SampleDomain.Models.OrderEventParquetExtensions.ReadParquetArrayAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.OrderEventRowGroupMetadata, bool>) | MI=11 CC=90 CL=35 DIT=- SLOC=361 ELOC=183
 M:SampleDomain.Models.OrderEventParquetExtensions.ReadParquetArrayAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=76 CC=1 CL=4 DIT=- SLOC=10 ELOC=3
-M:SampleDomain.Models.OrderEventParquetExtensions.ReadParquetAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.OrderEventRowGroupMetadata, bool>) | MI=25 CC=35 CL=34 DIT=- SLOC=253 ELOC=105
+M:SampleDomain.Models.OrderEventParquetExtensions.ReadParquetAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.OrderEventRowGroupMetadata, bool>) | MI=10 CC=90 CL=37 DIT=- SLOC=389 ELOC=187
 M:SampleDomain.Models.OrderEventParquetExtensions.ReadParquetAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=72 CC=1 CL=7 DIT=- SLOC=11 ELOC=4
-M:SampleDomain.Models.OrderEventParquetExtensions.ReadParquetBatchesAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=33 CC=19 CL=28 DIT=- SLOC=156 ELOC=65
+M:SampleDomain.Models.OrderEventParquetExtensions.ReadParquetBatchesAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=16 CC=74 CL=32 DIT=- SLOC=292 ELOC=147
 M:SampleDomain.Models.OrderEventParquetExtensions.ReadParquetBatchesAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=70 CC=2 CL=8 DIT=- SLOC=14 ELOC=5
-M:SampleDomain.Models.OrderEventParquetExtensions.ReadParquetParallelArrayAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=29 CC=26 CL=29 DIT=- SLOC=203 ELOC=84
+M:SampleDomain.Models.OrderEventParquetExtensions.ReadParquetParallelArrayAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=13 CC=81 CL=33 DIT=- SLOC=339 ELOC=166
 M:SampleDomain.Models.OrderEventParquetExtensions.ReadParquetParallelArrayAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=39 CC=15 CL=22 DIT=- SLOC=118 ELOC=47
 M:SampleDomain.Models.OrderEventParquetExtensions.ReadParquetParallelAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=72 CC=1 CL=7 DIT=- SLOC=12 ELOC=4
 M:SampleDomain.Models.OrderEventParquetExtensions.ReadParquetParallelAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=72 CC=1 CL=7 DIT=- SLOC=12 ELOC=4
-M:SampleDomain.Models.OrderEventParquetExtensions.ReadParquetStreamAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.OrderEventRowGroupMetadata, bool>) | MI=31 CC=22 CL=32 DIT=- SLOC=169 ELOC=70
+M:SampleDomain.Models.OrderEventParquetExtensions.ReadParquetStreamAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.OrderEventRowGroupMetadata, bool>) | MI=15 CC=77 CL=36 DIT=- SLOC=305 ELOC=152
 M:SampleDomain.Models.OrderEventParquetExtensions.ReadParquetStreamAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.OrderEventRowGroupMetadata, bool>) | MI=67 CC=2 CL=10 DIT=- SLOC=15 ELOC=6
-M:SampleDomain.Models.OrderEventParquetExtensions.ReadRowGroupsIntoAsync(System.ReadOnlyMemory<byte>, Parquet.ParquetOptions, SampleDomain.Models.OrderEvent[], int[], int[], int, int, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationTokenSource, System.Threading.CancellationToken) | MI=32 CC=21 CL=31 DIT=- SLOC=189 ELOC=70
+M:SampleDomain.Models.OrderEventParquetExtensions.ReadRowGroupsIntoAsync(System.ReadOnlyMemory<byte>, Parquet.ParquetOptions, SampleDomain.Models.OrderEvent[], int[], int[], int, int, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationTokenSource, System.Threading.CancellationToken) | MI=15 CC=76 CL=35 DIT=- SLOC=325 ELOC=152
 M:SampleDomain.Models.OrderEventParquetExtensions.ResolveSchemaField(Parquet.Schema.DataField[], int, Parquet.Schema.DataField, ref System.Collections.Generic.Dictionary<string, Parquet.Schema.DataField>, out bool) | MI=51 CC=10 CL=8 DIT=- SLOC=61 ELOC=19
 M:SampleDomain.Models.OrderEventParquetExtensions.StringDeduplicator.Deduplicate(string) | MI=54 CC=7 CL=3 DIT=- SLOC=33 ELOC=17
 M:SampleDomain.Models.OrderEventParquetExtensions.StringDeduplicator.Dispose() | MI=75 CC=2 CL=1 DIT=- SLOC=9 ELOC=4
@@ -77,6 +82,10 @@ M:SampleDomain.Models.OrderEventParquetExtensions.StringDeduplicator.HashSpan(Sy
 M:SampleDomain.Models.OrderEventParquetExtensions.StringDeduplicator.HashString(string) | MI=71 CC=2 CL=0 DIT=- SLOC=10 ELOC=5
 M:SampleDomain.Models.OrderEventParquetExtensions.StringDeduplicator.SpanEqualsOrdinal(System.ReadOnlySpan<char>, string) | MI=72 CC=4 CL=1 DIT=- SLOC=9 ELOC=4
 M:SampleDomain.Models.OrderEventParquetExtensions.StringDeduplicator.StringDeduplicator(int) | MI=72 CC=1 CL=2 DIT=- SLOC=6 ELOC=4
+M:SampleDomain.Models.OrderEventParquetExtensions.TryReadCompactField(System.IO.Stream, ref int, out int, out int) | MI=57 CC=6 CL=2 DIT=- SLOC=21 ELOC=14
+M:SampleDomain.Models.OrderEventParquetExtensions.TrySkipCompactBytes(System.IO.Stream, int) | MI=81 CC=3 CL=1 DIT=- SLOC=6 ELOC=2
+M:SampleDomain.Models.OrderEventParquetExtensions.TrySkipCompactValue(System.IO.Stream, int) | MI=86 CC=1 CL=1 DIT=- SLOC=11 ELOC=1
+M:SampleDomain.Models.OrderEventParquetExtensions.TrySkipCompactVarInt(System.IO.Stream) | MI=94 CC=1 CL=2 DIT=- SLOC=2 ELOC=1
 M:SampleDomain.Models.OrderEventParquetExtensions.ValidateColumnChunkBounds(Parquet.ParquetReader, long, int) | MI=36 CC=27 CL=10 DIT=- SLOC=97 ELOC=54
 M:SampleDomain.Models.OrderEventParquetExtensions.ValidatePhysicalType(Parquet.ParquetReader, Parquet.Schema.DataField[], Parquet.Schema.DataField, long) | MI=50 CC=11 CL=15 DIT=- SLOC=41 ELOC=20
 M:SampleDomain.Models.OrderEventParquetExtensions.ValidateReaderAsync(Parquet.ParquetReader, System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=51 CC=6 CL=13 DIT=- SLOC=38 ELOC=21
@@ -142,7 +151,7 @@ P:SampleDomain.Models.OrderEventRowGroupMetadata.RowGroupIndex | MI=100 CC=1 CL=
 P:SampleDomain.Models.OrderEventRowGroupMetadata.Score | MI=100 CC=1 CL=1 DIT=- SLOC=2 ELOC=0
 T:SampleDomain.Models.OrderEventColumnarBatch | MI=100 CC=1 CL=5 DIT=1 SLOC=50 ELOC=0
 T:SampleDomain.Models.OrderEventParquet | MI=91 CC=3 CL=7 DIT=1 SLOC=13 ELOC=2
-T:SampleDomain.Models.OrderEventParquetExtensions | MI=44 CC=370 CL=88 DIT=1 SLOC=2962 ELOC=1054
+T:SampleDomain.Models.OrderEventParquetExtensions | MI=40 CC=796 CL=91 DIT=1 SLOC=4044 ELOC=1686
 T:SampleDomain.Models.OrderEventParquetExtensions.ColumnBatch | MI=78 CC=21 CL=5 DIT=1 SLOC=96 ELOC=29
 T:SampleDomain.Models.OrderEventParquetExtensions.DecompressionGuardStream | MI=79 CC=32 CL=9 DIT=3 SLOC=117 ELOC=37
 T:SampleDomain.Models.OrderEventParquetExtensions.DecompressionGuardStream.CompactProtocolReader | MI=70 CC=12 CL=1 DIT=1 SLOC=40 ELOC=19

@@ -6,6 +6,21 @@
 
 Track the limitation and future upstream fixes in [issue #150](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/150). Scan Parquet.Net for a safe non-nullable read path or an API that permits omitting definition-level output before revisiting the optimization.
 
+## Parquet.Net 4.25.0 Legacy String Reads
+
+The legacy `ParquetRowGroupReader.ReadColumnAsync` API materializes a complete `DataColumn` before
+returning it. It exposes no bounded string read, raw page buffer, physical byte-length metadata, or
+callback that the generated reader can use before materialization. Consequently,
+`ParquetSerializerOptions.MaxStringLengthBytes` is enforced immediately after the materialized
+column is returned on the classic backend; it is a deterministic content-validation limit, not an
+allocation-prevention guarantee for legacy string columns.
+
+The modern Parquet.Net 6 backend can enforce the corresponding limit at its lower-level read
+boundary. Closing the legacy gap requires an upstream bounded/raw column-read API (or a complete
+page reader in this repository), neither of which is appropriate to add as part of the 0.1 release.
+The generated legacy contract and tests deliberately preserve this ordering so the limitation is
+visible rather than implying that the option protects against pre-read string allocation.
+
 ## Parquet.Net 6.1.0 Page Checksums Are Not Verified
 
 Parquet's `PageHeader.crc` is optional, and Parquet.Net neither writes nor verifies it. A single

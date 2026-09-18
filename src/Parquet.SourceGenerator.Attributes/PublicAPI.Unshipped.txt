@@ -30,10 +30,14 @@ Parquet.SourceGenerator.ParquetSerializerOptions.MaxDecompressedPageSize.get -> 
 Parquet.SourceGenerator.ParquetSerializerOptions.MaxDecompressedPageSize.set -> void
 Parquet.SourceGenerator.ParquetSerializerOptions.MaxDecompressionExpansionRatio.get -> int
 Parquet.SourceGenerator.ParquetSerializerOptions.MaxDecompressionExpansionRatio.set -> void
+Parquet.SourceGenerator.ParquetSerializerOptions.MaxDictionaryEntries.get -> int
+Parquet.SourceGenerator.ParquetSerializerOptions.MaxDictionaryEntries.set -> void
 Parquet.SourceGenerator.ParquetSerializerOptions.MaxNestingDepth.get -> int
 Parquet.SourceGenerator.ParquetSerializerOptions.MaxNestingDepth.set -> void
 Parquet.SourceGenerator.ParquetSerializerOptions.MaxRowGroupCount.get -> int
 Parquet.SourceGenerator.ParquetSerializerOptions.MaxRowGroupCount.set -> void
+Parquet.SourceGenerator.ParquetSerializerOptions.MaxStringLengthBytes.get -> int
+Parquet.SourceGenerator.ParquetSerializerOptions.MaxStringLengthBytes.set -> void
 Parquet.SourceGenerator.VectorizedColumnTransforms
 static Parquet.SourceGenerator.NullableColumnExtractor.CompactInPlace<T>(System.Span<T> values, System.ReadOnlySpan<byte> presence) -> int
 static Parquet.SourceGenerator.NullableColumnExtractor.CountPresent(System.ReadOnlySpan<byte> presence) -> int

@@ -255,6 +255,153 @@ public class HostileParquetTests
         ex.Message.ShouldContain("exceeds maximum allowed 3");
     }
 
+    [Fact]
+    public async Task DictionaryValuesExceedMaxDictionaryEntriesThrowDeterministically()
+    {
+        var items = Enumerable
+            .Range(0, 1_000)
+            .Select(i => new DictionaryEncodedRecord
+            {
+                Category = i % 2 == 0 ? "first" : "second",
+                Value = i,
+            })
+            .ToList();
+
+        using var ms = new MemoryStream();
+        await items.WriteParquetAsync(ms);
+        byte[] bytes = ms.ToArray();
+        var hostileOptions = new ParquetSerializerOptions { MaxDictionaryEntries = 1 };
+
+        ms.Position = 0;
+        var listException = await Should.ThrowAsync<InvalidDataException>(() =>
+            DictionaryEncodedRecordParquetExtensions.ReadParquetAsync(ms, hostileOptions)
+        );
+        listException.Message.ShouldBe(
+            "Dictionary column 'Category' entry count 2 exceeds maximum allowed 1."
+        );
+
+        var arrayException = await Should.ThrowAsync<InvalidDataException>(() =>
+            DictionaryEncodedRecordParquetExtensions.ReadParquetArrayAsync(bytes, hostileOptions)
+        );
+        arrayException.Message.ShouldBe(listException.Message);
+
+        var parallelException = await Should.ThrowAsync<InvalidDataException>(() =>
+            DictionaryEncodedRecordParquetExtensions.ReadParquetParallelArrayAsync(
+                bytes,
+                hostileOptions
+            )
+        );
+        parallelException.Message.ShouldBe(listException.Message);
+
+        using var stream = new MemoryStream(bytes, writable: false);
+        var streamException = await Should.ThrowAsync<InvalidDataException>(async () =>
+        {
+            await foreach (
+                var _ in DictionaryEncodedRecordParquetExtensions.ReadParquetStreamAsync(
+                    stream,
+                    hostileOptions
+                )
+            ) { }
+        });
+        streamException.Message.ShouldBe(listException.Message);
+    }
+
+    [Fact]
+    public async Task LowCardinalityDictionaryColumnIsComparedByDictionaryEntries()
+    {
+        var items = Enumerable
+            .Range(0, 1_000)
+            .Select(i => new DictionaryEncodedRecord
+            {
+                Category = i % 2 == 0 ? "first" : "second",
+                Value = i,
+            })
+            .ToList();
+
+        using var ms = new MemoryStream();
+        await items.WriteParquetAsync(ms);
+        ms.Position = 0;
+
+        List<DictionaryEncodedRecord> actual =
+            await DictionaryEncodedRecordParquetExtensions.ReadParquetAsync(
+                ms,
+                new ParquetSerializerOptions { MaxDictionaryEntries = 2 }
+            );
+
+        actual.Count.ShouldBe(items.Count);
+        actual[0].Category.ShouldBe("first");
+        actual[^1].Category.ShouldBe("second");
+    }
+
+    [Fact]
+    public async Task OversizedUtf8StringsThrowBeforeMaterializationAcrossReadPaths()
+    {
+        var items = new List<CompressibleRecord>
+        {
+            // U+1F600 is two UTF-16 code units but four UTF-8 bytes. The limit is byte-based.
+            new() { Id = 1, Payload = "😀" },
+        };
+
+        using var ms = new MemoryStream();
+        await items.WriteParquetAsync(ms);
+        byte[] bytes = ms.ToArray();
+        var hostileOptions = new ParquetSerializerOptions { MaxStringLengthBytes = 3 };
+
+        ms.Position = 0;
+        var listException = await Should.ThrowAsync<InvalidDataException>(() =>
+            CompressibleRecordParquetExtensions.ReadParquetAsync(ms, hostileOptions)
+        );
+        listException.Message.ShouldBe(
+            "String column 'payload' value at index 0 UTF-8 length 4 exceeds maximum allowed 3."
+        );
+
+        var arrayException = await Should.ThrowAsync<InvalidDataException>(() =>
+            CompressibleRecordParquetExtensions.ReadParquetArrayAsync(bytes, hostileOptions)
+        );
+        arrayException.Message.ShouldBe(listException.Message);
+
+        var parallelException = await Should.ThrowAsync<InvalidDataException>(() =>
+            CompressibleRecordParquetExtensions.ReadParquetParallelArrayAsync(bytes, hostileOptions)
+        );
+        parallelException.Message.ShouldBe(listException.Message);
+
+        using var stream = new MemoryStream(bytes, writable: false);
+        var streamException = await Should.ThrowAsync<InvalidDataException>(async () =>
+        {
+            await foreach (
+                var _ in CompressibleRecordParquetExtensions.ReadParquetStreamAsync(
+                    stream,
+                    hostileOptions
+                )
+            ) { }
+        });
+        streamException.Message.ShouldBe(listException.Message);
+    }
+
+    [Fact]
+    public async Task OversizedUtf8ListStringsAreRejectedBeforeCompoundMaterialization()
+    {
+        var items = new List<ListRow>
+        {
+            new() { Id = 1, Tags = ["é"] },
+        };
+
+        using var ms = new MemoryStream();
+        await items.WriteParquetAsync(ms);
+        ms.Position = 0;
+
+        var ex = await Should.ThrowAsync<InvalidDataException>(() =>
+            ListRowParquetExtensions.ReadParquetAsync(
+                ms,
+                new ParquetSerializerOptions { MaxStringLengthBytes = 1 }
+            )
+        );
+
+        ex.Message.ShouldBe(
+            "String column 'Tags' value at index 0 UTF-8 length 2 exceeds maximum allowed 1."
+        );
+    }
+
     private static readonly int[] SingleNegativeOneArray = [-1];
 
     [Fact]
