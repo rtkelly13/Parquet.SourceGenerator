@@ -6,7 +6,7 @@
 #        components-must-not-call-the-emitter-hub layering.
 # Unresolved call sites (delegates, virtuals, framework): measured in the
 # header below so the blind spot is visible, never silently absent.
-# stats: nodes=112 edges=127 call-sites=1431 unresolved=1279
+# stats: nodes=114 edges=131 call-sites=1455 unresolved=1297
 E:Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.IsSupported/(TargetClassModel) | Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.TryMap/(PropertyModel)
 E:Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.MapIntegral/(string) | Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.Fixed/(string,string,string,string)
 E:Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.TryMap/(PropertyModel) | Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.Fixed/(string,string,string,string)
@@ -74,11 +74,15 @@ E:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.GetReadExpression/(Pr
 E:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.GetWriteExpression/(PropertyModel,string) | Parquet.SourceGenerator.Emitter.Components.PropertyMappingComponent.GetWriteExpression/(PropertyModel,string,bool)
 E:Parquet.SourceGenerator.Legacy.ParquetLegacyIncrementalGenerator.Initialize/(IncrementalGeneratorInitializationContext) | Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitSource/(TargetClassModel,GeneratorConfiguration)
 E:Parquet.SourceGenerator.Legacy.ParquetLegacyIncrementalGenerator.Initialize/(IncrementalGeneratorInitializationContext) | Parquet.SourceGenerator.Legacy.ParquetLegacyIncrementalGenerator.IsTargetSyntax/(SyntaxNode)
-E:Parquet.SourceGenerator.Legacy.ParquetLegacyIncrementalGenerator.Initialize/(IncrementalGeneratorInitializationContext) | Parquet.SourceGenerator.Models.GeneratorConfiguration.From/(AnalyzerConfigOptionsProvider)
+E:Parquet.SourceGenerator.Legacy.ParquetLegacyIncrementalGenerator.Initialize/(IncrementalGeneratorInitializationContext) | Parquet.SourceGenerator.Models.DiagnosticInfo.ToDiagnostic/()
+E:Parquet.SourceGenerator.Legacy.ParquetLegacyIncrementalGenerator.Initialize/(IncrementalGeneratorInitializationContext) | Parquet.SourceGenerator.Models.GeneratorConfiguration.From/(Compilation,AnalyzerConfigOptionsProvider)
 E:Parquet.SourceGenerator.Legacy.ParquetLegacyIncrementalGenerator.Initialize/(IncrementalGeneratorInitializationContext) | Parquet.SourceGenerator.Parser.TargetParser.GetTargetModel/(GeneratorSyntaxContext,ParquetApiLevel)
 E:Parquet.SourceGenerator.Models.EquatableArray.Equals/(EquatableArray<T>) | Parquet.SourceGenerator.Models.EquatableArray.AsSpan/()
 E:Parquet.SourceGenerator.Models.EquatableArray.Equals/(object?) | Parquet.SourceGenerator.Models.EquatableArray.Equals/(EquatableArray<T>)
 E:Parquet.SourceGenerator.Models.EquatableArray.GetEnumerator[IEnumerable]/() | Parquet.SourceGenerator.Models.EquatableArray.GetEnumerator/()
+E:Parquet.SourceGenerator.Models.GeneratorConfiguration.From/(Compilation,AnalyzerConfigOptionsProvider) | Parquet.SourceGenerator.Models.GeneratorConfiguration.GetGeneratorVersion/()
+E:Parquet.SourceGenerator.Models.GeneratorConfiguration.From/(Compilation,AnalyzerConfigOptionsProvider) | Parquet.SourceGenerator.Models.GeneratorConfiguration.Invalid/(string)
+E:Parquet.SourceGenerator.Models.GeneratorConfiguration.Invalid/(string) | Parquet.SourceGenerator.Models.GeneratorConfiguration.GetGeneratorVersion/()
 E:Parquet.SourceGenerator.Models.SortKeyEligibility.IsEligible/(PropertyModel,string) | Parquet.SourceGenerator.Models.SortKeyEligibility.IsStringLike/(PropertyModel)
 E:Parquet.SourceGenerator.Models.SortKeyEligibility.IsEligible/(PropertyModel,string) | Parquet.SourceGenerator.Models.SortKeyEligibility.IsSystemDateTime/(string)
 E:Parquet.SourceGenerator.Parser.TargetParser.BuildCompoundModel/(PropertyKind,ITypeSymbol,string,ITypeSymbol,string,int,bool,ParquetApiLevel,string,Location,List<DiagnosticInfo>,HashSet<INamedTypeSymbol>,int,CompoundKinds,bool) | Parquet.SourceGenerator.Parser.TargetParser.BuildNestedElementModel/(ITypeSymbol,string,ParquetApiLevel,string,string,Location,List<DiagnosticInfo>,HashSet<INamedTypeSymbol>,int,CompoundKinds,bool)

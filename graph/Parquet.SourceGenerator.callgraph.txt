@@ -6,7 +6,7 @@
 #        components-must-not-call-the-emitter-hub layering.
 # Unresolved call sites (delegates, virtuals, framework): measured in the
 # header below so the blind spot is visible, never silently absent.
-# stats: nodes=226 edges=380 call-sites=3827 unresolved=3376
+# stats: nodes=229 edges=385 call-sites=3854 unresolved=3396
 E:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.CanEmit/(TargetClassModel) | Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.IsSupported/(TargetClassModel)
 E:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitColumn/(StringBuilder,PropertyModel,int) | Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitBinary/(StringBuilder,PropertyModel,ArrowLeafMapping,string,int)
 E:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitColumn/(StringBuilder,PropertyModel,int) | Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitConvertRequired/(StringBuilder,ArrowLeafMapping,string,string,int)
@@ -325,12 +325,17 @@ E:Parquet.SourceGenerator.Emitter.SortedRowGroupPruningComponent.SortableColumns
 E:Parquet.SourceGenerator.Models.EquatableArray.Equals/(EquatableArray<T>) | Parquet.SourceGenerator.Models.EquatableArray.AsSpan/()
 E:Parquet.SourceGenerator.Models.EquatableArray.Equals/(object?) | Parquet.SourceGenerator.Models.EquatableArray.Equals/(EquatableArray<T>)
 E:Parquet.SourceGenerator.Models.EquatableArray.GetEnumerator[IEnumerable]/() | Parquet.SourceGenerator.Models.EquatableArray.GetEnumerator/()
+E:Parquet.SourceGenerator.Models.GeneratorConfiguration.From/(Compilation,AnalyzerConfigOptionsProvider) | Parquet.SourceGenerator.Models.GeneratorConfiguration.GetGeneratorVersion/()
+E:Parquet.SourceGenerator.Models.GeneratorConfiguration.From/(Compilation,AnalyzerConfigOptionsProvider) | Parquet.SourceGenerator.Models.GeneratorConfiguration.Invalid/(string)
+E:Parquet.SourceGenerator.Models.GeneratorConfiguration.Invalid/(string) | Parquet.SourceGenerator.Models.GeneratorConfiguration.GetGeneratorVersion/()
 E:Parquet.SourceGenerator.Models.SortKeyEligibility.IsEligible/(PropertyModel,string) | Parquet.SourceGenerator.Models.SortKeyEligibility.IsStringLike/(PropertyModel)
 E:Parquet.SourceGenerator.Models.SortKeyEligibility.IsEligible/(PropertyModel,string) | Parquet.SourceGenerator.Models.SortKeyEligibility.IsSystemDateTime/(string)
 E:Parquet.SourceGenerator.ParquetIncrementalGenerator.Initialize/(IncrementalGeneratorInitializationContext) | Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.CanEmit/(TargetClassModel)
 E:Parquet.SourceGenerator.ParquetIncrementalGenerator.Initialize/(IncrementalGeneratorInitializationContext) | Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitSource/(TargetClassModel)
 E:Parquet.SourceGenerator.ParquetIncrementalGenerator.Initialize/(IncrementalGeneratorInitializationContext) | Parquet.SourceGenerator.Emitter.CodeEmitter.EmitSource/(TargetClassModel,GeneratorConfiguration)
-E:Parquet.SourceGenerator.ParquetIncrementalGenerator.Initialize/(IncrementalGeneratorInitializationContext) | Parquet.SourceGenerator.Models.GeneratorConfiguration.From/(AnalyzerConfigOptionsProvider)
+E:Parquet.SourceGenerator.ParquetIncrementalGenerator.Initialize/(IncrementalGeneratorInitializationContext) | Parquet.SourceGenerator.Models.DiagnosticInfo.ToDiagnostic/()
+E:Parquet.SourceGenerator.ParquetIncrementalGenerator.Initialize/(IncrementalGeneratorInitializationContext) | Parquet.SourceGenerator.Models.GeneratorConfiguration.From/(Compilation,AnalyzerConfigOptionsProvider)
+E:Parquet.SourceGenerator.ParquetIncrementalGenerator.Initialize/(IncrementalGeneratorInitializationContext) | Parquet.SourceGenerator.ParquetIncrementalGenerator.CompoundKindsFor/(GeneratorFeatureLevel)
 E:Parquet.SourceGenerator.ParquetIncrementalGenerator.Initialize/(IncrementalGeneratorInitializationContext) | Parquet.SourceGenerator.ParquetIncrementalGenerator.IsTargetSyntax/(SyntaxNode)
 E:Parquet.SourceGenerator.ParquetIncrementalGenerator.Initialize/(IncrementalGeneratorInitializationContext) | Parquet.SourceGenerator.ParquetIncrementalGenerator.ReferencesApacheArrow/(Compilation)
 E:Parquet.SourceGenerator.ParquetIncrementalGenerator.Initialize/(IncrementalGeneratorInitializationContext) | Parquet.SourceGenerator.Parser.TargetParser.GetTargetModel/(GeneratorSyntaxContext,ParquetApiLevel,CompoundKinds)
