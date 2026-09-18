@@ -24,7 +24,8 @@ The documentation is organized into three distinct tiers based on audience and i
    - Data annotations, custom decimal precision/scale, and timestamp units.
 
 2. **[19 - Public API Surface & Fluent Builder](./19-PUBLIC-API-SURFACE.md)**
-   - Modern fluent read and write builder semantics: `PersonParquet.From(stream)...` and `PersonParquet.Write(items)...`.
+   - Modern fluent read builder semantics: `PersonParquet.From(stream)...`.
+   - Current collection-based write entry points; a symmetric write builder remains a post-freeze proposal (#219).
    - Structural explanation of the source, shape, execution, and pushdown axes.
 
 3. **[10 - Native AOT & Type System Guide](./10-NATIVE-AOT-GUIDE.md)**
