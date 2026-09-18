@@ -6,7 +6,7 @@
 #        components-must-not-call-the-emitter-hub layering.
 # Unresolved call sites (delegates, virtuals, framework): measured in the
 # header below so the blind spot is visible, never silently absent.
-# stats: nodes=229 edges=385 call-sites=3854 unresolved=3396
+# stats: nodes=233 edges=390 call-sites=4024 unresolved=3559
 E:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.CanEmit/(TargetClassModel) | Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.IsSupported/(TargetClassModel)
 E:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitColumn/(StringBuilder,PropertyModel,int) | Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitBinary/(StringBuilder,PropertyModel,ArrowLeafMapping,string,int)
 E:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitColumn/(StringBuilder,PropertyModel,int) | Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitConvertRequired/(StringBuilder,ArrowLeafMapping,string,string,int)
@@ -38,6 +38,8 @@ E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitArrayMaterializationFor/(Strin
 E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitArrayMaterializationFor/(StringBuilder,TargetClassModel,string,string,string,string,string,string) | Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.EmitArrayMaterialization/(StringBuilder,TargetClassModel,string,string,string,string,string,string)
 E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitArrayMaterializationFor/(StringBuilder,TargetClassModel,string,string,string,string,string,string) | Parquet.SourceGenerator.Emitter.Compound.EmissionPlan.For/(TargetClassModel)
 E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitBuildFormatOptions/(StringBuilder,TargetClassModel) | Parquet.SourceGenerator.Emitter.Components.DecompressionGuardComponent.Emit/(StringBuilder)
+E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitDictionaryEntryLimitValidation/(StringBuilder,LeafColumn,string,string,string) | Parquet.SourceGenerator.Emitter.CodeEmitter.EmitDictionaryEntryLimitValidationCore/(StringBuilder,LeafColumn,string,string,string)
+E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitDictionaryEntryLimitValidation/(StringBuilder,LeafColumn,string,string,string) | Parquet.SourceGenerator.Emitter.CodeEmitter.SupportsMissingColumn/(LeafColumn)
 E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitFormatOptionsAndValidation/(StringBuilder,TargetClassModel) | Parquet.SourceGenerator.Emitter.CodeEmitter.EmitBuildFormatOptions/(StringBuilder,TargetClassModel)
 E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitFormatOptionsAndValidation/(StringBuilder,TargetClassModel) | Parquet.SourceGenerator.Emitter.CodeEmitter.EmitValidateReader/(StringBuilder,TargetClassModel)
 E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitPropertyAssignments/(StringBuilder,TargetClassModel,string,string) | Parquet.SourceGenerator.Emitter.CodeEmitter.GetBranchlessNonNullExpression/(PropertyModel,string)
@@ -86,6 +88,8 @@ E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitReadStreamAsync/(StringBuilder
 E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitReadStreamAsync/(StringBuilder,TargetClassModel) | Parquet.SourceGenerator.Emitter.Compound.CompoundMapping.EmitCompoundReconstruction/(StringBuilder,TargetClassModel,string,string)
 E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitReadStreamAsync/(StringBuilder,TargetClassModel) | Parquet.SourceGenerator.Emitter.Compound.EmissionPlan.For/(TargetClassModel)
 E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitReadStreamAsync/(StringBuilder,TargetClassModel) | Parquet.SourceGenerator.Emitter.RowGroupPruningComponent.SignatureSuffix/(TargetClassModel)
+E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitReadWithNullBypass/(StringBuilder,LeafColumn,string,string,string) | Parquet.SourceGenerator.Emitter.CodeEmitter.EmitDictionaryEntryLimitValidation/(StringBuilder,LeafColumn,string,string,string)
+E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitReadWithNullBypass/(StringBuilder,LeafColumn,string,string,string) | Parquet.SourceGenerator.Emitter.CodeEmitter.EmitPackedStringLengthValidation/(StringBuilder,LeafColumn,string,string,string)
 E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitReadWithNullBypass/(StringBuilder,LeafColumn,string,string,string) | Parquet.SourceGenerator.Emitter.CodeEmitter.GetReadPrimitiveCall/(PropertyModel,string,string,string)
 E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitRentalsFor/(StringBuilder,TargetClassModel,string,string,string,bool) | Parquet.SourceGenerator.Emitter.Components.BufferPoolComponent.EmitRentals/(StringBuilder,TargetClassModel,string,string,string,bool)
 E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitRentalsFor/(StringBuilder,TargetClassModel,string,string,string,bool) | Parquet.SourceGenerator.Emitter.Compound.EmissionPlan.For/(TargetClassModel)
@@ -98,6 +102,7 @@ E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitSchema/(StringBuilder,TargetCl
 E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitSchema/(StringBuilder,TargetClassModel) | Parquet.SourceGenerator.Emitter.Compound.CompoundSchema.EmitSchema/(StringBuilder,TargetClassModel)
 E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitSchema/(StringBuilder,TargetClassModel) | Parquet.SourceGenerator.Emitter.Compound.EmissionPlan.For/(TargetClassModel)
 E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitSchemaHelpers/(StringBuilder,bool) | Parquet.SourceGenerator.Emitter.CodeEmitter.EmitResolveSchemaField/(StringBuilder,bool)
+E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitSchemaHelpers/(StringBuilder,bool) | Parquet.SourceGenerator.Emitter.Components.DictionaryPageComponent.EmitHelpers/(StringBuilder)
 E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitSchemaHelpers/(StringBuilder,bool) | Parquet.SourceGenerator.Emitter.Components.SchemaComponent.EmitValidateColumnChunkBounds/(StringBuilder)
 E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitSchemaHelpers/(StringBuilder,bool) | Parquet.SourceGenerator.Emitter.Components.SchemaComponent.EmitValidatePhysicalType/(StringBuilder)
 E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitSource/(TargetClassModel) | Parquet.SourceGenerator.Emitter.CodeEmitter.EmitSource/(TargetClassModel,GeneratorConfiguration)

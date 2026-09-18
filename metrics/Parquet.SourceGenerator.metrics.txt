@@ -5,7 +5,7 @@
 # MI maintainability index 0-100 (higher is better), CC cyclomatic complexity,
 # CL class coupling, DIT depth of inheritance, SLOC source lines, ELOC executable lines.
 # Ordinal-sorted. MI is compared with a +/-2 tolerance; every other metric exactly.
-A:Parquet.SourceGenerator | MI=74 CC=1064 CL=137 DIT=1 SLOC=11796 ELOC=4427
+A:Parquet.SourceGenerator | MI=73 CC=1072 CL=138 DIT=1 SLOC=12101 ELOC=4598
 M:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.CanEmit(Parquet.SourceGenerator.Models.TargetClassModel) | MI=97 CC=1 CL=2 DIT=- SLOC=5 ELOC=1
 M:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitBinary(System.Text.StringBuilder, Parquet.SourceGenerator.Models.PropertyModel, Parquet.SourceGenerator.Emitter.Components.ArrowLeafMapping, string, int) | MI=53 CC=3 CL=3 DIT=- SLOC=44 ELOC=20
 M:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitColumn(System.Text.StringBuilder, Parquet.SourceGenerator.Models.PropertyModel, int) | MI=61 CC=6 CL=6 DIT=- SLOC=34 ELOC=8
@@ -25,7 +25,10 @@ M:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.Substitute(string, string, 
 M:Parquet.SourceGenerator.Emitter.CodeEmitter.BoolLiteral(bool) | MI=97 CC=1 CL=1 DIT=- SLOC=1 ELOC=1
 M:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitArrayMaterializationFor(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel, string, string, string, string, string, string) | MI=63 CC=2 CL=5 DIT=- SLOC=36 ELOC=7
 M:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitBuildFormatOptions(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel) | MI=37 CC=3 CL=6 DIT=- SLOC=131 ELOC=70
+M:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitDictionaryEntryLimitValidation(System.Text.StringBuilder, Parquet.SourceGenerator.Emitter.Compound.LeafColumn, string, string, string) | MI=68 CC=2 CL=2 DIT=- SLOC=25 ELOC=6
+M:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitDictionaryEntryLimitValidationCore(System.Text.StringBuilder, Parquet.SourceGenerator.Emitter.Compound.LeafColumn, string, string, string) | MI=56 CC=1 CL=3 DIT=- SLOC=36 ELOC=15
 M:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitFormatOptionsAndValidation(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel) | MI=81 CC=1 CL=2 DIT=- SLOC=13 ELOC=3
+M:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitPackedStringLengthValidation(System.Text.StringBuilder, Parquet.SourceGenerator.Emitter.Compound.LeafColumn, string, string, string) | MI=53 CC=4 CL=5 DIT=- SLOC=44 ELOC=16
 M:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitPropertyAssignments(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel, string, string) | MI=53 CC=5 CL=8 DIT=- SLOC=40 ELOC=19
 M:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitPropertyAssignmentsIndexed(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel, string, string) | MI=53 CC=5 CL=8 DIT=- SLOC=40 ELOC=19
 M:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitReadArrayAsync(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel) | MI=38 CC=4 CL=9 DIT=- SLOC=112 ELOC=61
@@ -37,14 +40,14 @@ M:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitReadParallelBufferAsync(System
 M:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitReadPrunedRangeAsync(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel) | MI=31 CC=4 CL=7 DIT=- SLOC=181 ELOC=107
 M:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitReadRowGroupsIntoAsync(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel) | MI=35 CC=6 CL=8 DIT=- SLOC=135 ELOC=78
 M:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitReadStreamAsync(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel) | MI=38 CC=5 CL=10 DIT=- SLOC=113 ELOC=60
-M:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitReadWithNullBypass(System.Text.StringBuilder, Parquet.SourceGenerator.Emitter.Compound.LeafColumn, string, string, string) | MI=40 CC=4 CL=3 DIT=- SLOC=110 ELOC=49
+M:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitReadWithNullBypass(System.Text.StringBuilder, Parquet.SourceGenerator.Emitter.Compound.LeafColumn, string, string, string) | MI=39 CC=4 CL=3 DIT=- SLOC=126 ELOC=52
 M:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitRentalsFor(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel, string, string, string, bool) | MI=66 CC=2 CL=5 DIT=- SLOC=19 ELOC=6
 M:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitResolveFieldLine(Parquet.SourceGenerator.Emitter.Compound.LeafColumn, string) | MI=81 CC=2 CL=1 DIT=- SLOC=9 ELOC=2
 M:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitResolveSchemaField(System.Text.StringBuilder, bool) | MI=84 CC=1 CL=2 DIT=- SLOC=4 ELOC=2
 M:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitReturnsFor(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel, string, string, bool) | MI=66 CC=2 CL=5 DIT=- SLOC=15 ELOC=6
 M:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitRowGroupSizeResolution(System.Text.StringBuilder) | MI=97 CC=1 CL=2 DIT=- SLOC=4 ELOC=1
 M:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitSchema(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel) | MI=80 CC=2 CL=5 DIT=- SLOC=13 ELOC=3
-M:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitSchemaHelpers(System.Text.StringBuilder, bool) | MI=75 CC=1 CL=2 DIT=- SLOC=8 ELOC=5
+M:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitSchemaHelpers(System.Text.StringBuilder, bool) | MI=73 CC=1 CL=3 DIT=- SLOC=9 ELOC=6
 M:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitSource(Parquet.SourceGenerator.Models.TargetClassModel) | MI=93 CC=1 CL=2 DIT=- SLOC=7 ELOC=1
 M:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitSource(Parquet.SourceGenerator.Models.TargetClassModel, Parquet.SourceGenerator.Models.GeneratorConfiguration) | MI=37 CC=9 CL=17 DIT=- SLOC=139 ELOC=69
 M:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitStaticFields(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel) | MI=80 CC=2 CL=5 DIT=- SLOC=9 ELOC=3
@@ -60,7 +63,7 @@ M:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitWriteRowGroupAsync(System.Text
 M:Parquet.SourceGenerator.Emitter.CodeEmitter.GetBranchlessNonNullExpression(Parquet.SourceGenerator.Models.PropertyModel, string) | MI=87 CC=2 CL=2 DIT=- SLOC=18 ELOC=1
 M:Parquet.SourceGenerator.Emitter.CodeEmitter.GetBufferElementType(Parquet.SourceGenerator.Models.PropertyModel) | MI=97 CC=1 CL=2 DIT=- SLOC=2 ELOC=1
 M:Parquet.SourceGenerator.Emitter.CodeEmitter.GetReadExpression(Parquet.SourceGenerator.Models.PropertyModel, string) | MI=94 CC=1 CL=2 DIT=- SLOC=2 ELOC=1
-M:Parquet.SourceGenerator.Emitter.CodeEmitter.GetReadPrimitiveCall(Parquet.SourceGenerator.Models.PropertyModel, string, string, string) | MI=45 CC=16 CL=2 DIT=- SLOC=62 ELOC=26
+M:Parquet.SourceGenerator.Emitter.CodeEmitter.GetReadPrimitiveCall(Parquet.SourceGenerator.Models.PropertyModel, string, string, string) | MI=46 CC=16 CL=2 DIT=- SLOC=55 ELOC=26
 M:Parquet.SourceGenerator.Emitter.CodeEmitter.GetWriteExpression(Parquet.SourceGenerator.Models.PropertyModel, string) | MI=94 CC=1 CL=2 DIT=- SLOC=2 ELOC=1
 M:Parquet.SourceGenerator.Emitter.CodeEmitter.GetWritePrimitiveCall(Parquet.SourceGenerator.Emitter.Compound.LeafColumn, string, string, string) | MI=40 CC=19 CL=4 DIT=- SLOC=97 ELOC=38
 M:Parquet.SourceGenerator.Emitter.CodeEmitter.IsReferenceTypeBuffer(Parquet.SourceGenerator.Models.PropertyModel) | MI=97 CC=1 CL=2 DIT=- SLOC=2 ELOC=1
@@ -117,6 +120,7 @@ M:Parquet.SourceGenerator.Emitter.Components.BufferPoolComponent.GetWriteBufferE
 M:Parquet.SourceGenerator.Emitter.Components.BufferPoolComponent.IsReferenceTypeBuffer(Parquet.SourceGenerator.Models.PropertyModel, bool) | MI=67 CC=5 CL=2 DIT=- SLOC=21 ELOC=5
 M:Parquet.SourceGenerator.Emitter.Components.BufferPoolComponent.UsesWriteAllParts(Parquet.SourceGenerator.Models.PropertyModel) | MI=75 CC=4 CL=2 DIT=- SLOC=6 ELOC=3
 M:Parquet.SourceGenerator.Emitter.Components.DecompressionGuardComponent.Emit(System.Text.StringBuilder) | MI=30 CC=1 CL=1 DIT=- SLOC=164 ELOC=119
+M:Parquet.SourceGenerator.Emitter.Components.DictionaryPageComponent.EmitHelpers(System.Text.StringBuilder) | MI=31 CC=1 CL=1 DIT=- SLOC=149 ELOC=112
 M:Parquet.SourceGenerator.Emitter.Components.PropertyMappingComponent.EmitArrayMaterialization(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel, string, string, string, string, string, string) | MI=46 CC=2 CL=4 DIT=- SLOC=67 ELOC=29
 M:Parquet.SourceGenerator.Emitter.Components.PropertyMappingComponent.EmitObjectMaterialization(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel, string, string, string, string, string) | MI=59 CC=3 CL=4 DIT=- SLOC=30 ELOC=10
 M:Parquet.SourceGenerator.Emitter.Components.PropertyMappingComponent.EmitPropertyAssignments(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel, string, string, string, string, bool) | MI=59 CC=2 CL=4 DIT=- SLOC=25 ELOC=9
@@ -134,7 +138,7 @@ M:Parquet.SourceGenerator.Emitter.Components.SchemaComponent.EmitValidateColumnC
 M:Parquet.SourceGenerator.Emitter.Components.SchemaComponent.EmitValidatePhysicalType(System.Text.StringBuilder) | MI=44 CC=1 CL=1 DIT=- SLOC=72 ELOC=41
 M:Parquet.SourceGenerator.Emitter.Components.SchemaComponent.GetFieldCreationExpression(Parquet.SourceGenerator.Models.PropertyModel) | MI=73 CC=5 CL=4 DIT=- SLOC=49 ELOC=2
 M:Parquet.SourceGenerator.Emitter.Components.StringDeduplicatorComponent.EmitDeduplicatorDeclaration(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel, string) | MI=71 CC=2 CL=2 DIT=- SLOC=15 ELOC=5
-M:Parquet.SourceGenerator.Emitter.Components.StringDeduplicatorComponent.EmitRawStringColumnReader(System.Text.StringBuilder) | MI=37 CC=1 CL=1 DIT=- SLOC=104 ELOC=73
+M:Parquet.SourceGenerator.Emitter.Components.StringDeduplicatorComponent.EmitRawStringColumnReader(System.Text.StringBuilder) | MI=34 CC=1 CL=1 DIT=- SLOC=132 ELOC=91
 M:Parquet.SourceGenerator.Emitter.Components.StringDeduplicatorComponent.EmitStringDeduplicator(System.Text.StringBuilder, bool) | MI=28 CC=2 CL=1 DIT=- SLOC=191 ELOC=143
 M:Parquet.SourceGenerator.Emitter.Components.StringDeduplicatorComponent.HasStringProperties(Parquet.SourceGenerator.Models.TargetClassModel) | MI=81 CC=2 CL=7 DIT=- SLOC=5 ELOC=2
 M:Parquet.SourceGenerator.Emitter.Compound.CompoundBuffers.EmitRentals(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel, string, string, string, bool) | MI=56 CC=6 CL=7 DIT=- SLOC=34 ELOC=12
@@ -356,9 +360,9 @@ M:Parquet.SourceGenerator.Parser.TargetParser.ValidateTargetDeclaration(Microsof
 M:Parquet.SourceGenerator.Parser.TargetParserResult.TargetParserResult(Parquet.SourceGenerator.Models.TargetClassModel, Parquet.SourceGenerator.Models.EquatableArray<Parquet.SourceGenerator.Models.DiagnosticInfo>) | MI=100 CC=1 CL=3 DIT=- SLOC=7 ELOC=0
 N:Parquet.SourceGenerator | MI=59 CC=19 CL=39 DIT=1 SLOC=0 ELOC=41
 N:Parquet.SourceGenerator.Diagnostics | MI=83 CC=0 CL=2 DIT=1 SLOC=238 ELOC=4
-N:Parquet.SourceGenerator.Emitter | MI=56 CC=293 CL=40 DIT=1 SLOC=5122 ELOC=2475
+N:Parquet.SourceGenerator.Emitter | MI=56 CC=300 CL=42 DIT=1 SLOC=5240 ELOC=2516
 N:Parquet.SourceGenerator.Emitter.Columnar | MI=57 CC=42 CL=13 DIT=1 SLOC=528 ELOC=164
-N:Parquet.SourceGenerator.Emitter.Components | MI=61 CC=160 CL=15 DIT=1 SLOC=2082 ELOC=897
+N:Parquet.SourceGenerator.Emitter.Components | MI=58 CC=161 CL=15 DIT=1 SLOC=2269 ELOC=1027
 N:Parquet.SourceGenerator.Emitter.Compound | MI=72 CC=223 CL=21 DIT=1 SLOC=1342 ELOC=456
 N:Parquet.SourceGenerator.Models | MI=86 CC=92 CL=45 DIT=1 SLOC=594 ELOC=104
 N:Parquet.SourceGenerator.Parser | MI=92 CC=235 CL=67 DIT=1 SLOC=1890 ELOC=286
@@ -466,7 +470,7 @@ P:Parquet.SourceGenerator.Parser.TargetParserResult.Diagnostics | MI=100 CC=0 CL
 P:Parquet.SourceGenerator.Parser.TargetParserResult.Model | MI=100 CC=0 CL=1 DIT=- SLOC=1 ELOC=0
 T:Parquet.SourceGenerator.Diagnostics.DiagnosticDescriptors | MI=83 CC=0 CL=2 DIT=1 SLOC=236 ELOC=4
 T:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter | MI=49 CC=57 CL=11 DIT=1 SLOC=824 ELOC=368
-T:Parquet.SourceGenerator.Emitter.CodeEmitter | MI=44 CC=148 CL=29 DIT=1 SLOC=2780 ELOC=1418
+T:Parquet.SourceGenerator.Emitter.CodeEmitter | MI=45 CC=155 CL=31 DIT=1 SLOC=2898 ELOC=1459
 T:Parquet.SourceGenerator.Emitter.ColumnBatchComponent | MI=51 CC=16 CL=15 DIT=1 SLOC=291 ELOC=128
 T:Parquet.SourceGenerator.Emitter.Columnar.ColumnarBatchComponent | MI=57 CC=42 CL=13 DIT=1 SLOC=526 ELOC=164
 T:Parquet.SourceGenerator.Emitter.Components.ArrowExtractionMode | MI=100 CC=1 CL=0 DIT=1 SLOC=21 ELOC=0
@@ -475,10 +479,11 @@ T:Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent | MI=67 CC=31
 T:Parquet.SourceGenerator.Emitter.Components.BatchValidationComponent | MI=71 CC=1 CL=1 DIT=1 SLOC=24 ELOC=5
 T:Parquet.SourceGenerator.Emitter.Components.BufferPoolComponent | MI=62 CC=37 CL=5 DIT=1 SLOC=236 ELOC=67
 T:Parquet.SourceGenerator.Emitter.Components.DecompressionGuardComponent | MI=30 CC=1 CL=1 DIT=1 SLOC=172 ELOC=119
+T:Parquet.SourceGenerator.Emitter.Components.DictionaryPageComponent | MI=31 CC=1 CL=1 DIT=1 SLOC=157 ELOC=112
 T:Parquet.SourceGenerator.Emitter.Components.PropertyMappingComponent | MI=57 CC=43 CL=8 DIT=1 SLOC=302 ELOC=83
 T:Parquet.SourceGenerator.Emitter.Components.RowGroupLayoutComponent | MI=43 CC=5 CL=1 DIT=1 SLOC=134 ELOC=75
 T:Parquet.SourceGenerator.Emitter.Components.SchemaComponent | MI=42 CC=16 CL=7 DIT=1 SLOC=557 ELOC=301
-T:Parquet.SourceGenerator.Emitter.Components.StringDeduplicatorComponent | MI=39 CC=7 CL=8 DIT=1 SLOC=326 ELOC=223
+T:Parquet.SourceGenerator.Emitter.Components.StringDeduplicatorComponent | MI=38 CC=7 CL=8 DIT=1 SLOC=354 ELOC=241
 T:Parquet.SourceGenerator.Emitter.Compound.ChainStepKind | MI=100 CC=1 CL=0 DIT=1 SLOC=9 ELOC=0
 T:Parquet.SourceGenerator.Emitter.Compound.CompoundBuffers | MI=55 CC=33 CL=8 DIT=1 SLOC=235 ELOC=79
 T:Parquet.SourceGenerator.Emitter.Compound.CompoundMapping | MI=52 CC=71 CL=16 DIT=1 SLOC=607 ELOC=254
