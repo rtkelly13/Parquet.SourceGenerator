@@ -1,4 +1,6 @@
-![Parquet.SourceGenerator](https://raw.githubusercontent.com/rtkelly13/Parquet.SourceGenerator/main/docs/assets/logo.svg)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/rtkelly13/Parquet.SourceGenerator/main/docs/assets/logo.svg" width="220" alt="Parquet.SourceGenerator Logo" />
+</p>
 
 # Parquet.SourceGenerator
 
