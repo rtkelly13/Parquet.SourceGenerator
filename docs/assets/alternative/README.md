@@ -8,7 +8,7 @@ The project originally began with this artwork:
 - **Reference Raster**: [`hexagon-reference.jpg`](./hexagon-reference.jpg) (1024×1024 master).
 - **Composition**: A glowing cyan/violet hexagon frame enclosing warm wooden herringbone/rhombille parquet planks, seam-locked circuit traces, an outward socket notch, and developer emblems (`{}` and `</>`).
 
-Historically, hand-measuring and manually coding this mark in [`rhombille_builder.py`](file:///Users/ryankelly/code/personal/shared-utilities/src/shared_utilities/image_drift/rhombille_builder.py) proved challenging, achieving only **27.77% SSIM** and **23.01% RMSE**. As a result, the mark was parked on the `logo/alternative-hexagon-mark` branch and the project adopted the synthetic 3-column / 5-column mark in [`../logo.svg`](../logo.svg).
+Historically, hand-measuring and manually coding this mark in [`rhombille_builder.py`](https://github.com/rtkelly13/shared-utilities/blob/main/src/shared_utilities/image_drift/rhombille_builder.py) proved challenging, achieving only **27.77% SSIM** and **23.01% RMSE**. As a result, the mark was parked on the `logo/alternative-hexagon-mark` branch and the project adopted the synthetic 3-column / 5-column mark in [`../logo.svg`](../logo.svg).
 
 ---
 
