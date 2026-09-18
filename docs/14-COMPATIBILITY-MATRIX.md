@@ -31,6 +31,20 @@ The classic backend is one API family for Parquet.Net 4.x and 5.x. The modern ba
 v6 API family. They are separate emitters and do not have identical generated API surfaces or
 performance characteristics.
 
+### Backend API policy for 0.1
+
+The project deliberately follows the **declared-subset policy (B)** from issue #246. The classic
+V5 backend is a compatibility backend with a core generated surface: schema, flat read, flat write,
+batched write, and row-group write. It does not promise the modern backend's builder, filtering,
+parallel, streaming, column-batch, or Arrow members. Those capabilities remain modern-only until a
+separate compatibility decision is made.
+
+This is a product boundary, not an accidental emitter gap. `BackendCompatibilityPolicyTests` checks
+every checked-in classic `.api.txt` baseline and fails if a modern-only member name appears there or
+if a required core member disappears. A future feature must either stay within the declared core or
+update this policy, the compatibility matrix, README files, and the corresponding API evidence in
+the same pull request.
+
 ## Generated Model Type Envelope
 
 The following types are accepted by the modern parser allowlist and are the starting point for the
