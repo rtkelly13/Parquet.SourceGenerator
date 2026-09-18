@@ -300,7 +300,7 @@ M:Parquet.SourceGenerator.Models.PropertyModel.MapValue.get | MI=100 CC=1 CL=0 D
 M:Parquet.SourceGenerator.Models.PropertyModel.MapValue.init | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
 M:Parquet.SourceGenerator.Models.PropertyModel.PropertyModel(string, string, string, string, string, int, System.Nullable<int>, System.Nullable<int>, Parquet.SourceGenerator.Models.PropertyKind, bool) | MI=88 CC=1 CL=3 DIT=- SLOC=32 ELOC=0
 M:Parquet.SourceGenerator.Models.PropertyModel.PropertyModel(string, string, string, string, string, int, System.Nullable<int>, System.Nullable<int>, Parquet.SourceGenerator.Models.PropertyKind, bool, bool) | MI=88 CC=1 CL=3 DIT=- SLOC=33 ELOC=0
-M:Parquet.SourceGenerator.Models.PropertyModel.PropertyModel(string, string, string, string, string, int, System.Nullable<int>, System.Nullable<int>, Parquet.SourceGenerator.Models.PropertyKind, bool, bool, Parquet.SourceGenerator.Models.ColumnEncoding) | MI=76 CC=1 CL=4 DIT=- SLOC=129 ELOC=4
+M:Parquet.SourceGenerator.Models.PropertyModel.PropertyModel(string, string, string, string, string, int, System.Nullable<int>, System.Nullable<int>, Parquet.SourceGenerator.Models.PropertyKind, bool, bool, Parquet.SourceGenerator.Models.ColumnEncoding) | MI=76 CC=1 CL=3 DIT=- SLOC=129 ELOC=4
 M:Parquet.SourceGenerator.Models.SortKeyEligibility.IsEligible(Parquet.SourceGenerator.Models.PropertyModel, out string) | MI=54 CC=9 CL=5 DIT=- SLOC=47 ELOC=16
 M:Parquet.SourceGenerator.Models.SortKeyEligibility.IsStringLike(Parquet.SourceGenerator.Models.PropertyModel) | MI=85 CC=4 CL=3 DIT=- SLOC=7 ELOC=1
 M:Parquet.SourceGenerator.Models.SortKeyEligibility.IsSystemDateTime(string) | MI=90 CC=2 CL=1 DIT=- SLOC=3 ELOC=1
@@ -496,7 +496,7 @@ T:Parquet.SourceGenerator.Models.EquatableArray<T> | MI=83 CC=25 CL=10 DIT=1 SLO
 T:Parquet.SourceGenerator.Models.GeneratorConfiguration | MI=73 CC=22 CL=25 DIT=1 SLOC=97 ELOC=27
 T:Parquet.SourceGenerator.Models.GeneratorFeatureLevel | MI=93 CC=1 CL=0 DIT=1 SLOC=6 ELOC=2
 T:Parquet.SourceGenerator.Models.PropertyKind | MI=100 CC=1 CL=1 DIT=1 SLOC=47 ELOC=2
-T:Parquet.SourceGenerator.Models.PropertyModel | MI=94 CC=13 CL=5 DIT=1 SLOC=129 ELOC=8
+T:Parquet.SourceGenerator.Models.PropertyModel | MI=94 CC=13 CL=4 DIT=1 SLOC=129 ELOC=8
 T:Parquet.SourceGenerator.Models.SortKeyEligibility | MI=68 CC=15 CL=8 DIT=1 SLOC=92 ELOC=19
 T:Parquet.SourceGenerator.Models.TargetClassModel | MI=84 CC=3 CL=3 DIT=1 SLOC=46 ELOC=12
 T:Parquet.SourceGenerator.ParquetIncrementalGenerator | MI=59 CC=19 CL=39 DIT=1 SLOC=153 ELOC=41
