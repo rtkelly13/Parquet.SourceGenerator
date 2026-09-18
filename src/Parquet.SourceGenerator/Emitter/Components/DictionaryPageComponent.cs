@@ -17,7 +17,9 @@ internal static class DictionaryPageComponent
         builder.AppendLine("        global::Parquet.Schema.DataField field)");
         builder.AppendLine("    {");
         builder.AppendLine("        var metadata = groupReader.GetMetadata(field);");
-        builder.AppendLine("        long? offset = metadata?.MetaData?.DictionaryPageOffset;");
+        builder.AppendLine(
+            "        long? offset = metadata?.MetaData?.DictionaryPageOffset ?? metadata?.FileOffset;"
+        );
         builder.AppendLine(
             "        if (!offset.HasValue || offset.Value < 0 || !stream.CanSeek) return null;"
         );

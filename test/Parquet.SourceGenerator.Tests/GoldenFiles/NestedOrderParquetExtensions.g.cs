@@ -282,6 +282,118 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
             }
         }
     }
+    private static int? ReadDictionaryEntryCount(
+        global::Parquet.ParquetRowGroupReader groupReader,
+        global::System.IO.Stream stream,
+        global::Parquet.Schema.DataField field)
+    {
+        var metadata = groupReader.GetMetadata(field);
+        long? offset = metadata?.MetaData?.DictionaryPageOffset ?? metadata?.FileOffset;
+        if (!offset.HasValue || offset.Value < 0 || !stream.CanSeek) return null;
+
+        long savedPosition = stream.Position;
+        try
+        {
+            stream.Seek(offset.Value, global::System.IO.SeekOrigin.Begin);
+            return ReadDictionaryPageHeader(stream);
+        }
+        finally
+        {
+            stream.Seek(savedPosition, global::System.IO.SeekOrigin.Begin);
+        }
+    }
+
+    private static int? ReadDictionaryPageHeader(global::System.IO.Stream stream)
+    {
+        int lastFieldId = 0;
+        while (TryReadCompactField(stream, ref lastFieldId, out int fieldId, out int type))
+        {
+            if (fieldId == 7 && type == 12)
+                return ReadDictionaryPageHeaderBody(stream);
+            if (!TrySkipCompactValue(stream, type)) return null;
+        }
+        return null;
+    }
+
+    private static int? ReadDictionaryPageHeaderBody(global::System.IO.Stream stream)
+    {
+        int lastFieldId = 0;
+        int? count = null;
+        while (TryReadCompactField(stream, ref lastFieldId, out int fieldId, out int type))
+        {
+            if (fieldId == 1 && type == 5)
+            {
+                int? value = ReadCompactI32(stream);
+                if (!value.HasValue || value.Value < 0) return null;
+                count = value.Value;
+            }
+            else if (!TrySkipCompactValue(stream, type)) return null;
+        }
+        return count;
+    }
+
+    private static bool TryReadCompactField(global::System.IO.Stream stream, ref int lastFieldId, out int fieldId, out int type)
+    {
+        int header = stream.ReadByte();
+        if (header <= 0)
+        {
+            fieldId = 0;
+            type = 0;
+            return false;
+        }
+        int delta = header >> 4;
+        type = header & 0x0f;
+        int? explicitFieldId = delta == 0 ? ReadCompactI32(stream) : null;
+        if (delta == 0 && !explicitFieldId.HasValue)
+        {
+            fieldId = 0;
+            return false;
+        }
+        fieldId = delta == 0 ? explicitFieldId!.Value : lastFieldId + delta;
+        lastFieldId = fieldId;
+        return true;
+    }
+
+    private static bool TrySkipCompactValue(global::System.IO.Stream stream, int type)
+    {
+        return type switch
+        {
+            1 or 2 => true,
+            3 => stream.ReadByte() >= 0,
+            4 or 5 or 6 => TrySkipCompactVarInt(stream),
+            7 => TrySkipCompactBytes(stream, 8),
+            _ => false,
+        };
+    }
+
+    private static int? ReadCompactI32(global::System.IO.Stream stream)
+    {
+        uint? value = ReadCompactVarUInt(stream);
+        return value.HasValue ? (int)(value.Value >> 1) ^ -(int)(value.Value & 1) : null;
+    }
+
+    private static uint? ReadCompactVarUInt(global::System.IO.Stream stream)
+    {
+        uint value = 0;
+        for (int shift = 0; shift < 35; shift += 7)
+        {
+            int next = stream.ReadByte();
+            if (next < 0) return null;
+            value |= (uint)(next & 0x7f) << shift;
+            if ((next & 0x80) == 0) return value;
+        }
+        return null;
+    }
+
+    private static bool TrySkipCompactVarInt(global::System.IO.Stream stream)
+        => ReadCompactVarUInt(stream).HasValue;
+
+    private static bool TrySkipCompactBytes(global::System.IO.Stream stream, int count)
+    {
+        for (int i = 0; i < count; i++)
+            if (stream.ReadByte() < 0) return false;
+        return true;
+    }
 
     /// <summary>
     /// Translates the generator's options into the Parquet.Net options the writer accepts.
@@ -1437,9 +1549,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_0 && metadata_0.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_0 = dictionaryEncoded_0 ? ReadDictionaryEntryCount(groupReader, stream, field_0) : null;
+                if (dictionaryEntries_0.HasValue && dictionaryEntries_0.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Id' value count {metadata_0.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Id' entry count {dictionaryEntries_0.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadAsync<int>(
                     field_0,
@@ -1455,9 +1568,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_1 && metadata_1.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_1 = dictionaryEncoded_1 ? ReadDictionaryEntryCount(groupReader, stream, field_1) : null;
+                if (dictionaryEntries_1.HasValue && dictionaryEntries_1.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'City' value count {metadata_1.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'City' entry count {dictionaryEntries_1.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<global::System.ReadOnlyMemory<char>>(
                     field_1,
@@ -1489,9 +1603,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_2 && metadata_2.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_2 = dictionaryEncoded_2 ? ReadDictionaryEntryCount(groupReader, stream, field_2) : null;
+                if (dictionaryEntries_2.HasValue && dictionaryEntries_2.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' value count {metadata_2.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' entry count {dictionaryEntries_2.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<int>(
                     field_2,
@@ -1509,9 +1624,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_3 && metadata_3.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_3 = dictionaryEncoded_3 ? ReadDictionaryEntryCount(groupReader, stream, field_3) : null;
+                if (dictionaryEntries_3.HasValue && dictionaryEntries_3.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'City' value count {metadata_3.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'City' entry count {dictionaryEntries_3.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<global::System.ReadOnlyMemory<char>>(
                     field_3,
@@ -1543,9 +1659,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_4 && metadata_4.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_4 = dictionaryEncoded_4 ? ReadDictionaryEntryCount(groupReader, stream, field_4) : null;
+                if (dictionaryEntries_4.HasValue && dictionaryEntries_4.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' value count {metadata_4.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' entry count {dictionaryEntries_4.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<int>(
                     field_4,
@@ -1563,9 +1680,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_5 && metadata_5.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_5 = dictionaryEncoded_5 ? ReadDictionaryEntryCount(groupReader, stream, field_5) : null;
+                if (dictionaryEntries_5.HasValue && dictionaryEntries_5.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'X' value count {metadata_5.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'X' entry count {dictionaryEntries_5.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<int>(
                     field_5,
@@ -1583,9 +1701,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_6 && metadata_6.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_6 = dictionaryEncoded_6 ? ReadDictionaryEntryCount(groupReader, stream, field_6) : null;
+                if (dictionaryEntries_6.HasValue && dictionaryEntries_6.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' value count {metadata_6.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' entry count {dictionaryEntries_6.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<int>(
                     field_6,
@@ -1603,9 +1722,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_7 && metadata_7.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_7 = dictionaryEncoded_7 ? ReadDictionaryEntryCount(groupReader, stream, field_7) : null;
+                if (dictionaryEntries_7.HasValue && dictionaryEntries_7.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'X' value count {metadata_7.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'X' entry count {dictionaryEntries_7.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<int>(
                     field_7,
@@ -1623,9 +1743,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_8 && metadata_8.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_8 = dictionaryEncoded_8 ? ReadDictionaryEntryCount(groupReader, stream, field_8) : null;
+                if (dictionaryEntries_8.HasValue && dictionaryEntries_8.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' value count {metadata_8.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' entry count {dictionaryEntries_8.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<int>(
                     field_8,
@@ -1878,9 +1999,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_0 && metadata_0.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_0 = dictionaryEncoded_0 ? ReadDictionaryEntryCount(groupReader, stream, field_0) : null;
+                if (dictionaryEntries_0.HasValue && dictionaryEntries_0.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Id' value count {metadata_0.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Id' entry count {dictionaryEntries_0.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadAsync<int>(
                     field_0,
@@ -1896,9 +2018,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_1 && metadata_1.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_1 = dictionaryEncoded_1 ? ReadDictionaryEntryCount(groupReader, stream, field_1) : null;
+                if (dictionaryEntries_1.HasValue && dictionaryEntries_1.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'City' value count {metadata_1.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'City' entry count {dictionaryEntries_1.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<global::System.ReadOnlyMemory<char>>(
                     field_1,
@@ -1930,9 +2053,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_2 && metadata_2.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_2 = dictionaryEncoded_2 ? ReadDictionaryEntryCount(groupReader, stream, field_2) : null;
+                if (dictionaryEntries_2.HasValue && dictionaryEntries_2.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' value count {metadata_2.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' entry count {dictionaryEntries_2.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<int>(
                     field_2,
@@ -1950,9 +2074,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_3 && metadata_3.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_3 = dictionaryEncoded_3 ? ReadDictionaryEntryCount(groupReader, stream, field_3) : null;
+                if (dictionaryEntries_3.HasValue && dictionaryEntries_3.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'City' value count {metadata_3.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'City' entry count {dictionaryEntries_3.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<global::System.ReadOnlyMemory<char>>(
                     field_3,
@@ -1984,9 +2109,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_4 && metadata_4.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_4 = dictionaryEncoded_4 ? ReadDictionaryEntryCount(groupReader, stream, field_4) : null;
+                if (dictionaryEntries_4.HasValue && dictionaryEntries_4.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' value count {metadata_4.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' entry count {dictionaryEntries_4.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<int>(
                     field_4,
@@ -2004,9 +2130,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_5 && metadata_5.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_5 = dictionaryEncoded_5 ? ReadDictionaryEntryCount(groupReader, stream, field_5) : null;
+                if (dictionaryEntries_5.HasValue && dictionaryEntries_5.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'X' value count {metadata_5.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'X' entry count {dictionaryEntries_5.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<int>(
                     field_5,
@@ -2024,9 +2151,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_6 && metadata_6.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_6 = dictionaryEncoded_6 ? ReadDictionaryEntryCount(groupReader, stream, field_6) : null;
+                if (dictionaryEntries_6.HasValue && dictionaryEntries_6.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' value count {metadata_6.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' entry count {dictionaryEntries_6.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<int>(
                     field_6,
@@ -2044,9 +2172,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_7 && metadata_7.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_7 = dictionaryEncoded_7 ? ReadDictionaryEntryCount(groupReader, stream, field_7) : null;
+                if (dictionaryEntries_7.HasValue && dictionaryEntries_7.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'X' value count {metadata_7.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'X' entry count {dictionaryEntries_7.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<int>(
                     field_7,
@@ -2064,9 +2193,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_8 && metadata_8.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_8 = dictionaryEncoded_8 ? ReadDictionaryEntryCount(groupReader, stream, field_8) : null;
+                if (dictionaryEntries_8.HasValue && dictionaryEntries_8.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' value count {metadata_8.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' entry count {dictionaryEntries_8.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<int>(
                     field_8,
@@ -2279,9 +2409,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_0 && metadata_0.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_0 = dictionaryEncoded_0 ? ReadDictionaryEntryCount(groupReader, stream, field_0) : null;
+                if (dictionaryEntries_0.HasValue && dictionaryEntries_0.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Id' value count {metadata_0.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Id' entry count {dictionaryEntries_0.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadAsync<int>(
                     field_0,
@@ -2297,9 +2428,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_1 && metadata_1.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_1 = dictionaryEncoded_1 ? ReadDictionaryEntryCount(groupReader, stream, field_1) : null;
+                if (dictionaryEntries_1.HasValue && dictionaryEntries_1.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'City' value count {metadata_1.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'City' entry count {dictionaryEntries_1.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<global::System.ReadOnlyMemory<char>>(
                     field_1,
@@ -2331,9 +2463,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_2 && metadata_2.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_2 = dictionaryEncoded_2 ? ReadDictionaryEntryCount(groupReader, stream, field_2) : null;
+                if (dictionaryEntries_2.HasValue && dictionaryEntries_2.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' value count {metadata_2.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' entry count {dictionaryEntries_2.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<int>(
                     field_2,
@@ -2351,9 +2484,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_3 && metadata_3.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_3 = dictionaryEncoded_3 ? ReadDictionaryEntryCount(groupReader, stream, field_3) : null;
+                if (dictionaryEntries_3.HasValue && dictionaryEntries_3.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'City' value count {metadata_3.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'City' entry count {dictionaryEntries_3.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<global::System.ReadOnlyMemory<char>>(
                     field_3,
@@ -2385,9 +2519,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_4 && metadata_4.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_4 = dictionaryEncoded_4 ? ReadDictionaryEntryCount(groupReader, stream, field_4) : null;
+                if (dictionaryEntries_4.HasValue && dictionaryEntries_4.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' value count {metadata_4.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' entry count {dictionaryEntries_4.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<int>(
                     field_4,
@@ -2405,9 +2540,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_5 && metadata_5.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_5 = dictionaryEncoded_5 ? ReadDictionaryEntryCount(groupReader, stream, field_5) : null;
+                if (dictionaryEntries_5.HasValue && dictionaryEntries_5.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'X' value count {metadata_5.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'X' entry count {dictionaryEntries_5.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<int>(
                     field_5,
@@ -2425,9 +2561,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_6 && metadata_6.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_6 = dictionaryEncoded_6 ? ReadDictionaryEntryCount(groupReader, stream, field_6) : null;
+                if (dictionaryEntries_6.HasValue && dictionaryEntries_6.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' value count {metadata_6.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' entry count {dictionaryEntries_6.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<int>(
                     field_6,
@@ -2445,9 +2582,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_7 && metadata_7.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_7 = dictionaryEncoded_7 ? ReadDictionaryEntryCount(groupReader, stream, field_7) : null;
+                if (dictionaryEntries_7.HasValue && dictionaryEntries_7.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'X' value count {metadata_7.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'X' entry count {dictionaryEntries_7.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<int>(
                     field_7,
@@ -2465,9 +2603,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_8 && metadata_8.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_8 = dictionaryEncoded_8 ? ReadDictionaryEntryCount(groupReader, stream, field_8) : null;
+                if (dictionaryEntries_8.HasValue && dictionaryEntries_8.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' value count {metadata_8.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' entry count {dictionaryEntries_8.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<int>(
                     field_8,
@@ -2660,9 +2799,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_0 && metadata_0.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_0 = dictionaryEncoded_0 ? ReadDictionaryEntryCount(groupReader, stream, field_0) : null;
+                if (dictionaryEntries_0.HasValue && dictionaryEntries_0.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Id' value count {metadata_0.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Id' entry count {dictionaryEntries_0.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadAsync<int>(
                     field_0,
@@ -2678,9 +2818,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_1 && metadata_1.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_1 = dictionaryEncoded_1 ? ReadDictionaryEntryCount(groupReader, stream, field_1) : null;
+                if (dictionaryEntries_1.HasValue && dictionaryEntries_1.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'City' value count {metadata_1.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'City' entry count {dictionaryEntries_1.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<global::System.ReadOnlyMemory<char>>(
                     field_1,
@@ -2712,9 +2853,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_2 && metadata_2.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_2 = dictionaryEncoded_2 ? ReadDictionaryEntryCount(groupReader, stream, field_2) : null;
+                if (dictionaryEntries_2.HasValue && dictionaryEntries_2.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' value count {metadata_2.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' entry count {dictionaryEntries_2.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<int>(
                     field_2,
@@ -2732,9 +2874,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_3 && metadata_3.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_3 = dictionaryEncoded_3 ? ReadDictionaryEntryCount(groupReader, stream, field_3) : null;
+                if (dictionaryEntries_3.HasValue && dictionaryEntries_3.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'City' value count {metadata_3.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'City' entry count {dictionaryEntries_3.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<global::System.ReadOnlyMemory<char>>(
                     field_3,
@@ -2766,9 +2909,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_4 && metadata_4.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_4 = dictionaryEncoded_4 ? ReadDictionaryEntryCount(groupReader, stream, field_4) : null;
+                if (dictionaryEntries_4.HasValue && dictionaryEntries_4.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' value count {metadata_4.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' entry count {dictionaryEntries_4.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<int>(
                     field_4,
@@ -2786,9 +2930,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_5 && metadata_5.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_5 = dictionaryEncoded_5 ? ReadDictionaryEntryCount(groupReader, stream, field_5) : null;
+                if (dictionaryEntries_5.HasValue && dictionaryEntries_5.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'X' value count {metadata_5.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'X' entry count {dictionaryEntries_5.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<int>(
                     field_5,
@@ -2806,9 +2951,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_6 && metadata_6.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_6 = dictionaryEncoded_6 ? ReadDictionaryEntryCount(groupReader, stream, field_6) : null;
+                if (dictionaryEntries_6.HasValue && dictionaryEntries_6.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' value count {metadata_6.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' entry count {dictionaryEntries_6.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<int>(
                     field_6,
@@ -2826,9 +2972,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_7 && metadata_7.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_7 = dictionaryEncoded_7 ? ReadDictionaryEntryCount(groupReader, stream, field_7) : null;
+                if (dictionaryEntries_7.HasValue && dictionaryEntries_7.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'X' value count {metadata_7.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'X' entry count {dictionaryEntries_7.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<int>(
                     field_7,
@@ -2846,9 +2993,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_8 && metadata_8.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_8 = dictionaryEncoded_8 ? ReadDictionaryEntryCount(groupReader, stream, field_8) : null;
+                if (dictionaryEntries_8.HasValue && dictionaryEntries_8.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' value count {metadata_8.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' entry count {dictionaryEntries_8.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<int>(
                     field_8,
@@ -3195,9 +3343,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                             break;
                         }
                     }
-                    if (dictionaryEncoded_0 && metadata_0.NumValues > options.MaxDictionaryEntries)
+                    int? dictionaryEntries_0 = dictionaryEncoded_0 ? ReadDictionaryEntryCount(groupReader, stream, field_0) : null;
+                    if (dictionaryEntries_0.HasValue && dictionaryEntries_0.Value > options.MaxDictionaryEntries)
                     {
-                        throw new global::System.IO.InvalidDataException($"Dictionary column 'Id' value count {metadata_0.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'Id' entry count {dictionaryEntries_0.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                     }
                     await groupReader.ReadAsync<int>(
                         field_0,
@@ -3213,9 +3362,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                             break;
                         }
                     }
-                    if (dictionaryEncoded_1 && metadata_1.NumValues > options.MaxDictionaryEntries)
+                    int? dictionaryEntries_1 = dictionaryEncoded_1 ? ReadDictionaryEntryCount(groupReader, stream, field_1) : null;
+                    if (dictionaryEntries_1.HasValue && dictionaryEntries_1.Value > options.MaxDictionaryEntries)
                     {
-                        throw new global::System.IO.InvalidDataException($"Dictionary column 'City' value count {metadata_1.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'City' entry count {dictionaryEntries_1.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                     }
                     await groupReader.ReadRawAsync<global::System.ReadOnlyMemory<char>>(
                         field_1,
@@ -3247,9 +3397,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                             break;
                         }
                     }
-                    if (dictionaryEncoded_2 && metadata_2.NumValues > options.MaxDictionaryEntries)
+                    int? dictionaryEntries_2 = dictionaryEncoded_2 ? ReadDictionaryEntryCount(groupReader, stream, field_2) : null;
+                    if (dictionaryEntries_2.HasValue && dictionaryEntries_2.Value > options.MaxDictionaryEntries)
                     {
-                        throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' value count {metadata_2.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' entry count {dictionaryEntries_2.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                     }
                     await groupReader.ReadRawAsync<int>(
                         field_2,
@@ -3267,9 +3418,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                             break;
                         }
                     }
-                    if (dictionaryEncoded_3 && metadata_3.NumValues > options.MaxDictionaryEntries)
+                    int? dictionaryEntries_3 = dictionaryEncoded_3 ? ReadDictionaryEntryCount(groupReader, stream, field_3) : null;
+                    if (dictionaryEntries_3.HasValue && dictionaryEntries_3.Value > options.MaxDictionaryEntries)
                     {
-                        throw new global::System.IO.InvalidDataException($"Dictionary column 'City' value count {metadata_3.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'City' entry count {dictionaryEntries_3.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                     }
                     await groupReader.ReadRawAsync<global::System.ReadOnlyMemory<char>>(
                         field_3,
@@ -3301,9 +3453,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                             break;
                         }
                     }
-                    if (dictionaryEncoded_4 && metadata_4.NumValues > options.MaxDictionaryEntries)
+                    int? dictionaryEntries_4 = dictionaryEncoded_4 ? ReadDictionaryEntryCount(groupReader, stream, field_4) : null;
+                    if (dictionaryEntries_4.HasValue && dictionaryEntries_4.Value > options.MaxDictionaryEntries)
                     {
-                        throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' value count {metadata_4.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' entry count {dictionaryEntries_4.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                     }
                     await groupReader.ReadRawAsync<int>(
                         field_4,
@@ -3321,9 +3474,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                             break;
                         }
                     }
-                    if (dictionaryEncoded_5 && metadata_5.NumValues > options.MaxDictionaryEntries)
+                    int? dictionaryEntries_5 = dictionaryEncoded_5 ? ReadDictionaryEntryCount(groupReader, stream, field_5) : null;
+                    if (dictionaryEntries_5.HasValue && dictionaryEntries_5.Value > options.MaxDictionaryEntries)
                     {
-                        throw new global::System.IO.InvalidDataException($"Dictionary column 'X' value count {metadata_5.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'X' entry count {dictionaryEntries_5.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                     }
                     await groupReader.ReadRawAsync<int>(
                         field_5,
@@ -3341,9 +3495,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                             break;
                         }
                     }
-                    if (dictionaryEncoded_6 && metadata_6.NumValues > options.MaxDictionaryEntries)
+                    int? dictionaryEntries_6 = dictionaryEncoded_6 ? ReadDictionaryEntryCount(groupReader, stream, field_6) : null;
+                    if (dictionaryEntries_6.HasValue && dictionaryEntries_6.Value > options.MaxDictionaryEntries)
                     {
-                        throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' value count {metadata_6.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' entry count {dictionaryEntries_6.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                     }
                     await groupReader.ReadRawAsync<int>(
                         field_6,
@@ -3361,9 +3516,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                             break;
                         }
                     }
-                    if (dictionaryEncoded_7 && metadata_7.NumValues > options.MaxDictionaryEntries)
+                    int? dictionaryEntries_7 = dictionaryEncoded_7 ? ReadDictionaryEntryCount(groupReader, stream, field_7) : null;
+                    if (dictionaryEntries_7.HasValue && dictionaryEntries_7.Value > options.MaxDictionaryEntries)
                     {
-                        throw new global::System.IO.InvalidDataException($"Dictionary column 'X' value count {metadata_7.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'X' entry count {dictionaryEntries_7.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                     }
                     await groupReader.ReadRawAsync<int>(
                         field_7,
@@ -3381,9 +3537,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                             break;
                         }
                     }
-                    if (dictionaryEncoded_8 && metadata_8.NumValues > options.MaxDictionaryEntries)
+                    int? dictionaryEntries_8 = dictionaryEncoded_8 ? ReadDictionaryEntryCount(groupReader, stream, field_8) : null;
+                    if (dictionaryEntries_8.HasValue && dictionaryEntries_8.Value > options.MaxDictionaryEntries)
                     {
-                        throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' value count {metadata_8.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                        throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' entry count {dictionaryEntries_8.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                     }
                     await groupReader.ReadRawAsync<int>(
                         field_8,
@@ -3592,9 +3749,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_0 && metadata_0.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_0 = dictionaryEncoded_0 ? ReadDictionaryEntryCount(groupReader, stream, field_0) : null;
+                if (dictionaryEntries_0.HasValue && dictionaryEntries_0.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Id' value count {metadata_0.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Id' entry count {dictionaryEntries_0.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadAsync<int>(
                     field_0,
@@ -3610,9 +3768,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_1 && metadata_1.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_1 = dictionaryEncoded_1 ? ReadDictionaryEntryCount(groupReader, stream, field_1) : null;
+                if (dictionaryEntries_1.HasValue && dictionaryEntries_1.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'City' value count {metadata_1.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'City' entry count {dictionaryEntries_1.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<global::System.ReadOnlyMemory<char>>(
                     field_1,
@@ -3644,9 +3803,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_2 && metadata_2.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_2 = dictionaryEncoded_2 ? ReadDictionaryEntryCount(groupReader, stream, field_2) : null;
+                if (dictionaryEntries_2.HasValue && dictionaryEntries_2.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' value count {metadata_2.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' entry count {dictionaryEntries_2.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<int>(
                     field_2,
@@ -3664,9 +3824,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_3 && metadata_3.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_3 = dictionaryEncoded_3 ? ReadDictionaryEntryCount(groupReader, stream, field_3) : null;
+                if (dictionaryEntries_3.HasValue && dictionaryEntries_3.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'City' value count {metadata_3.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'City' entry count {dictionaryEntries_3.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<global::System.ReadOnlyMemory<char>>(
                     field_3,
@@ -3698,9 +3859,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_4 && metadata_4.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_4 = dictionaryEncoded_4 ? ReadDictionaryEntryCount(groupReader, stream, field_4) : null;
+                if (dictionaryEntries_4.HasValue && dictionaryEntries_4.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' value count {metadata_4.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Zip' entry count {dictionaryEntries_4.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<int>(
                     field_4,
@@ -3718,9 +3880,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_5 && metadata_5.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_5 = dictionaryEncoded_5 ? ReadDictionaryEntryCount(groupReader, stream, field_5) : null;
+                if (dictionaryEntries_5.HasValue && dictionaryEntries_5.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'X' value count {metadata_5.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'X' entry count {dictionaryEntries_5.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<int>(
                     field_5,
@@ -3738,9 +3901,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_6 && metadata_6.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_6 = dictionaryEncoded_6 ? ReadDictionaryEntryCount(groupReader, stream, field_6) : null;
+                if (dictionaryEntries_6.HasValue && dictionaryEntries_6.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' value count {metadata_6.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' entry count {dictionaryEntries_6.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<int>(
                     field_6,
@@ -3758,9 +3922,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_7 && metadata_7.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_7 = dictionaryEncoded_7 ? ReadDictionaryEntryCount(groupReader, stream, field_7) : null;
+                if (dictionaryEntries_7.HasValue && dictionaryEntries_7.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'X' value count {metadata_7.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'X' entry count {dictionaryEntries_7.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<int>(
                     field_7,
@@ -3778,9 +3943,10 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                         break;
                     }
                 }
-                if (dictionaryEncoded_8 && metadata_8.NumValues > options.MaxDictionaryEntries)
+                int? dictionaryEntries_8 = dictionaryEncoded_8 ? ReadDictionaryEntryCount(groupReader, stream, field_8) : null;
+                if (dictionaryEntries_8.HasValue && dictionaryEntries_8.Value > options.MaxDictionaryEntries)
                 {
-                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' value count {metadata_8.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+                    throw new global::System.IO.InvalidDataException($"Dictionary column 'Y' entry count {dictionaryEntries_8.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
                 }
                 await groupReader.ReadRawAsync<int>(
                     field_8,

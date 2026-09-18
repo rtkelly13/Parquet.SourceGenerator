@@ -260,6 +260,118 @@ public static partial class LegacyRecordParquetLegacyExtensions
             }
         }
     }
+    private static int? ReadDictionaryEntryCount(
+        global::Parquet.ParquetRowGroupReader groupReader,
+        global::System.IO.Stream stream,
+        global::Parquet.Schema.DataField field)
+    {
+        var metadata = groupReader.GetMetadata(field);
+        long? offset = metadata?.MetaData?.DictionaryPageOffset ?? metadata?.FileOffset;
+        if (!offset.HasValue || offset.Value < 0 || !stream.CanSeek) return null;
+
+        long savedPosition = stream.Position;
+        try
+        {
+            stream.Seek(offset.Value, global::System.IO.SeekOrigin.Begin);
+            return ReadDictionaryPageHeader(stream);
+        }
+        finally
+        {
+            stream.Seek(savedPosition, global::System.IO.SeekOrigin.Begin);
+        }
+    }
+
+    private static int? ReadDictionaryPageHeader(global::System.IO.Stream stream)
+    {
+        int lastFieldId = 0;
+        while (TryReadCompactField(stream, ref lastFieldId, out int fieldId, out int type))
+        {
+            if (fieldId == 7 && type == 12)
+                return ReadDictionaryPageHeaderBody(stream);
+            if (!TrySkipCompactValue(stream, type)) return null;
+        }
+        return null;
+    }
+
+    private static int? ReadDictionaryPageHeaderBody(global::System.IO.Stream stream)
+    {
+        int lastFieldId = 0;
+        int? count = null;
+        while (TryReadCompactField(stream, ref lastFieldId, out int fieldId, out int type))
+        {
+            if (fieldId == 1 && type == 5)
+            {
+                int? value = ReadCompactI32(stream);
+                if (!value.HasValue || value.Value < 0) return null;
+                count = value.Value;
+            }
+            else if (!TrySkipCompactValue(stream, type)) return null;
+        }
+        return count;
+    }
+
+    private static bool TryReadCompactField(global::System.IO.Stream stream, ref int lastFieldId, out int fieldId, out int type)
+    {
+        int header = stream.ReadByte();
+        if (header <= 0)
+        {
+            fieldId = 0;
+            type = 0;
+            return false;
+        }
+        int delta = header >> 4;
+        type = header & 0x0f;
+        int? explicitFieldId = delta == 0 ? ReadCompactI32(stream) : null;
+        if (delta == 0 && !explicitFieldId.HasValue)
+        {
+            fieldId = 0;
+            return false;
+        }
+        fieldId = delta == 0 ? explicitFieldId!.Value : lastFieldId + delta;
+        lastFieldId = fieldId;
+        return true;
+    }
+
+    private static bool TrySkipCompactValue(global::System.IO.Stream stream, int type)
+    {
+        return type switch
+        {
+            1 or 2 => true,
+            3 => stream.ReadByte() >= 0,
+            4 or 5 or 6 => TrySkipCompactVarInt(stream),
+            7 => TrySkipCompactBytes(stream, 8),
+            _ => false,
+        };
+    }
+
+    private static int? ReadCompactI32(global::System.IO.Stream stream)
+    {
+        uint? value = ReadCompactVarUInt(stream);
+        return value.HasValue ? (int)(value.Value >> 1) ^ -(int)(value.Value & 1) : null;
+    }
+
+    private static uint? ReadCompactVarUInt(global::System.IO.Stream stream)
+    {
+        uint value = 0;
+        for (int shift = 0; shift < 35; shift += 7)
+        {
+            int next = stream.ReadByte();
+            if (next < 0) return null;
+            value |= (uint)(next & 0x7f) << shift;
+            if ((next & 0x80) == 0) return value;
+        }
+        return null;
+    }
+
+    private static bool TrySkipCompactVarInt(global::System.IO.Stream stream)
+        => ReadCompactVarUInt(stream).HasValue;
+
+    private static bool TrySkipCompactBytes(global::System.IO.Stream stream, int count)
+    {
+        for (int i = 0; i < count; i++)
+            if (stream.ReadByte() < 0) return false;
+        return true;
+    }
 
     /// <summary>
     /// Translates the generator's options into the Parquet.Net options the reader and writer accept.
@@ -420,6 +532,7 @@ public static partial class LegacyRecordParquetLegacyExtensions
 
     private static void ValidateDictionaryEntries(
         global::Parquet.ParquetRowGroupReader groupReader,
+        global::System.IO.Stream stream,
         global::Parquet.Schema.DataField field,
         global::Parquet.SourceGenerator.ParquetSerializerOptions options)
     {
@@ -433,9 +546,10 @@ public static partial class LegacyRecordParquetLegacyExtensions
                 break;
             }
         }
-        if (dictionaryEncoded && metadata.NumValues > options.MaxDictionaryEntries)
+        int? dictionaryEntries = dictionaryEncoded ? ReadDictionaryEntryCount(groupReader, stream, field) : null;
+        if (dictionaryEntries.HasValue && dictionaryEntries.Value > options.MaxDictionaryEntries)
         {
-            throw new global::System.IO.InvalidDataException($"Dictionary column '{field.Name}' value count {metadata.NumValues} exceeds maximum allowed {options.MaxDictionaryEntries}.");
+            throw new global::System.IO.InvalidDataException($"Dictionary column '{field.Name}' entry count {dictionaryEntries.Value} exceeds maximum allowed {options.MaxDictionaryEntries}.");
         }
     }
 
@@ -826,19 +940,19 @@ public static partial class LegacyRecordParquetLegacyExtensions
                     int groupRows = (int)rgReader.RowCount;
                     if (groupRows == 0) continue;
 
-                    ValidateDictionaryEntries(rgReader, field_0, options);
+                    ValidateDictionaryEntries(rgReader, stream, field_0, options);
                     var col_0 = await rgReader.ReadColumnAsync(field_0, cancellationToken).ConfigureAwait(false);
                     var data_0 = (int[])col_0.Data;
-                    if (!missing_1) ValidateDictionaryEntries(rgReader, field_1, options);
+                    if (!missing_1) ValidateDictionaryEntries(rgReader, stream, field_1, options);
                     var data_1 = missing_1
                         ? new string[groupRows]
                         : (string[])(await rgReader.ReadColumnAsync(field_1, cancellationToken).ConfigureAwait(false)).Data;
                     if (!missing_1) ValidateStringLengths(data_1, field_1.Name, options);
-                    if (!missing_2) ValidateDictionaryEntries(rgReader, field_2, options);
+                    if (!missing_2) ValidateDictionaryEntries(rgReader, stream, field_2, options);
                     var data_2 = missing_2
                         ? new byte[groupRows][]
                         : (byte[][])(await rgReader.ReadColumnAsync(field_2, cancellationToken).ConfigureAwait(false)).Data;
-                    ValidateDictionaryEntries(rgReader, field_3, options);
+                    ValidateDictionaryEntries(rgReader, stream, field_3, options);
                     var col_3 = await rgReader.ReadColumnAsync(field_3, cancellationToken).ConfigureAwait(false);
                     var data_3 = (int[])col_3.Data;
 
