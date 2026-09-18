@@ -63,6 +63,14 @@ because rendering tiny sizes directly makes the browser scale the glow badly. Se
 > for 256 pixels. If a true 16px icon is needed, the fork alone (no parquet field) is a small
 > variant change.
 
+### Production Asset Cuts
+
+Production-ready multi-resolution cuts are generated from the vector master via high-precision Lanczos downsampling:
+* **`docs/assets/logo.png`**: 1000×1000 high-resolution master raster.
+* **`docs/assets/avatar-500x500.png`**: 500×500 profile avatar cut for GitHub repositories and organization profiles.
+* **`docs/assets/avatar-180x180.png`**: 180×180 web and mobile icon cut.
+* **`docs/assets/favicon/`**: Dedicated favicon and touch suite (`favicon.svg`, `favicon.ico`, `apple-touch-icon.png`, `favicon-{16,32,48,512}.png`).
+
 ---
 
 ## 3. Palette
@@ -79,12 +87,19 @@ degenerates to a flat dark stroke.
 
 ---
 
-## 4. The earlier direction, preserved
+## 4. The earlier direction, preserved & modernized
 
 The project began with a different mark: a rhombille or herringbone tiling inside a glowing hexagon
-frame, with a seam-locked circuit network, a notched socket dot and etched `{}` / `</>` emblems,
-reconstructed by measurement from the original generated artwork. It is kept as a distinct builder
-rather than deleted:
+frame, with a seam-locked circuit network, a notched socket dot and etched `{}` / `</>` emblems.
+
+While historically parked due to high drift with hand-coded manual builders (27.77% SSIM), the mark
+has been modernized using the deterministic vectorization and RDP polygon simplification pipeline:
+- **Reference Raster**: [`docs/assets/alternative/hexagon-reference.jpg`](./alternative/hexagon-reference.jpg)
+- **Modern Vector SVG**: [`docs/assets/alternative/hexagon-vectorized.svg`](./alternative/hexagon-vectorized.svg) (achieves **93.52% SSIM** and **4.53% RMSE**)
+- **Diagnostic Evaluation**: [`docs/assets/alternative/hexagon-diagnostic-sheet.png`](./alternative/hexagon-diagnostic-sheet.png)
+- **Detailed Trade-off Analysis**: See [`docs/assets/alternative/README.md`](./alternative/README.md).
+
+The hand-coded builder is also preserved in `shared-utilities`:
 
 ```bash
 uv run image-reconcile build \
@@ -95,11 +110,6 @@ uv run image-reconcile build \
 It shares every geometry helper with the adopted mark, so fixes to the common parts apply to both.
 Its measured constants — frame radius 186.2 fitted per edge, wood radius 173, the socket dot
 projected onto the frame edge — are documented in that module.
-
-That artwork, its rationale, and the reasons the direction was not adopted live on the long-lived
-`logo/alternative-hexagon-mark` branch, as `docs/assets/alternative/hexagon-reference.jpg`. It is
-byte-identical to the copy packaged inside the builder, which is what the drift tooling reads, so
-`main` does not carry a second copy.
 
 ---
 
