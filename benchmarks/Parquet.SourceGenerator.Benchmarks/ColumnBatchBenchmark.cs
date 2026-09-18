@@ -23,8 +23,10 @@ public class ColumnBatchAggregationBenchmark
 {
     private byte[] _parquetBytes = null!;
 
-    [Params(100_000, 1_000_000)]
+    [ParamsSource(nameof(Counts))]
     public int Count { get; set; }
+
+    public static IEnumerable<int> Counts => BenchmarkParameterSource.GetCounts(100_000, 1_000_000);
 
     [GlobalSetup]
     public void Setup()

@@ -48,8 +48,11 @@ public class ScalingSerializationBenchmark
 {
     private List<ScaleEvent> _data = null!;
 
-    [Params(1_000, 10_000, 100_000, 1_000_000)]
+    [ParamsSource(nameof(Counts))]
     public int Count { get; set; }
+
+    public static IEnumerable<int> Counts =>
+        BenchmarkParameterSource.GetCounts(1_000, 10_000, 100_000, 1_000_000);
 
     [GlobalSetup]
     public void Setup()
@@ -109,8 +112,11 @@ public class ScalingDeserializationBenchmark
 {
     private byte[] _parquetBytes = null!;
 
-    [Params(1_000, 10_000, 100_000, 1_000_000)]
+    [ParamsSource(nameof(Counts))]
     public int Count { get; set; }
+
+    public static IEnumerable<int> Counts =>
+        BenchmarkParameterSource.GetCounts(1_000, 10_000, 100_000, 1_000_000);
 
     [GlobalSetup]
     public void Setup()
@@ -274,8 +280,11 @@ public class GuidInterchangeBenchmark
 {
     private List<GuidEvent> _guidData = null!;
 
-    [Params(1_000, 10_000, 100_000)]
+    [ParamsSource(nameof(Counts))]
     public int Count { get; set; }
+
+    public static IEnumerable<int> Counts =>
+        BenchmarkParameterSource.GetCounts(1_000, 10_000, 100_000);
 
     [GlobalSetup]
     public void Setup()
@@ -310,6 +319,39 @@ internal static class Program
 {
     private static void Main(string[] args)
     {
-        BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
+        List<string> benchmarkArgs = new(args.Length);
+        for (int i = 0; i < args.Length; i++)
+        {
+            if (args[i].Equals("--params", StringComparison.Ordinal))
+            {
+                if (++i >= args.Length)
+                {
+                    throw new ArgumentException(
+                        "--params requires a value such as Count=1000,10000.",
+                        nameof(args)
+                    );
+                }
+
+                string parameter = args[i];
+                const string countPrefix = "Count=";
+                if (!parameter.StartsWith(countPrefix, StringComparison.Ordinal))
+                {
+                    throw new ArgumentException(
+                        "Only the Count benchmark parameter can be overridden.",
+                        nameof(args)
+                    );
+                }
+
+                Environment.SetEnvironmentVariable(
+                    "PSG_BENCHMARK_COUNTS",
+                    parameter[countPrefix.Length..]
+                );
+                continue;
+            }
+
+            benchmarkArgs.Add(args[i]);
+        }
+
+        BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(benchmarkArgs.ToArray());
     }
 }

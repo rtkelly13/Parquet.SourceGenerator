@@ -45,8 +45,10 @@ public class ColumnarHandoffBenchmark
     private List<BenchmarkTpchLineItem> _rows = null!;
     private BenchmarkTpchLineItemColumnarBatch _batch;
 
-    [Params(10_000, 50_000)]
+    [ParamsSource(nameof(Counts))]
     public int Count { get; set; }
+
+    public static IEnumerable<int> Counts => BenchmarkParameterSource.GetCounts(10_000, 50_000);
 
     [GlobalSetup]
     public void Setup()
