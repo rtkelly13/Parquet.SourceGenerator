@@ -170,6 +170,9 @@ The documentation is organized into three distinct tiers based on audience and i
 
 22. **[30 - Schema Descriptor Evaluation](./30-SCHEMA-DESCRIPTOR-EVALUATION.md)**
      - Measured decision on compact generated schema metadata for issue #291.
+23. **[28 - Coverage Envelope Map](./28-COVERAGE-MAP.md)**
+     - Source-derived accepted property kinds, nesting and nullability shapes, backend evidence, and risk-ranked gaps.
+     - Refresh with `dotnet run scripts/CoverageMap.cs -- --update`; CI rejects drift from the parser and generator dials.
 
 ---
 

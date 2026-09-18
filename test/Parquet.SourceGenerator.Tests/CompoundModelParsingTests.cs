@@ -133,6 +133,30 @@ public sealed class CompoundModelParsingTests
     }
 
     [Fact]
+    public void NestedListsAreParserOnlyAndRejectedByTheShippingPipeline()
+    {
+        var (result, symbol) = Parse(
+            Row("public List<List<int>> Scores { get; init; }"),
+            "App.Row"
+        );
+
+        result.Diagnostics.ShouldBeEmpty();
+        result
+            .Model!.Properties.Single(p => p.Kind == PropertyKind.List)
+            .Element!.Kind.ShouldBe(PropertyKind.List);
+
+        TargetParserResult pipeline = TargetParser.GetTargetModel(
+            symbol,
+            ParquetApiLevel.V6,
+            allowCompoundTypes: false
+        );
+        pipeline.Model.ShouldBeNull();
+        pipeline.Diagnostics.ShouldContain(d =>
+            d.Descriptor.Id == DiagnosticDescriptors.UnsupportedPropertyType.Id
+        );
+    }
+
+    [Fact]
     public void PipelineDialAcceptsListOfPocoWithLeafChildren()
     {
         var (_, symbol) = Parse(Row("public List<Address>? Stops { get; init; }"), "App.Row");
