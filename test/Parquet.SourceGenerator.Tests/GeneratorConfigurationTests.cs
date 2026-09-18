@@ -30,10 +30,7 @@ public sealed class GeneratorConfigurationTests
     public void EmptyGlobalFeatureLevelUsesTheDefault()
     {
         var provider = new TestOptionsProvider(
-            new Dictionary<string, string>
-            {
-                ["build_property.ParquetGeneratorFeatureLevel"] = "",
-            }
+            new Dictionary<string, string> { ["build_property.ParquetGeneratorFeatureLevel"] = "" }
         );
 
         GeneratorConfiguration configuration = GeneratorConfiguration.From(

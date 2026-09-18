@@ -39,8 +39,7 @@ internal sealed record GeneratorConfiguration(
             optionsProvider.GlobalOptions.TryGetValue(
                 "build_property.ParquetGeneratorFeatureLevel",
                 out string? featureLevel
-            )
-            && !string.IsNullOrWhiteSpace(featureLevel)
+            ) && !string.IsNullOrWhiteSpace(featureLevel)
         )
         {
             if (
