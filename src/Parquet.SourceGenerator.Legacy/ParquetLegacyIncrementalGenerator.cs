@@ -32,10 +32,26 @@ public sealed class ParquetLegacyIncrementalGenerator : IIncrementalGenerator
             .Select(static (pair, _) => GeneratorConfiguration.From(pair.Left, pair.Right));
 
         context.RegisterSourceOutput(
+            configuration,
+            static (spc, config) =>
+            {
+                if (config.ConfigurationDiagnostic is DiagnosticInfo diagnostic)
+                {
+                    spc.ReportDiagnostic(diagnostic.ToDiagnostic());
+                }
+            }
+        );
+
+        context.RegisterSourceOutput(
             targets.Combine(configuration),
             static (spc, pair) =>
             {
                 TargetParserResult result = pair.Left;
+                if (pair.Right.ConfigurationDiagnostic is not null)
+                {
+                    return;
+                }
+
                 // Report compiler diagnostics
                 for (int i = 0; i < result.Diagnostics.Length; i++)
                 {

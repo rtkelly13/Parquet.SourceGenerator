@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Parquet.SourceGenerator.Diagnostics;
 
 namespace Parquet.SourceGenerator.Models;
 
@@ -19,7 +20,8 @@ internal enum GeneratorFeatureLevel
 /// </summary>
 internal sealed record GeneratorConfiguration(
     GeneratorFeatureLevel FeatureLevel,
-    string GeneratorVersion
+    string GeneratorVersion,
+    DiagnosticInfo? ConfigurationDiagnostic = null
 )
 {
     private const string OptionsAttributeName =
@@ -45,6 +47,16 @@ internal sealed record GeneratorConfiguration(
             return new GeneratorConfiguration(parsed, GetGeneratorVersion());
         }
 
+        if (
+            optionsProvider.GlobalOptions.TryGetValue(
+                "build_property.ParquetGeneratorFeatureLevel",
+                out featureLevel
+            )
+        )
+        {
+            return Invalid(featureLevel);
+        }
+
         AttributeData? assemblyOptions = compilation
             .Assembly.GetAttributes()
             .FirstOrDefault(attribute =>
@@ -56,16 +68,20 @@ internal sealed record GeneratorConfiguration(
                 KeyValuePair<string, TypedConstant> namedArgument in assemblyOptions.NamedArguments
             )
             {
-                if (
-                    namedArgument.Key == "FeatureLevel"
-                    && namedArgument.Value.Value is int value
-                    && Enum.IsDefined(typeof(GeneratorFeatureLevel), value)
-                )
+                if (namedArgument.Key == "FeatureLevel")
                 {
-                    return new GeneratorConfiguration(
-                        (GeneratorFeatureLevel)value,
-                        GetGeneratorVersion()
-                    );
+                    if (
+                        namedArgument.Value.Value is int value
+                        && Enum.IsDefined(typeof(GeneratorFeatureLevel), value)
+                    )
+                    {
+                        return new GeneratorConfiguration(
+                            (GeneratorFeatureLevel)value,
+                            GetGeneratorVersion()
+                        );
+                    }
+
+                    return Invalid(namedArgument.Value.Value?.ToString() ?? "<missing>");
                 }
             }
         }
@@ -73,10 +89,30 @@ internal sealed record GeneratorConfiguration(
         return Default;
     }
 
-    private static string GetGeneratorVersion() =>
-        typeof(GeneratorConfiguration).Assembly.GetName().Version?.ToString(3)
-        ?? typeof(GeneratorConfiguration)
-            .Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
-            ?.InformationalVersion
-        ?? "unknown";
+    private static GeneratorConfiguration Invalid(string featureLevel) =>
+        new(
+            GeneratorFeatureLevel.Level2CompoundPreview,
+            GetGeneratorVersion(),
+            new DiagnosticInfo(
+                DiagnosticDescriptors.InvalidFeatureLevel,
+                Location.None,
+                new[] { featureLevel }
+            )
+        );
+
+    private static string GetGeneratorVersion()
+    {
+        Assembly assembly = typeof(GeneratorConfiguration).Assembly;
+        string? informational = assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+            ?.InformationalVersion;
+        if (!string.IsNullOrWhiteSpace(informational))
+        {
+            string version = informational!;
+            int metadataStart = version.IndexOf('+');
+            return metadataStart >= 0 ? version.Substring(0, metadataStart) : version;
+        }
+
+        return assembly.GetName().Version?.ToString(3) ?? "unknown";
+    }
 }

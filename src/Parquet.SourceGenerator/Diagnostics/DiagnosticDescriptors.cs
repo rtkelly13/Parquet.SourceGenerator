@@ -225,4 +225,16 @@ public static class DiagnosticDescriptors
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true
     );
+
+    /// <summary>
+    /// PARQ015: A configured generator feature level is not a defined value.
+    /// </summary>
+    public static readonly DiagnosticDescriptor InvalidFeatureLevel = new(
+        id: "PARQ015",
+        title: "Invalid generator feature level",
+        messageFormat: "The configured ParquetGeneratorFeatureLevel '{0}' is not defined. Use Level1Flat, Level2CompoundPreview, or Level3ModernCSharp",
+        category: "ParquetSourceGenerator",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true
+    );
 }

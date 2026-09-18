@@ -44,6 +44,42 @@ public sealed class GeneratorConfigurationTests
         source.ShouldContain("// ParquetGeneratorVersion:");
     }
 
+    [Fact]
+    public void InvalidGlobalFeatureLevelProducesAnErrorInsteadOfFallingBack()
+    {
+        var provider = new TestOptionsProvider(
+            new Dictionary<string, string>
+            {
+                ["build_property.ParquetGeneratorFeatureLevel"] = "TypoLevel",
+            }
+        );
+
+        GeneratorConfiguration configuration = GeneratorConfiguration.From(
+            CSharpCompilation.Create("test"),
+            provider
+        );
+
+        configuration.ConfigurationDiagnostic.ShouldNotBeNull();
+        configuration.ConfigurationDiagnostic.Value.Descriptor.Id.ShouldBe("PARQ015");
+        configuration.ConfigurationDiagnostic.Value.MessageArgs.ShouldContain("TypoLevel");
+    }
+
+    [Fact]
+    public void InformationalVersionPreservesPrereleaseAndDropsOnlyBuildMetadata()
+    {
+        string? informational = typeof(GeneratorConfiguration)
+            .Assembly.GetCustomAttributes(inherit: false)
+            .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
+            .SingleOrDefault()
+            ?.InformationalVersion;
+        string expected =
+            informational?.Split('+')[0]
+            ?? typeof(GeneratorConfiguration).Assembly.GetName().Version?.ToString(3)
+            ?? "unknown";
+
+        GeneratorConfiguration.Default.GeneratorVersion.ShouldBe(expected);
+    }
+
     private sealed class TestOptionsProvider : AnalyzerConfigOptionsProvider
     {
         private readonly AnalyzerConfigOptions options;

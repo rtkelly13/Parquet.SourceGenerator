@@ -40,12 +40,28 @@ public sealed class ParquetIncrementalGenerator : IIncrementalGenerator
                     )
             );
 
+        context.RegisterSourceOutput(
+            configuration,
+            static (spc, config) =>
+            {
+                if (config.ConfigurationDiagnostic is DiagnosticInfo diagnostic)
+                {
+                    spc.ReportDiagnostic(diagnostic.ToDiagnostic());
+                }
+            }
+        );
+
         // 2. Register source output emission & diagnostic reporting
         context.RegisterSourceOutput(
             targets.Combine(configuration),
             static (spc, pair) =>
             {
                 TargetParserResult result = pair.Left;
+                if (pair.Right.ConfigurationDiagnostic is not null)
+                {
+                    return;
+                }
+
                 // Report compiler diagnostics (PARQ001, PARQ002, PARQ003)
                 for (int i = 0; i < result.Diagnostics.Length; i++)
                 {
