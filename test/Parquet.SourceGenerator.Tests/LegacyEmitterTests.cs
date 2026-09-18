@@ -180,13 +180,28 @@ public class LegacyEmitterTests
         code.ShouldContain(
             "if (!missing_1) ValidateDictionaryEntries(rgReader, stream, field_1, options);"
         );
-        code.ShouldContain(
-            "ReadDictionaryEntryCount(groupReader, stream, field)"
-        );
+        code.ShouldContain("ReadDictionaryEntryCount(groupReader, stream, field)");
         code.ShouldContain("ValidateStringLengths(data_0, field_0.Name, options);");
         code.ShouldContain("if (!missing_1) ValidateStringLengths(data_1, field_1.Name, options);");
         code.ShouldContain("options.MaxStringLengthBytes");
         code.ShouldContain("throw new global::System.IO.InvalidDataException");
+    }
+
+    [Fact]
+    public void LegacyStringLimitIsPostMaterializationValidation()
+    {
+        string code = Emit(
+            Prop("Description", "description", "string", LegacyModels::PropertyKind.Primitive, true)
+        );
+
+        int read = code.IndexOf("ReadColumnAsync(field_0", StringComparison.Ordinal);
+        int validate = code.IndexOf(
+            "ValidateStringLengths(data_0, field_0.Name, options);",
+            StringComparison.Ordinal
+        );
+
+        read.ShouldBeGreaterThanOrEqualTo(0);
+        validate.ShouldBeGreaterThan(read);
     }
 
     /// <summary>
