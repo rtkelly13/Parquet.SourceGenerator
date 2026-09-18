@@ -314,9 +314,7 @@ internal static class ArrowBridgeEmitter
                 $"                await groupWriter.WriteAllPartsAsync<{nonNullableElementType}>("
             );
             builder.AppendLine($"                    {fieldAccess},");
-            builder.AppendLine(
-                $"                    columnarBatch.{prop.Name},"
-            );
+            builder.AppendLine($"                    columnarBatch.{prop.Name},");
             builder.AppendLine(
                 $"                    columnarBatch.{prop.Name}DefinitionLevels.Slice(0, count),"
             );

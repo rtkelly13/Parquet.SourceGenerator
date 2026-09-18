@@ -288,15 +288,27 @@ public sealed class ArrowConditionalEmissionTests
             .Single(s => s.HintName.EndsWith(".Arrow.g.cs", StringComparison.Ordinal))
             .SourceText.ToString();
 
-        arrow.ShouldContain("var columnarBatch = new TradeColumnarBatch { RowCount = count };", Case.Sensitive);
+        arrow.ShouldContain(
+            "var columnarBatch = new TradeColumnarBatch { RowCount = count };",
+            Case.Sensitive
+        );
         arrow.ShouldContain("using (var groupWriter = writer.CreateRowGroup())", Case.Sensitive);
         arrow.ShouldContain("await groupWriter.WriteAsync<int>(", Case.Sensitive);
         arrow.ShouldContain("await groupWriter.WriteAllPartsAsync<long>(", Case.Sensitive);
-        arrow.ShouldNotContain("await writer.WriteParquetRowGroupAsync(columnarBatch, cancellationToken);", Case.Sensitive);
+        arrow.ShouldNotContain(
+            "await writer.WriteParquetRowGroupAsync(columnarBatch, cancellationToken);",
+            Case.Sensitive
+        );
 
         int write = arrow.IndexOf("await groupWriter.WriteAsync<int>(", StringComparison.Ordinal);
-        int cleanup = arrow.IndexOf("ArrayPool<int>.Shared.Return", write, StringComparison.Ordinal);
-        (cleanup > write).ShouldBeTrue("the first pooled Arrow column must be returned after its write");
+        int cleanup = arrow.IndexOf(
+            "ArrayPool<int>.Shared.Return",
+            write,
+            StringComparison.Ordinal
+        );
+        (cleanup > write).ShouldBeTrue(
+            "the first pooled Arrow column must be returned after its write"
+        );
     }
 
     private static string ColumnBlock(string source, string marker)
