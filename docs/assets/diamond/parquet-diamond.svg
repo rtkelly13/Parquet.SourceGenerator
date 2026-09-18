@@ -633,9 +633,9 @@
 <path d="M 0,0 L 1,3 L -3,7 L -5,7 L -3,3 Z" fill="#C5B098" transform="translate(365,282)" />
   </g>
 
-  <!-- Definitions -->
+    <!-- Definitions -->
     <defs>
-    <!-- Vibrant electric cyan for trunk and right branch (consistent luminous cyan, no dark-blue fade) -->
+    <!-- Vibrant electric cyan for trunk (consistent luminous cyan, no dark-blue fade) -->
     <linearGradient id="neon-cyan" x1="0" y1="340" x2="0" y2="730" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#38BDF8" />
       <stop offset="50%" stop-color="#00F5FF" />
@@ -647,6 +647,14 @@
       <stop offset="0%" stop-color="#E879F9" />
       <stop offset="35%" stop-color="#C084FC" />
       <stop offset="75%" stop-color="#818CF8" />
+      <stop offset="100%" stop-color="#00F5FF" />
+    </linearGradient>
+
+    <!-- Harmonious solar amber-to-cyan gradient along the right branch (blending seamlessly into the trunk) -->
+    <linearGradient id="neon-amber" x1="652" y1="433" x2="512" y2="620" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#F59E0B" />
+      <stop offset="40%" stop-color="#D97706" />
+      <stop offset="75%" stop-color="#0EA5E9" />
       <stop offset="100%" stop-color="#00F5FF" />
     </linearGradient>
 
@@ -662,7 +670,7 @@
     </filter>
   </defs>
 
-  <!-- Clean Mathematical Git Tree (20% Wider Lines, Zero Colour Bleed, Harmonious Gradients) -->
+  <!-- Clean Mathematical Git Tree (Git Triad: Cyan Trunk, Violet Left Feature, Solar Amber Right Feature) -->
   <g id="git-tree-clean">
     <!-- 1. Dark Channel / Casing Carved through Wood (40px wide) -->
     <g id="git-casing" fill="none" stroke="#162232" stroke-width="40" stroke-linecap="round" stroke-linejoin="round">
@@ -680,8 +688,8 @@
     <g id="git-neon-traces" filter="url(#neon-glow)" fill="none" stroke-linecap="round" stroke-linejoin="round">
       <!-- Outer trunk (cyan) -->
       <path d="M 512,730 L 512,342" stroke="url(#neon-cyan)" stroke-width="14.5" />
-      <!-- Right branch (cyan) -->
-      <path d="M 512,620 C 512,600 652,535 652,505 L 652,433" stroke="url(#neon-cyan)" stroke-width="14.5" />
+      <!-- Right branch (solar amber) -->
+      <path d="M 512,620 C 512,600 652,535 652,505 L 652,433" stroke="url(#neon-amber)" stroke-width="14.5" />
       <!-- Left branch (violet smoothly transitioning into cyan trunk) -->
       <path d="M 512,620 C 512,600 372,535 372,505 L 372,433" stroke="url(#neon-violet)" stroke-width="14.5" />
 
@@ -703,8 +711,8 @@
       <circle cx="372" cy="433" r="24" stroke="#C084FC" stroke-width="11" fill="#162232" />
       <circle cx="372" cy="433" r="24" stroke="#ffffff" stroke-width="3" fill="none" opacity="0.95" />
 
-      <!-- Right Node (Cyan) -->
-      <circle cx="652" cy="433" r="24" stroke="url(#neon-cyan)" stroke-width="11" fill="#162232" />
+      <!-- Right Node (Solar Amber) -->
+      <circle cx="652" cy="433" r="24" stroke="#F59E0B" stroke-width="11" fill="#162232" />
       <circle cx="652" cy="433" r="24" stroke="#ffffff" stroke-width="3" fill="none" opacity="0.95" />
     </g>
   </g>
