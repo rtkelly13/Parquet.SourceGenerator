@@ -391,8 +391,9 @@ netstandard targets.
 - `README.md` says "Not benchmarked" three lines above an embedded benchmark table.
 - `04-ROADMAP-AND-CONTRIBUTING.md` leaves phases 2–5 entirely unticked despite being shipped, and
   still lists "Update Parquet.Net to 4.x / 5.x" as pending while the repo targets 6.0.3.
-- `release.yml`'s package-layout check verifies `netstandard2.0;netstandard2.1;net8.0` for the
-  Attributes package, but the csproj also targets `net9.0`.
+- `release.yml`'s package-layout check verifies all four Attributes targets
+  (`netstandard2.0;netstandard2.1;net8.0;net9.0`) and provisions .NET 8, .NET 9, and .NET 10 for
+  the package-consumption matrix.
 - `INDEX.md` says "Native AOT … Not yet verified — CI does not run an AOT publish", but `ci.yml`
   publishes and executes the AOT test binary on every run.
 - `02-API-DESIGN-AND-ATTRIBUTES.md` documents `SchemaName`, and
