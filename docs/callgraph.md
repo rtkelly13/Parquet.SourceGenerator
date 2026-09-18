@@ -34,6 +34,7 @@ graph TD
     tparquetsourcegeneratorparsertargetparser_043["Parquet.SourceGenerator.Parser.TargetParser"]
     tparquetsourcegeneratoremitterarrowbridgeemitter_050 -->|2| tparquetsourcegeneratoremittercolumnarcolumnarbatchcomponent_063
     tparquetsourcegeneratoremitterarrowbridgeemitter_050 -->|6| tparquetsourcegeneratoremittercomponentsarrowmappingcomponent_064
+    tparquetsourcegeneratoremitterarrowbridgeemitter_050 -->|3| tparquetsourcegeneratoremittercomponentsbufferpoolcomponent_062
     tparquetsourcegeneratoremittercodeemitter_043 -->|2| tparquetsourcegeneratoremittercolumnbatchcomponent_052
     tparquetsourcegeneratoremittercodeemitter_043 -->|3| tparquetsourcegeneratoremittercolumnarcolumnarbatchcomponent_063
     tparquetsourcegeneratoremittercodeemitter_043 -->|1| tparquetsourcegeneratoremittercomponentsbatchvalidationcomponent_067
