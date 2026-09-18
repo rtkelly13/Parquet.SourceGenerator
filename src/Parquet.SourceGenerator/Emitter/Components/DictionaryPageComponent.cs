@@ -18,7 +18,9 @@ internal static class DictionaryPageComponent
         builder.AppendLine("    {");
         builder.AppendLine("        var metadata = groupReader.GetMetadata(field);");
         builder.AppendLine("        long? offset = metadata?.MetaData?.DictionaryPageOffset;");
-        builder.AppendLine("        if (!offset.HasValue || offset.Value < 0 || !stream.CanSeek) return null;");
+        builder.AppendLine(
+            "        if (!offset.HasValue || offset.Value < 0 || !stream.CanSeek) return null;"
+        );
         builder.AppendLine();
         builder.AppendLine("        long savedPosition = stream.Position;");
         builder.AppendLine("        try");
@@ -36,10 +38,14 @@ internal static class DictionaryPageComponent
         builder.AppendLine("        }");
         builder.AppendLine("    }");
         builder.AppendLine();
-        builder.AppendLine("    private static int? ReadDictionaryPageHeader(global::System.IO.Stream stream)");
+        builder.AppendLine(
+            "    private static int? ReadDictionaryPageHeader(global::System.IO.Stream stream)"
+        );
         builder.AppendLine("    {");
         builder.AppendLine("        int lastFieldId = 0;");
-        builder.AppendLine("        while (TryReadCompactField(stream, ref lastFieldId, out int fieldId, out int type))");
+        builder.AppendLine(
+            "        while (TryReadCompactField(stream, ref lastFieldId, out int fieldId, out int type))"
+        );
         builder.AppendLine("        {");
         builder.AppendLine("            if (fieldId == 7 && type == 12)");
         builder.AppendLine("                return ReadDictionaryPageHeaderBody(stream);");
@@ -54,7 +60,9 @@ internal static class DictionaryPageComponent
         builder.AppendLine("    {");
         builder.AppendLine("        int lastFieldId = 0;");
         builder.AppendLine("        int? count = null;");
-        builder.AppendLine("        while (TryReadCompactField(stream, ref lastFieldId, out int fieldId, out int type))");
+        builder.AppendLine(
+            "        while (TryReadCompactField(stream, ref lastFieldId, out int fieldId, out int type))"
+        );
         builder.AppendLine("        {");
         builder.AppendLine("            if (fieldId == 1 && type == 5)");
         builder.AppendLine("            {");
@@ -80,18 +88,24 @@ internal static class DictionaryPageComponent
         builder.AppendLine("        }");
         builder.AppendLine("        int delta = header >> 4;");
         builder.AppendLine("        type = header & 0x0f;");
-        builder.AppendLine("        int? explicitFieldId = delta == 0 ? ReadCompactI32(stream) : null;");
+        builder.AppendLine(
+            "        int? explicitFieldId = delta == 0 ? ReadCompactI32(stream) : null;"
+        );
         builder.AppendLine("        if (delta == 0 && !explicitFieldId.HasValue)");
         builder.AppendLine("        {");
         builder.AppendLine("            fieldId = 0;");
         builder.AppendLine("            return false;");
         builder.AppendLine("        }");
-        builder.AppendLine("        fieldId = delta == 0 ? explicitFieldId!.Value : lastFieldId + delta;");
+        builder.AppendLine(
+            "        fieldId = delta == 0 ? explicitFieldId!.Value : lastFieldId + delta;"
+        );
         builder.AppendLine("        lastFieldId = fieldId;");
         builder.AppendLine("        return true;");
         builder.AppendLine("    }");
         builder.AppendLine();
-        builder.AppendLine("    private static bool TrySkipCompactValue(global::System.IO.Stream stream, int type)");
+        builder.AppendLine(
+            "    private static bool TrySkipCompactValue(global::System.IO.Stream stream, int type)"
+        );
         builder.AppendLine("    {");
         builder.AppendLine("        return type switch");
         builder.AppendLine("        {");
@@ -103,13 +117,19 @@ internal static class DictionaryPageComponent
         builder.AppendLine("        };");
         builder.AppendLine("    }");
         builder.AppendLine();
-        builder.AppendLine("    private static int? ReadCompactI32(global::System.IO.Stream stream)");
+        builder.AppendLine(
+            "    private static int? ReadCompactI32(global::System.IO.Stream stream)"
+        );
         builder.AppendLine("    {");
         builder.AppendLine("        uint? value = ReadCompactVarUInt(stream);");
-        builder.AppendLine("        return value.HasValue ? (int)(value.Value >> 1) ^ -(int)(value.Value & 1) : null;");
+        builder.AppendLine(
+            "        return value.HasValue ? (int)(value.Value >> 1) ^ -(int)(value.Value & 1) : null;"
+        );
         builder.AppendLine("    }");
         builder.AppendLine();
-        builder.AppendLine("    private static uint? ReadCompactVarUInt(global::System.IO.Stream stream)");
+        builder.AppendLine(
+            "    private static uint? ReadCompactVarUInt(global::System.IO.Stream stream)"
+        );
         builder.AppendLine("    {");
         builder.AppendLine("        uint value = 0;");
         builder.AppendLine("        for (int shift = 0; shift < 35; shift += 7)");
@@ -122,10 +142,14 @@ internal static class DictionaryPageComponent
         builder.AppendLine("        return null;");
         builder.AppendLine("    }");
         builder.AppendLine();
-        builder.AppendLine("    private static bool TrySkipCompactVarInt(global::System.IO.Stream stream)");
+        builder.AppendLine(
+            "    private static bool TrySkipCompactVarInt(global::System.IO.Stream stream)"
+        );
         builder.AppendLine("        => ReadCompactVarUInt(stream).HasValue;");
         builder.AppendLine();
-        builder.AppendLine("    private static bool TrySkipCompactBytes(global::System.IO.Stream stream, int count)");
+        builder.AppendLine(
+            "    private static bool TrySkipCompactBytes(global::System.IO.Stream stream, int count)"
+        );
         builder.AppendLine("    {");
         builder.AppendLine("        for (int i = 0; i < count; i++)");
         builder.AppendLine("            if (stream.ReadByte() < 0) return false;");

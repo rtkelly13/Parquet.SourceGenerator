@@ -696,7 +696,13 @@ public static class CodeEmitter
         {
             builder.AppendLine($"{indent}if (!missing_{col.Slot})");
             builder.AppendLine($"{indent}{{");
-            EmitDictionaryEntryLimitValidationCore(builder, col, fieldAccess, streamVariable, indent + "    ");
+            EmitDictionaryEntryLimitValidationCore(
+                builder,
+                col,
+                fieldAccess,
+                streamVariable,
+                indent + "    "
+            );
             builder.AppendLine($"{indent}}}");
             return;
         }
