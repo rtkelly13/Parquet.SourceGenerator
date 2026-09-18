@@ -148,7 +148,7 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
         }
     }
 
-    private static long GetFooterStart(global::System.IO.Stream stream)
+    private static async global::System.Threading.Tasks.Task<long> GetFooterStartAsync(global::System.IO.Stream stream, global::System.Threading.CancellationToken cancellationToken)
     {
         if (!stream.CanSeek || stream.Length < 8)
         {
@@ -162,7 +162,7 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
             int read = 0;
             while (read < footerLengthBytes.Length)
             {
-                int count = stream.Read(footerLengthBytes, read, footerLengthBytes.Length - read);
+                int count = await stream.ReadAsync(footerLengthBytes, read, footerLengthBytes.Length - read, cancellationToken).ConfigureAwait(false);
                 if (count == 0)
                 {
                     throw new global::System.IO.InvalidDataException("Parquet footer length could not be read.");
@@ -183,24 +183,24 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
         }
     }
 
-    private static void ValidateColumnChunkBounds(global::Parquet.ParquetReader reader, long footerStart)
+    private static void ValidateColumnChunkBounds(global::Parquet.ParquetReader reader, long footerStart, int maxChunkCount)
     {
         var fileMetadata = reader.Metadata;
         if (fileMetadata is null)
         {
             throw new global::System.IO.InvalidDataException("Parquet footer metadata is missing.");
         }
-        int chunkCount = 0;
+        long chunkCount = 0;
         foreach (var rowGroup in fileMetadata.RowGroups)
         {
-            if (rowGroup.Columns.Count > int.MaxValue - chunkCount)
+            if (maxChunkCount < 0 || rowGroup.Columns.Count > maxChunkCount - chunkCount)
             {
-                throw new global::System.IO.InvalidDataException("Parquet footer contains too many column chunks.");
+                throw new global::System.IO.InvalidDataException($"Parquet footer contains more than the maximum allowed {maxChunkCount} column chunks.");
             }
             chunkCount += rowGroup.Columns.Count;
         }
-        var starts = new long[chunkCount];
-        var ends = new long[chunkCount];
+        var starts = new long[checked((int)chunkCount)];
+        var ends = new long[checked((int)chunkCount)];
         int rangeCount = 0;
         for (int rowGroupIndex = 0; rowGroupIndex < fileMetadata.RowGroups.Count; rowGroupIndex++)
         {
@@ -231,6 +231,19 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                     throw new global::System.IO.InvalidDataException($"Column chunk {columnIndex} in row group {rowGroupIndex} has data page offset {dataPageOffset} outside the file data bounds.");
                 }
                 long chunkStart = dataPageOffset;
+                if (metadata.IndexPageOffset.HasValue)
+                {
+                    long indexPageOffset = metadata.IndexPageOffset.Value;
+                    if (indexPageOffset < 4 || indexPageOffset >= footerStart)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Column chunk {columnIndex} in row group {rowGroupIndex} has index page offset {indexPageOffset} outside the file data bounds.");
+                    }
+                    if (indexPageOffset > dataPageOffset)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Column chunk {columnIndex} in row group {rowGroupIndex} has an index page after its first data page.");
+                    }
+                    chunkStart = indexPageOffset;
+                }
                 if (metadata.DictionaryPageOffset.HasValue)
                 {
                     long dictionaryPageOffset = metadata.DictionaryPageOffset.Value;
@@ -242,7 +255,7 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                     {
                         throw new global::System.IO.InvalidDataException($"Column chunk {columnIndex} in row group {rowGroupIndex} has a dictionary page after its data page.");
                     }
-                    chunkStart = dictionaryPageOffset;
+                    if (dictionaryPageOffset < chunkStart) chunkStart = dictionaryPageOffset;
                 }
                 if (metadata.TotalCompressedSize > footerStart - chunkStart)
                 {
@@ -336,18 +349,19 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
     /// <summary>
     /// Validates the ParquetReader against configured defensive security bounds.
     /// </summary>
-    private static void ValidateReader(
+    private static async global::System.Threading.Tasks.Task ValidateReaderAsync(
         global::Parquet.ParquetReader reader,
         global::System.IO.Stream stream,
-        global::Parquet.SourceGenerator.ParquetSerializerOptions options)
+        global::Parquet.SourceGenerator.ParquetSerializerOptions options,
+        global::System.Threading.CancellationToken cancellationToken)
     {
-        long footerStart = GetFooterStart(stream);
-        ValidateColumnChunkBounds(reader, footerStart);
         int rowGroupCount = reader.RowGroupCount;
         if (rowGroupCount < 0 || rowGroupCount > options.MaxRowGroupCount)
         {
             throw new global::System.IO.InvalidDataException($"Row group count {rowGroupCount} is invalid or exceeds maximum allowed {options.MaxRowGroupCount}.");
         }
+        long footerStart = await GetFooterStartAsync(stream, cancellationToken).ConfigureAwait(false);
+        ValidateColumnChunkBounds(reader, footerStart, 1_000_000);
         int maxDepth = 0;
         foreach (var field in reader.Schema.Fields)
         {
@@ -1187,7 +1201,7 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
             stream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
-        ValidateReader(reader, stream, options);
+        await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);
         var fileFields = reader.Schema.DataFields;
 
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
@@ -1477,7 +1491,7 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
             stream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
-        ValidateReader(reader, stream, options);
+        await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);
         var fileFields = reader.Schema.DataFields;
 
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
@@ -1753,7 +1767,7 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
             stream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
-        ValidateReader(reader, stream, options);
+        await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);
         int rgCount = reader.RowGroupCount;
         if (rgCount == 0) return global::System.Array.Empty<NestedOrder>();
 
@@ -2000,7 +2014,7 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
             stream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
-        ValidateReader(reader, stream, options);
+        await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);
         var fileFields = reader.Schema.DataFields;
 
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
@@ -2242,7 +2256,7 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                 probeStream,
                 formatOptions,
                 cancellationToken: cancellationToken);
-            ValidateReader(probe, probeStream, options);
+            await ValidateReaderAsync(probe, probeStream, options, cancellationToken).ConfigureAwait(false);
             rowGroupCount = probe.RowGroupCount;
             if (rowGroupCount < 0 || rowGroupCount > options.MaxRowGroupCount)
             {
@@ -2372,7 +2386,7 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
                 stream,
                 formatOptions,
                 cancellationToken: cancellationToken);
-            ValidateReader(reader, stream, options);
+            await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);
 
             var fileFields = reader.Schema.DataFields;
 
@@ -2589,7 +2603,7 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
             stream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
-        ValidateReader(reader, stream, options);
+        await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);
         int rowGroupCount = reader.RowGroupCount;
         if (rowGroupCount == 0) return global::System.Array.Empty<NestedOrder>();
 

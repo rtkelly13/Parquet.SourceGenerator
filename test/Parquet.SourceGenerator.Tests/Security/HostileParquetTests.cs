@@ -33,34 +33,63 @@ public class HostileParquetTests
             new() { Id = 1, Name = "async" },
         }.WriteParquetAsync(written);
 
-        using var stream = new AsyncOnlySeekableStream(written.ToArray());
-        List<MultiRowGroupModel> rows =
-            await MultiRowGroupModelParquetExtensions.ReadParquetAsync(stream);
+        using var stream = new FooterSyncReadForbiddenStream(written.ToArray());
+        List<MultiRowGroupModel> rows = await MultiRowGroupModelParquetExtensions.ReadParquetAsync(
+            stream
+        );
 
         rows.ShouldHaveSingleItem();
         rows[0].Id.ShouldBe(1);
         rows[0].Name.ShouldBe("async");
     }
 
-    private sealed class AsyncOnlySeekableStream : MemoryStream
+    private sealed class FooterSyncReadForbiddenStream : MemoryStream
     {
-        public AsyncOnlySeekableStream(byte[] bytes)
-            : base(bytes, writable: false) { }
+        private readonly byte[] _bytes;
 
-        public override int Read(byte[] buffer, int offset, int count) =>
-            throw new NotSupportedException("Synchronous reads are disabled for this test stream.");
+        public FooterSyncReadForbiddenStream(byte[] bytes)
+            : base(bytes, writable: false) => _bytes = bytes;
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            if (Position >= Length - 8 && Position < Length - 4)
+            {
+                throw new NotSupportedException(
+                    "Synchronous footer reads are disabled for this test stream."
+                );
+            }
+            return ReadCore(buffer.AsSpan(offset, count));
+        }
 
         public override Task<int> ReadAsync(
             byte[] buffer,
             int offset,
             int count,
             System.Threading.CancellationToken cancellationToken
-        ) => base.ReadAsync(buffer, offset, count, cancellationToken);
+        )
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(ReadCore(buffer.AsSpan(offset, count)));
+        }
 
         public override ValueTask<int> ReadAsync(
             Memory<byte> buffer,
             System.Threading.CancellationToken cancellationToken = default
-        ) => base.ReadAsync(buffer, cancellationToken);
+        )
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return ValueTask.FromResult(ReadCore(buffer.Span));
+        }
+
+        private int ReadCore(Span<byte> buffer)
+        {
+            int count = (int)Math.Min(buffer.Length, Length - Position);
+            if (count <= 0)
+                return 0;
+            _bytes.AsSpan((int)Position, count).CopyTo(buffer);
+            Position += count;
+            return count;
+        }
     }
 
     [Fact]

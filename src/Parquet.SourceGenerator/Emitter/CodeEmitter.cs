@@ -355,15 +355,15 @@ public static class CodeEmitter
             "    /// Validates the ParquetReader against configured defensive security bounds."
         );
         builder.AppendLine("    /// </summary>");
-        builder.AppendLine("    private static async global::System.Threading.Tasks.Task ValidateReaderAsync(");
+        builder.AppendLine(
+            "    private static async global::System.Threading.Tasks.Task ValidateReaderAsync("
+        );
         builder.AppendLine("        global::Parquet.ParquetReader reader,");
         builder.AppendLine("        global::System.IO.Stream stream,");
         builder.AppendLine(
             "        global::Parquet.SourceGenerator.ParquetSerializerOptions options,"
         );
-        builder.AppendLine(
-            "        global::System.Threading.CancellationToken cancellationToken)"
-        );
+        builder.AppendLine("        global::System.Threading.CancellationToken cancellationToken)");
         builder.AppendLine("    {");
         builder.AppendLine("        int rowGroupCount = reader.RowGroupCount;");
         builder.AppendLine(
@@ -377,9 +377,7 @@ public static class CodeEmitter
         builder.AppendLine(
             "        long footerStart = await GetFooterStartAsync(stream, cancellationToken).ConfigureAwait(false);"
         );
-        builder.AppendLine(
-            "        ValidateColumnChunkBounds(reader, footerStart, options.MaxAllocationValues);"
-        );
+        builder.AppendLine("        ValidateColumnChunkBounds(reader, footerStart, 1_000_000);");
         builder.AppendLine("        int maxDepth = 0;");
         builder.AppendLine("        foreach (var field in reader.Schema.Fields)");
         builder.AppendLine("        {");
@@ -1172,7 +1170,9 @@ public static class CodeEmitter
         builder.AppendLine("            stream,");
         builder.AppendLine("            BuildFormatOptions(options),");
         builder.AppendLine("            cancellationToken: cancellationToken);");
-        builder.AppendLine("        await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);");
+        builder.AppendLine(
+            "        await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);"
+        );
         builder.AppendLine("        var fileFields = reader.Schema.DataFields;");
         builder.AppendLine();
 
@@ -1372,7 +1372,9 @@ public static class CodeEmitter
         builder.AppendLine("            stream,");
         builder.AppendLine("            BuildFormatOptions(options),");
         builder.AppendLine("            cancellationToken: cancellationToken);");
-        builder.AppendLine("        await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);");
+        builder.AppendLine(
+            "        await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);"
+        );
         builder.AppendLine("        var fileFields = reader.Schema.DataFields;");
         builder.AppendLine();
 
@@ -1479,7 +1481,9 @@ public static class CodeEmitter
         builder.AppendLine("            stream,");
         builder.AppendLine("            BuildFormatOptions(options),");
         builder.AppendLine("            cancellationToken: cancellationToken);");
-        builder.AppendLine("        await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);");
+        builder.AppendLine(
+            "        await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);"
+        );
         builder.AppendLine("        var fileFields = reader.Schema.DataFields;");
         builder.AppendLine();
 
@@ -1720,7 +1724,9 @@ public static class CodeEmitter
         builder.AppendLine("            stream,");
         builder.AppendLine("            BuildFormatOptions(options),");
         builder.AppendLine("            cancellationToken: cancellationToken);");
-        builder.AppendLine("        await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);");
+        builder.AppendLine(
+            "        await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);"
+        );
         builder.AppendLine("        var fileFields = reader.Schema.DataFields;");
         builder.AppendLine();
         builder.AppendLine(
@@ -1869,7 +1875,9 @@ public static class CodeEmitter
         builder.AppendLine("            stream,");
         builder.AppendLine("            BuildFormatOptions(options),");
         builder.AppendLine("            cancellationToken: cancellationToken);");
-        builder.AppendLine("        await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);");
+        builder.AppendLine(
+            "        await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);"
+        );
         builder.AppendLine("        int rowGroupCount = reader.RowGroupCount;");
         builder.AppendLine(
             $"        if (rowGroupCount == 0) return global::System.Array.Empty<{model.ClassName}>();"
@@ -2006,7 +2014,9 @@ public static class CodeEmitter
         builder.AppendLine("            stream,");
         builder.AppendLine("            BuildFormatOptions(options),");
         builder.AppendLine("            cancellationToken: cancellationToken);");
-        builder.AppendLine("        await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);");
+        builder.AppendLine(
+            "        await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);"
+        );
         builder.AppendLine("        int rgCount = reader.RowGroupCount;");
         builder.AppendLine(
             $"        if (rgCount == 0) return global::System.Array.Empty<{model.ClassName}>();"
@@ -2168,7 +2178,9 @@ public static class CodeEmitter
         builder.AppendLine("                probeStream,");
         builder.AppendLine("                formatOptions,");
         builder.AppendLine("                cancellationToken: cancellationToken);");
-        builder.AppendLine("            await ValidateReaderAsync(probe, probeStream, options, cancellationToken).ConfigureAwait(false);");
+        builder.AppendLine(
+            "            await ValidateReaderAsync(probe, probeStream, options, cancellationToken).ConfigureAwait(false);"
+        );
         RowGroupLayoutComponent.EmitIndexedLayoutProbe(
             builder,
             "probe",
@@ -2335,7 +2347,9 @@ public static class CodeEmitter
         builder.AppendLine("                stream,");
         builder.AppendLine("                formatOptions,");
         builder.AppendLine("                cancellationToken: cancellationToken);");
-        builder.AppendLine("            await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);");
+        builder.AppendLine(
+            "            await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);"
+        );
         builder.AppendLine();
         builder.AppendLine("            var fileFields = reader.Schema.DataFields;");
         builder.AppendLine();

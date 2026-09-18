@@ -209,7 +209,9 @@ internal static class ColumnBatchComponent
         builder.AppendLine("            stream,");
         builder.AppendLine("            BuildFormatOptions(options),");
         builder.AppendLine("            cancellationToken: cancellationToken);");
-        builder.AppendLine("        await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);");
+        builder.AppendLine(
+            "        await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);"
+        );
         builder.AppendLine("        var fileFields = reader.Schema.DataFields;");
         builder.AppendLine();
         builder.AppendLine(

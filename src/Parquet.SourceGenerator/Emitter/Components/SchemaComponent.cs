@@ -427,7 +427,9 @@ internal static class SchemaComponent
         builder.AppendLine("        long chunkCount = 0;");
         builder.AppendLine("        foreach (var rowGroup in fileMetadata.RowGroups)");
         builder.AppendLine("        {");
-        builder.AppendLine("            if (maxChunkCount < 0 || rowGroup.Columns.Count > maxChunkCount - chunkCount)");
+        builder.AppendLine(
+            "            if (maxChunkCount < 0 || rowGroup.Columns.Count > maxChunkCount - chunkCount)"
+        );
         builder.AppendLine("            {");
         builder.AppendLine(
             "                throw new global::System.IO.InvalidDataException($\"Parquet footer contains more than the maximum allowed {maxChunkCount} column chunks.\");"
@@ -483,7 +485,9 @@ internal static class SchemaComponent
         builder.AppendLine("                long chunkStart = dataPageOffset;");
         builder.AppendLine("                if (metadata.IndexPageOffset.HasValue)");
         builder.AppendLine("                {");
-        builder.AppendLine("                    long indexPageOffset = metadata.IndexPageOffset.Value;");
+        builder.AppendLine(
+            "                    long indexPageOffset = metadata.IndexPageOffset.Value;"
+        );
         builder.AppendLine(
             "                    if (indexPageOffset < 4 || indexPageOffset >= footerStart)"
         );
@@ -519,7 +523,9 @@ internal static class SchemaComponent
             "                        throw new global::System.IO.InvalidDataException($\"Column chunk {columnIndex} in row group {rowGroupIndex} has a dictionary page after its data page.\");"
         );
         builder.AppendLine("                    }");
-        builder.AppendLine("                    if (dictionaryPageOffset < chunkStart) chunkStart = dictionaryPageOffset;");
+        builder.AppendLine(
+            "                    if (dictionaryPageOffset < chunkStart) chunkStart = dictionaryPageOffset;"
+        );
         builder.AppendLine("                }");
         builder.AppendLine(
             "                if (metadata.TotalCompressedSize > footerStart - chunkStart)"

@@ -135,20 +135,32 @@ public static class LegacyCodeEmitter
             "    /// Validates row-group column metadata before the legacy reader allocates result buffers."
         );
         builder.AppendLine("    /// </summary>");
-        builder.AppendLine("    private static async global::System.Threading.Tasks.Task ValidateReaderAsync(");
+        builder.AppendLine(
+            "    private static async global::System.Threading.Tasks.Task ValidateReaderAsync("
+        );
         builder.AppendLine("        global::Parquet.ParquetReader reader,");
         builder.AppendLine("        global::System.IO.Stream stream,");
-        builder.AppendLine("        global::Parquet.Schema.DataField[] fileFieldsForTypeValidation,");
-        builder.AppendLine("        global::Parquet.SourceGenerator.ParquetSerializerOptions options,");
+        builder.AppendLine(
+            "        global::Parquet.Schema.DataField[] fileFieldsForTypeValidation,"
+        );
+        builder.AppendLine(
+            "        global::Parquet.SourceGenerator.ParquetSerializerOptions options,"
+        );
         builder.AppendLine("        global::System.Threading.CancellationToken cancellationToken)");
         builder.AppendLine("    {");
         builder.AppendLine("        int rowGroupCount = reader.RowGroupCount;");
-        builder.AppendLine("        if (rowGroupCount < 0 || rowGroupCount > options.MaxRowGroupCount)");
+        builder.AppendLine(
+            "        if (rowGroupCount < 0 || rowGroupCount > options.MaxRowGroupCount)"
+        );
         builder.AppendLine("        {");
-        builder.AppendLine("            throw new global::System.IO.InvalidDataException($\"Row group count {rowGroupCount} is invalid or exceeds maximum allowed {options.MaxRowGroupCount}.\");");
+        builder.AppendLine(
+            "            throw new global::System.IO.InvalidDataException($\"Row group count {rowGroupCount} is invalid or exceeds maximum allowed {options.MaxRowGroupCount}.\");"
+        );
         builder.AppendLine("        }");
-        builder.AppendLine("        long footerStart = await GetFooterStartAsync(stream, cancellationToken).ConfigureAwait(false);");
-        builder.AppendLine("        ValidateColumnChunkBounds(reader, footerStart, options.MaxAllocationValues);");
+        builder.AppendLine(
+            "        long footerStart = await GetFooterStartAsync(stream, cancellationToken).ConfigureAwait(false);"
+        );
+        builder.AppendLine("        ValidateColumnChunkBounds(reader, footerStart, 1_000_000);");
         for (int i = 0; i < model.Properties.Length; i++)
         {
             builder.AppendLine(
@@ -656,7 +668,9 @@ public static class LegacyCodeEmitter
         if (model.Properties.Length > 0)
         {
             builder.AppendLine("            var fileFields = reader.Schema.GetDataFields();");
-            builder.AppendLine("            await ValidateReaderAsync(reader, stream, fileFields, options, cancellationToken).ConfigureAwait(false);");
+            builder.AppendLine(
+                "            await ValidateReaderAsync(reader, stream, fileFields, options, cancellationToken).ConfigureAwait(false);"
+            );
         }
 
         if (model.Properties.Length == 0)

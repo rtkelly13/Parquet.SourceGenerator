@@ -9,30 +9,30 @@
 # ELOC_PER_MEMBER emitted executable lines per emitted public member.
 # Ordinal-sorted. CC, CL, SLOC, ELOC, DIT, ERRORS and MEMBERS are gated exactly; MI is
 # REPORTED BUT NOT GATED for generated code. See docs/22-GENERATED-CODE-METRICS.md.
-S:PocoOrderParquetExtensions | EMITTER=v6 MEMBERS=47 CC=793 CL=79 SLOC=5374 ELOC=2746 ERRORS=0 METHODS=54 MAXCC=208 ELOC_PER_MEMBER=58.4
+S:PocoOrderParquetExtensions | EMITTER=v6 MEMBERS=47 CC=799 CL=80 SLOC=5388 ELOC=2753 ERRORS=0 METHODS=54 MAXCC=208 ELOC_PER_MEMBER=58.6
 M:SampleDomain.Models.PocoOrderParquet.From(System.IO.Stream) | MI=90 CC=2 CL=5 DIT=- SLOC=3 ELOC=1
 M:SampleDomain.Models.PocoOrderParquet.From(System.ReadOnlyMemory<byte>) | MI=94 CC=1 CL=3 DIT=- SLOC=3 ELOC=1
 M:SampleDomain.Models.PocoOrderParquetExtensions.AcceptRowGroup(System.Func<SampleDomain.Models.PocoOrderRowGroupMetadata, bool>, Parquet.ParquetRowGroupReader, int, Parquet.Schema.DataField) | MI=65 CC=5 CL=8 DIT=- SLOC=34 ELOC=6
 M:SampleDomain.Models.PocoOrderParquetExtensions.BuildFormatOptions(Parquet.SourceGenerator.ParquetSerializerOptions) | MI=59 CC=5 CL=11 DIT=- SLOC=64 ELOC=10
 M:SampleDomain.Models.PocoOrderParquetExtensions.CreateBufferStream(System.ReadOnlyMemory<byte>) | MI=87 CC=2 CL=4 DIT=- SLOC=13 ELOC=1
 M:SampleDomain.Models.PocoOrderParquetExtensions.GetFieldDepth(Parquet.Schema.Field) | MI=60 CC=6 CL=6 DIT=- SLOC=22 ELOC=11
-M:SampleDomain.Models.PocoOrderParquetExtensions.GetFooterStart(System.IO.Stream) | MI=52 CC=7 CL=3 DIT=- SLOC=34 ELOC=18
-M:SampleDomain.Models.PocoOrderParquetExtensions.ReadBufferSequentialArrayAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=10 CC=73 CL=26 DIT=- SLOC=325 ELOC=224
-M:SampleDomain.Models.PocoOrderParquetExtensions.ReadParquetArrayAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.PocoOrderRowGroupMetadata, bool>) | MI=9 CC=79 CL=27 DIT=- SLOC=353 ELOC=236
+M:SampleDomain.Models.PocoOrderParquetExtensions.GetFooterStartAsync(System.IO.Stream, System.Threading.CancellationToken) | MI=52 CC=7 CL=6 DIT=- SLOC=34 ELOC=18
+M:SampleDomain.Models.PocoOrderParquetExtensions.ReadBufferSequentialArrayAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=10 CC=73 CL=28 DIT=- SLOC=325 ELOC=224
+M:SampleDomain.Models.PocoOrderParquetExtensions.ReadParquetArrayAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.PocoOrderRowGroupMetadata, bool>) | MI=9 CC=79 CL=29 DIT=- SLOC=353 ELOC=236
 M:SampleDomain.Models.PocoOrderParquetExtensions.ReadParquetArrayAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=76 CC=1 CL=4 DIT=- SLOC=10 ELOC=3
-M:SampleDomain.Models.PocoOrderParquetExtensions.ReadParquetAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.PocoOrderRowGroupMetadata, bool>) | MI=9 CC=79 CL=29 DIT=- SLOC=375 ELOC=240
+M:SampleDomain.Models.PocoOrderParquetExtensions.ReadParquetAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.PocoOrderRowGroupMetadata, bool>) | MI=9 CC=79 CL=31 DIT=- SLOC=375 ELOC=240
 M:SampleDomain.Models.PocoOrderParquetExtensions.ReadParquetAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=72 CC=1 CL=7 DIT=- SLOC=11 ELOC=4
-M:SampleDomain.Models.PocoOrderParquetExtensions.ReadParquetParallelArrayAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=11 CC=70 CL=26 DIT=- SLOC=331 ELOC=219
-M:SampleDomain.Models.PocoOrderParquetExtensions.ReadParquetParallelArrayAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=39 CC=15 CL=20 DIT=- SLOC=116 ELOC=45
+M:SampleDomain.Models.PocoOrderParquetExtensions.ReadParquetParallelArrayAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=11 CC=70 CL=28 DIT=- SLOC=331 ELOC=219
+M:SampleDomain.Models.PocoOrderParquetExtensions.ReadParquetParallelArrayAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=39 CC=15 CL=21 DIT=- SLOC=116 ELOC=45
 M:SampleDomain.Models.PocoOrderParquetExtensions.ReadParquetParallelAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=72 CC=1 CL=7 DIT=- SLOC=12 ELOC=4
 M:SampleDomain.Models.PocoOrderParquetExtensions.ReadParquetParallelAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=72 CC=1 CL=7 DIT=- SLOC=12 ELOC=4
-M:SampleDomain.Models.PocoOrderParquetExtensions.ReadParquetStreamAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.PocoOrderRowGroupMetadata, bool>) | MI=12 CC=66 CL=28 DIT=- SLOC=297 ELOC=205
+M:SampleDomain.Models.PocoOrderParquetExtensions.ReadParquetStreamAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.PocoOrderRowGroupMetadata, bool>) | MI=12 CC=66 CL=30 DIT=- SLOC=297 ELOC=205
 M:SampleDomain.Models.PocoOrderParquetExtensions.ReadParquetStreamAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.PocoOrderRowGroupMetadata, bool>) | MI=67 CC=2 CL=10 DIT=- SLOC=15 ELOC=6
-M:SampleDomain.Models.PocoOrderParquetExtensions.ReadRowGroupsIntoAsync(System.ReadOnlyMemory<byte>, Parquet.ParquetOptions, SampleDomain.Models.PocoOrder[], int[], int[], int, int, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationTokenSource, System.Threading.CancellationToken) | MI=13 CC=65 CL=27 DIT=- SLOC=317 ELOC=205
+M:SampleDomain.Models.PocoOrderParquetExtensions.ReadRowGroupsIntoAsync(System.ReadOnlyMemory<byte>, Parquet.ParquetOptions, SampleDomain.Models.PocoOrder[], int[], int[], int, int, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationTokenSource, System.Threading.CancellationToken) | MI=13 CC=65 CL=28 DIT=- SLOC=317 ELOC=205
 M:SampleDomain.Models.PocoOrderParquetExtensions.ResolveSchemaField(Parquet.Schema.DataField[], int, Parquet.Schema.DataField, ref System.Collections.Generic.Dictionary<string, Parquet.Schema.DataField>, out bool) | MI=50 CC=10 CL=9 DIT=- SLOC=62 ELOC=21
-M:SampleDomain.Models.PocoOrderParquetExtensions.ValidateColumnChunkBounds(Parquet.ParquetReader, long) | MI=38 CC=21 CL=10 DIT=- SLOC=84 ELOC=47
+M:SampleDomain.Models.PocoOrderParquetExtensions.ValidateColumnChunkBounds(Parquet.ParquetReader, long, int) | MI=36 CC=27 CL=10 DIT=- SLOC=97 ELOC=54
 M:SampleDomain.Models.PocoOrderParquetExtensions.ValidatePhysicalType(Parquet.ParquetReader, Parquet.Schema.DataField[], Parquet.Schema.DataField, long) | MI=50 CC=11 CL=15 DIT=- SLOC=41 ELOC=20
-M:SampleDomain.Models.PocoOrderParquetExtensions.ValidateReader(Parquet.ParquetReader, System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions) | MI=52 CC=6 CL=9 DIT=- SLOC=35 ELOC=19
+M:SampleDomain.Models.PocoOrderParquetExtensions.ValidateReaderAsync(Parquet.ParquetReader, System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=52 CC=6 CL=13 DIT=- SLOC=36 ELOC=19
 M:SampleDomain.Models.PocoOrderParquetExtensions.WriteParquetAsync(System.Collections.Generic.IAsyncEnumerable<SampleDomain.Models.PocoOrder>, System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=54 CC=7 CL=15 DIT=- SLOC=35 ELOC=16
 M:SampleDomain.Models.PocoOrderParquetExtensions.WriteParquetAsync(System.Collections.Generic.IReadOnlyCollection<SampleDomain.Models.PocoOrder>, System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=62 CC=3 CL=12 DIT=- SLOC=22 ELOC=8
 M:SampleDomain.Models.PocoOrderParquetExtensions.WriteParquetBatchedAsync(System.Collections.Generic.IEnumerable<SampleDomain.Models.PocoOrder>, System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=51 CC=9 CL=15 DIT=- SLOC=46 ELOC=19
@@ -69,7 +69,7 @@ P:SampleDomain.Models.PocoOrderRowGroupMetadata.Id | MI=100 CC=1 CL=1 DIT=- SLOC
 P:SampleDomain.Models.PocoOrderRowGroupMetadata.RowCount | MI=100 CC=1 CL=0 DIT=- SLOC=2 ELOC=0
 P:SampleDomain.Models.PocoOrderRowGroupMetadata.RowGroupIndex | MI=100 CC=1 CL=0 DIT=- SLOC=2 ELOC=0
 T:SampleDomain.Models.PocoOrderParquet | MI=91 CC=3 CL=7 DIT=1 SLOC=13 ELOC=2
-T:SampleDomain.Models.PocoOrderParquetExtensions | MI=28 CC=753 CL=73 DIT=1 SLOC=5158 ELOC=2697
+T:SampleDomain.Models.PocoOrderParquetExtensions | MI=27 CC=759 CL=75 DIT=1 SLOC=5172 ELOC=2704
 T:SampleDomain.Models.PocoOrderParquetFilteredSource | MI=73 CC=10 CL=14 DIT=1 SLOC=53 ELOC=15
 T:SampleDomain.Models.PocoOrderParquetMemorySource | MI=82 CC=9 CL=15 DIT=1 SLOC=45 ELOC=11
 T:SampleDomain.Models.PocoOrderParquetParallelSource | MI=82 CC=5 CL=9 DIT=1 SLOC=31 ELOC=7
