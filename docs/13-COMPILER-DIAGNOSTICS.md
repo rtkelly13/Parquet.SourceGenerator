@@ -21,6 +21,7 @@ This document details all diagnostic codes, their severity, rationale, and remed
 | **[`PARQ009`](#parq009-nested-type-not-supported)** | **Error** | Nested types not supported | Target type is nested within another type. |
 | **[`PARQ010`](#parq010-generic-type-not-supported)** | **Error** | Generic types not supported | Target type is generic. |
 | **[`PARQ011`](#parq011-type-unsupported-on-classic-v5-api)** | **Error** | Unsupported on classic API | Member type is supported by Parquet.Net 6 but not by the 4.x/5.x API. |
+| **[`PARQ015`](#parq015-invalid-generator-feature-level)** | **Error** | Invalid generator feature level | `ParquetGeneratorFeatureLevel` is present but is not a defined level. |
 
 ---
 
@@ -162,3 +163,14 @@ This document details all diagnostic codes, their severity, rationale, and remed
 - **Cause**: The member uses a type supported by Parquet.Net 6 (e.g., `ReadOnlyMemory<byte>`, `ReadOnlyMemory<char>`, `BigDecimal`), but the project references the legacy `Parquet.SourceGenerator.V5` package.
 - **Why**: Parquet.Net 4.x/5.x lacks the primitive APIs required for these types.
 - **Remediation**: Upgrade to the main `Parquet.SourceGenerator` package, or change the property to a type compatible with Parquet.Net 4.x/5.x (such as `byte[]` or `string`).
+
+---
+
+### PARQ015: Invalid Generator Feature Level
+
+- **Severity**: Error
+- **Cause**: `ParquetGeneratorFeatureLevel` was supplied through MSBuild or
+  `[ParquetGeneratorOptions]`, but its value is not one of the defined feature levels.
+- **Why**: Silently falling back to the default level makes a misspelled build property change the
+  generated API without any indication that the requested policy was ignored.
+- **Remediation**: Use `Level1Flat`, `Level2CompoundPreview`, or `Level3ModernCSharp`.

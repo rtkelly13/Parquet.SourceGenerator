@@ -60,6 +60,9 @@ The documentation is organized into three distinct tiers based on audience and i
 5. **[07 - Known Limitations & Upstream Dependencies](./07-KNOWN-LIMITATIONS.md)**
    - Audited gaps, edge-case type limitations, and tracked upstream Parquet.Net issues.
 
+6. **[29 - Generator Feature Levels](./29-FEATURE-LEVELS.md)**
+   - Named compatibility levels, MSBuild and assembly configuration, and generated-output stamps.
+
 ---
 
 ### 🔬 Internals & Engineering Spikes

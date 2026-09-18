@@ -19,32 +19,49 @@ public sealed class ParquetIncrementalGenerator : IIncrementalGenerator
     /// <param name="context">The incremental generator context.</param>
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        // 1. Filter syntax nodes decorated with attributes and extract target model + diagnostics
-        IncrementalValuesProvider<TargetParserResult> targets =
+        // 1. Read project policy as value-equatable state, then parse decorated target nodes with
+        // the feature level's compound-shape allowance.
+        IncrementalValueProvider<GeneratorConfiguration> configuration = context
+            .CompilationProvider.Combine(context.AnalyzerConfigOptionsProvider)
+            .Select(static (pair, _) => GeneratorConfiguration.From(pair.Left, pair.Right));
+        IncrementalValuesProvider<GeneratorSyntaxContext> targetNodes =
             context.SyntaxProvider.CreateSyntaxProvider(
                 predicate: static (s, _) => IsTargetSyntax(s),
-                // Compound dial (#176): the v6 emitter expresses nested POCOs (M2) and
-                // root-level lists/arrays of primitives (M3a). Maps (M4), lists of POCOs,
-                // and lists nested in structs (M3b) still fall to PARQ006.
-                transform: static (ctx, _) =>
+                transform: static (ctx, _) => ctx
+            );
+        IncrementalValuesProvider<TargetParserResult> targets = targetNodes
+            .Combine(configuration)
+            .Select(
+                static (pair, _) =>
                     TargetParser.GetTargetModel(
-                        ctx,
+                        pair.Left,
                         ParquetApiLevel.V6,
-                        compoundKinds: Parser.CompoundKinds.Struct | Parser.CompoundKinds.List
+                        compoundKinds: CompoundKindsFor(pair.Right.FeatureLevel)
                     )
             );
 
-        // 2. Register source output emission & diagnostic reporting
-        IncrementalValueProvider<GeneratorConfiguration> configuration =
-            context.AnalyzerConfigOptionsProvider.Select(
-                static (provider, _) => GeneratorConfiguration.From(provider)
-            );
+        context.RegisterSourceOutput(
+            configuration,
+            static (spc, config) =>
+            {
+                if (config.ConfigurationDiagnostic is DiagnosticInfo diagnostic)
+                {
+                    spc.ReportDiagnostic(diagnostic.ToDiagnostic());
+                }
+            }
+        );
 
+        // 2. Register source output emission & diagnostic reporting
         context.RegisterSourceOutput(
             targets.Combine(configuration),
             static (spc, pair) =>
             {
                 TargetParserResult result = pair.Left;
+                if (pair.Right.ConfigurationDiagnostic is not null)
+                {
+                    return;
+                }
+
                 // Report compiler diagnostics (PARQ001, PARQ002, PARQ003)
                 for (int i = 0; i < result.Diagnostics.Length; i++)
                 {
@@ -136,4 +153,9 @@ public sealed class ParquetIncrementalGenerator : IIncrementalGenerator
             || node is RecordDeclarationSyntax { AttributeLists.Count: > 0 }
             || node is StructDeclarationSyntax { AttributeLists.Count: > 0 };
     }
+
+    private static Parser.CompoundKinds CompoundKindsFor(GeneratorFeatureLevel featureLevel) =>
+        featureLevel == GeneratorFeatureLevel.Level1Flat
+            ? Parser.CompoundKinds.None
+            : Parser.CompoundKinds.Struct | Parser.CompoundKinds.List;
 }

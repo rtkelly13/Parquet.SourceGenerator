@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Parquet.SourceGenerator.Emitter;
 using Parquet.SourceGenerator.Models;
@@ -16,11 +17,29 @@ public sealed class GeneratorConfigurationTests
         var provider = new TestOptionsProvider(
             new Dictionary<string, string>
             {
-                ["build_property.ParquetGeneratorFeatureLevel"] = "Level3_ModernCSharp",
+                ["build_property.ParquetGeneratorFeatureLevel"] = "Level3ModernCSharp",
             }
         );
 
-        GeneratorConfiguration.From(provider).FeatureLevel.ShouldBe("Level3_ModernCSharp");
+        GeneratorConfiguration
+            .From(CSharpCompilation.Create("test"), provider)
+            .FeatureLevel.ShouldBe(GeneratorFeatureLevel.Level3ModernCSharp);
+    }
+
+    [Fact]
+    public void EmptyGlobalFeatureLevelUsesTheDefault()
+    {
+        var provider = new TestOptionsProvider(
+            new Dictionary<string, string> { ["build_property.ParquetGeneratorFeatureLevel"] = "" }
+        );
+
+        GeneratorConfiguration configuration = GeneratorConfiguration.From(
+            CSharpCompilation.Create("test"),
+            provider
+        );
+
+        configuration.FeatureLevel.ShouldBe(GeneratorConfiguration.Default.FeatureLevel);
+        configuration.ConfigurationDiagnostic.ShouldBeNull();
     }
 
     [Fact]
@@ -34,10 +53,47 @@ public sealed class GeneratorConfigurationTests
 
         string source = CodeEmitter.EmitSource(
             model,
-            new GeneratorConfiguration("Level2_CompoundPreview")
+            new GeneratorConfiguration(GeneratorFeatureLevel.Level2CompoundPreview, "test-version")
         );
 
-        source.ShouldContain("// ParquetGeneratorFeatureLevel: Level2_CompoundPreview");
+        source.ShouldContain("// ParquetGeneratorFeatureLevel: Level2CompoundPreview");
+        source.ShouldContain("// ParquetGeneratorVersion:");
+    }
+
+    [Fact]
+    public void InvalidGlobalFeatureLevelProducesAnErrorInsteadOfFallingBack()
+    {
+        var provider = new TestOptionsProvider(
+            new Dictionary<string, string>
+            {
+                ["build_property.ParquetGeneratorFeatureLevel"] = "TypoLevel",
+            }
+        );
+
+        GeneratorConfiguration configuration = GeneratorConfiguration.From(
+            CSharpCompilation.Create("test"),
+            provider
+        );
+
+        configuration.ConfigurationDiagnostic.ShouldNotBeNull();
+        configuration.ConfigurationDiagnostic.Value.Descriptor.Id.ShouldBe("PARQ015");
+        configuration.ConfigurationDiagnostic.Value.MessageArgs.ShouldContain("TypoLevel");
+    }
+
+    [Fact]
+    public void InformationalVersionPreservesPrereleaseAndDropsOnlyBuildMetadata()
+    {
+        string? informational = typeof(GeneratorConfiguration)
+            .Assembly.GetCustomAttributes(inherit: false)
+            .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
+            .SingleOrDefault()
+            ?.InformationalVersion;
+        string expected =
+            informational?.Split('+')[0]
+            ?? typeof(GeneratorConfiguration).Assembly.GetName().Version?.ToString(3)
+            ?? "unknown";
+
+        GeneratorConfiguration.Default.GeneratorVersion.ShouldBe(expected);
     }
 
     private sealed class TestOptionsProvider : AnalyzerConfigOptionsProvider
