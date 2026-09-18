@@ -27,6 +27,25 @@ public sealed class GeneratorConfigurationTests
     }
 
     [Fact]
+    public void EmptyGlobalFeatureLevelUsesTheDefault()
+    {
+        var provider = new TestOptionsProvider(
+            new Dictionary<string, string>
+            {
+                ["build_property.ParquetGeneratorFeatureLevel"] = "",
+            }
+        );
+
+        GeneratorConfiguration configuration = GeneratorConfiguration.From(
+            CSharpCompilation.Create("test"),
+            provider
+        );
+
+        configuration.FeatureLevel.ShouldBe(GeneratorConfiguration.Default.FeatureLevel);
+        configuration.ConfigurationDiagnostic.ShouldBeNull();
+    }
+
+    [Fact]
     public void ConfiguredFeatureLevelIsStampedInEmittedSource()
     {
         var model = new TargetClassModel(

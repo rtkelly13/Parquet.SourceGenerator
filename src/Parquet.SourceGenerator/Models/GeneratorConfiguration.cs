@@ -40,20 +40,17 @@ internal sealed record GeneratorConfiguration(
                 "build_property.ParquetGeneratorFeatureLevel",
                 out string? featureLevel
             )
-            && Enum.TryParse(featureLevel, ignoreCase: true, out GeneratorFeatureLevel parsed)
-            && Enum.IsDefined(typeof(GeneratorFeatureLevel), parsed)
+            && !string.IsNullOrWhiteSpace(featureLevel)
         )
         {
-            return new GeneratorConfiguration(parsed, GetGeneratorVersion());
-        }
-
-        if (
-            optionsProvider.GlobalOptions.TryGetValue(
-                "build_property.ParquetGeneratorFeatureLevel",
-                out featureLevel
+            if (
+                Enum.TryParse(featureLevel, ignoreCase: true, out GeneratorFeatureLevel parsed)
+                && Enum.IsDefined(typeof(GeneratorFeatureLevel), parsed)
             )
-        )
-        {
+            {
+                return new GeneratorConfiguration(parsed, GetGeneratorVersion());
+            }
+
             return Invalid(featureLevel);
         }
 
