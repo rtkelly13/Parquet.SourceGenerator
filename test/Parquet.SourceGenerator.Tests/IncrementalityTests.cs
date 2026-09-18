@@ -171,7 +171,9 @@ public sealed class IncrementalityTests
             .ShouldBe(1, DescribeTrackedSteps(second));
         modelOutputs
             .Count(output => output.Reason == IncrementalStepRunReason.Cached)
-            .ShouldBe(2, DescribeTrackedSteps(second));
+            // The configuration diagnostic output is independently registered and remains cached
+            // alongside the unaffected model and Arrow output steps.
+            .ShouldBe(3, DescribeTrackedSteps(second));
         modelOutputs
             .Count(output => output.Reason == IncrementalStepRunReason.Unchanged)
             .ShouldBe(1, DescribeTrackedSteps(second));
