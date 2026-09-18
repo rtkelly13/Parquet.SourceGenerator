@@ -240,8 +240,9 @@ public readonly struct ParquetParallelSource<T, TAccessor> where TAccessor : str
 ```
 
 The type-state rules from #217 carry over unchanged, now expressed as constraints rather than as
-emitted-or-not members: no `Parallel` on a stream source; no `Where` after `Parallel` until #222
-teaches the parallel reader to prune; `Batches` gated on `IColumnBatchCapable<T>`.
+emitted-or-not members: no `Parallel` on a stream source; no `Where` after `Parallel` until the
+post-freeze #222 follow-up teaches the parallel reader to prune; `Batches` gated on
+`IColumnBatchCapable<T>`.
 
 Callers never write the type arguments — `PersonParquet.From(...)` returns the constructed type.
 
