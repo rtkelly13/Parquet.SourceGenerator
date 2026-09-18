@@ -18,6 +18,10 @@ Parquet.SourceGenerator.ParquetSerializerOptions.DictionaryEncodingThreshold.get
 Parquet.SourceGenerator.ParquetSerializerOptions.DictionaryEncodingThreshold.set -> void
 Parquet.SourceGenerator.ParquetSerializerOptions.MaxAllocationValues.get -> int
 Parquet.SourceGenerator.ParquetSerializerOptions.MaxAllocationValues.set -> void
+Parquet.SourceGenerator.ParquetSerializerOptions.MaxDecompressedPageSize.get -> int
+Parquet.SourceGenerator.ParquetSerializerOptions.MaxDecompressedPageSize.set -> void
+Parquet.SourceGenerator.ParquetSerializerOptions.MaxDecompressionExpansionRatio.get -> int
+Parquet.SourceGenerator.ParquetSerializerOptions.MaxDecompressionExpansionRatio.set -> void
 Parquet.SourceGenerator.ParquetSerializerOptions.MaxNestingDepth.get -> int
 Parquet.SourceGenerator.ParquetSerializerOptions.MaxNestingDepth.set -> void
 Parquet.SourceGenerator.ParquetSerializerOptions.MaxRowGroupCount.get -> int

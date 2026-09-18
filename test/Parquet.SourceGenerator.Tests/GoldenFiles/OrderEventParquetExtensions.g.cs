@@ -333,6 +333,126 @@ public static partial class OrderEventParquetExtensions
         return formatOptions;
     }
 
+    private static DecompressionGuardStream CreateGuardedReadStream(global::System.IO.Stream stream, global::Parquet.SourceGenerator.ParquetSerializerOptions options) => new(stream, options.MaxDecompressedPageSize, options.MaxDecompressionExpansionRatio);
+
+    /// <summary>
+    /// Seekable read wrapper that validates each page header before Parquet.Net reads or decompresses its payload.
+    /// </summary>
+    private sealed class DecompressionGuardStream : global::System.IO.Stream
+    {
+        private readonly global::System.IO.Stream _inner;
+        private readonly int _maxPageSize;
+        private readonly int _maxExpansionRatio;
+        private bool _active;
+
+        public DecompressionGuardStream(global::System.IO.Stream inner, int maxPageSize, int maxExpansionRatio)
+        {
+            _inner = inner ?? throw new global::System.ArgumentNullException(nameof(inner));
+            _maxPageSize = maxPageSize;
+            _maxExpansionRatio = maxExpansionRatio;
+        }
+
+        public void Activate() => _active = true;
+
+        public override bool CanRead => _inner.CanRead;
+        public override bool CanSeek => _inner.CanSeek;
+        public override bool CanWrite => false;
+        public override long Length => _inner.Length;
+        public override long Position
+        {
+            get => _inner.Position;
+            set => Seek(value, global::System.IO.SeekOrigin.Begin);
+        }
+
+        public override void Flush() => throw new global::System.NotSupportedException();
+        public override int Read(byte[] buffer, int offset, int count) => _inner.Read(buffer, offset, count);
+        public override int ReadByte() => _inner.ReadByte();
+        public override global::System.Threading.Tasks.Task<int> ReadAsync(byte[] buffer, int offset, int count, global::System.Threading.CancellationToken cancellationToken) => _inner.ReadAsync(buffer, offset, count, cancellationToken);
+        public override long Seek(long offset, global::System.IO.SeekOrigin origin)
+        {
+            long position = _inner.Seek(offset, origin);
+            if (_active) ValidatePageAt(position);
+            return position;
+        }
+        public override void SetLength(long value) => throw new global::System.NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new global::System.NotSupportedException();
+        protected override void Dispose(bool disposing) { }
+
+        private void ValidatePageAt(long offset)
+        {
+            long savedPosition = _inner.Position;
+            try
+            {
+                if (offset < 0 || offset >= _inner.Length) return;
+                _inner.Position = offset;
+                var reader = new CompactProtocolReader(_inner);
+                if (!reader.TryReadPageHeader(out int pageType, out int compressedSize, out int uncompressedSize)) return;
+                if (pageType < 0 || pageType > 3) return;
+                if (compressedSize <= 0 || uncompressedSize < 0)
+                {
+                    throw new global::System.IO.InvalidDataException($"Parquet page at offset {offset} has invalid compressed/uncompressed sizes ({compressedSize}/{uncompressedSize}).");
+                }
+                if (uncompressedSize > _maxPageSize)
+                {
+                    throw new global::System.IO.InvalidDataException($"Parquet page at offset {offset} has uncompressed size {uncompressedSize} bytes, exceeding maximum allowed {_maxPageSize}.");
+                }
+                if ((long)uncompressedSize > (long)compressedSize * _maxExpansionRatio)
+                {
+                    throw new global::System.IO.InvalidDataException($"Parquet page at offset {offset} expands from {compressedSize} to {uncompressedSize} bytes, exceeding maximum expansion ratio {_maxExpansionRatio}.");
+                }
+            }
+            catch (global::System.IO.IOException)
+            {
+                return;
+            }
+            finally
+            {
+                _inner.Position = savedPosition;
+            }
+        }
+
+        private struct CompactProtocolReader
+        {
+            private readonly global::System.IO.Stream _stream;
+
+            public CompactProtocolReader(global::System.IO.Stream stream) { _stream = stream; }
+
+            public bool TryReadPageHeader(out int pageType, out int compressedSize, out int uncompressedSize)
+            {
+                pageType = 0;
+                compressedSize = 0;
+                uncompressedSize = 0;
+                return TryReadRequiredField(out pageType) && TryReadRequiredField(out uncompressedSize) && TryReadRequiredField(out compressedSize);
+            }
+
+            private bool TryReadRequiredField(out int value)
+            {
+                value = 0;
+                int header = _stream.ReadByte();
+                if (header < 0 || (header & 0x0F) != 5 || (header >> 4) != 1) return false;
+                return TryReadZigZagInt32(out value);
+            }
+
+            private bool TryReadZigZagInt32(out int value)
+            {
+                value = 0;
+                uint raw = 0;
+                for (int shift = 0; shift < 35; shift += 7)
+                {
+                    int next = _stream.ReadByte();
+                    if (next < 0) return false;
+                    raw |= (uint)(next & 0x7F) << shift;
+                    if ((next & 0x80) == 0)
+                    {
+                        value = (int)((raw >> 1) ^ (uint)-(int)(raw & 1));
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
+    }
+
     /// <summary>
     /// Validates the ParquetReader against configured defensive security bounds.
     /// </summary>
@@ -1108,10 +1228,12 @@ public static partial class OrderEventParquetExtensions
 
         options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
 
+        using var guardedStream = CreateGuardedReadStream(stream, options);
         await using var reader = await global::Parquet.ParquetReader.CreateAsync(
-            stream,
+            guardedStream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
+        guardedStream.Activate();
         await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);
         var fileFields = reader.Schema.DataFields;
 
@@ -1360,10 +1482,12 @@ public static partial class OrderEventParquetExtensions
 
         options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
 
+        using var guardedStream = CreateGuardedReadStream(stream, options);
         await using var reader = await global::Parquet.ParquetReader.CreateAsync(
-            stream,
+            guardedStream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
+        guardedStream.Activate();
         await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);
         var fileFields = reader.Schema.DataFields;
 
@@ -1594,10 +1718,12 @@ public static partial class OrderEventParquetExtensions
 
         options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
 
+        using var guardedStream = CreateGuardedReadStream(stream, options);
         await using var reader = await global::Parquet.ParquetReader.CreateAsync(
-            stream,
+            guardedStream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
+        guardedStream.Activate();
         await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);
         int rgCount = reader.RowGroupCount;
         if (rgCount == 0) return global::System.Array.Empty<OrderEvent>();
@@ -1799,10 +1925,12 @@ public static partial class OrderEventParquetExtensions
 
         options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
 
+        using var guardedStream = CreateGuardedReadStream(stream, options);
         await using var reader = await global::Parquet.ParquetReader.CreateAsync(
-            stream,
+            guardedStream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
+        guardedStream.Activate();
         await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);
         var fileFields = reader.Schema.DataFields;
 
@@ -1999,10 +2127,12 @@ public static partial class OrderEventParquetExtensions
         int[] rowOffsets;
         using (var probeStream = CreateBufferStream(sourceBytes))
         {
+            using var guardedProbeStream = CreateGuardedReadStream(probeStream, options);
             await using var probe = await global::Parquet.ParquetReader.CreateAsync(
-                probeStream,
+                guardedProbeStream,
                 formatOptions,
                 cancellationToken: cancellationToken);
+            guardedProbeStream.Activate();
             await ValidateReaderAsync(probe, probeStream, options, cancellationToken).ConfigureAwait(false);
             rowGroupCount = probe.RowGroupCount;
             if (rowGroupCount < 0 || rowGroupCount > options.MaxRowGroupCount)
@@ -2130,10 +2260,12 @@ public static partial class OrderEventParquetExtensions
         {
             bool deduplicateStrings = options.DeduplicateStrings;
             using var stream = CreateBufferStream(parquetBytes);
+            using var guardedStream = CreateGuardedReadStream(stream, options);
             await using var reader = await global::Parquet.ParquetReader.CreateAsync(
-                stream,
+                guardedStream,
                 formatOptions,
                 cancellationToken: cancellationToken);
+            guardedStream.Activate();
             await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);
 
             var fileFields = reader.Schema.DataFields;
@@ -2304,10 +2436,12 @@ public static partial class OrderEventParquetExtensions
     {
         options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;
         using var stream = CreateBufferStream(parquetBytes);
+        using var guardedStream = CreateGuardedReadStream(stream, options);
         await using var reader = await global::Parquet.ParquetReader.CreateAsync(
-            stream,
+            guardedStream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
+        guardedStream.Activate();
         await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);
         int rowGroupCount = reader.RowGroupCount;
         if (rowGroupCount == 0) return global::System.Array.Empty<OrderEvent>();

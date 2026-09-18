@@ -201,6 +201,8 @@ public static class LegacyCodeEmitter
         builder.AppendLine("    {");
         builder.AppendLine("        return new global::Parquet.ParquetOptions();");
         builder.AppendLine("    }");
+        builder.AppendLine();
+        DecompressionGuardComponent.Emit(builder);
     }
 
     private static void EmitApplyCompression(StringBuilder builder)
@@ -657,14 +659,18 @@ public static class LegacyCodeEmitter
             "        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;"
         );
         builder.AppendLine(
+            "        using var guardedStream = CreateGuardedReadStream(stream, options);"
+        );
+        builder.AppendLine(
             "        using (var reader = await global::Parquet.ParquetReader.CreateAsync("
         );
-        builder.AppendLine("            stream,");
+        builder.AppendLine("            guardedStream,");
         builder.AppendLine("            BuildFormatOptions(options),");
         builder.AppendLine(
             "            cancellationToken: cancellationToken).ConfigureAwait(false))"
         );
         builder.AppendLine("        {");
+        builder.AppendLine("            guardedStream.Activate();");
         if (model.Properties.Length > 0)
         {
             builder.AppendLine("            var fileFields = reader.Schema.GetDataFields();");

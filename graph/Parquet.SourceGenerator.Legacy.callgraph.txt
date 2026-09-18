@@ -6,7 +6,7 @@
 #        components-must-not-call-the-emitter-hub layering.
 # Unresolved call sites (delegates, virtuals, framework): measured in the
 # header below so the blind spot is visible, never silently absent.
-# stats: nodes=111 edges=126 call-sites=1308 unresolved=1157
+# stats: nodes=112 edges=127 call-sites=1431 unresolved=1279
 E:Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.IsSupported/(TargetClassModel) | Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.TryMap/(PropertyModel)
 E:Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.MapIntegral/(string) | Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.Fixed/(string,string,string,string)
 E:Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.TryMap/(PropertyModel) | Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.Fixed/(string,string,string,string)
@@ -38,6 +38,7 @@ E:Parquet.SourceGenerator.Emitter.Components.SchemaComponent.GetFieldCreationExp
 E:Parquet.SourceGenerator.Emitter.Components.StringDeduplicatorComponent.EmitDeduplicatorDeclaration/(StringBuilder,TargetClassModel,string) | Parquet.SourceGenerator.Emitter.Components.StringDeduplicatorComponent.HasStringProperties/(TargetClassModel)
 E:Parquet.SourceGenerator.Emitter.Components.StringDeduplicatorComponent.EmitStringDeduplicator/(StringBuilder,bool) | Parquet.SourceGenerator.Emitter.Components.StringDeduplicatorComponent.EmitRawStringColumnReader/(StringBuilder)
 E:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.BoolLiteral/(bool) | Parquet.SourceGenerator.Emitter.Components.SchemaComponent.BoolLiteral/(bool)
+E:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitBuildFormatOptions/(StringBuilder) | Parquet.SourceGenerator.Emitter.Components.DecompressionGuardComponent.Emit/(StringBuilder)
 E:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitReadArrayAsync/(StringBuilder,TargetClassModel) | Parquet.SourceGenerator.Emitter.Components.PropertyMappingComponent.EmitArrayMaterialization/(StringBuilder,TargetClassModel,string,string,string,string,string,string)
 E:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitReadArrayAsync/(StringBuilder,TargetClassModel) | Parquet.SourceGenerator.Emitter.Components.StringDeduplicatorComponent.EmitDeduplicatorDeclaration/(StringBuilder,TargetClassModel,string)
 E:Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.EmitReadArrayAsync/(StringBuilder,TargetClassModel) | Parquet.SourceGenerator.Legacy.Emitter.LegacyCodeEmitter.GetArrayCreationExpression/(PropertyModel,string)

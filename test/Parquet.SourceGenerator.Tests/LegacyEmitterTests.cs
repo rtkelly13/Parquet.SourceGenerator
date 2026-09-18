@@ -258,6 +258,11 @@ public class LegacyEmitterTests
         code.ShouldContain(
             "if (items is global::System.Collections.Generic.IReadOnlyList<TestModel> list && list.Count <= batchSize)"
         );
+
+        code.ShouldContain("CreateGuardedReadStream");
+        code.ShouldContain("guardedStream.Activate()");
+        code.ShouldContain("MaxDecompressedPageSize");
+        code.ShouldContain("MaxDecompressionExpansionRatio");
     }
 
     [Fact]

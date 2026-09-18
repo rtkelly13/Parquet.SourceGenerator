@@ -30,6 +30,15 @@ public partial record MicrosecondRecord
 
 public sealed class SerializerOptionsTests
 {
+    [Fact]
+    public void DecompressionLimitsHaveDefensiveDefaults()
+    {
+        var options = new ParquetSerializerOptions();
+
+        options.MaxDecompressedPageSize.ShouldBe(67_108_864);
+        options.MaxDecompressionExpansionRatio.ShouldBe(500);
+    }
+
     private static List<CompressibleRecord> HighlyCompressibleRows(int count)
     {
         var rows = new List<CompressibleRecord>(count);
@@ -107,6 +116,68 @@ public sealed class SerializerOptionsTests
             read[0].Payload.ShouldBe("first");
             read[1].Payload.ShouldBe("second");
         }
+    }
+
+    [Fact]
+    public async Task MaxDecompressedPageSizeRejectsCompressedPagesAcrossReadPaths()
+    {
+        using var written = new MemoryStream();
+        await HighlyCompressibleRows(2_000).WriteParquetAsync(written);
+        byte[] bytes = written.ToArray();
+        var options = new ParquetSerializerOptions { MaxDecompressedPageSize = 1 };
+
+        var streamException = await Should.ThrowAsync<InvalidDataException>(() =>
+            CompressibleRecordParquetExtensions.ReadParquetAsync(new MemoryStream(bytes), options)
+        );
+        streamException.Message.ShouldContain("uncompressed size");
+        streamException.Message.ShouldContain("exceeding maximum allowed 1");
+
+        await Should.ThrowAsync<InvalidDataException>(() =>
+            CompressibleRecordParquetExtensions.ReadParquetArrayAsync(
+                new MemoryStream(bytes),
+                options
+            )
+        );
+
+        await Should.ThrowAsync<InvalidDataException>(() =>
+            CompressibleRecordParquetExtensions.ReadParquetParallelAsync(
+                new ReadOnlyMemory<byte>(bytes),
+                options
+            )
+        );
+
+        await Should.ThrowAsync<InvalidDataException>(async () =>
+        {
+            await foreach (
+                var _ in CompressibleRecordParquetExtensions.ReadParquetStreamAsync(
+                    new MemoryStream(bytes),
+                    options
+                )
+            ) { }
+        });
+    }
+
+    [Fact]
+    public async Task MaxDecompressionExpansionRatioRejectsHighlyCompressedPages()
+    {
+        using var written = new MemoryStream();
+        await HighlyCompressibleRows(2_000).WriteParquetAsync(written);
+
+        var options = new ParquetSerializerOptions
+        {
+            MaxDecompressedPageSize = int.MaxValue,
+            MaxDecompressionExpansionRatio = 1,
+        };
+
+        var exception = await Should.ThrowAsync<InvalidDataException>(() =>
+            CompressibleRecordParquetExtensions.ReadParquetAsync(
+                new MemoryStream(written.ToArray()),
+                options
+            )
+        );
+
+        exception.Message.ShouldContain("expands from");
+        exception.Message.ShouldContain("exceeding maximum expansion ratio 1");
     }
 
     [Fact]

@@ -182,6 +182,26 @@ public sealed class ParquetSerializerOptions
     /// </summary>
     public int MaxNestingDepth { get; set; } = 64;
 
+    /// <summary>
+    /// Gets or sets the maximum uncompressed size of an individual page read from a Parquet file
+    /// (default is 67,108,864 bytes / 64 MiB).
+    /// </summary>
+    /// <remarks>
+    /// This limit is enforced before Parquet.Net allocates a page decompression buffer. It applies
+    /// to generated deserialization paths only; writing is unaffected.
+    /// </remarks>
+    public int MaxDecompressedPageSize { get; set; } = 67_108_864;
+
+    /// <summary>
+    /// Gets or sets the maximum uncompressed-to-compressed size ratio permitted for an individual
+    /// compressed page (default is 500).
+    /// </summary>
+    /// <remarks>
+    /// This limit is enforced before Parquet.Net decompresses a page. It applies to generated
+    /// deserialization paths only; writing is unaffected.
+    /// </remarks>
+    public int MaxDecompressionExpansionRatio { get; set; } = 500;
+
     // UseMicrosecondTimestamps has been removed. It could never have worked: the schema is emitted
     // at compile time into a `static readonly ParquetSchema Schema`, so no runtime flag can change
     // a column's encoding. Per-property [ParquetTimestamp(ParquetTimestampUnit.Microseconds)] is

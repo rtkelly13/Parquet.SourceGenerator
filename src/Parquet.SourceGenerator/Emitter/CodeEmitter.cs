@@ -346,6 +346,8 @@ public static class CodeEmitter
         builder.AppendLine();
         builder.AppendLine("        return formatOptions;");
         builder.AppendLine("    }");
+        builder.AppendLine();
+        DecompressionGuardComponent.Emit(builder);
     }
 
     private static void EmitValidateReader(StringBuilder builder, TargetClassModel model)
@@ -1165,11 +1167,15 @@ public static class CodeEmitter
         );
         builder.AppendLine();
         builder.AppendLine(
+            "        using var guardedStream = CreateGuardedReadStream(stream, options);"
+        );
+        builder.AppendLine(
             "        await using var reader = await global::Parquet.ParquetReader.CreateAsync("
         );
-        builder.AppendLine("            stream,");
+        builder.AppendLine("            guardedStream,");
         builder.AppendLine("            BuildFormatOptions(options),");
         builder.AppendLine("            cancellationToken: cancellationToken);");
+        builder.AppendLine("        guardedStream.Activate();");
         builder.AppendLine(
             "        await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);"
         );
@@ -1367,11 +1373,15 @@ public static class CodeEmitter
         );
         builder.AppendLine();
         builder.AppendLine(
+            "        using var guardedStream = CreateGuardedReadStream(stream, options);"
+        );
+        builder.AppendLine(
             "        await using var reader = await global::Parquet.ParquetReader.CreateAsync("
         );
-        builder.AppendLine("            stream,");
+        builder.AppendLine("            guardedStream,");
         builder.AppendLine("            BuildFormatOptions(options),");
         builder.AppendLine("            cancellationToken: cancellationToken);");
+        builder.AppendLine("        guardedStream.Activate();");
         builder.AppendLine(
             "        await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);"
         );
@@ -1476,11 +1486,15 @@ public static class CodeEmitter
         );
         builder.AppendLine();
         builder.AppendLine(
+            "        using var guardedStream = CreateGuardedReadStream(stream, options);"
+        );
+        builder.AppendLine(
             "        await using var reader = await global::Parquet.ParquetReader.CreateAsync("
         );
-        builder.AppendLine("            stream,");
+        builder.AppendLine("            guardedStream,");
         builder.AppendLine("            BuildFormatOptions(options),");
         builder.AppendLine("            cancellationToken: cancellationToken);");
+        builder.AppendLine("        guardedStream.Activate();");
         builder.AppendLine(
             "        await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);"
         );
@@ -1719,11 +1733,15 @@ public static class CodeEmitter
         builder.AppendLine("        }");
         builder.AppendLine();
         builder.AppendLine(
+            "        using var guardedStream = CreateGuardedReadStream(stream, options);"
+        );
+        builder.AppendLine(
             "        await using var reader = await global::Parquet.ParquetReader.CreateAsync("
         );
-        builder.AppendLine("            stream,");
+        builder.AppendLine("            guardedStream,");
         builder.AppendLine("            BuildFormatOptions(options),");
         builder.AppendLine("            cancellationToken: cancellationToken);");
+        builder.AppendLine("        guardedStream.Activate();");
         builder.AppendLine(
             "        await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);"
         );
@@ -1870,11 +1888,15 @@ public static class CodeEmitter
         );
         builder.AppendLine("        using var stream = CreateBufferStream(parquetBytes);");
         builder.AppendLine(
+            "        using var guardedStream = CreateGuardedReadStream(stream, options);"
+        );
+        builder.AppendLine(
             "        await using var reader = await global::Parquet.ParquetReader.CreateAsync("
         );
-        builder.AppendLine("            stream,");
+        builder.AppendLine("            guardedStream,");
         builder.AppendLine("            BuildFormatOptions(options),");
         builder.AppendLine("            cancellationToken: cancellationToken);");
+        builder.AppendLine("        guardedStream.Activate();");
         builder.AppendLine(
             "        await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);"
         );
@@ -2009,11 +2031,15 @@ public static class CodeEmitter
         );
         builder.AppendLine();
         builder.AppendLine(
+            "        using var guardedStream = CreateGuardedReadStream(stream, options);"
+        );
+        builder.AppendLine(
             "        await using var reader = await global::Parquet.ParquetReader.CreateAsync("
         );
-        builder.AppendLine("            stream,");
+        builder.AppendLine("            guardedStream,");
         builder.AppendLine("            BuildFormatOptions(options),");
         builder.AppendLine("            cancellationToken: cancellationToken);");
+        builder.AppendLine("        guardedStream.Activate();");
         builder.AppendLine(
             "        await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);"
         );
@@ -2173,11 +2199,15 @@ public static class CodeEmitter
         builder.AppendLine("        using (var probeStream = CreateBufferStream(sourceBytes))");
         builder.AppendLine("        {");
         builder.AppendLine(
+            "            using var guardedProbeStream = CreateGuardedReadStream(probeStream, options);"
+        );
+        builder.AppendLine(
             "            await using var probe = await global::Parquet.ParquetReader.CreateAsync("
         );
-        builder.AppendLine("                probeStream,");
+        builder.AppendLine("                guardedProbeStream,");
         builder.AppendLine("                formatOptions,");
         builder.AppendLine("                cancellationToken: cancellationToken);");
+        builder.AppendLine("            guardedProbeStream.Activate();");
         builder.AppendLine(
             "            await ValidateReaderAsync(probe, probeStream, options, cancellationToken).ConfigureAwait(false);"
         );
@@ -2342,11 +2372,15 @@ public static class CodeEmitter
         }
         builder.AppendLine("            using var stream = CreateBufferStream(parquetBytes);");
         builder.AppendLine(
+            "            using var guardedStream = CreateGuardedReadStream(stream, options);"
+        );
+        builder.AppendLine(
             "            await using var reader = await global::Parquet.ParquetReader.CreateAsync("
         );
-        builder.AppendLine("                stream,");
+        builder.AppendLine("                guardedStream,");
         builder.AppendLine("                formatOptions,");
         builder.AppendLine("                cancellationToken: cancellationToken);");
+        builder.AppendLine("            guardedStream.Activate();");
         builder.AppendLine(
             "            await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);"
         );
