@@ -175,6 +175,9 @@ The documentation is organized into three distinct tiers based on audience and i
      - Source-derived accepted property kinds, nesting and nullability shapes, backend evidence, and risk-ranked gaps.
      - Refresh with `dotnet run scripts/CoverageMap.cs -- --update`; CI rejects drift from the parser and generator dials.
 
+23. **[36 - Feature Profiles and Per-Type Overrides](./36-FEATURE-PROFILES-SCOPE-225.md)**
+     - Scope decision for named profiles and per-type configuration overrides.
+
 ---
 
 ## ⚡ Quick Summary of Intent
