@@ -223,6 +223,10 @@ and no per-model façade. #226's diagnostic reports the cause in place of the ba
 > `static readonly Instance`, per #221 — not `static abstract`. Any design that reaches for static
 > abstracts or generic math is out of scope until the V5 backend is dropped.
 
+The accessor dependency in #221 is deferred. The generated/shipped boundary and the migration steps
+below remain post-freeze planning notes until the accessor contract settles; they do not commit this
+proposal to the `0.1.0` release.
+
 ### 3.6 Sources and terminals — four shipped generic structs
 
 Replacing four structs generated *per model*:
