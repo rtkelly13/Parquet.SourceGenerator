@@ -50,13 +50,15 @@ public sealed class GoldenCodeGenRegressionTests
         bool updateGolden = UpdateGolden;
         string normalizedEmitted = emittedSource.Replace("\r\n", "\n").TrimEnd();
 
-        if (updateGolden || !IOFile.Exists(filePath))
+        if (updateGolden)
         {
             IODirectory.CreateDirectory(GoldenFilesDir);
             IOFile.WriteAllText(filePath, normalizedEmitted + "\n");
         }
 
-        string expectedSource = IOFile.ReadAllText(filePath).Replace("\r\n", "\n").TrimEnd();
+        // A normal run never creates the golden .g.cs either: an absent baseline is a failure,
+        // not a silent regeneration that asserts the emitter equals itself (issue #407).
+        string expectedSource = ReadRequiredBaseline(filePath, fileName, "golden source").TrimEnd();
 
         // 1. Exact string-level consistency against source-controlled golden file
         normalizedEmitted.ShouldBe(expectedSource);
@@ -195,6 +197,38 @@ public sealed class GoldenCodeGenRegressionTests
             if (IOFile.Exists(baselinePath))
             {
                 IOFile.Delete(baselinePath);
+            }
+        }
+    }
+
+    [Fact]
+    public void MissingGoldenSourceReportsRefreshInstructionsWithoutCreatingAFile()
+    {
+        // The golden .g.cs is the primary artifact the suite exists to protect, so it must fail
+        // exactly like its .api.txt/.api.shape.txt companions when the baseline is absent — never
+        // regenerate itself and assert the emitter equals what it just wrote (issue #407).
+        if (UpdateGolden)
+        {
+            return;
+        }
+
+        string goldenFileName = $"Missing{Guid.NewGuid():N}ParquetExtensions.g.cs";
+        string goldenPath = IOPath.Combine(GoldenFilesDir, goldenFileName);
+
+        try
+        {
+            Should
+                .Throw<ShouldAssertException>(() =>
+                    AssertGoldenMatch(goldenFileName, "// emitted source\n")
+                )
+                .Message.ShouldContain("UPDATE_GOLDEN_FILES=true");
+            IOFile.Exists(goldenPath).ShouldBeFalse();
+        }
+        finally
+        {
+            if (IOFile.Exists(goldenPath))
+            {
+                IOFile.Delete(goldenPath);
             }
         }
     }
