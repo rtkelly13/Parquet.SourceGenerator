@@ -25,6 +25,74 @@ public class HostileParquetTests
     private static readonly int[] TwoValuesArray = [100, 200];
 
     [Fact]
+    public async Task FooterValidationUsesAsynchronousReads()
+    {
+        using var written = new MemoryStream();
+        await new List<MultiRowGroupModel>
+        {
+            new() { Id = 1, Name = "async" },
+        }.WriteParquetAsync(written);
+
+        using var stream = new FooterSyncReadForbiddenStream(written.ToArray());
+        List<MultiRowGroupModel> rows = await MultiRowGroupModelParquetExtensions.ReadParquetAsync(
+            stream
+        );
+
+        rows.ShouldHaveSingleItem();
+        rows[0].Id.ShouldBe(1);
+        rows[0].Name.ShouldBe("async");
+    }
+
+    private sealed class FooterSyncReadForbiddenStream : MemoryStream
+    {
+        private readonly byte[] _bytes;
+
+        public FooterSyncReadForbiddenStream(byte[] bytes)
+            : base(bytes, writable: false) => _bytes = bytes;
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            if (Position >= Length - 8 && Position < Length - 4)
+            {
+                throw new NotSupportedException(
+                    "Synchronous footer reads are disabled for this test stream."
+                );
+            }
+            return ReadCore(buffer.AsSpan(offset, count));
+        }
+
+        public override Task<int> ReadAsync(
+            byte[] buffer,
+            int offset,
+            int count,
+            System.Threading.CancellationToken cancellationToken
+        )
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(ReadCore(buffer.AsSpan(offset, count)));
+        }
+
+        public override ValueTask<int> ReadAsync(
+            Memory<byte> buffer,
+            System.Threading.CancellationToken cancellationToken = default
+        )
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return ValueTask.FromResult(ReadCore(buffer.Span));
+        }
+
+        private int ReadCore(Span<byte> buffer)
+        {
+            int count = (int)Math.Min(buffer.Length, Length - Position);
+            if (count <= 0)
+                return 0;
+            _bytes.AsSpan((int)Position, count).CopyTo(buffer);
+            Position += count;
+            return count;
+        }
+    }
+
+    [Fact]
     public async Task RowGroupCountExceedsMaxThrowsInvalidDataException()
     {
         // Generate a valid file with 3 row groups (each size 2)
@@ -448,9 +516,82 @@ public class HostileParquetTests
         }
     }
 
+    [Theory]
+    [InlineData("before-header", "outside the file data bounds")]
+    [InlineData("in-footer", "outside the file data bounds")]
+    [InlineData("past-footer", "extends beyond the file data bounds")]
+    [InlineData("negative-size", "negative compressed size")]
+    [InlineData("zero-size", "no compressed data")]
+    [InlineData("contained", "ranges overlap")]
+    [InlineData("overlap", "ranges overlap")]
+    public async Task MalformedColumnChunkBoundsAreRejected(string mutation, string expectedMessage)
+    {
+        var items = new List<MultiRowGroupModel>
+        {
+            new() { Id = 1, Name = "one" },
+        };
+
+        using var source = new MemoryStream();
+        await items.WriteParquetAsync(source);
+        byte[] hostileBytes = await RewriteColumnMetadataAsync(
+            source.ToArray(),
+            (metadata, footerStart) =>
+            {
+                var first = metadata.RowGroups[0].Columns[0].MetaData!;
+                switch (mutation)
+                {
+                    case "before-header":
+                        first.DataPageOffset = -1;
+                        break;
+                    case "in-footer":
+                        first.DataPageOffset = footerStart;
+                        break;
+                    case "past-footer":
+                        first.TotalCompressedSize = long.MaxValue;
+                        break;
+                    case "negative-size":
+                        first.TotalCompressedSize = -1;
+                        break;
+                    case "zero-size":
+                        first.TotalCompressedSize = 0;
+                        break;
+                    case "contained":
+                        first.TotalCompressedSize =
+                            metadata.RowGroups[0].Columns[1].MetaData!.DataPageOffset
+                            - first.DataPageOffset
+                            + 1;
+                        break;
+                    case "overlap":
+                        metadata.RowGroups[0].Columns[1].MetaData!.DataPageOffset =
+                            first.DataPageOffset;
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(mutation), mutation, null);
+                }
+            }
+        );
+
+        using var hostileStream = new MemoryStream(hostileBytes, writable: false);
+        var ex = await Should.ThrowAsync<InvalidDataException>(() =>
+            MultiRowGroupModelParquetExtensions.ReadParquetAsync(hostileStream)
+        );
+        ex.Message.ShouldContain(expectedMessage);
+    }
+
     private static async Task<byte[]> RewriteFirstColumnPhysicalTypeAsync(
         byte[] bytes,
         ParquetPhysicalType physicalType
+    )
+    {
+        return await RewriteColumnMetadataAsync(
+            bytes,
+            (metadata, _) => metadata.RowGroups[0].Columns[0].MetaData!.Type = physicalType
+        );
+    }
+
+    private static async Task<byte[]> RewriteColumnMetadataAsync(
+        byte[] bytes,
+        Action<FileMetaData, int> mutate
     )
     {
         int footerLength = BitConverter.ToInt32(bytes, bytes.Length - 8);
@@ -458,7 +599,7 @@ public class HostileParquetTests
 
         using var input = new MemoryStream(bytes, writable: false);
         await using var reader = await ParquetReader.CreateAsync(input);
-        reader.Metadata!.RowGroups[0].Columns[0].MetaData!.Type = physicalType;
+        mutate(reader.Metadata!, footerStart);
 
         using var footer = new MemoryStream();
         System.Type writerType = typeof(ParquetReader).Assembly.GetType(

@@ -97,7 +97,8 @@ public static partial class ScalarMetricParquetExtensions
     private static void ValidatePhysicalType(
         global::Parquet.ParquetReader reader,
         global::Parquet.Schema.DataField[] fileFields,
-        global::Parquet.Schema.DataField expected)
+        global::Parquet.Schema.DataField expected,
+        long footerStart)
     {
         string expectedPath = expected.Path.ToString();
         int fieldIndex = -1;
@@ -128,6 +129,139 @@ public static partial class ScalarMetricParquetExtensions
             if (metadata.Type != expectedPhysicalType)
             {
                 throw new global::System.IO.InvalidDataException($"Column '{expectedPath}' physical type '{metadata.Type}' does not match expected '{expectedPhysicalType}' for CLR type '{expected.ClrType}' in row group {rowGroup}.");
+            }
+        }
+    }
+
+    private static async global::System.Threading.Tasks.Task<long> GetFooterStartAsync(global::System.IO.Stream stream, global::System.Threading.CancellationToken cancellationToken)
+    {
+        if (!stream.CanSeek || stream.Length < 8)
+        {
+            throw new global::System.IO.InvalidDataException("Parquet stream is not seekable or is too small to contain a footer.");
+        }
+        long originalPosition = stream.Position;
+        try
+        {
+            stream.Position = stream.Length - 8;
+            var footerLengthBytes = new byte[4];
+            int read = 0;
+            while (read < footerLengthBytes.Length)
+            {
+                int count = await stream.ReadAsync(footerLengthBytes, read, footerLengthBytes.Length - read, cancellationToken).ConfigureAwait(false);
+                if (count == 0)
+                {
+                    throw new global::System.IO.InvalidDataException("Parquet footer length could not be read.");
+                }
+                read += count;
+            }
+            long footerLength = footerLengthBytes[0] | ((long)footerLengthBytes[1] << 8) | ((long)footerLengthBytes[2] << 16) | ((long)footerLengthBytes[3] << 24);
+            long footerStart = stream.Length - 8 - footerLength;
+            if (footerStart < 4 || footerStart > stream.Length - 8)
+            {
+                throw new global::System.IO.InvalidDataException("Parquet footer bounds are invalid.");
+            }
+            return footerStart;
+        }
+        finally
+        {
+            stream.Position = originalPosition;
+        }
+    }
+
+    private static void ValidateColumnChunkBounds(global::Parquet.ParquetReader reader, long footerStart, int maxChunkCount)
+    {
+        var fileMetadata = reader.Metadata;
+        if (fileMetadata is null)
+        {
+            throw new global::System.IO.InvalidDataException("Parquet footer metadata is missing.");
+        }
+        long chunkCount = 0;
+        foreach (var rowGroup in fileMetadata.RowGroups)
+        {
+            if (maxChunkCount < 0 || rowGroup.Columns.Count > maxChunkCount - chunkCount)
+            {
+                throw new global::System.IO.InvalidDataException($"Parquet footer contains more than the maximum allowed {maxChunkCount} column chunks.");
+            }
+            chunkCount += rowGroup.Columns.Count;
+        }
+        var starts = new long[checked((int)chunkCount)];
+        var ends = new long[checked((int)chunkCount)];
+        int rangeCount = 0;
+        for (int rowGroupIndex = 0; rowGroupIndex < fileMetadata.RowGroups.Count; rowGroupIndex++)
+        {
+            var rowGroup = fileMetadata.RowGroups[rowGroupIndex];
+            for (int columnIndex = 0; columnIndex < rowGroup.Columns.Count; columnIndex++)
+            {
+                var column = rowGroup.Columns[columnIndex];
+                var metadata = column.MetaData;
+                if (metadata is null)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column chunk metadata is missing for row group {rowGroupIndex}, column {columnIndex}.");
+                }
+                if (metadata.TotalCompressedSize < 0)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column chunk {columnIndex} in row group {rowGroupIndex} has a negative compressed size.");
+                }
+                if (metadata.TotalCompressedSize == 0)
+                {
+                    if (rowGroup.NumRows > 0)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Column chunk {columnIndex} in row group {rowGroupIndex} has no compressed data.");
+                    }
+                    continue;
+                }
+                long dataPageOffset = metadata.DataPageOffset;
+                if (dataPageOffset < 4 || dataPageOffset >= footerStart)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column chunk {columnIndex} in row group {rowGroupIndex} has data page offset {dataPageOffset} outside the file data bounds.");
+                }
+                long chunkStart = dataPageOffset;
+                if (metadata.IndexPageOffset.HasValue)
+                {
+                    long indexPageOffset = metadata.IndexPageOffset.Value;
+                    if (indexPageOffset < 4 || indexPageOffset >= footerStart)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Column chunk {columnIndex} in row group {rowGroupIndex} has index page offset {indexPageOffset} outside the file data bounds.");
+                    }
+                    if (indexPageOffset > dataPageOffset)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Column chunk {columnIndex} in row group {rowGroupIndex} has an index page after its first data page.");
+                    }
+                    chunkStart = indexPageOffset;
+                }
+                if (metadata.DictionaryPageOffset.HasValue)
+                {
+                    long dictionaryPageOffset = metadata.DictionaryPageOffset.Value;
+                    if (dictionaryPageOffset < 4 || dictionaryPageOffset >= footerStart)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Column chunk {columnIndex} in row group {rowGroupIndex} has dictionary page offset {dictionaryPageOffset} outside the file data bounds.");
+                    }
+                    if (dictionaryPageOffset > dataPageOffset)
+                    {
+                        throw new global::System.IO.InvalidDataException($"Column chunk {columnIndex} in row group {rowGroupIndex} has a dictionary page after its data page.");
+                    }
+                    if (dictionaryPageOffset < chunkStart) chunkStart = dictionaryPageOffset;
+                }
+                if (metadata.TotalCompressedSize > footerStart - chunkStart)
+                {
+                    throw new global::System.IO.InvalidDataException($"Column chunk {columnIndex} in row group {rowGroupIndex} extends beyond the file data bounds.");
+                }
+                starts[rangeCount] = chunkStart;
+                ends[rangeCount] = chunkStart + metadata.TotalCompressedSize;
+                rangeCount++;
+            }
+        }
+        global::System.Array.Sort(starts, ends, 0, rangeCount);
+        long previousEnd = rangeCount == 0 ? 0 : ends[0];
+        for (int i = 1; i < rangeCount; i++)
+        {
+            if (starts[i] < previousEnd)
+            {
+                throw new global::System.IO.InvalidDataException($"Column chunk ranges overlap at file offset {starts[i]}.");
+            }
+            if (ends[i] > previousEnd)
+            {
+                previousEnd = ends[i];
             }
         }
     }
@@ -200,15 +334,19 @@ public static partial class ScalarMetricParquetExtensions
     /// <summary>
     /// Validates the ParquetReader against configured defensive security bounds.
     /// </summary>
-    private static void ValidateReader(
+    private static async global::System.Threading.Tasks.Task ValidateReaderAsync(
         global::Parquet.ParquetReader reader,
-        global::Parquet.SourceGenerator.ParquetSerializerOptions options)
+        global::System.IO.Stream stream,
+        global::Parquet.SourceGenerator.ParquetSerializerOptions options,
+        global::System.Threading.CancellationToken cancellationToken)
     {
         int rowGroupCount = reader.RowGroupCount;
         if (rowGroupCount < 0 || rowGroupCount > options.MaxRowGroupCount)
         {
             throw new global::System.IO.InvalidDataException($"Row group count {rowGroupCount} is invalid or exceeds maximum allowed {options.MaxRowGroupCount}.");
         }
+        long footerStart = await GetFooterStartAsync(stream, cancellationToken).ConfigureAwait(false);
+        ValidateColumnChunkBounds(reader, footerStart, 1_000_000);
         int maxDepth = 0;
         foreach (var field in reader.Schema.Fields)
         {
@@ -221,14 +359,14 @@ public static partial class ScalarMetricParquetExtensions
         }
 
         var fileFieldsForTypeValidation = reader.Schema.DataFields;
-        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_0);
-        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_1);
-        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_2);
-        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_3);
-        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_4);
-        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_5);
-        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_6);
-        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_7);
+        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_0, footerStart);
+        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_1, footerStart);
+        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_2, footerStart);
+        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_3, footerStart);
+        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_4, footerStart);
+        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_5, footerStart);
+        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_6, footerStart);
+        ValidatePhysicalType(reader, fileFieldsForTypeValidation, _field_7, footerStart);
     }
 
     private static int GetFieldDepth(global::Parquet.Schema.Field field)
@@ -756,7 +894,7 @@ public static partial class ScalarMetricParquetExtensions
             stream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
-        ValidateReader(reader, options);
+        await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);
         var fileFields = reader.Schema.DataFields;
 
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
@@ -973,7 +1111,7 @@ public static partial class ScalarMetricParquetExtensions
             stream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
-        ValidateReader(reader, options);
+        await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);
         var fileFields = reader.Schema.DataFields;
 
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
@@ -1173,7 +1311,7 @@ public static partial class ScalarMetricParquetExtensions
             stream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
-        ValidateReader(reader, options);
+        await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);
         int rgCount = reader.RowGroupCount;
         if (rgCount == 0) return global::System.Array.Empty<ScalarMetric>();
 
@@ -1344,7 +1482,7 @@ public static partial class ScalarMetricParquetExtensions
             stream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
-        ValidateReader(reader, options);
+        await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);
         var fileFields = reader.Schema.DataFields;
 
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;
@@ -1510,7 +1648,7 @@ public static partial class ScalarMetricParquetExtensions
                 probeStream,
                 formatOptions,
                 cancellationToken: cancellationToken);
-            ValidateReader(probe, options);
+            await ValidateReaderAsync(probe, probeStream, options, cancellationToken).ConfigureAwait(false);
             rowGroupCount = probe.RowGroupCount;
             if (rowGroupCount < 0 || rowGroupCount > options.MaxRowGroupCount)
             {
@@ -1640,7 +1778,7 @@ public static partial class ScalarMetricParquetExtensions
                 stream,
                 formatOptions,
                 cancellationToken: cancellationToken);
-            ValidateReader(reader, options);
+            await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);
 
             var fileFields = reader.Schema.DataFields;
 
@@ -1781,7 +1919,7 @@ public static partial class ScalarMetricParquetExtensions
             stream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
-        ValidateReader(reader, options);
+        await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);
         int rowGroupCount = reader.RowGroupCount;
         if (rowGroupCount == 0) return global::System.Array.Empty<ScalarMetric>();
 
@@ -2069,7 +2207,7 @@ public static partial class ScalarMetricParquetExtensions
             stream,
             BuildFormatOptions(options),
             cancellationToken: cancellationToken);
-        ValidateReader(reader, options);
+        await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);
         var fileFields = reader.Schema.DataFields;
 
         global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;

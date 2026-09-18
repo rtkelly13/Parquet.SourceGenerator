@@ -38,7 +38,7 @@ graph TD
     tparquetsourcegeneratoremittercodeemitter_043 -->|11| tparquetsourcegeneratoremittercomponentsbufferpoolcomponent_062
     tparquetsourcegeneratoremittercodeemitter_043 -->|6| tparquetsourcegeneratoremittercomponentspropertymappingcomponent_067
     tparquetsourcegeneratoremittercodeemitter_043 -->|1| tparquetsourcegeneratoremittercomponentsrowgrouplayoutcomponent_066
-    tparquetsourcegeneratoremittercodeemitter_043 -->|5| tparquetsourcegeneratoremittercomponentsschemacomponent_058
+    tparquetsourcegeneratoremittercodeemitter_043 -->|6| tparquetsourcegeneratoremittercomponentsschemacomponent_058
     tparquetsourcegeneratoremittercodeemitter_043 -->|2| tparquetsourcegeneratoremittercomponentsstringdeduplicatorcomponent_070
     tparquetsourcegeneratoremittercodeemitter_043 -->|3| tparquetsourcegeneratoremittercompoundcompoundbuffers_056
     tparquetsourcegeneratoremittercodeemitter_043 -->|10| tparquetsourcegeneratoremittercompoundcompoundmapping_056
