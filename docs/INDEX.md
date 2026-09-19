@@ -182,8 +182,12 @@ The documentation is organized into three distinct tiers based on audience and i
      - CSharpGeneratorDriver throughput and managed allocation measurements for initial, unrelated-file, and per-model edits.
      - Public Roslyn tracked-output evidence, model value-equality proof, and the resolved `WithTrackingName` compatibility limitation.
 
-23. **[36 - Feature Profiles and Per-Type Overrides](./36-FEATURE-PROFILES-SCOPE-225.md)**
+25. **[36 - Feature Profiles and Per-Type Overrides](./36-FEATURE-PROFILES-SCOPE-225.md)**
      - Scope decision for named profiles and per-type configuration overrides.
+
+26. **[44 - Roslyn Generator Tooling Evaluation](./44-GENERATOR-TOOLING-EVALUATION.md)**
+     - Verdicts on polyfills, dependency bundling, generator test frameworks, syntax builders, and author analyzers against what this repository already does.
+     - Why none of it should be adopted as a package, and where the parts that survive evaluation already live in the backlog (#439, #471, #472).
 
 ---
 
