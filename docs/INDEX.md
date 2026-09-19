@@ -185,6 +185,10 @@ The documentation is organized into three distinct tiers based on audience and i
 23. **[36 - Feature Profiles and Per-Type Overrides](./36-FEATURE-PROFILES-SCOPE-225.md)**
      - Scope decision for named profiles and per-type configuration overrides.
 
+25. **[44 - Roslyn Generator Tooling Evaluation](./44-GENERATOR-TOOLING-EVALUATION.md)**
+     - Verdicts on polyfills, dependency bundling, generator test frameworks, syntax builders, and author analyzers against what this repository already does.
+     - Records the stale `Microsoft.CodeAnalysis.Analyzers` pin, the `GeneratorSyntaxContext` retention in the pipeline, and corrections to documents 03 and 28.
+
 ---
 
 ## ⚡ Quick Summary of Intent
