@@ -25,7 +25,7 @@ namespace Parquet.SourceGenerator;
 /// columnar hand-off shape) and want the two-pass split/compact form instead.
 /// </para>
 /// </remarks>
-public static class NullableColumnExtractor
+internal static class NullableColumnExtractor
 {
     /// <summary>
     /// Single-pass branchless extraction from a contiguous nullable column.

@@ -11,7 +11,7 @@ namespace Parquet.SourceGenerator;
 /// Hardware-accelerated (SIMD) column transformation utilities for Parquet column arithmetic,
 /// timestamp conversions, numeric scaling, and integer widening/narrowing.
 /// </summary>
-public static class VectorizedColumnTransforms
+internal static class VectorizedColumnTransforms
 {
     /// <summary>
     /// The number of 100-nanosecond ticks between 0001-01-01 and the Unix epoch (1970-01-01T00:00:00Z).
