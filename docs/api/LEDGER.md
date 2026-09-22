@@ -72,8 +72,10 @@ The rule, the three surfaces and the author process are in
   `WriteParquetRowGroupAsync(ParquetWriter, RecordBatch, ParquetSerializerOptions?, CancellationToken)`
   (emitted only when Apache.Arrow is referenced, not in these baselines) — it is the *only* Arrow
   ingestion entry point, has no intent-level equivalent yet, and is documented in the README. It
-  now calls the internal columnar writer, which compiles because both live in the same partial
-  class. `static readonly Schema` also stays public: the Arrow path needs it to create the writer.
+  does not call any of the members made internal here: it builds a `{T}ColumnarBatch`, opens its
+  own row group with `writer.CreateRowGroup()` and writes each column through
+  `groupWriter.WriteAsync` / `WriteAllPartsAsync` (asserted by `ArrowConditionalEmissionTests`).
+  `static readonly Schema` also stays public: the Arrow path needs it to create the writer.
   `{T}ColumnarBatch` fields stay public: they are how a caller builds the batch.
 - **Alternatives considered:** *Keep the batch-taking `WriteParquetRowGroupAsync(ParquetWriter,
   {T}ColumnarBatch)` public for multi-row-group columnar writes* — rejected for 0.1: no caller in
