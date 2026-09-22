@@ -43,9 +43,12 @@
 - [x] Setup GitHub Actions workflow for building, testing, and formatting.
 - [x] Configure NuGet package metadata, licensing (MIT), icons, and README embedded docs.
 - [x] Publish to NuGet.org (`0.0.1`).
-- [ ] Release cadence: ship the `0.0.x` series continuously while features are still landing;
-      cut `0.1.0` at the next API freeze, once things slow down. The former "cut 1.0.0" gate —
-      the API-shaping items from the limitations audit — no longer blocks releases.
+- [ ] Release cadence: ship the `0.0.x` series continuously while features are still landing.
+      `0.1.0` is a confidence and minimal-contract milestone, not "freeze everything": it is cut
+      when the release gate in [document 47](./47-0.1-CONTRACT-AND-DESIGN-GOALS.md#8-release-gate)
+      holds (tracker #477). Useful implementation may stay internal or preview at that point.
+      The former "cut 1.0.0" gate — the API-shaping items from the limitations audit — no longer
+      blocks releases.
 
 ### Phase 6: Broader Runtime Support ✅
 - [x] `Parquet.SourceGenerator.V5` — a `DataColumn`-based emitter covering Parquet.Net 4.x and 5.x,
