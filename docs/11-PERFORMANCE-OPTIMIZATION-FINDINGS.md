@@ -263,7 +263,7 @@ Two reasons, both structural rather than incidental:
    branchless store the scalar path already does, and only the all-present / all-absent 16-byte
    blocks take a vector fast path.
 
-`NullableColumnExtractor` is kept as a tested public helper because the columnar hand-off work
+`NullableColumnExtractor` is kept as a tested helper (`internal` since #461) because the columnar hand-off work
 (#136, #137) will produce contiguous `Nullable<T>` columns, where the picture may differ — but on
 this shape and this hardware, **the branchless scalar single pass is the right answer and the
 vectorised one is not**.

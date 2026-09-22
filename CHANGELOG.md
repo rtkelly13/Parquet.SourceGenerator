@@ -97,6 +97,19 @@ Changes since `0.0.4`; this section becomes the next release entry when one is c
   14 → 27. Behaviour-preserving by construction: every golden file and emitted-API baseline is
   byte-identical.
 
+### Removed
+- **Implementation types are no longer public API (#461, part of the 0.1 contract #477).**
+  `NullableColumnExtractor` and `VectorizedColumnTransforms` in `Parquet.SourceGenerator.Attributes`
+  are now `internal`: no generated code calls either, so they were shipped API with no consumer
+  use case (24 `PublicAPI.Unshipped.txt` lines removed). Every type in the analyzer-only
+  `Parquet.SourceGenerator` and `Parquet.SourceGenerator.Legacy` assemblies — `CodeEmitter`,
+  `TargetParser`, `TargetClassModel`, `PropertyModel`, `EquatableArray<T>`, `DiagnosticInfo`,
+  the `[Generator]` entry points and the rest — is now `internal`. Nothing can reference those
+  assemblies, so their 171 catalogued signatures were governing a surface no consumer could reach;
+  the generator's `PublicAPI.*.txt` files and its `PublicApiAnalyzers` reference are deleted, as
+  are the binary-compat constructor overloads on `TargetClassModel` and `PropertyModel`. Breaking
+  only for code that referenced the Attributes helpers directly.
+
 ### Fixed
 - **Coexistence of the two row-group pruning mechanisms is now pinned by a behavioural
   test** (`PredicatePushdownAndSortedLookupCoexistOnOneModel`, completes #264's coverage).

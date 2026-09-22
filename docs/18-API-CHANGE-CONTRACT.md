@@ -20,7 +20,7 @@ deliberate.
 | # | Surface | What it is | Catalogue | Gate | Enforced by |
 |:--|:---|:---|:---|:---|:---|
 | 1 | **Emitted consumer API** | Everything the emitters write into a consumer's own compilation. Exists in no shipped assembly. | `*.api.txt` beside each golden file | `PARQAPI001` | `EmittedApiGateAnalyzer` (build **error**) |
-| 2 | **Shipped package API** | `public` members of `Parquet.SourceGenerator.Attributes` and `Parquet.SourceGenerator`. | `PublicAPI.Shipped.txt` / `PublicAPI.Unshipped.txt` | `RS0016` | `Microsoft.CodeAnalysis.PublicApiAnalyzers` (pre-existing; unchanged) |
+| 2 | **Shipped package API** | `public` members of `Parquet.SourceGenerator.Attributes`. (The generator assemblies ship only as analyzers and have no public surface; their types are `internal` since #461.) | `PublicAPI.Shipped.txt` / `PublicAPI.Unshipped.txt` | `RS0016` | `Microsoft.CodeAnalysis.PublicApiAnalyzers` (pre-existing; unchanged) |
 | 3 | **Internal seams** | Members in `src/` widened past `private` so another component can call them. | `src/api/seams.txt` | `PARQAPI002` | `InternalSeamGateAnalyzer` (build **error**) |
 
 All three catalogues use **one grammar** — the one
@@ -184,7 +184,11 @@ Excluded, deliberately:
 assemblies reaches no further than an `internal` one does — those assemblies ship only as analyzers
 and are never referenced by a consumer — and the gate does not catch it. Closing that would mean
 cataloguing every `public` member of every `internal` helper type, which is the churn problem above.
-The `Attributes` assembly, where `public` genuinely means public, is guarded by `RS0016`.
+The `Attributes` assembly, where `public` genuinely means public, is guarded by `RS0016`. Since
+#461 every type in both generator assemblies is declared `internal`, including the `[Generator]`
+entry points (Roslyn instantiates them by reflection and does not need them public), so their
+remaining `public` member spellings are effectively `internal` and neither assembly carries
+`PublicAPI.*.txt` files any longer.
 
 ## The author process
 

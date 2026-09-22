@@ -12,7 +12,7 @@ namespace Parquet.SourceGenerator.Models;
     "CA1720:Identifier contains type name",
     Justification = "Enum members represent semantic property primitive types."
 )]
-public enum PropertyKind
+internal enum PropertyKind
 {
     /// <summary>int, long, double, float, bool, string — direct DataField passthrough.</summary>
     Primitive,
@@ -54,7 +54,7 @@ public enum PropertyKind
 /// <summary>
 /// Specifies the physical column encoding hint for code generation.
 /// </summary>
-public enum ColumnEncoding
+internal enum ColumnEncoding
 {
     /// <summary>Default encoding, chosen automatically based on data type.</summary>
     Default = 0,
@@ -81,7 +81,7 @@ public enum ColumnEncoding
 /// <c>List&lt;T&gt;</c> or a raw array for a nested member here.
 /// </para>
 /// </summary>
-public sealed record PropertyModel(
+internal sealed record PropertyModel(
     string Name,
     string ParquetColumnName,
     string TypeName,
@@ -130,71 +130,4 @@ public sealed record PropertyModel(
     /// member can never be null at runtime.
     /// </summary>
     public bool CompoundIsValueType { get; init; }
-
-    /// <summary>
-    /// Backwards-compatible constructor overload without deduplication or encoding flag.
-    /// </summary>
-    public PropertyModel(
-        string Name,
-        string ParquetColumnName,
-        string TypeName,
-        string? TimestampUnit,
-        string? EnumUnderlyingTypeName,
-        int Order,
-        int? DecimalPrecision,
-        int? DecimalScale,
-        PropertyKind Kind,
-        bool IsNullable
-    )
-        : this(
-            Name,
-            ParquetColumnName,
-            TypeName,
-            TimestampUnit,
-            EnumUnderlyingTypeName,
-            Order,
-            DecimalPrecision,
-            DecimalScale,
-            Kind,
-            IsNullable,
-            Deduplicate: false,
-            ColumnEncoding.Default
-        )
-    {
-        // Backwards-compatible overload
-    }
-
-    /// <summary>
-    /// Backwards-compatible constructor overload without encoding flag.
-    /// </summary>
-    public PropertyModel(
-        string Name,
-        string ParquetColumnName,
-        string TypeName,
-        string? TimestampUnit,
-        string? EnumUnderlyingTypeName,
-        int Order,
-        int? DecimalPrecision,
-        int? DecimalScale,
-        PropertyKind Kind,
-        bool IsNullable,
-        bool Deduplicate
-    )
-        : this(
-            Name,
-            ParquetColumnName,
-            TypeName,
-            TimestampUnit,
-            EnumUnderlyingTypeName,
-            Order,
-            DecimalPrecision,
-            DecimalScale,
-            Kind,
-            IsNullable,
-            Deduplicate,
-            ColumnEncoding.Default
-        )
-    {
-        // Backwards-compatible overload
-    }
 }

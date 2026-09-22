@@ -5,7 +5,7 @@ namespace Parquet.SourceGenerator.Diagnostics;
 /// <summary>
 /// Defines Roslyn diagnostic rules for compile-time validation of [ParquetSerializable] types.
 /// </summary>
-public static class DiagnosticDescriptors
+internal static class DiagnosticDescriptors
 {
     /// <summary>
     /// PARQ001: Target type decorated with [ParquetSerializable] must be partial.

@@ -5,7 +5,8 @@
 `Parquet.SourceGenerator` has two public surfaces, and only one of them was reviewable.
 
 The first is the **shipped** surface — the attributes, options and helpers inside
-`Parquet.SourceGenerator` and `Parquet.SourceGenerator.Attributes`. That one is guarded by
+`Parquet.SourceGenerator.Attributes` (the generator assembly itself has had no public types since
+#461: it ships only as an analyzer). That one is guarded by
 `Microsoft.CodeAnalysis.PublicApiAnalyzers`: every public member is listed in
 `PublicAPI.Shipped.txt` / `PublicAPI.Unshipped.txt`, and adding one without updating the file is a
 build error.
