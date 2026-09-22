@@ -860,7 +860,7 @@ public static class CodeEmitter
         );
         builder.AppendLine("    /// </summary>");
         builder.AppendLine(
-            $"    public static async global::System.Threading.Tasks.Task WriteParquetRowGroupAsync("
+            $"    internal static async global::System.Threading.Tasks.Task WriteParquetRowGroupAsync("
         );
         builder.AppendLine($"        this global::Parquet.ParquetWriter writer,");
         builder.AppendLine(

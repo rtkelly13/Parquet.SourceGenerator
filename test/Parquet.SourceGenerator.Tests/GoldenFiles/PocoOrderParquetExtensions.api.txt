@@ -26,7 +26,6 @@ SampleDomain.Models.PocoOrderParquetStreamSource.WithOptions(Parquet.SourceGener
 SampleDomain.Models.PocoOrderRowGroupMetadata
 SampleDomain.Models.PocoOrderRowGroupMetadata.HasStatistics.get -> bool
 SampleDomain.Models.PocoOrderRowGroupMetadata.Id.get -> Parquet.SourceGenerator.ParquetColumnStatistics<int>
-SampleDomain.Models.PocoOrderRowGroupMetadata.PocoOrderRowGroupMetadata(int rowGroupIndex, long rowCount, bool hasStatistics, Parquet.SourceGenerator.ParquetColumnStatistics<int> column_0) -> void
 SampleDomain.Models.PocoOrderRowGroupMetadata.RowCount.get -> long
 SampleDomain.Models.PocoOrderRowGroupMetadata.RowGroupIndex.get -> int
 static SampleDomain.Models.PocoOrderParquet.From(System.IO.Stream stream) -> PocoOrderParquetStreamSource
@@ -44,5 +43,4 @@ static SampleDomain.Models.PocoOrderParquetExtensions.ReadParquetStreamAsync(Sys
 static SampleDomain.Models.PocoOrderParquetExtensions.WriteParquetAsync(this System.Collections.Generic.IAsyncEnumerable<PocoOrder> items, System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default) -> System.Threading.Tasks.Task
 static SampleDomain.Models.PocoOrderParquetExtensions.WriteParquetAsync(this System.Collections.Generic.IReadOnlyCollection<PocoOrder> items, System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default) -> System.Threading.Tasks.Task
 static SampleDomain.Models.PocoOrderParquetExtensions.WriteParquetBatchedAsync(this System.Collections.Generic.IEnumerable<PocoOrder> items, System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default) -> System.Threading.Tasks.Task
-static SampleDomain.Models.PocoOrderParquetExtensions.WriteParquetRowGroupAsync(this Parquet.ParquetWriter writer, System.Collections.Generic.IReadOnlyCollection<PocoOrder> chunk, System.Threading.CancellationToken cancellationToken = default) -> System.Threading.Tasks.Task
 static readonly SampleDomain.Models.PocoOrderParquetExtensions.Schema -> Parquet.Schema.ParquetSchema

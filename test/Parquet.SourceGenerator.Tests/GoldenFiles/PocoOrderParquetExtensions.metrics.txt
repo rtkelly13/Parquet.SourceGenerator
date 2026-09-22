@@ -9,7 +9,7 @@
 # ELOC_PER_MEMBER emitted executable lines per emitted public member.
 # Ordinal-sorted. CC, CL, SLOC, ELOC, DIT, ERRORS and MEMBERS are gated exactly; MI is
 # REPORTED BUT NOT GATED for generated code. See docs/22-GENERATED-CODE-METRICS.md.
-S:PocoOrderParquetExtensions | EMITTER=v6 MEMBERS=47 CC=1137 CL=85 SLOC=6432 ELOC=3291 ERRORS=0 METHODS=85 MAXCC=208 ELOC_PER_MEMBER=70.0
+S:PocoOrderParquetExtensions | EMITTER=v6 MEMBERS=45 CC=1137 CL=85 SLOC=6433 ELOC=3291 ERRORS=0 METHODS=85 MAXCC=208 ELOC_PER_MEMBER=73.1
 M:SampleDomain.Models.PocoOrderParquet.From(System.IO.Stream) | MI=90 CC=2 CL=5 DIT=- SLOC=3 ELOC=1
 M:SampleDomain.Models.PocoOrderParquet.From(System.ReadOnlyMemory<byte>) | MI=94 CC=1 CL=3 DIT=- SLOC=3 ELOC=1
 M:SampleDomain.Models.PocoOrderParquetExtensions.AcceptRowGroup(System.Func<SampleDomain.Models.PocoOrderRowGroupMetadata, bool>, Parquet.ParquetRowGroupReader, int, Parquet.Schema.DataField) | MI=65 CC=5 CL=8 DIT=- SLOC=34 ELOC=6
@@ -92,7 +92,7 @@ M:SampleDomain.Models.PocoOrderParquetStreamSource.Where(System.Func<SampleDomai
 M:SampleDomain.Models.PocoOrderParquetStreamSource.WithOptions(Parquet.SourceGenerator.ParquetSerializerOptions) | MI=90 CC=2 CL=4 DIT=- SLOC=3 ELOC=1
 M:SampleDomain.Models.PocoOrderRowGroupMetadata.HasStatistics.get | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
 M:SampleDomain.Models.PocoOrderRowGroupMetadata.Id.get | MI=100 CC=1 CL=1 DIT=- SLOC=1 ELOC=0
-M:SampleDomain.Models.PocoOrderRowGroupMetadata.PocoOrderRowGroupMetadata(int, long, bool, Parquet.SourceGenerator.ParquetColumnStatistics<int>) | MI=75 CC=1 CL=1 DIT=- SLOC=12 ELOC=4
+M:SampleDomain.Models.PocoOrderRowGroupMetadata.PocoOrderRowGroupMetadata(int, long, bool, Parquet.SourceGenerator.ParquetColumnStatistics<int>) | MI=75 CC=1 CL=1 DIT=- SLOC=13 ELOC=4
 M:SampleDomain.Models.PocoOrderRowGroupMetadata.RowCount.get | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
 M:SampleDomain.Models.PocoOrderRowGroupMetadata.RowGroupIndex.get | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
 P:SampleDomain.Models.PocoOrderParquetExtensions.DecompressionGuardStream.CanRead | MI=96 CC=2 CL=1 DIT=- SLOC=1 ELOC=2
@@ -112,4 +112,4 @@ T:SampleDomain.Models.PocoOrderParquetFilteredSource | MI=73 CC=10 CL=14 DIT=1 S
 T:SampleDomain.Models.PocoOrderParquetMemorySource | MI=82 CC=9 CL=15 DIT=1 SLOC=45 ELOC=11
 T:SampleDomain.Models.PocoOrderParquetParallelSource | MI=82 CC=5 CL=9 DIT=1 SLOC=31 ELOC=7
 T:SampleDomain.Models.PocoOrderParquetStreamSource | MI=82 CC=8 CL=14 DIT=1 SLOC=41 ELOC=10
-T:SampleDomain.Models.PocoOrderRowGroupMetadata | MI=93 CC=5 CL=1 DIT=1 SLOC=33 ELOC=4
+T:SampleDomain.Models.PocoOrderRowGroupMetadata | MI=93 CC=5 CL=1 DIT=1 SLOC=34 ELOC=4

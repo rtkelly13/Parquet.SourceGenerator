@@ -363,7 +363,7 @@ public static class LegacyCodeEmitter
         );
         builder.AppendLine("    /// </summary>");
         builder.AppendLine(
-            "    public static async global::System.Threading.Tasks.Task WriteRowGroupAsync("
+            "    internal static async global::System.Threading.Tasks.Task WriteRowGroupAsync("
         );
         builder.AppendLine("        this global::Parquet.ParquetWriter writer,");
         builder.AppendLine(

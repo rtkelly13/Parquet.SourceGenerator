@@ -9,7 +9,7 @@
 # ELOC_PER_MEMBER emitted executable lines per emitted public member.
 # Ordinal-sorted. CC, CL, SLOC, ELOC, DIT, ERRORS and MEMBERS are gated exactly; MI is
 # REPORTED BUT NOT GATED for generated code. See docs/22-GENERATED-CODE-METRICS.md.
-S:SortedShipmentParquetExtensions | EMITTER=v6 MEMBERS=74 CC=619 CL=92 SLOC=3533 ELOC=1321 ERRORS=0 METHODS=119 MAXCC=50 ELOC_PER_MEMBER=17.9
+S:SortedShipmentParquetExtensions | EMITTER=v6 MEMBERS=69 CC=619 CL=92 SLOC=3534 ELOC=1321 ERRORS=0 METHODS=119 MAXCC=50 ELOC_PER_MEMBER=19.1
 M:SampleDomain.Models.SortedShipmentParquet.From(System.IO.Stream) | MI=90 CC=2 CL=5 DIT=- SLOC=3 ELOC=1
 M:SampleDomain.Models.SortedShipmentParquet.From(System.ReadOnlyMemory<byte>) | MI=94 CC=1 CL=3 DIT=- SLOC=3 ELOC=1
 M:SampleDomain.Models.SortedShipmentParquetExtensions.AcceptRowGroup(System.Func<SampleDomain.Models.SortedShipmentRowGroupMetadata, bool>, Parquet.ParquetRowGroupReader, int, Parquet.Schema.DataField, Parquet.Schema.DataField, Parquet.Schema.DataField) | MI=59 CC=11 CL=8 DIT=- SLOC=42 ELOC=8
@@ -127,7 +127,7 @@ M:SampleDomain.Models.SortedShipmentRowGroupMetadata.HasStatistics.get | MI=100 
 M:SampleDomain.Models.SortedShipmentRowGroupMetadata.RowCount.get | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
 M:SampleDomain.Models.SortedShipmentRowGroupMetadata.RowGroupIndex.get | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
 M:SampleDomain.Models.SortedShipmentRowGroupMetadata.Sequence.get | MI=100 CC=1 CL=1 DIT=- SLOC=1 ELOC=0
-M:SampleDomain.Models.SortedShipmentRowGroupMetadata.SortedShipmentRowGroupMetadata(int, long, bool, Parquet.SourceGenerator.ParquetColumnStatistics<long>, Parquet.SourceGenerator.ParquetColumnStatistics<int>, Parquet.SourceGenerator.ParquetColumnStatistics<string>) | MI=69 CC=1 CL=1 DIT=- SLOC=16 ELOC=6
+M:SampleDomain.Models.SortedShipmentRowGroupMetadata.SortedShipmentRowGroupMetadata(int, long, bool, Parquet.SourceGenerator.ParquetColumnStatistics<long>, Parquet.SourceGenerator.ParquetColumnStatistics<int>, Parquet.SourceGenerator.ParquetColumnStatistics<string>) | MI=69 CC=1 CL=1 DIT=- SLOC=17 ELOC=6
 M:SampleDomain.Models.SortedShipmentRowGroupMetadata.WeightGrams.get | MI=100 CC=1 CL=1 DIT=- SLOC=1 ELOC=0
 P:SampleDomain.Models.SortedShipmentParquetExtensions.ColumnBatch.CarrierSpan | MI=92 CC=2 CL=1 DIT=- SLOC=5 ELOC=2
 P:SampleDomain.Models.SortedShipmentParquetExtensions.ColumnBatch.RowCount | MI=100 CC=1 CL=0 DIT=- SLOC=2 ELOC=0
@@ -157,4 +157,4 @@ T:SampleDomain.Models.SortedShipmentParquetFilteredSource | MI=73 CC=10 CL=14 DI
 T:SampleDomain.Models.SortedShipmentParquetMemorySource | MI=82 CC=10 CL=16 DIT=1 SLOC=49 ELOC=13
 T:SampleDomain.Models.SortedShipmentParquetParallelSource | MI=82 CC=5 CL=9 DIT=1 SLOC=31 ELOC=7
 T:SampleDomain.Models.SortedShipmentParquetStreamSource | MI=81 CC=9 CL=15 DIT=1 SLOC=45 ELOC=12
-T:SampleDomain.Models.SortedShipmentRowGroupMetadata | MI=92 CC=7 CL=1 DIT=1 SLOC=43 ELOC=6
+T:SampleDomain.Models.SortedShipmentRowGroupMetadata | MI=92 CC=7 CL=1 DIT=1 SLOC=44 ELOC=6

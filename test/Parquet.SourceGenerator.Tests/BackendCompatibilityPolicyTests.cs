@@ -27,7 +27,6 @@ public sealed class BackendCompatibilityPolicyTests
         "static ClassicExtensions.ReadParquetAsync(System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default) -> System.Threading.Tasks.Task<System.Collections.Generic.List<T>>",
         "static ClassicExtensions.WriteParquetAsync(this System.Collections.Generic.IReadOnlyList<T> items, System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default) -> System.Threading.Tasks.Task",
         "static ClassicExtensions.WriteParquetBatchedAsync(this System.Collections.Generic.IEnumerable<T> items, System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default) -> System.Threading.Tasks.Task",
-        "static ClassicExtensions.WriteRowGroupAsync(this Parquet.ParquetWriter writer, System.Collections.Generic.IReadOnlyList<T> items, System.Threading.CancellationToken cancellationToken = default) -> System.Threading.Tasks.Task",
         "static readonly ClassicExtensions.Schema -> Parquet.Schema.ParquetSchema",
     };
 
@@ -53,6 +52,20 @@ public sealed class BackendCompatibilityPolicyTests
             {
                 signatures.ShouldContain(required, $"Missing from {Path.GetFileName(path)}");
             }
+        }
+    }
+
+    [Fact]
+    public void ClassicRowGroupWriterIsNotPublicSurface()
+    {
+        // #481: the per-row-group writer is the strategy the flat and batched writes are built
+        // from, not a caller intent. It stays emitted (internal) and leaves the core surface.
+        foreach (string path in Directory.GetFiles(GoldenFilesDir, "*LegacyExtensions.api.txt"))
+        {
+            ReadMembers(path)
+                .ShouldNotContain(line =>
+                    line.Contains(".WriteRowGroupAsync(", StringComparison.Ordinal)
+                );
         }
     }
 

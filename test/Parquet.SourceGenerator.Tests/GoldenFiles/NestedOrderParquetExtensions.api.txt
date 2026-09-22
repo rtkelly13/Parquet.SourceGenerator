@@ -26,7 +26,6 @@ SampleDomain.Models.NestedOrderParquetStreamSource.WithOptions(Parquet.SourceGen
 SampleDomain.Models.NestedOrderRowGroupMetadata
 SampleDomain.Models.NestedOrderRowGroupMetadata.HasStatistics.get -> bool
 SampleDomain.Models.NestedOrderRowGroupMetadata.Id.get -> Parquet.SourceGenerator.ParquetColumnStatistics<int>
-SampleDomain.Models.NestedOrderRowGroupMetadata.NestedOrderRowGroupMetadata(int rowGroupIndex, long rowCount, bool hasStatistics, Parquet.SourceGenerator.ParquetColumnStatistics<int> column_0) -> void
 SampleDomain.Models.NestedOrderRowGroupMetadata.RowCount.get -> long
 SampleDomain.Models.NestedOrderRowGroupMetadata.RowGroupIndex.get -> int
 static SampleDomain.Models.NestedOrderParquet.From(System.IO.Stream stream) -> NestedOrderParquetStreamSource
@@ -44,5 +43,4 @@ static SampleDomain.Models.NestedOrderParquetExtensions.ReadParquetStreamAsync(S
 static SampleDomain.Models.NestedOrderParquetExtensions.WriteParquetAsync(this System.Collections.Generic.IAsyncEnumerable<NestedOrder> items, System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default) -> System.Threading.Tasks.Task
 static SampleDomain.Models.NestedOrderParquetExtensions.WriteParquetAsync(this System.Collections.Generic.IReadOnlyCollection<NestedOrder> items, System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default) -> System.Threading.Tasks.Task
 static SampleDomain.Models.NestedOrderParquetExtensions.WriteParquetBatchedAsync(this System.Collections.Generic.IEnumerable<NestedOrder> items, System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default) -> System.Threading.Tasks.Task
-static SampleDomain.Models.NestedOrderParquetExtensions.WriteParquetRowGroupAsync(this Parquet.ParquetWriter writer, System.Collections.Generic.IReadOnlyCollection<NestedOrder> chunk, System.Threading.CancellationToken cancellationToken = default) -> System.Threading.Tasks.Task
 static readonly SampleDomain.Models.NestedOrderParquetExtensions.Schema -> Parquet.Schema.ParquetSchema

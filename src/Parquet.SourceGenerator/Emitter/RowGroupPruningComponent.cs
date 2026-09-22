@@ -351,8 +351,13 @@ internal static class RowGroupPruningComponent
         builder.AppendLine("/// </summary>");
         builder.AppendLine($"public readonly struct {name}");
         builder.AppendLine("{");
-        builder.AppendLine("    /// <summary>Creates a row-group zone map.</summary>");
-        builder.AppendLine($"    public {name}(");
+        builder.AppendLine(
+            "    /// <summary>Creates a row-group zone map. Only the generated reader constructs one; the"
+        );
+        builder.AppendLine(
+            "    /// parameters are emitter column slots, so the constructor is not public API.</summary>"
+        );
+        builder.AppendLine($"    internal {name}(");
         builder.AppendLine("        int rowGroupIndex,");
         builder.AppendLine("        long rowCount,");
         builder.Append("        bool hasStatistics");

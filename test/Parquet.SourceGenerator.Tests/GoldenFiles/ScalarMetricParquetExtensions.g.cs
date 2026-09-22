@@ -629,7 +629,7 @@ public static partial class ScalarMetricParquetExtensions
     /// <summary>
     /// Writes a single row group chunk using Parquet.Net low-level primitives for maximum speed and Native AOT compatibility.
     /// </summary>
-    public static async global::System.Threading.Tasks.Task WriteParquetRowGroupAsync(
+    internal static async global::System.Threading.Tasks.Task WriteParquetRowGroupAsync(
         this global::Parquet.ParquetWriter writer,
         global::System.Collections.Generic.IReadOnlyCollection<ScalarMetric> chunk,
         global::System.Threading.CancellationToken cancellationToken = default)
@@ -885,7 +885,7 @@ public static partial class ScalarMetricParquetExtensions
     /// <summary>
     /// Writes one row group directly from caller-owned column buffers, with no row traversal and no pooled rentals.
     /// </summary>
-    public static async global::System.Threading.Tasks.Task WriteParquetRowGroupAsync(
+    internal static async global::System.Threading.Tasks.Task WriteParquetRowGroupAsync(
         this global::Parquet.ParquetWriter writer,
         ScalarMetricColumnarBatch batch,
         global::System.Threading.CancellationToken cancellationToken = default)
@@ -950,7 +950,7 @@ public static partial class ScalarMetricParquetExtensions
     /// Positional form of the columnar hand-off: one parameter per schema column, in schema order.
     /// Prefer the <c>ScalarMetricColumnarBatch</c> overload — it binds buffers to columns by name.
     /// </summary>
-    public static global::System.Threading.Tasks.Task WriteParquetRowGroupColumnarAsync(
+    internal static global::System.Threading.Tasks.Task WriteParquetRowGroupColumnarAsync(
         this global::Parquet.ParquetWriter writer,
         int rowCount,
         global::System.ReadOnlyMemory<long> rowId,
@@ -3510,8 +3510,9 @@ public static partial class ScalarMetricParquetExtensions
 /// </summary>
 public readonly struct ScalarMetricRowGroupMetadata
 {
-    /// <summary>Creates a row-group zone map.</summary>
-    public ScalarMetricRowGroupMetadata(
+    /// <summary>Creates a row-group zone map. Only the generated reader constructs one; the
+    /// parameters are emitter column slots, so the constructor is not public API.</summary>
+    internal ScalarMetricRowGroupMetadata(
         int rowGroupIndex,
         long rowCount,
         bool hasStatistics,

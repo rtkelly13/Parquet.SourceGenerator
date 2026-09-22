@@ -35,8 +35,11 @@ performance characteristics.
 
 The project deliberately follows the **declared-subset policy (B)** from issue #246. The classic
 V5 backend is a compatibility backend with a core generated surface: schema, flat read, flat write,
-batched write, and row-group write. It does not promise the modern backend's builder, filtering,
-parallel, streaming, column-batch, or Arrow members. Those capabilities remain modern-only until a
+and batched write. The per-row-group writer (`WriteRowGroupAsync(ParquetWriter, …)`) is still
+emitted but is `internal` since #481 — it is the strategy the two writes are built from, not a
+caller intent, matching the modern backend's `WriteParquetRowGroupAsync`. The classic backend does
+not promise the modern backend's builder, filtering, parallel, streaming, column-batch, or Arrow
+members. Those capabilities remain modern-only until a
 separate compatibility decision is made.
 
 This is a product boundary, not an accidental emitter gap. `BackendCompatibilityPolicyTests` checks
@@ -204,7 +207,9 @@ extra file per `[ParquetSerializable]` type:
 {Namespace}.{Type}.Arrow.g.cs
 ```
 
-It contributes a second overload into the same `partial` extensions class:
+It contributes a public overload into the same `partial` extensions class (the POCO and
+columnar row-group writers beside it are `internal` since #481; this one stays public because it
+is the only Arrow entry point):
 
 ```csharp
 FooParquetExtensions.WriteParquetRowGroupAsync(

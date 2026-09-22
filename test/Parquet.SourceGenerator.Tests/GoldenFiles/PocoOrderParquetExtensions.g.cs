@@ -633,7 +633,7 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
     /// <summary>
     /// Writes a single row group chunk using Parquet.Net low-level primitives for maximum speed and Native AOT compatibility.
     /// </summary>
-    public static async global::System.Threading.Tasks.Task WriteParquetRowGroupAsync(
+    internal static async global::System.Threading.Tasks.Task WriteParquetRowGroupAsync(
         this global::Parquet.ParquetWriter writer,
         global::System.Collections.Generic.IReadOnlyCollection<PocoOrder> chunk,
         global::System.Threading.CancellationToken cancellationToken = default)
@@ -6230,8 +6230,9 @@ new global::Parquet.Schema.DataField("Node", typeof(global::System.Guid), isNull
 /// </summary>
 public readonly struct PocoOrderRowGroupMetadata
 {
-    /// <summary>Creates a row-group zone map.</summary>
-    public PocoOrderRowGroupMetadata(
+    /// <summary>Creates a row-group zone map. Only the generated reader constructs one; the
+    /// parameters are emitter column slots, so the constructor is not public API.</summary>
+    internal PocoOrderRowGroupMetadata(
         int rowGroupIndex,
         long rowCount,
         bool hasStatistics,

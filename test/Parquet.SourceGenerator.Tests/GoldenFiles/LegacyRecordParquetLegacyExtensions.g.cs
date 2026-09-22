@@ -764,7 +764,7 @@ public static partial class LegacyRecordParquetLegacyExtensions
     /// <summary>
     /// Writes a single row group chunk using Parquet.Net DataColumn primitives.
     /// </summary>
-    public static async global::System.Threading.Tasks.Task WriteRowGroupAsync(
+    internal static async global::System.Threading.Tasks.Task WriteRowGroupAsync(
         this global::Parquet.ParquetWriter writer,
         global::System.Collections.Generic.IReadOnlyList<LegacyRecord> items,
         global::System.Threading.CancellationToken cancellationToken = default)

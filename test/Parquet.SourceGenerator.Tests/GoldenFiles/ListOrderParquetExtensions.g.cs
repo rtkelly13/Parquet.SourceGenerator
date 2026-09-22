@@ -618,7 +618,7 @@ public static partial class ListOrderParquetExtensions
     /// <summary>
     /// Writes a single row group chunk using Parquet.Net low-level primitives for maximum speed and Native AOT compatibility.
     /// </summary>
-    public static async global::System.Threading.Tasks.Task WriteParquetRowGroupAsync(
+    internal static async global::System.Threading.Tasks.Task WriteParquetRowGroupAsync(
         this global::Parquet.ParquetWriter writer,
         global::System.Collections.Generic.IReadOnlyCollection<ListOrder> chunk,
         global::System.Threading.CancellationToken cancellationToken = default)
@@ -3966,8 +3966,9 @@ public static partial class ListOrderParquetExtensions
 /// </summary>
 public readonly struct ListOrderRowGroupMetadata
 {
-    /// <summary>Creates a row-group zone map.</summary>
-    public ListOrderRowGroupMetadata(
+    /// <summary>Creates a row-group zone map. Only the generated reader constructs one; the
+    /// parameters are emitter column slots, so the constructor is not public API.</summary>
+    internal ListOrderRowGroupMetadata(
         int rowGroupIndex,
         long rowCount,
         bool hasStatistics,

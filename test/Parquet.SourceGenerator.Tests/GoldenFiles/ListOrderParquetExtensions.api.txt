@@ -26,7 +26,6 @@ SampleDomain.Models.ListOrderParquetStreamSource.WithOptions(Parquet.SourceGener
 SampleDomain.Models.ListOrderRowGroupMetadata
 SampleDomain.Models.ListOrderRowGroupMetadata.HasStatistics.get -> bool
 SampleDomain.Models.ListOrderRowGroupMetadata.Id.get -> Parquet.SourceGenerator.ParquetColumnStatistics<int>
-SampleDomain.Models.ListOrderRowGroupMetadata.ListOrderRowGroupMetadata(int rowGroupIndex, long rowCount, bool hasStatistics, Parquet.SourceGenerator.ParquetColumnStatistics<int> column_0) -> void
 SampleDomain.Models.ListOrderRowGroupMetadata.RowCount.get -> long
 SampleDomain.Models.ListOrderRowGroupMetadata.RowGroupIndex.get -> int
 static SampleDomain.Models.ListOrderParquet.From(System.IO.Stream stream) -> ListOrderParquetStreamSource
@@ -44,5 +43,4 @@ static SampleDomain.Models.ListOrderParquetExtensions.ReadParquetStreamAsync(Sys
 static SampleDomain.Models.ListOrderParquetExtensions.WriteParquetAsync(this System.Collections.Generic.IAsyncEnumerable<ListOrder> items, System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default) -> System.Threading.Tasks.Task
 static SampleDomain.Models.ListOrderParquetExtensions.WriteParquetAsync(this System.Collections.Generic.IReadOnlyCollection<ListOrder> items, System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default) -> System.Threading.Tasks.Task
 static SampleDomain.Models.ListOrderParquetExtensions.WriteParquetBatchedAsync(this System.Collections.Generic.IEnumerable<ListOrder> items, System.IO.Stream stream, Parquet.SourceGenerator.ParquetSerializerOptions? options = null, System.Threading.CancellationToken cancellationToken = default) -> System.Threading.Tasks.Task
-static SampleDomain.Models.ListOrderParquetExtensions.WriteParquetRowGroupAsync(this Parquet.ParquetWriter writer, System.Collections.Generic.IReadOnlyCollection<ListOrder> chunk, System.Threading.CancellationToken cancellationToken = default) -> System.Threading.Tasks.Task
 static readonly SampleDomain.Models.ListOrderParquetExtensions.Schema -> Parquet.Schema.ParquetSchema

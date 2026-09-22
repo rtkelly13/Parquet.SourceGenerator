@@ -16,6 +16,75 @@ The rule, the three surfaces and the author process are in
 
 <!-- Add new entries directly below this line, newest first. -->
 
+### 2026-09-22 — `{T}RowGroupMetadata(int rowGroupIndex, long rowCount, bool hasStatistics, …column_N)` constructor made internal (#459)
+
+- **Surface:** emitted
+- **Semver:** breaking-major
+- **Issue:** [#459](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/459) (0.1 contract
+  tracker [#477](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/477))
+- **Change:** the zone-map struct's constructor is emitted `internal`. The type and its read-only
+  properties (`RowGroupIndex`, `RowCount`, `HasStatistics`, one `ParquetColumnStatistics<T>` per
+  prunable column) stay public. 6 catalogue lines are **removed**, one per modern golden model
+  (`ListOrder`, `NestedOrder`, `OrderEvent`, `PocoOrder`, `ScalarMetric`, `SortedShipment`);
+  nothing is added.
+- **Rationale:** the parameters were named after emitter slot indices (`column_0, column_2,
+  column_3`), so the signature leaked the generator's internal column numbering and would change
+  whenever a property was added or reordered. Consumers only ever *inspect* a metadata value inside
+  a `.Where(...)` / `predicate:` lambda; the generated reader is the only constructor call site, and
+  it lives in the same assembly.
+- **Alternatives considered:** *Rename the parameters after the properties and keep the constructor
+  public* — rejected: that still freezes a positional, per-model constructor into the 0.1 contract
+  for a type nobody needs to build, and every added prunable column would still be a breaking change.
+  *Make the whole struct internal* — rejected: it appears in the public `Func<{T}RowGroupMetadata,
+  bool>` predicate parameters. *Keep it public for tests that fabricate metadata* — rejected: tests
+  that need it compile the model into their own assembly, where `internal` is visible.
+- **Note:** pre-1.0 break; `0.0.x` permits it without a major bump.
+
+### 2026-09-22 — low-level row-group writers and columnar helpers made internal (#481)
+
+- **Surface:** emitted
+- **Semver:** breaking-major
+- **Issue:** [#481](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/481) (0.1 contract
+  tracker [#477](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/477))
+- **Change:** these emitted members are now `internal`, removing 16 catalogue lines:
+  - `WriteParquetRowGroupAsync(this ParquetWriter writer, IReadOnlyCollection<T> chunk, CancellationToken)`
+    — every modern model (6 lines).
+  - `WriteParquetRowGroupAsync(this ParquetWriter writer, {T}ColumnarBatch batch, CancellationToken)`
+    — flat models with a columnar batch (`OrderEvent`, `ScalarMetric`, `SortedShipment`; 3 lines).
+  - `WriteParquetRowGroupColumnarAsync(this ParquetWriter writer, int rowCount, ReadOnlyMemory<…>…)`
+    — same three models (3 lines).
+  - `AsColumnarText(string?)` / `AsColumnarBinary(byte[]?)` — models with text / binary columns
+    (`OrderEvent` both, `SortedShipment` text; 3 lines).
+  - Classic emitter: `WriteRowGroupAsync(this ParquetWriter writer, IReadOnlyList<T> items, CancellationToken)`
+    on `LegacyRecordParquetLegacyExtensions` (1 line). `BackendCompatibilityPolicyTests` and
+    [14](../14-COMPATIBILITY-MATRIX.md) drop row-group write from the classic core surface.
+- **Rationale:** the rule applied member by member was *does this describe user intent or an
+  implementation strategy?* Each of these is the strategy the intent-level writers are built from:
+  `items.WriteParquetAsync(stream, …)`, `asyncItems.WriteParquetAsync(stream, …)`,
+  `items.WriteParquetBatchedAsync(stream, …)` and `{T}ColumnarBatch.WriteParquetAsync(stream, …)`
+  all remain public and cover writing a collection, a stream of rows, and caller-owned column
+  buffers. The positional `WriteParquetRowGroupColumnarAsync` in particular is defect 8 of
+  [19](../19-PUBLIC-API-SURFACE.md): adding a property silently re-means every later argument.
+  The `ParquetWriter`-taking overloads also leaked Parquet.Net's writer type into the 0.1 contract.
+  Because generated code is emitted into the consumer's own assembly, `internal` keeps every one of
+  these callable by the model's owning project — only downstream assemblies lose them.
+- **Kept public, deliberately:** the Arrow bridge's
+  `WriteParquetRowGroupAsync(ParquetWriter, RecordBatch, ParquetSerializerOptions?, CancellationToken)`
+  (emitted only when Apache.Arrow is referenced, not in these baselines) — it is the *only* Arrow
+  ingestion entry point, has no intent-level equivalent yet, and is documented in the README. It
+  now calls the internal columnar writer, which compiles because both live in the same partial
+  class. `static readonly Schema` also stays public: the Arrow path needs it to create the writer.
+  `{T}ColumnarBatch` fields stay public: they are how a caller builds the batch.
+- **Alternatives considered:** *Keep the batch-taking `WriteParquetRowGroupAsync(ParquetWriter,
+  {T}ColumnarBatch)` public for multi-row-group columnar writes* — rejected for 0.1: no caller in
+  the repository or its docs relies on it, and an intent-level multi-batch writer (e.g. over
+  `IAsyncEnumerable<{T}ColumnarBatch>`) can be added additively later without re-exposing a
+  Parquet.Net type. *Mark the members `[EditorBrowsable(Never)]` instead* — rejected: that hides
+  them from IntelliSense but still freezes them into the contract. *Grant `InternalsVisibleTo` to
+  tests/benchmarks* — unnecessary: every test, benchmark and sample project runs the generator
+  itself, so the models and their callers are always one assembly.
+- **Note:** pre-1.0 break; `0.0.x` permits it without a major bump.
+
 ### 2026-09-17 — dictionary and string payload safety limits (#307)
 
 - **Surface:** unshipped
