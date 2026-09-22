@@ -9,7 +9,7 @@ namespace Parquet.SourceGenerator.Legacy.Emitter;
 /// Emits C# extension classes targeting Parquet.Net v4 / v5 (DataColumn-based API).
 /// Provides compatibility for .NET Framework 4.7.2, .NET Standard 2.0, and Parquet.Net 4.x/5.x releases.
 /// </summary>
-public static class LegacyCodeEmitter
+internal static class LegacyCodeEmitter
 {
     /// <summary>
     /// Generates complete C# source code string for a target model using Parquet.Net v4/v5 APIs.

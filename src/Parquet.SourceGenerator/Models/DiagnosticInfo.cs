@@ -6,7 +6,7 @@ namespace Parquet.SourceGenerator.Models;
 /// <summary>
 /// Value-equatable model representing a Roslyn diagnostic for incremental pipeline caching.
 /// </summary>
-public readonly record struct DiagnosticInfo(
+internal readonly record struct DiagnosticInfo(
     DiagnosticDescriptor Descriptor,
     Location Location,
     string[] MessageArgs
