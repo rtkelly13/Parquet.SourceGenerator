@@ -175,10 +175,12 @@ public sealed class ColumnarHandoffTests
 
         rowStream.Position = 0;
         columnarStream.Position = 0;
-        List<ColumnarHandoffModel> fromRows =
-            await ColumnarHandoffModelParquetExtensions.ReadParquetAsync(rowStream);
-        List<ColumnarHandoffModel> fromColumns =
-            await ColumnarHandoffModelParquetExtensions.ReadParquetAsync(columnarStream);
+        List<ColumnarHandoffModel> fromRows = await ColumnarHandoffModelParquet
+            .From(rowStream)
+            .ToListAsync();
+        List<ColumnarHandoffModel> fromColumns = await ColumnarHandoffModelParquet
+            .From(columnarStream)
+            .ToListAsync();
 
         fromColumns.Count.ShouldBe(RowCount);
         fromColumns.Count.ShouldBe(fromRows.Count);
@@ -273,8 +275,9 @@ public sealed class ColumnarHandoffTests
         using var stream = new MemoryStream();
         await sliced.WriteParquetAsync(stream);
         stream.Position = 0;
-        List<ColumnarHandoffModel> read =
-            await ColumnarHandoffModelParquetExtensions.ReadParquetAsync(stream);
+        List<ColumnarHandoffModel> read = await ColumnarHandoffModelParquet
+            .From(stream)
+            .ToListAsync();
 
         read.Count.ShouldBe(shortCount);
         for (int i = 0; i < shortCount; i++)
@@ -293,8 +296,9 @@ public sealed class ColumnarHandoffTests
         using var stream = new MemoryStream();
         await batch.WriteParquetAsync(stream);
         stream.Position = 0;
-        List<ColumnarHandoffModel> read =
-            await ColumnarHandoffModelParquetExtensions.ReadParquetAsync(stream);
+        List<ColumnarHandoffModel> read = await ColumnarHandoffModelParquet
+            .From(stream)
+            .ToListAsync();
 
         read.ShouldBeEmpty();
     }
@@ -357,9 +361,7 @@ public sealed class ColumnarHandoffTests
         using var stream = new MemoryStream();
         await batch.WriteParquetAsync(stream);
         stream.Position = 0;
-        List<ColumnarDenseModel> read = await ColumnarDenseModelParquetExtensions.ReadParquetAsync(
-            stream
-        );
+        List<ColumnarDenseModel> read = await ColumnarDenseModelParquet.From(stream).ToListAsync();
 
         read.Select(r => r.A).ToArray().ShouldBe(DenseA);
         read.Select(r => r.B).ToArray().ShouldBe(DenseB);
@@ -384,8 +386,9 @@ public sealed class ColumnarHandoffTests
         }
 
         stream.Position = 0;
-        List<ColumnarHandoffModel> read =
-            await ColumnarHandoffModelParquetExtensions.ReadParquetAsync(stream);
+        List<ColumnarHandoffModel> read = await ColumnarHandoffModelParquet
+            .From(stream)
+            .ToListAsync();
         read.Count.ShouldBe(RowCount * 2);
         read[RowCount + 7].Name.ShouldBe(rows[7].Name);
     }

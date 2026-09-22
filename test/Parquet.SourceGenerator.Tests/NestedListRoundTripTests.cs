@@ -69,7 +69,7 @@ public sealed class NestedListRoundTripTests
         var ms = new MemoryStream();
         await ListRowParquetExtensions.WriteParquetAsync(rows, ms);
         ms.Position = 0;
-        var back = await ListRowParquetExtensions.ReadParquetAsync(ms);
+        var back = await ListRowParquet.From(ms).ToListAsync();
 
         back.Count.ShouldBe(4);
         back[0].Tags!.ToArray().ShouldBe(expectedTags0);
@@ -117,7 +117,7 @@ public sealed class NestedListRoundTripTests
         var ms = new MemoryStream();
         await rows.WriteParquetBatchedAsync(ms, new ParquetSerializerOptions { RowGroupSize = 7 });
         ms.Position = 0;
-        var back = await ListRowParquetExtensions.ReadParquetParallelArrayAsync(ms);
+        var back = await ListRowParquet.From(ms.ToArray()).Parallel().ToArrayAsync();
 
         back.Length.ShouldBe(50);
         for (int i = 0; i < 50; i++)
@@ -210,7 +210,7 @@ public sealed partial record ListRow
         await TripRowParquetExtensions.WriteParquetAsync(rows, ms);
         ms.Position = 0;
 
-        var back = await TripRowParquetExtensions.ReadParquetParallelArrayAsync(ms);
+        var back = await TripRowParquet.From(ms.ToArray()).Parallel().ToArrayAsync();
 
         back.Length.ShouldBe(4);
         back[0].Stops.ShouldBeNull();
@@ -265,7 +265,7 @@ public sealed partial record ListRow
         await rows.WriteParquetBatchedAsync(ms, new ParquetSerializerOptions { RowGroupSize = 10 });
         ms.Position = 0;
 
-        var back = await TripRowParquetExtensions.ReadParquetParallelArrayAsync(ms);
+        var back = await TripRowParquet.From(ms.ToArray()).Parallel().ToArrayAsync();
 
         back.Length.ShouldBe(50);
         for (int i = 0; i < 50; i++)

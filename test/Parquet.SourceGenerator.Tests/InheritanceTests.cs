@@ -64,7 +64,7 @@ public sealed class InheritanceTests
         await written.WriteParquetAsync(stream);
         stream.Position = 0;
 
-        List<InvoiceRow> read = await InvoiceRowParquetExtensions.ReadParquetAsync(stream);
+        List<InvoiceRow> read = await InvoiceRowParquet.From(stream).ToListAsync();
 
         read.Count.ShouldBe(2);
         read[0].Id.ShouldBe(1);

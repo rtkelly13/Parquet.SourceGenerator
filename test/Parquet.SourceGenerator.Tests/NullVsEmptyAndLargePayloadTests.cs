@@ -67,8 +67,9 @@ public class NullVsEmptyAndLargePayloadTests
         await original.WriteParquetAsync(stream);
 
         stream.Position = 0;
-        List<PayloadSemanticsModel> read =
-            await PayloadSemanticsModelParquetExtensions.ReadParquetAsync(stream);
+        List<PayloadSemanticsModel> read = await PayloadSemanticsModelParquet
+            .From(stream)
+            .ToListAsync();
 
         ParquetCompatibilityOracle.AssertEquivalent(original, read);
     }
@@ -164,8 +165,9 @@ public class NullVsEmptyAndLargePayloadTests
         await items.WriteParquetAsync(stream);
 
         stream.Position = 0;
-        List<PayloadSemanticsModel> results =
-            await PayloadSemanticsModelParquetExtensions.ReadParquetAsync(stream);
+        List<PayloadSemanticsModel> results = await PayloadSemanticsModelParquet
+            .From(stream)
+            .ToListAsync();
 
         results.Count.ShouldBe(items.Count);
 
@@ -240,8 +242,9 @@ public class NullVsEmptyAndLargePayloadTests
 
         // 1. Sequential Read
         stream.Position = 0;
-        List<PayloadSemanticsModel> sequentialResults =
-            await PayloadSemanticsModelParquetExtensions.ReadParquetAsync(stream);
+        List<PayloadSemanticsModel> sequentialResults = await PayloadSemanticsModelParquet
+            .From(stream)
+            .ToListAsync();
 
         sequentialResults.Count.ShouldBe(items.Count);
         for (int i = 0; i < items.Count; i++)
@@ -255,8 +258,10 @@ public class NullVsEmptyAndLargePayloadTests
 
         // 2. Parallel Read
         stream.Position = 0;
-        List<PayloadSemanticsModel> parallelResults =
-            await PayloadSemanticsModelParquetExtensions.ReadParquetParallelAsync(stream);
+        List<PayloadSemanticsModel> parallelResults = await PayloadSemanticsModelParquet
+            .From(stream.ToArray())
+            .Parallel()
+            .ToListAsync();
 
         parallelResults.Count.ShouldBe(items.Count);
         for (int i = 0; i < items.Count; i++)

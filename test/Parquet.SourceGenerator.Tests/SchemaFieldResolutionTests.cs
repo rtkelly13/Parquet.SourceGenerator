@@ -81,7 +81,7 @@ public sealed class SchemaFieldResolutionTests
         // The file's columns are [alpha, beta, gamma]; this reader expects [gamma, beta, alpha].
         // Index 0 and index 2 therefore miss and must be resolved by name, while index 1 (beta)
         // still hits on position — so a single read covers both paths and the reuse between misses.
-        List<ReversedOrder> read = await ReversedOrderParquetExtensions.ReadParquetAsync(stream);
+        List<ReversedOrder> read = await ReversedOrderParquet.From(stream).ToListAsync();
 
         read.Count.ShouldBe(3);
         for (int i = 0; i < written.Count; i++)
@@ -118,9 +118,10 @@ public sealed class SchemaFieldResolutionTests
         );
         stream.Position = 0;
 
-        List<ReversedOrder> read = await ReversedOrderParquetExtensions.ReadParquetParallelAsync(
-            stream
-        );
+        List<ReversedOrder> read = await ReversedOrderParquet
+            .From(stream.ToArray())
+            .Parallel()
+            .ToListAsync();
 
         read.Count.ShouldBe(written.Count);
         for (int i = 0; i < written.Count; i++)
@@ -149,7 +150,7 @@ public sealed class SchemaFieldResolutionTests
         await written.WriteParquetAsync(stream);
         stream.Position = 0;
 
-        List<ForwardOrder> read = await ForwardOrderParquetExtensions.ReadParquetAsync(stream);
+        List<ForwardOrder> read = await ForwardOrderParquet.From(stream).ToListAsync();
 
         read.ShouldHaveSingleItem();
         read[0].Alpha.ShouldBe(7);
@@ -172,7 +173,7 @@ public sealed class SchemaFieldResolutionTests
 
         // ForwardOrder requires 'gamma' (non-nullable double). Reading partial stream should throw InvalidDataException.
         var ex = await Should.ThrowAsync<InvalidDataException>(() =>
-            ForwardOrderParquetExtensions.ReadParquetAsync(stream)
+            ForwardOrderParquet.From(stream).ToListAsync()
         );
         ex.Message.ShouldContain(
             "Required column 'gamma' was not found in the Parquet file schema"

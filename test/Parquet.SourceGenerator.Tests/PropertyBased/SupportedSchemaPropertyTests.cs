@@ -248,7 +248,7 @@ public sealed class SupportedSchemaPropertyTests
         );
 
         using var stream = new MemoryStream(bytes, writable: false);
-        List<FuzzWideRecord> read = await FuzzWideRecordParquetExtensions.ReadParquetAsync(stream);
+        List<FuzzWideRecord> read = await FuzzWideRecordParquet.From(stream).ToListAsync();
 
         read.Count.ShouldBe(rows.Count);
         read.ForEach(r => r.OptText.ShouldBeNull());
@@ -273,7 +273,7 @@ public sealed class SupportedSchemaPropertyTests
 
         using var stream = new MemoryStream(bytes, writable: false);
         InvalidDataException exception = await Should.ThrowAsync<InvalidDataException>(async () =>
-            await FuzzWideRecordParquetExtensions.ReadParquetAsync(stream)
+            await FuzzWideRecordParquet.From(stream).ToListAsync()
         );
 
         exception.Message.ShouldContain("i64", Case.Sensitive);

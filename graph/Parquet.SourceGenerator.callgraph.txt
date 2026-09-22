@@ -6,7 +6,7 @@
 #        components-must-not-call-the-emitter-hub layering.
 # Unresolved call sites (delegates, virtuals, framework): measured in the
 # header below so the blind spot is visible, never silently absent.
-# stats: nodes=233 edges=390 call-sites=4024 unresolved=3559
+# stats: nodes=232 edges=387 call-sites=3921 unresolved=3460
 E:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.CanEmit/(TargetClassModel) | Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.IsSupported/(TargetClassModel)
 E:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitColumn/(StringBuilder,PropertyModel,int) | Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitBinary/(StringBuilder,PropertyModel,ArrowLeafMapping,string,int)
 E:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitColumn/(StringBuilder,PropertyModel,int) | Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitConvertRequired/(StringBuilder,ArrowLeafMapping,string,string,int)
@@ -73,8 +73,6 @@ E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitReadMemoryOverloads/(StringBui
 E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitReadMemoryOverloads/(StringBuilder,TargetClassModel) | Parquet.SourceGenerator.Emitter.CodeEmitter.EmitReadParallelBufferAsync/(StringBuilder,TargetClassModel)
 E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitReadMemoryOverloads/(StringBuilder,TargetClassModel) | Parquet.SourceGenerator.Emitter.RowGroupPruningComponent.ForwardArgument/(TargetClassModel)
 E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitReadMemoryOverloads/(StringBuilder,TargetClassModel) | Parquet.SourceGenerator.Emitter.RowGroupPruningComponent.SignatureSuffix/(TargetClassModel)
-E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitReadParallelAsync/(StringBuilder,TargetClassModel) | Parquet.SourceGenerator.Emitter.CodeEmitter.EmitResolveFieldLine/(LeafColumn,string)
-E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitReadParallelAsync/(StringBuilder,TargetClassModel) | Parquet.SourceGenerator.Emitter.Compound.EmissionPlan.For/(TargetClassModel)
 E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitReadParallelBufferAsync/(StringBuilder,TargetClassModel) | Parquet.SourceGenerator.Emitter.CodeEmitter.EmitReadRowGroupsIntoAsync/(StringBuilder,TargetClassModel)
 E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitReadParallelBufferAsync/(StringBuilder,TargetClassModel) | Parquet.SourceGenerator.Emitter.Components.RowGroupLayoutComponent.EmitIndexedLayoutProbe/(StringBuilder,string,string,string,string,string,bool,string,string)
 E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitReadPrunedRangeAsync/(StringBuilder,TargetClassModel) | Parquet.SourceGenerator.Emitter.CodeEmitter.EmitResolveFieldLine/(LeafColumn,string)
@@ -110,7 +108,6 @@ E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitSource/(TargetClassModel,Gener
 E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitSource/(TargetClassModel,GeneratorConfiguration) | Parquet.SourceGenerator.Emitter.CodeEmitter.EmitReadArrayAsync/(StringBuilder,TargetClassModel)
 E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitSource/(TargetClassModel,GeneratorConfiguration) | Parquet.SourceGenerator.Emitter.CodeEmitter.EmitReadAsync/(StringBuilder,TargetClassModel)
 E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitSource/(TargetClassModel,GeneratorConfiguration) | Parquet.SourceGenerator.Emitter.CodeEmitter.EmitReadMemoryOverloads/(StringBuilder,TargetClassModel)
-E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitSource/(TargetClassModel,GeneratorConfiguration) | Parquet.SourceGenerator.Emitter.CodeEmitter.EmitReadParallelAsync/(StringBuilder,TargetClassModel)
 E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitSource/(TargetClassModel,GeneratorConfiguration) | Parquet.SourceGenerator.Emitter.CodeEmitter.EmitReadPrunedRangeAsync/(StringBuilder,TargetClassModel)
 E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitSource/(TargetClassModel,GeneratorConfiguration) | Parquet.SourceGenerator.Emitter.CodeEmitter.EmitReadStreamAsync/(StringBuilder,TargetClassModel)
 E:Parquet.SourceGenerator.Emitter.CodeEmitter.EmitSource/(TargetClassModel,GeneratorConfiguration) | Parquet.SourceGenerator.Emitter.CodeEmitter.EmitSchema/(StringBuilder,TargetClassModel)

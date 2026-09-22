@@ -136,7 +136,7 @@ public async Task Roundtrip_Poco_Matches_ParquetNet()
 
     // 3. Read back using generated deserializer
     stream.Position = 0;
-    List<TestRecord> readRecords = await TestRecordParquetExtensions.ReadParquetAsync(stream);
+    List<TestRecord> readRecords = await TestRecordParquet.From(stream).ToListAsync();
 
     Assert.Equal(records.Count, readRecords.Count);
     Assert.Equal(records[0].Name, readRecords[0].Name);

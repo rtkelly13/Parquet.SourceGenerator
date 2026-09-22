@@ -113,9 +113,7 @@ public sealed class CorpusDifferentialSweepTests
         await ParquetSerializer.SerializeAsync(records, stream2);
         stream2.Position = 0;
 
-        List<BaselineRecord> readViaPsg = await BaselineRecordParquetExtensions.ReadParquetAsync(
-            stream2
-        );
+        List<BaselineRecord> readViaPsg = await BaselineRecordParquet.From(stream2).ToListAsync();
         readViaPsg.Count.ShouldBe(records.Count);
         for (int i = 0; i < records.Count; i++)
         {
@@ -177,7 +175,7 @@ public sealed class CorpusDifferentialSweepTests
         stream2.Position = 0;
 
         List<CorpusComprehensiveScalarRecord> readViaPsg =
-            await CorpusComprehensiveScalarRecordParquetExtensions.ReadParquetAsync(stream2);
+            await CorpusComprehensiveScalarRecordParquet.From(stream2).ToListAsync();
         readViaPsg.Count.ShouldBe(records.Count);
         for (int i = 0; i < records.Count; i++)
         {
@@ -260,8 +258,9 @@ public sealed class CorpusDifferentialSweepTests
         await ParquetSerializer.SerializeAsync(records, stream2);
         stream2.Position = 0;
 
-        List<CorpusNullableRecord> readViaPsg =
-            await CorpusNullableRecordParquetExtensions.ReadParquetAsync(stream2);
+        List<CorpusNullableRecord> readViaPsg = await CorpusNullableRecordParquet
+            .From(stream2)
+            .ToListAsync();
         readViaPsg.Count.ShouldBe(records.Count);
         for (int i = 0; i < records.Count; i++)
         {
@@ -321,8 +320,9 @@ public sealed class CorpusDifferentialSweepTests
         await ParquetSerializer.SerializeAsync(records, stream2);
         stream2.Position = 0;
 
-        List<CorpusDecimalRecord> readViaPsg =
-            await CorpusDecimalRecordParquetExtensions.ReadParquetAsync(stream2);
+        List<CorpusDecimalRecord> readViaPsg = await CorpusDecimalRecordParquet
+            .From(stream2)
+            .ToListAsync();
         readViaPsg.Count.ShouldBe(records.Count);
         for (int i = 0; i < records.Count; i++)
         {
@@ -350,8 +350,9 @@ public sealed class CorpusDifferentialSweepTests
         await records.WriteParquetAsync(ms);
         ms.Position = 0;
 
-        List<CorpusTimeSpanRecord> readViaPsg =
-            await CorpusTimeSpanRecordParquetExtensions.ReadParquetAsync(ms);
+        List<CorpusTimeSpanRecord> readViaPsg = await CorpusTimeSpanRecordParquet
+            .From(ms)
+            .ToListAsync();
         readViaPsg.Count.ShouldBe(2);
         readViaPsg[0].Elapsed.ShouldBe(TimeSpan.FromSeconds(123));
         readViaPsg[1].Elapsed.ShouldBe(TimeSpan.FromHours(1.5));
@@ -381,7 +382,7 @@ public sealed class CorpusDifferentialSweepTests
 
         // 1. Sequential Stream Reader
         ms.Position = 0;
-        List<SingleLongStruct> seq = await SingleLongStructParquetExtensions.ReadParquetAsync(ms);
+        List<SingleLongStruct> seq = await SingleLongStructParquet.From(ms).ToListAsync();
         seq.Count.ShouldBe(records.Count);
         for (int i = 0; i < records.Count; i++)
         {
@@ -390,8 +391,10 @@ public sealed class CorpusDifferentialSweepTests
 
         // 2. Parallel Array Reader
         ms.Position = 0;
-        SingleLongStruct[] parallel =
-            await SingleLongStructParquetExtensions.ReadParquetParallelArrayAsync(ms);
+        SingleLongStruct[] parallel = await SingleLongStructParquet
+            .From(ms.ToArray())
+            .Parallel()
+            .ToArrayAsync();
         parallel.Length.ShouldBe(records.Count);
         for (int i = 0; i < records.Count; i++)
         {
@@ -399,9 +402,7 @@ public sealed class CorpusDifferentialSweepTests
         }
 
         // 3. Memory Reader
-        List<SingleLongStruct> fromMem = await SingleLongStructParquetExtensions.ReadParquetAsync(
-            payload
-        );
+        List<SingleLongStruct> fromMem = await SingleLongStructParquet.From(payload).ToListAsync();
         fromMem.Count.ShouldBe(records.Count);
         for (int i = 0; i < records.Count; i++)
         {
@@ -428,7 +429,7 @@ public sealed class CorpusDifferentialSweepTests
 
         // 1. Sequential Stream Reader
         ms.Position = 0;
-        List<Point3DStruct> seq = await Point3DStructParquetExtensions.ReadParquetAsync(ms);
+        List<Point3DStruct> seq = await Point3DStructParquet.From(ms).ToListAsync();
         seq.Count.ShouldBe(records.Count);
         for (int i = 0; i < records.Count; i++)
         {
@@ -439,8 +440,10 @@ public sealed class CorpusDifferentialSweepTests
 
         // 2. Parallel Array Reader
         ms.Position = 0;
-        Point3DStruct[] parallel =
-            await Point3DStructParquetExtensions.ReadParquetParallelArrayAsync(ms);
+        Point3DStruct[] parallel = await Point3DStructParquet
+            .From(ms.ToArray())
+            .Parallel()
+            .ToArrayAsync();
         parallel.Length.ShouldBe(records.Count);
         for (int i = 0; i < records.Count; i++)
         {
@@ -450,9 +453,7 @@ public sealed class CorpusDifferentialSweepTests
         }
 
         // 3. Memory Reader
-        List<Point3DStruct> fromMem = await Point3DStructParquetExtensions.ReadParquetAsync(
-            payload
-        );
+        List<Point3DStruct> fromMem = await Point3DStructParquet.From(payload).ToListAsync();
         fromMem.Count.ShouldBe(records.Count);
         for (int i = 0; i < records.Count; i++)
         {
@@ -495,7 +496,7 @@ public sealed class CorpusDifferentialSweepTests
 
         // 1. Sequential Stream Reader
         ms.Position = 0;
-        List<NestedOrder> sequential = await NestedOrderParquetExtensions.ReadParquetAsync(ms);
+        List<NestedOrder> sequential = await NestedOrderParquet.From(ms).ToListAsync();
         sequential.Count.ShouldBe(3);
         sequential[0].Ship?.City.ShouldBe("Seattle");
         sequential[0].Ship?.Zip.ShouldBe(98101);
@@ -505,9 +506,10 @@ public sealed class CorpusDifferentialSweepTests
 
         // 2. Parallel Array Reader
         ms.Position = 0;
-        NestedOrder[] parallel = await NestedOrderParquetExtensions.ReadParquetParallelArrayAsync(
-            ms
-        );
+        NestedOrder[] parallel = await NestedOrderParquet
+            .From(ms.ToArray())
+            .Parallel()
+            .ToArrayAsync();
         parallel.Length.ShouldBe(3);
         parallel[0].Ship?.City.ShouldBe(sequential[0].Ship?.City);
         parallel[1].Bill.City.ShouldBe(sequential[1].Bill.City);
@@ -515,7 +517,7 @@ public sealed class CorpusDifferentialSweepTests
         // 3. Streaming AsyncEnumerable Reader
         ms.Position = 0;
         var streamed = new List<NestedOrder>();
-        await foreach (NestedOrder item in NestedOrderParquetExtensions.ReadParquetStreamAsync(ms))
+        await foreach (NestedOrder item in NestedOrderParquet.From(ms).AsAsyncEnumerable())
         {
             streamed.Add(item);
         }
@@ -523,7 +525,7 @@ public sealed class CorpusDifferentialSweepTests
         streamed[0].Ship?.City.ShouldBe(sequential[0].Ship?.City);
 
         // 4. Memory-backed Reader
-        List<NestedOrder> fromMem = await NestedOrderParquetExtensions.ReadParquetAsync(payload);
+        List<NestedOrder> fromMem = await NestedOrderParquet.From(payload).ToListAsync();
         fromMem.Count.ShouldBe(3);
         fromMem[0].Ship?.City.ShouldBe(sequential[0].Ship?.City);
     }
@@ -569,7 +571,7 @@ public sealed class CorpusDifferentialSweepTests
 
         // 1. Sequential Reader
         ms.Position = 0;
-        List<ListRow> seq = await ListRowParquetExtensions.ReadParquetAsync(ms);
+        List<ListRow> seq = await ListRowParquet.From(ms).ToListAsync();
         seq.Count.ShouldBe(3);
 
         // Row 0 has items with null
@@ -587,7 +589,7 @@ public sealed class CorpusDifferentialSweepTests
 
         // 2. Parallel Array Reader
         ms.Position = 0;
-        ListRow[] par = await ListRowParquetExtensions.ReadParquetParallelArrayAsync(ms);
+        ListRow[] par = await ListRowParquet.From(ms.ToArray()).Parallel().ToArrayAsync();
         par.Length.ShouldBe(3);
         par[0].Tags!.Count.ShouldBe(seq[0].Tags!.Count);
         par[1].Tags!.ShouldBeEmpty();
@@ -596,7 +598,7 @@ public sealed class CorpusDifferentialSweepTests
         // 3. Streaming AsyncEnumerable Reader
         ms.Position = 0;
         var streamed = new List<ListRow>();
-        await foreach (ListRow row in ListRowParquetExtensions.ReadParquetStreamAsync(ms))
+        await foreach (ListRow row in ListRowParquet.From(ms).AsAsyncEnumerable())
         {
             streamed.Add(row);
         }
@@ -661,7 +663,7 @@ public sealed class CorpusDifferentialSweepTests
 
         // 1. Sequential Reader
         ms.Position = 0;
-        List<TripRow> seq = await TripRowParquetExtensions.ReadParquetAsync(ms);
+        List<TripRow> seq = await TripRowParquet.From(ms).ToListAsync();
         seq.Count.ShouldBe(3);
         seq[0].Stops!.Count.ShouldBe(2);
         seq[0].Stops![0].City.ShouldBe("Austin");
@@ -671,7 +673,7 @@ public sealed class CorpusDifferentialSweepTests
 
         // 2. Parallel Reader
         ms.Position = 0;
-        TripRow[] par = await TripRowParquetExtensions.ReadParquetParallelArrayAsync(ms);
+        TripRow[] par = await TripRowParquet.From(ms.ToArray()).Parallel().ToArrayAsync();
         par.Length.ShouldBe(3);
         par[0].Stops![0].City.ShouldBe("Austin");
         par[1].Stops!.ShouldBeEmpty();

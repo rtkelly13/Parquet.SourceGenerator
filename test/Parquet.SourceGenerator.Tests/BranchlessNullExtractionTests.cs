@@ -186,7 +186,7 @@ public sealed class BranchlessNullExtractionTests
         using var stream = new MemoryStream();
         await source.WriteParquetAsync(stream);
         stream.Position = 0;
-        return await BranchlessNullModelParquetExtensions.ReadParquetAsync(stream);
+        return await BranchlessNullModelParquet.From(stream).ToListAsync();
     }
 
     [Theory]

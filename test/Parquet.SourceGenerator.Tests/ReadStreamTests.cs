@@ -19,7 +19,7 @@ public partial record StreamTestModel
 public sealed class ReadStreamTests
 {
     [Fact]
-    public async Task ReadParquetStreamAsyncStreamsItemsCorrectly()
+    public async Task AsAsyncEnumerableStreamsItemsCorrectly()
     {
         var written = new List<StreamTestModel>
         {
@@ -36,7 +36,7 @@ public sealed class ReadStreamTests
         stream.Position = 0;
 
         var readItems = new List<StreamTestModel>();
-        await foreach (var item in StreamTestModelParquetExtensions.ReadParquetStreamAsync(stream))
+        await foreach (var item in StreamTestModelParquet.From(stream).AsAsyncEnumerable())
         {
             readItems.Add(item);
         }

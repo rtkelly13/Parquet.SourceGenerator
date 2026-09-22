@@ -45,7 +45,7 @@ public sealed class NestedStructRoundTripTests
         await NestedOrderParquetExtensions.WriteParquetAsync(rows, ms);
         ms.Position = 0;
 
-        var back = await NestedOrderParquetExtensions.ReadParquetAsync(ms);
+        var back = await NestedOrderParquet.From(ms).ToListAsync();
 
         back.Count.ShouldBe(3);
         back[0].Ship!.City.ShouldBe("NYC");
@@ -70,7 +70,7 @@ public sealed class NestedStructRoundTripTests
         await NestedOrderParquetExtensions.WriteParquetAsync(rows, ms);
         ms.Position = 0;
 
-        var back = await NestedOrderParquetExtensions.ReadParquetAsync(ms);
+        var back = await NestedOrderParquet.From(ms).ToListAsync();
         back.Count.ShouldBe(25);
         for (int i = 0; i < rows.Count; i++)
         {
@@ -107,7 +107,7 @@ public sealed class NestedStructRoundTripTests
         var ms = new MemoryStream();
         await EnvelopeParquetExtensions.WriteParquetAsync(rows, ms);
         ms.Position = 0;
-        var back = await EnvelopeParquetExtensions.ReadParquetAsync(ms);
+        var back = await EnvelopeParquet.From(ms).ToListAsync();
 
         back[0].Outer!.Label.ShouldBe("first");
         back[0].Outer!.Inner!.City.ShouldBe("Denver");
@@ -138,7 +138,7 @@ public sealed class NestedStructRoundTripTests
         var ms = new MemoryStream();
         await rows.WriteParquetAsync(ms);
         ms.Position = 0;
-        var array = await NestedOrderParquetExtensions.ReadParquetArrayAsync(ms);
+        var array = await NestedOrderParquet.From(ms).ToArrayAsync();
 
         array.Length.ShouldBe(2);
         array[0].Ship!.City.ShouldBe("A");
@@ -167,7 +167,7 @@ public sealed class NestedStructRoundTripTests
         var ms = new MemoryStream();
         await NestedOrderParquetExtensions.WriteParquetAsync(rows, ms);
         ms.Position = 0;
-        var back = await NestedOrderParquetExtensions.ReadParquetAsync(ms);
+        var back = await NestedOrderParquet.From(ms).ToListAsync();
         back.ShouldAllBe(r => r.Ship == null);
     }
 
@@ -206,7 +206,7 @@ public sealed class NestedStructRoundTripTests
         // stream read
         ms.Position = 0;
         var streamed = new List<NestedOrder>();
-        await foreach (NestedOrder r in NestedOrderParquetExtensions.ReadParquetStreamAsync(ms))
+        await foreach (NestedOrder r in NestedOrderParquet.From(ms).AsAsyncEnumerable())
             streamed.Add(r);
         streamed.Count.ShouldBe(3);
         streamed[0].Ship!.City.ShouldBe("X");
@@ -214,20 +214,20 @@ public sealed class NestedStructRoundTripTests
         streamed[2].Ship!.City.ShouldBeNull();
         streamed[2].Bill.City.ShouldBe("Z");
 
-        // parallel array read
+        // stream array read
         ms.Position = 0;
-        var parallel = await NestedOrderParquetExtensions.ReadParquetParallelArrayAsync(ms);
+        var parallel = await NestedOrderParquet.From(ms).ToArrayAsync();
         parallel.Length.ShouldBe(3);
         parallel[0].Bill.City.ShouldBe("Y");
 
         // memory buffer reads
         byte[] bytes = ms.ToArray();
-        var mem = await NestedOrderParquetExtensions.ReadParquetAsync(bytes);
+        var mem = await NestedOrderParquet.From(bytes).ToListAsync();
         mem.Count.ShouldBe(3);
-        var memArr = await NestedOrderParquetExtensions.ReadParquetParallelArrayAsync(bytes);
+        var memArr = await NestedOrderParquet.From(bytes).Parallel().ToArrayAsync();
         memArr[0].Ship!.City.ShouldBe("X");
         var memStream = new List<NestedOrder>();
-        await foreach (NestedOrder r in NestedOrderParquetExtensions.ReadParquetStreamAsync(bytes))
+        await foreach (NestedOrder r in NestedOrderParquet.From(bytes).AsAsyncEnumerable())
             memStream.Add(r);
         memStream.Count.ShouldBe(3);
     }
@@ -249,7 +249,7 @@ public sealed class NestedStructRoundTripTests
 
         await Source().WriteParquetAsync(ms);
         ms.Position = 0;
-        var back = await NestedOrderParquetExtensions.ReadParquetAsync(ms);
+        var back = await NestedOrderParquet.From(ms).ToListAsync();
         back[0].Ship!.City.ShouldBe("S");
     }
 
@@ -289,7 +289,7 @@ public sealed class NestedStructRoundTripTests
         await NullableStructRowParquetExtensions.WriteParquetAsync(rows, ms);
         ms.Position = 0;
 
-        var back = await NullableStructRowParquetExtensions.ReadParquetAsync(ms);
+        var back = await NullableStructRowParquet.From(ms).ToListAsync();
 
         back.Count.ShouldBe(3);
         back[0].Origin.X.ShouldBe(1);

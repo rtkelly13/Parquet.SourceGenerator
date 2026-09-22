@@ -131,8 +131,9 @@ public sealed class SerializerOptionsTests
             );
             stream.Position = 0;
 
-            List<CompressibleRecord> read =
-                await CompressibleRecordParquetExtensions.ReadParquetAsync(stream);
+            List<CompressibleRecord> read = await CompressibleRecordParquet
+                .From(stream)
+                .ToListAsync();
 
             read.Count.ShouldBe(2);
             read[0].Payload.ShouldBe("first");
@@ -149,32 +150,36 @@ public sealed class SerializerOptionsTests
         var options = new ParquetSerializerOptions { MaxDecompressedPageSize = 1 };
 
         var streamException = await Should.ThrowAsync<InvalidDataException>(() =>
-            CompressibleRecordParquetExtensions.ReadParquetAsync(new MemoryStream(bytes), options)
+            CompressibleRecordParquet
+                .From(new MemoryStream(bytes))
+                .WithOptions(options)
+                .ToListAsync()
         );
         streamException.Message.ShouldContain("uncompressed size");
         streamException.Message.ShouldContain("exceeding maximum allowed 1");
 
         await Should.ThrowAsync<InvalidDataException>(() =>
-            CompressibleRecordParquetExtensions.ReadParquetArrayAsync(
-                new MemoryStream(bytes),
-                options
-            )
+            CompressibleRecordParquet
+                .From(new MemoryStream(bytes))
+                .WithOptions(options)
+                .ToArrayAsync()
         );
 
         await Should.ThrowAsync<InvalidDataException>(() =>
-            CompressibleRecordParquetExtensions.ReadParquetParallelAsync(
-                new ReadOnlyMemory<byte>(bytes),
-                options
-            )
+            CompressibleRecordParquet
+                .From(new ReadOnlyMemory<byte>(bytes))
+                .WithOptions(options)
+                .Parallel()
+                .ToListAsync()
         );
 
         await Should.ThrowAsync<InvalidDataException>(async () =>
         {
             await foreach (
-                var _ in CompressibleRecordParquetExtensions.ReadParquetStreamAsync(
-                    new MemoryStream(bytes),
-                    options
-                )
+                var _ in CompressibleRecordParquet
+                    .From(new MemoryStream(bytes))
+                    .WithOptions(options)
+                    .AsAsyncEnumerable()
             ) { }
         });
     }
@@ -192,10 +197,10 @@ public sealed class SerializerOptionsTests
         };
 
         var exception = await Should.ThrowAsync<InvalidDataException>(() =>
-            CompressibleRecordParquetExtensions.ReadParquetAsync(
-                new MemoryStream(written.ToArray()),
-                options
-            )
+            CompressibleRecordParquet
+                .From(new MemoryStream(written.ToArray()))
+                .WithOptions(options)
+                .ToListAsync()
         );
 
         exception.Message.ShouldContain("expands from");
@@ -221,9 +226,7 @@ public sealed class SerializerOptionsTests
         await written.WriteParquetAsync(stream);
         stream.Position = 0;
 
-        List<MicrosecondRecord> read = await MicrosecondRecordParquetExtensions.ReadParquetAsync(
-            stream
-        );
+        List<MicrosecondRecord> read = await MicrosecondRecordParquet.From(stream).ToListAsync();
 
         read.ShouldHaveSingleItem();
 

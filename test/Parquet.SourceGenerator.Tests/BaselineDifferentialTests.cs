@@ -48,9 +48,7 @@ public class BaselineDifferentialTests
 
         // 3. Deserialize using Parquet.SourceGenerator stream reader (AOT-safe, source generated)
         stream.Position = 0;
-        List<BaselineRecord> actual = await BaselineRecordParquetExtensions.ReadParquetAsync(
-            stream
-        );
+        List<BaselineRecord> actual = await BaselineRecordParquet.From(stream).ToListAsync();
 
         // 4. Assert symmetric identity
         actual.Count.ShouldBe(expected.Count);

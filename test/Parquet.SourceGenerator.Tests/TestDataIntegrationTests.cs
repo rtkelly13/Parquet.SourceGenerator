@@ -75,13 +75,13 @@ public sealed class TestDataIntegrationTests
         );
 
     [Fact]
-    public async Task ReadParquetAsyncDeserializesPyArrowV1Dataset()
+    public async Task ToListAsyncDeserializesPyArrowV1Dataset()
     {
         string filePath = Path.Combine(TestDataRoot, "v1", "01_small_flat_primitives.parquet");
         System.IO.File.Exists(filePath).ShouldBeTrue($"File not found: {filePath}");
 
         using var stream = System.IO.File.OpenRead(filePath);
-        var records = await TestUserRecordParquetExtensions.ReadParquetAsync(stream);
+        var records = await TestUserRecordParquet.From(stream).ToListAsync();
 
         records.Count.ShouldBe(100);
         records[0].Id.ShouldBe(0);
@@ -96,13 +96,13 @@ public sealed class TestDataIntegrationTests
     }
 
     [Fact]
-    public async Task ReadParquetAsyncDeserializesPyArrowV2Dataset()
+    public async Task ToListAsyncDeserializesPyArrowV2Dataset()
     {
         string filePath = Path.Combine(TestDataRoot, "v2", "01_small_flat_primitives.parquet");
         System.IO.File.Exists(filePath).ShouldBeTrue($"File not found: {filePath}");
 
         using var stream = System.IO.File.OpenRead(filePath);
-        var records = await TestUserRecordParquetExtensions.ReadParquetAsync(stream);
+        var records = await TestUserRecordParquet.From(stream).ToListAsync();
 
         records.Count.ShouldBe(100);
         records[50].Id.ShouldBe(50);
@@ -111,7 +111,7 @@ public sealed class TestDataIntegrationTests
     }
 
     [Fact]
-    public async Task ReadParquetAsyncDeserializesCSharpV3Dataset()
+    public async Task ToListAsyncDeserializesCSharpV3Dataset()
     {
         string filePath = Path.Combine(
             TestDataCSharpRoot,
@@ -121,7 +121,7 @@ public sealed class TestDataIntegrationTests
         System.IO.File.Exists(filePath).ShouldBeTrue($"File not found: {filePath}");
 
         using var stream = System.IO.File.OpenRead(filePath);
-        var records = await TestUserRecordParquetExtensions.ReadParquetAsync(stream);
+        var records = await TestUserRecordParquet.From(stream).ToListAsync();
 
         records.Count.ShouldBe(100);
         records[10].Id.ShouldBe(10);
@@ -130,7 +130,7 @@ public sealed class TestDataIntegrationTests
     }
 
     [Fact]
-    public async Task ReadParquetAsyncDeserializesNullableDataset()
+    public async Task ToListAsyncDeserializesNullableDataset()
     {
         string filePath = Path.Combine(
             TestDataCSharpRoot,
@@ -140,7 +140,7 @@ public sealed class TestDataIntegrationTests
         System.IO.File.Exists(filePath).ShouldBeTrue($"File not found: {filePath}");
 
         using var stream = System.IO.File.OpenRead(filePath);
-        var records = await TestNullableRecordParquetExtensions.ReadParquetAsync(stream);
+        var records = await TestNullableRecordParquet.From(stream).ToListAsync();
 
         records.Count.ShouldBe(10000);
         records[0].NullableInt.ShouldBeNull();
@@ -151,13 +151,13 @@ public sealed class TestDataIntegrationTests
     }
 
     [Fact]
-    public async Task ReadParquetAsyncDeserializesLargeScaleDataset()
+    public async Task ToListAsyncDeserializesLargeScaleDataset()
     {
         string filePath = Path.Combine(TestDataCSharpRoot, "v3", "05_large_scale_flat.parquet");
         System.IO.File.Exists(filePath).ShouldBeTrue($"File not found: {filePath}");
 
         using var stream = System.IO.File.OpenRead(filePath);
-        var records = await TestLargeFlatRecordParquetExtensions.ReadParquetAsync(stream);
+        var records = await TestLargeFlatRecordParquet.From(stream).ToListAsync();
 
         records.Count.ShouldBe(100000);
         records[0].Id.ShouldBe(0L);

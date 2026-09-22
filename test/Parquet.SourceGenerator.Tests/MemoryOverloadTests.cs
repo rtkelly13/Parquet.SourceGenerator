@@ -44,9 +44,9 @@ public sealed class MemoryOverloadTests
     {
         byte[] bytes = await WriteSampleAsync(5, 2);
 
-        List<BufferModel> read = await BufferModelParquetExtensions.ReadParquetAsync(
-            new ReadOnlyMemory<byte>(bytes)
-        );
+        List<BufferModel> read = await BufferModelParquet
+            .From(new ReadOnlyMemory<byte>(bytes))
+            .ToListAsync();
 
         read.Count.ShouldBe(5);
         read.Select(x => x.Id).ShouldBe(Enumerable.Range(1, 5));
@@ -57,9 +57,10 @@ public sealed class MemoryOverloadTests
     {
         byte[] bytes = await WriteSampleAsync(5, 2);
 
-        List<BufferModel> read = await BufferModelParquetExtensions.ReadParquetParallelAsync(
-            new ReadOnlyMemory<byte>(bytes)
-        );
+        List<BufferModel> read = await BufferModelParquet
+            .From(new ReadOnlyMemory<byte>(bytes))
+            .Parallel()
+            .ToListAsync();
 
         read.Count.ShouldBe(5);
         read.Select(x => x.Id).ShouldBe(Enumerable.Range(1, 5));
@@ -73,9 +74,9 @@ public sealed class MemoryOverloadTests
 
         var read = new List<BufferModel>();
         await foreach (
-            BufferModel item in BufferModelParquetExtensions.ReadParquetStreamAsync(
-                new ReadOnlyMemory<byte>(bytes)
-            )
+            BufferModel item in BufferModelParquet
+                .From(new ReadOnlyMemory<byte>(bytes))
+                .AsAsyncEnumerable()
         )
         {
             read.Add(item);
@@ -94,9 +95,9 @@ public sealed class MemoryOverloadTests
 
         var read = new List<BufferModel>();
         await foreach (
-            BufferModel item in BufferModelParquetExtensions.ReadParquetStreamAsync(
-                new ReadOnlyMemory<byte>(bytes)
-            )
+            BufferModel item in BufferModelParquet
+                .From(new ReadOnlyMemory<byte>(bytes))
+                .AsAsyncEnumerable()
         )
         {
             read.Add(item);
@@ -118,9 +119,9 @@ public sealed class MemoryOverloadTests
         byte[] padded = new byte[bytes.Length + 8];
         bytes.CopyTo(padded, 4);
 
-        List<BufferModel> read = await BufferModelParquetExtensions.ReadParquetAsync(
-            new ReadOnlyMemory<byte>(padded, 4, bytes.Length)
-        );
+        List<BufferModel> read = await BufferModelParquet
+            .From(new ReadOnlyMemory<byte>(padded, 4, bytes.Length))
+            .ToListAsync();
 
         read.Count.ShouldBe(4);
         read.Select(x => x.Id).ShouldBe(Enumerable.Range(1, 4));

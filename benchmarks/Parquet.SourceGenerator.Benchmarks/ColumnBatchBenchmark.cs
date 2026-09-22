@@ -73,7 +73,7 @@ public class ColumnBatchAggregationBenchmark
     public async Task<double> GeneratedPocoListAggregate()
     {
         using var stream = new MemoryStream(_parquetBytes);
-        List<ScaleEvent> rows = await ScaleEventParquetExtensions.ReadParquetAsync(stream);
+        List<ScaleEvent> rows = await ScaleEventParquet.From(stream).ToListAsync();
         double sum = 0;
         long sumB = 0;
         foreach (ScaleEvent row in rows)
@@ -93,7 +93,7 @@ public class ColumnBatchAggregationBenchmark
         using var stream = new MemoryStream(_parquetBytes);
         double sum = 0;
         long sumB = 0;
-        await foreach (ScaleEvent row in ScaleEventParquetExtensions.ReadParquetStreamAsync(stream))
+        await foreach (ScaleEvent row in ScaleEventParquet.From(stream).AsAsyncEnumerable())
         {
             sum += row.ValA;
             sumB += row.ValB;
@@ -109,9 +109,9 @@ public class ColumnBatchAggregationBenchmark
         double sum = 0;
         long sumB = 0;
         await foreach (
-            ScaleEventParquetExtensions.ColumnBatch batch in ScaleEventParquetExtensions.ReadParquetBatchesAsync(
-                stream
-            )
+            ScaleEventParquetExtensions.ColumnBatch batch in ScaleEventParquet
+                .From(stream)
+                .Batches()
         )
         {
             ReadOnlySpan<double> a = batch.ValASpan;
@@ -136,9 +136,9 @@ public class ColumnBatchAggregationBenchmark
         double sum = 0;
         long sumB = 0;
         await foreach (
-            ScaleEventParquetExtensions.ColumnBatch batch in ScaleEventParquetExtensions.ReadParquetBatchesAsync(
-                stream
-            )
+            ScaleEventParquetExtensions.ColumnBatch batch in ScaleEventParquet
+                .From(stream)
+                .Batches()
         )
         {
             sum += SumVectorized(batch.ValASpan);

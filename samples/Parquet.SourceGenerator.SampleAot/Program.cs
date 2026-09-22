@@ -59,8 +59,9 @@ internal static class Program
         // 2. Deserialize using zero-reflection compile-time generated stream reader
         memoryStream.Position = 0;
         Console.WriteLine("[2/2] Deserializing Parquet stream back to strong typed objects...");
-        List<FinancialTransaction> deserialized =
-            await FinancialTransactionParquetExtensions.ReadParquetAsync(memoryStream);
+        List<FinancialTransaction> deserialized = await FinancialTransactionParquet
+            .From(memoryStream)
+            .ToListAsync();
 
         Console.WriteLine($"✅ Successfully deserialized {deserialized.Count} records!");
         Console.WriteLine(

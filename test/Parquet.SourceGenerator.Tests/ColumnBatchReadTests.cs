@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Parquet.SourceGenerator.Emitter;
@@ -113,7 +114,7 @@ public sealed class ColumnBatchReadTests
 
         source.ShouldContain("public readonly struct ColumnBatch");
         source.ShouldContain(
-            "public static async global::System.Collections.Generic.IAsyncEnumerable<ColumnBatch> ReadParquetBatchesAsync("
+            "internal static async global::System.Collections.Generic.IAsyncEnumerable<ColumnBatch> ReadBatchesCoreAsync("
         );
         source.ShouldContain("public global::System.ReadOnlySpan<int> IdSpan =>");
         source.ShouldContain("public global::System.ReadOnlySpan<string> NameSpan =>");
@@ -132,7 +133,7 @@ public sealed class ColumnBatchReadTests
 
         string source = CodeEmitter.EmitSource(model);
         int start = source.IndexOf(
-            "IAsyncEnumerable<ColumnBatch> ReadParquetBatchesAsync(",
+            "IAsyncEnumerable<ColumnBatch> ReadBatchesCoreAsync(",
             StringComparison.Ordinal
         );
         (start > 0).ShouldBeTrue();
@@ -158,7 +159,7 @@ public sealed class ColumnBatchReadTests
 
         string source = CodeEmitter.EmitSource(model);
         int start = source.IndexOf(
-            "IAsyncEnumerable<ColumnBatch> ReadParquetBatchesAsync(",
+            "IAsyncEnumerable<ColumnBatch> ReadBatchesCoreAsync(",
             StringComparison.Ordinal
         );
         string batchApi = source.Substring(start);
@@ -229,7 +230,7 @@ public sealed class ColumnBatchReadTests
         string source = CodeEmitter.EmitSource(model);
 
         source.ShouldNotContain("ColumnBatch");
-        source.ShouldNotContain("ReadParquetBatchesAsync");
+        source.ShouldNotContain("ReadBatchesCoreAsync");
     }
 
     // ── Runtime behaviour ─────────────────────────────────────────────
@@ -248,9 +249,9 @@ public sealed class ColumnBatchReadTests
         int expectedGroupIndex = 0;
 
         await foreach (
-            ColumnBatchOrderParquetExtensions.ColumnBatch batch in ColumnBatchOrderParquetExtensions.ReadParquetBatchesAsync(
-                stream
-            )
+            ColumnBatchOrderParquetExtensions.ColumnBatch batch in ColumnBatchOrderParquet
+                .From(stream)
+                .Batches()
         )
         {
             batch.RowGroupIndex.ShouldBe(expectedGroupIndex++);
@@ -290,9 +291,9 @@ public sealed class ColumnBatchReadTests
         using MemoryStream stream = await WriteAsync(rows, rowGroupSize: 1_000);
         double batchTotal = 0;
         await foreach (
-            ColumnBatchOrderParquetExtensions.ColumnBatch batch in ColumnBatchOrderParquetExtensions.ReadParquetBatchesAsync(
-                stream
-            )
+            ColumnBatchOrderParquetExtensions.ColumnBatch batch in ColumnBatchOrderParquet
+                .From(stream)
+                .Batches()
         )
         {
             ReadOnlySpan<double> amounts = batch.AmountSpan;
@@ -304,9 +305,7 @@ public sealed class ColumnBatchReadTests
         }
 
         stream.Position = 0;
-        List<ColumnBatchOrder> poco = await ColumnBatchOrderParquetExtensions.ReadParquetAsync(
-            stream
-        );
+        List<ColumnBatchOrder> poco = await ColumnBatchOrderParquet.From(stream).ToListAsync();
         double pocoTotal = poco.Sum(r => r.Amount * (1 - (r.Discount ?? 0)));
 
         batchTotal.ShouldBe(pocoTotal, 0.000001);
@@ -366,9 +365,9 @@ public sealed class ColumnBatchReadTests
         using var stream = new MemoryStream(bytes, writable: false);
         double total = 0;
         await foreach (
-            ColumnBatchMetricParquetExtensions.ColumnBatch batch in ColumnBatchMetricParquetExtensions.ReadParquetBatchesAsync(
-                stream
-            )
+            ColumnBatchMetricParquetExtensions.ColumnBatch batch in ColumnBatchMetricParquet
+                .From(stream)
+                .Batches()
         )
         {
             ReadOnlySpan<double> values = batch.ValueSpan;
@@ -384,9 +383,7 @@ public sealed class ColumnBatchReadTests
     private static async Task<double> SumViaPocoAsync(byte[] bytes)
     {
         using var stream = new MemoryStream(bytes, writable: false);
-        List<ColumnBatchMetric> rows = await ColumnBatchMetricParquetExtensions.ReadParquetAsync(
-            stream
-        );
+        List<ColumnBatchMetric> rows = await ColumnBatchMetricParquet.From(stream).ToListAsync();
         double total = 0;
         foreach (ColumnBatchMetric row in rows)
         {
@@ -404,9 +401,9 @@ public sealed class ColumnBatchReadTests
 
         var ids = new List<long>();
         await foreach (
-            ColumnBatchOrderParquetExtensions.ColumnBatch batch in ColumnBatchOrderParquetExtensions.ReadParquetBatchesAsync(
-                new ReadOnlyMemory<byte>(bytes)
-            )
+            ColumnBatchOrderParquetExtensions.ColumnBatch batch in ColumnBatchOrderParquet
+                .From(new ReadOnlyMemory<byte>(bytes))
+                .Batches()
         )
         {
             ReadOnlySpan<long> span = batch.OrderIdSpan;
@@ -466,9 +463,9 @@ public sealed class ColumnBatchReadTests
 
         int batches = 0;
         await foreach (
-            ColumnBatchOrderParquetExtensions.ColumnBatch batch in ColumnBatchOrderParquetExtensions.ReadParquetBatchesAsync(
-                stream
-            )
+            ColumnBatchOrderParquetExtensions.ColumnBatch batch in ColumnBatchOrderParquet
+                .From(stream)
+                .Batches()
         )
         {
             batches += batch.RowCount;
@@ -484,6 +481,11 @@ public sealed class ColumnBatchReadTests
         // with a list member exposes no ColumnBatch nested type.
         Type extensions = typeof(ColumnBatchWithListParquetExtensions);
         extensions.GetNestedType("ColumnBatch").ShouldBeNull();
-        extensions.GetMethod("ReadParquetBatchesAsync").ShouldBeNull();
+        extensions
+            .GetMethod(
+                "ReadBatchesCoreAsync",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static
+            )
+            .ShouldBeNull();
     }
 }
