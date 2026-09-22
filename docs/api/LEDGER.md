@@ -112,6 +112,50 @@ The rule, the three surfaces and the author process are in
   published consumers to warn; keep the members under the same names as `internal` — rejected, a
   consumer's own assembly could keep calling them and the removal would not be visible to it.
 
+### 2026-09-22 — `NullableColumnExtractor` and `VectorizedColumnTransforms` internalised (#461)
+
+- **Surface:** package
+- **Semver:** breaking-major
+- **Issue:** [#461](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/461), part of
+  [#477](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/477)
+- **Change:** **removes** 24 lines from `src/Parquet.SourceGenerator.Attributes/PublicAPI.Unshipped.txt`
+  — both type declarations, the 5 static members of `NullableColumnExtractor` and the 17 static
+  members of `VectorizedColumnTransforms` (15 methods, 2 properties). Both types are now `internal`;
+  the Attributes assembly grants `InternalsVisibleTo` to `Parquet.SourceGenerator.Tests` and
+  `Parquet.SourceGenerator.Benchmarks`, which are their only callers.
+- **Rationale:** neither type is called by generated code — no golden `.g.cs` and no emitter string
+  names either — so they were spike helpers (#145, #210) riding in the shipped package with no
+  consumer use case. Freezing them at `0.1.0` would have committed the package to a SIMD helper
+  API nobody chose to publish. Never in a cut release's `PublicAPI.Shipped.txt`.
+- **Alternatives considered:** deleting both types — rejected in #461 in favour of internalising,
+  because their tests and the `NullBitmapExtractionBenchmark` probe keep measurement evidence that
+  a later columnar write path may need. Keeping them public under an `Experimental` marker —
+  rejected: an experimental public type is still a public type at the freeze.
+
+### 2026-09-22 — generator assemblies carry no public API (#461)
+
+- **Surface:** package
+- **Semver:** internal
+- **Issue:** [#461](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/461), part of
+  [#477](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/477)
+- **Change:** **removes** `src/Parquet.SourceGenerator/PublicAPI.Shipped.txt` (92 signatures) and
+  `PublicAPI.Unshipped.txt` (79 signatures), 171 in all, together with that project's
+  `Microsoft.CodeAnalysis.PublicApiAnalyzers` reference. Every type in `Parquet.SourceGenerator`
+  and `Parquet.SourceGenerator.Legacy` is now `internal`, including both `[Generator]` entry
+  points. The binary-compat constructor overloads on `TargetClassModel` (3- and 5-argument) and
+  `PropertyModel` (10- and 11-argument) are deleted; every call site already binds to the primary
+  constructor through its optional parameters.
+- **Rationale:** both packages set `IncludeBuildOutput=false` and ship the assembly only under
+  `analyzers/dotnet/cs`, so no consumer can compile against it and none of those 171 signatures
+  was reachable. Governing them as package API made every internal refactor of the parser and the
+  models a ledger event, and the compat overloads existed only to satisfy that governance. Bucketed
+  `internal` rather than `breaking-major` because no consumer can observe the change; the members'
+  own `public` spellings inside now-`internal` types are not seams (docs/18 §What counts as a seam).
+- **Alternatives considered:** keeping the `[Generator]` classes `public` — rejected: Roslyn
+  instantiates generators by reflection and loads `internal` ones (verified by the sample and the
+  package-consumption projects), so public-ness buys nothing. Keeping the `PublicAPI.*.txt` files
+  and marking everything `internal` in them — rejected: there is nothing left for `RS0016` to guard.
+
 ### 2026-09-17 — dictionary and string payload safety limits (#307)
 
 - **Surface:** unshipped

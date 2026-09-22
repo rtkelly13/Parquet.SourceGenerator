@@ -11,7 +11,7 @@ namespace Parquet.SourceGenerator.Legacy;
 /// Emits zero-reflection schema definitions, column serializers, and deserializers at compile time.
 /// </summary>
 [Generator(LanguageNames.CSharp)]
-public sealed class ParquetLegacyIncrementalGenerator : IIncrementalGenerator
+internal sealed class ParquetLegacyIncrementalGenerator : IIncrementalGenerator
 {
     /// <summary>
     /// Initializes the incremental generator pipeline.

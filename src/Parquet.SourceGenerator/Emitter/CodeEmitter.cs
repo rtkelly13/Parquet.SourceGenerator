@@ -14,7 +14,7 @@ namespace Parquet.SourceGenerator.Emitter;
 /// O(1) index-check schema field resolution, ArrayPool buffer recycling, zero-copy ReadOnlyMemory overloads,
 /// and Native AOT compatibility.
 /// </summary>
-public static class CodeEmitter
+internal static class CodeEmitter
 {
     /// <summary>
     /// Generates complete C# source code string for a given target model.

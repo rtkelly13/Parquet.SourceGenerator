@@ -14,7 +14,7 @@ namespace Parquet.SourceGenerator.Parser;
 /// <summary>
 /// Result container holding parsed target model and pipeline diagnostics.
 /// </summary>
-public sealed record TargetParserResult(
+internal sealed record TargetParserResult(
     TargetClassModel? Model,
     EquatableArray<DiagnosticInfo> Diagnostics
 );
@@ -22,7 +22,7 @@ public sealed record TargetParserResult(
 /// <summary>
 /// Extracts semantic models from Roslyn syntax contexts for decorated target types and validates compiler rules.
 /// </summary>
-public static class TargetParser
+internal static class TargetParser
 {
     private const string AttributeFullName = "Parquet.SourceGenerator.ParquetSerializableAttribute";
     private const string ColumnAttributeFullName = "Parquet.SourceGenerator.ParquetColumnAttribute";

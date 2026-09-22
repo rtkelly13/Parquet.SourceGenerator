@@ -64,6 +64,10 @@ The documentation is organized into three distinct tiers based on audience and i
 6. **[29 - Generator Feature Levels](./29-FEATURE-LEVELS.md)**
    - Named compatibility levels, MSBuild and assembly configuration, and generated-output stamps.
 
+7. **[47 - 0.1 Contract & Design Goals](./47-0.1-CONTRACT-AND-DESIGN-GOALS.md)**
+   - What `0.1` means: a confidence and minimal-contract milestone, not "freeze everything" (#477).
+   - The three visibility tiers, the target consumer surface, and the `0.1` release gate.
+
 ---
 
 ### 🔬 Internals & Engineering Spikes

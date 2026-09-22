@@ -7,7 +7,6 @@ Parquet.SourceGenerator.ParquetGeneratorOptionsAttribute
 Parquet.SourceGenerator.ParquetGeneratorOptionsAttribute.FeatureLevel.get -> Parquet.SourceGenerator.ParquetGeneratorFeatureLevel
 Parquet.SourceGenerator.ParquetGeneratorOptionsAttribute.FeatureLevel.set -> void
 Parquet.SourceGenerator.ParquetGeneratorOptionsAttribute.ParquetGeneratorOptionsAttribute() -> void
-Parquet.SourceGenerator.NullableColumnExtractor
 Parquet.SourceGenerator.ParquetColumnAttribute.Deduplicate.get -> bool
 Parquet.SourceGenerator.ParquetColumnAttribute.Deduplicate.set -> void
 Parquet.SourceGenerator.ParquetColumnAttribute.Encoding.get -> Parquet.SourceGenerator.ParquetColumnEncoding
@@ -38,29 +37,6 @@ Parquet.SourceGenerator.ParquetSerializerOptions.MaxRowGroupCount.get -> int
 Parquet.SourceGenerator.ParquetSerializerOptions.MaxRowGroupCount.set -> void
 Parquet.SourceGenerator.ParquetSerializerOptions.MaxStringLengthBytes.get -> int
 Parquet.SourceGenerator.ParquetSerializerOptions.MaxStringLengthBytes.set -> void
-Parquet.SourceGenerator.VectorizedColumnTransforms
-static Parquet.SourceGenerator.NullableColumnExtractor.CompactInPlace<T>(System.Span<T> values, System.ReadOnlySpan<byte> presence) -> int
-static Parquet.SourceGenerator.NullableColumnExtractor.CountPresent(System.ReadOnlySpan<byte> presence) -> int
-static Parquet.SourceGenerator.NullableColumnExtractor.ExpandPresenceToDefinitionLevels(System.ReadOnlySpan<byte> presence, System.Span<int> definitionLevels) -> void
-static Parquet.SourceGenerator.NullableColumnExtractor.ExtractBranchless<T>(System.ReadOnlySpan<T?> source, System.Span<int> definitionLevels, System.Span<T> values) -> int
-static Parquet.SourceGenerator.NullableColumnExtractor.ExtractTwoPass<T>(System.ReadOnlySpan<T?> source, System.Span<byte> presence, System.Span<int> definitionLevels, System.Span<T> values) -> int
-static Parquet.SourceGenerator.VectorizedColumnTransforms.ConvertDateTimeToEpochMilliseconds(System.ReadOnlySpan<System.DateTime> source, System.Span<long> destination) -> void
-static Parquet.SourceGenerator.VectorizedColumnTransforms.ConvertDateTimeToEpochMicroseconds(System.ReadOnlySpan<System.DateTime> source, System.Span<long> destination) -> void
-static Parquet.SourceGenerator.VectorizedColumnTransforms.ConvertEpochMillisecondsToDateTime(System.ReadOnlySpan<long> source, System.Span<System.DateTime> destination) -> void
-static Parquet.SourceGenerator.VectorizedColumnTransforms.ConvertEpochMillisecondsToTicks(System.ReadOnlySpan<long> source, System.Span<long> destination) -> void
-static Parquet.SourceGenerator.VectorizedColumnTransforms.ConvertEpochMicrosecondsToDateTime(System.ReadOnlySpan<long> source, System.Span<System.DateTime> destination) -> void
-static Parquet.SourceGenerator.VectorizedColumnTransforms.ConvertEpochMicrosecondsToTicks(System.ReadOnlySpan<long> source, System.Span<long> destination) -> void
-static Parquet.SourceGenerator.VectorizedColumnTransforms.ConvertTicksToEpochMilliseconds(System.ReadOnlySpan<long> source, System.Span<long> destination) -> void
-static Parquet.SourceGenerator.VectorizedColumnTransforms.ConvertTicksToEpochMicroseconds(System.ReadOnlySpan<long> source, System.Span<long> destination) -> void
-static Parquet.SourceGenerator.VectorizedColumnTransforms.MultiplyScale(System.ReadOnlySpan<double> source, double factor, System.Span<double> destination) -> void
-static Parquet.SourceGenerator.VectorizedColumnTransforms.MultiplyScale(System.ReadOnlySpan<float> source, float factor, System.Span<float> destination) -> void
-static Parquet.SourceGenerator.VectorizedColumnTransforms.Narrow(System.ReadOnlySpan<int> source, System.Span<short> destination) -> void
-static Parquet.SourceGenerator.VectorizedColumnTransforms.Narrow(System.ReadOnlySpan<long> source, System.Span<int> destination) -> void
-static Parquet.SourceGenerator.VectorizedColumnTransforms.UnixEpochTicks.get -> long
-static Parquet.SourceGenerator.VectorizedColumnTransforms.UtcEpochConstant.get -> long
-static Parquet.SourceGenerator.VectorizedColumnTransforms.Widen(System.ReadOnlySpan<byte> source, System.Span<int> destination) -> void
-static Parquet.SourceGenerator.VectorizedColumnTransforms.Widen(System.ReadOnlySpan<int> source, System.Span<long> destination) -> void
-static Parquet.SourceGenerator.VectorizedColumnTransforms.Widen(System.ReadOnlySpan<short> source, System.Span<int> destination) -> void
 Parquet.SourceGenerator.ParquetPruneStatistics
 Parquet.SourceGenerator.ParquetPruneStatistics.ParquetPruneStatistics() -> void
 Parquet.SourceGenerator.ParquetPruneStatistics.FirstRowGroupRead.get -> int

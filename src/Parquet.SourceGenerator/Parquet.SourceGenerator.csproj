@@ -38,14 +38,16 @@
             VersionOverride="3.3.3"
             PrivateAssets="all"
         />
-        <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all" />
     </ItemGroup>
 
+    <!--
+    No Microsoft.CodeAnalysis.PublicApiAnalyzers and no PublicAPI.*.txt here (#461). Nothing can
+    reference this assembly — it ships only as an analyzer — so every type in it is internal and
+    there is no package surface to govern. The Attributes project keeps RS0016.
+  -->
     <ItemGroup>
         <!-- CA1502 / CA1505 / CA1506 thresholds. See docs/21-CODE-METRICS.md. -->
         <AdditionalFiles Include="..\..\CodeMetricsConfig.txt" />
-        <AdditionalFiles Include="PublicAPI.Shipped.txt" />
-        <AdditionalFiles Include="PublicAPI.Unshipped.txt" />
     </ItemGroup>
 
     <!--
