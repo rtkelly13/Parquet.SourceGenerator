@@ -22,7 +22,7 @@ public sealed record TargetParserResult(
 /// <summary>
 /// Extracts semantic models from Roslyn syntax contexts for decorated target types and validates compiler rules.
 /// </summary>
-public static class TargetParser
+public static partial class TargetParser
 {
     private const string AttributeFullName = "Parquet.SourceGenerator.ParquetSerializableAttribute";
     private const string ColumnAttributeFullName = "Parquet.SourceGenerator.ParquetColumnAttribute";
@@ -188,7 +188,10 @@ public static class TargetParser
                 typeSymbol,
             },
             CompoundDepth: 0
-        );
+        )
+        {
+            DeclaringType = typeSymbol,
+        };
         var sink = new MemberSink();
 
         CollectMembers(typeSymbol, scope, sink);
@@ -237,7 +240,10 @@ public static class TargetParser
             && !nestedUnreachable
             && !isGeneric;
 
-        bool hasSingleInstanceField = ComputeHasSingleInstanceField(typeSymbol);
+        // The single-field fast path reinterprets T[] as the field's primitive array. An adapted
+        // member's column is its surrogate, not the field's memory, so the cast would be wrong.
+        bool hasSingleInstanceField =
+            !sink.HasAdaptedMember && ComputeHasSingleInstanceField(typeSymbol);
 
         TargetClassModel? model = canEmit
             ? new TargetClassModel(
@@ -248,6 +254,9 @@ public static class TargetParser
                 IsUnmanaged: typeSymbol.IsUnmanagedType,
                 HasSingleInstanceField: hasSingleInstanceField
             )
+            {
+                AdapterShadows = BuildShadowSet(typeSymbol, namespaceName, sink.Shadows),
+            }
             : null;
 
         return new TargetParserResult(
@@ -388,7 +397,21 @@ public static class TargetParser
         List<DiagnosticInfo> Diagnostics,
         HashSet<INamedTypeSymbol> ContainmentPath,
         int CompoundDepth
-    );
+    )
+    {
+        /// <summary>
+        /// The type whose members are being collected — where an adapted member's storage shadow
+        /// is declared. Null only for scopes built before adapters existed (never at runtime).
+        /// </summary>
+        public INamedTypeSymbol? DeclaringType { get; init; }
+
+        /// <summary>
+        /// True while planning an adapter's structural surrogate: its members are mapped by the
+        /// ordinary rules — adapted members included, converted inline (docs/44 §A.4c) — and
+        /// nested groups need no <c>[ParquetSerializable]</c> (§9).
+        /// </summary>
+        public bool InSurrogate { get; init; }
+    }
 
     /// <summary>
     /// Per-type collection state: the columns found so far, the names claimed so far, and the
@@ -400,6 +423,15 @@ public static class TargetParser
         public HashSet<string> SeenColumnNames { get; } = new(StringComparer.OrdinalIgnoreCase);
         public List<PropertyModel> Properties { get; } = [];
         public bool RejectedAnyMember { get; set; }
+
+        /// <summary>Storage shadows this type's own partial declaration must carry.</summary>
+        public List<AdapterShadowModel> Shadows { get; } = [];
+
+        /// <summary>
+        /// True when any member resolved to an adapter, including an inherited one whose shadow a
+        /// base type declares. Disables layout-reinterpreting fast paths.
+        /// </summary>
+        public bool HasAdaptedMember { get; set; }
     }
 
     /// <summary>
@@ -623,8 +655,7 @@ public static class TargetParser
             );
         }
 
-        (int? precision, int? scale) = ReadDecimalOptions(member, scope, memberLocation);
-        string? timestampUnit = ReadTimestampUnit(member);
+        LeafOptions leafOptions = ReadLeafOptions(member, scope, memberLocation);
 
         // Unwrap Nullable<T> to get the underlying type for kind classification
         (ITypeSymbol underlyingType, bool isNullable) = UnwrapNullable(memberType);
@@ -634,6 +665,22 @@ public static class TargetParser
         // something accurate about it, and PARQ006 on top would fire constantly while typing.
         if (memberType.TypeKind == TypeKind.Error || underlyingType.TypeKind == TypeKind.Error)
             return;
+
+        // Adapter resolution sits before the unsupported-type failure (docs/44 §22): a member
+        // with no built-in mapping, or one that names an adapter explicitly, is planned through
+        // its adapter's surrogate instead.
+        if (
+            TryCollectAdaptedMember(
+                new AdaptedMember(member, memberType, underlyingType, isNullable, memberLocation),
+                column,
+                leafOptions,
+                scope,
+                sink
+            )
+        )
+        {
+            return;
+        }
 
         if (!TryClassifyKind(underlyingType, memberType, out PropertyKind kind))
         {
@@ -714,9 +761,9 @@ public static class TargetParser
             kind,
             column,
             isNullable,
-            precision,
-            scale,
-            timestampUnit
+            leafOptions.Precision,
+            leafOptions.Scale,
+            leafOptions.TimestampUnit
         );
 
         // Rule PARQ014: an opt-in marker the pruning rules reject is reported rather than
@@ -835,6 +882,20 @@ public static class TargetParser
         return new ColumnOptions(columnName, order, deduplicate, encoding, isSortKey);
     }
 
+    /// <summary>
+    /// The leaf annotations — <c>[ParquetDecimal]</c> (validated, PARQ005) and
+    /// <c>[ParquetTimestamp]</c> — that shape a member's column, adapted or not.
+    /// </summary>
+    private static LeafOptions ReadLeafOptions(
+        ISymbol member,
+        MemberScope scope,
+        Location memberLocation
+    )
+    {
+        (int? precision, int? scale) = ReadDecimalOptions(member, scope, memberLocation);
+        return new LeafOptions(precision, scale, ReadTimestampUnit(member));
+    }
+
     private static (int? Precision, int? Scale) ReadDecimalOptions(
         ISymbol member,
         MemberScope scope,
@@ -923,7 +984,7 @@ public static class TargetParser
         MemberSink sink
     )
     {
-        if (!TryClassifyCompound(underlyingType, out PropertyKind compoundKind))
+        if (!TryClassifyCompound(underlyingType, out PropertyKind compoundKind, scope.InSurrogate))
             return CompoundOutcome.NotRepresentable;
 
         // A compound shape the backend cannot emit yet is rejected exactly like an unsupported
@@ -955,7 +1016,9 @@ public static class TargetParser
             scope.ContainmentPath,
             scope.CompoundDepth,
             scope.CompoundKinds,
-            out bool compoundRejected
+            out bool compoundRejected,
+            typeNameOverride: null,
+            inSurrogate: scope.InSurrogate
         );
 
         if (compoundRejected)
@@ -1096,8 +1159,8 @@ public static class TargetParser
     /// </summary>
     /// <summary>
     /// M3b stack 2 scope for row-level lists under the pipeline dial: leaf elements (M3a) or
-    /// reference-POCO elements whose collectable members are all leaves. Value-type elements,
-    /// compound children inside elements, and lists inside compounds live in later stacks;
+    /// POCO elements — reference or value type — whose members are leaves or groups of leaves.
+    /// Deeper nesting inside elements, and lists inside compounds live in later stacks;
     /// the parser builds the full tree under its test dial regardless.
     /// </summary>
     private static bool ListElementShapeSupported(PropertyModel listModel)
@@ -1108,12 +1171,28 @@ public static class TargetParser
             return false;
         if (element.Kind != PropertyKind.Struct)
             return true;
-        if (element.CompoundIsValueType)
-            return false;
+        return ElementChildrenSupported(element);
+    }
+
+    /// <summary>
+    /// A list element's members may be leaves or groups of leaves (one nesting level inside the
+    /// element — a nested type, or an adapted member's group surrogate); nothing deeper.
+    /// </summary>
+    private static bool ElementChildrenSupported(PropertyModel element)
+    {
         foreach (PropertyModel child in element.Children)
         {
-            if (child.Kind is PropertyKind.Struct or PropertyKind.List or PropertyKind.Map)
+            if (child.Kind is PropertyKind.List or PropertyKind.Map)
                 return false;
+            if (
+                child.Kind == PropertyKind.Struct
+                && child.Children.Any(g =>
+                    g.Kind is PropertyKind.Struct or PropertyKind.List or PropertyKind.Map
+                )
+            )
+            {
+                return false;
+            }
         }
         return true;
     }
@@ -1133,7 +1212,11 @@ public static class TargetParser
     /// <c>Dictionary&lt;int, string&gt;</c> — whose key type is only checked when building the
     /// model, so the rejection surfaces as a member-level PARQ006 with the member's own name).
     /// </summary>
-    private static bool TryClassifyCompound(ITypeSymbol underlyingType, out PropertyKind kind)
+    private static bool TryClassifyCompound(
+        ITypeSymbol underlyingType,
+        out PropertyKind kind,
+        bool allowUnattributed = false
+    )
     {
         // byte[] reached PropertyKind.ByteArray as a leaf before this point; any other array is
         // a list of its element type.
@@ -1167,8 +1250,11 @@ public static class TargetParser
         if (
             underlyingType is INamedTypeSymbol pojo
             && (pojo.TypeKind == TypeKind.Class || pojo.TypeKind == TypeKind.Struct)
-            && pojo.GetAttributes()
-                .Any(a => a.AttributeClass?.ToDisplayString() == AttributeFullName)
+            && (
+                (allowUnattributed && pojo.SpecialType == SpecialType.None)
+                || pojo.GetAttributes()
+                    .Any(a => a.AttributeClass?.ToDisplayString() == AttributeFullName)
+            )
         )
         {
             kind = PropertyKind.Struct;
@@ -1204,7 +1290,9 @@ public static class TargetParser
         HashSet<INamedTypeSymbol> containmentPath,
         int compoundDepth,
         CompoundKinds compoundKinds,
-        out bool rejected
+        out bool rejected,
+        string? typeNameOverride,
+        bool inSurrogate
     )
     {
         rejected = false;
@@ -1227,7 +1315,9 @@ public static class TargetParser
             return null;
         }
 
-        string typeName = declaredType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        string typeName =
+            typeNameOverride
+            ?? declaredType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
         switch (kind)
         {
@@ -1235,7 +1325,13 @@ public static class TargetParser
                 var childSymbol = (INamedTypeSymbol)underlyingType;
                 string childName = GetNestedQualifiedTypeName(childSymbol);
 
-                if (childSymbol.TypeParameters.Length > 0)
+                // A generic [ParquetSerializable] child cannot be generated for (PARQ010). A closed
+                // construction of a generic surrogate (TaggedStorage<int>) is just a concrete
+                // group: its members are already substituted, so it is planned like any other.
+                bool closedSurrogate =
+                    inSurrogate
+                    && childSymbol.TypeArguments.All(a => a.TypeKind != TypeKind.TypeParameter);
+                if (childSymbol.TypeParameters.Length > 0 && !closedSurrogate)
                 {
                     diagnostics.Add(
                         new DiagnosticInfo(
@@ -1312,7 +1408,11 @@ public static class TargetParser
                     Diagnostics: diagnostics,
                     ContainmentPath: containmentPath,
                     CompoundDepth: compoundDepth + 1
-                );
+                )
+                {
+                    DeclaringType = childSymbol,
+                    InSurrogate = inSurrogate,
+                };
                 var childSink = new MemberSink();
 
                 CollectMembers(childSymbol, childScope, childSink);
@@ -1578,7 +1678,9 @@ public static class TargetParser
                 containmentPath,
                 compoundDepth,
                 compoundKinds,
-                out rejected
+                out rejected,
+                typeNameOverride: null,
+                inSurrogate: false
             );
             return nested;
         }

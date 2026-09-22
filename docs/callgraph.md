@@ -13,6 +13,7 @@ graph TD
     tparquetsourcegeneratoremittercodeemitter_043["Parquet.SourceGenerator.Emitter.CodeEmitter"]
     tparquetsourcegeneratoremittercolumnbatchcomponent_052["Parquet.SourceGenerator.Emitter.ColumnBatchComponent"]
     tparquetsourcegeneratoremittercolumnarcolumnarbatchcomponent_063["Parquet.SourceGenerator.Emitter.Columnar.ColumnarBatchComponent"]
+    tparquetsourcegeneratoremittercomponentsadaptershadowcomponent_065["Parquet.SourceGenerator.Emitter.Components.AdapterShadowComponent"]
     tparquetsourcegeneratoremittercomponentsarrowmappingcomponent_064["Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent"]
     tparquetsourcegeneratoremittercomponentsbatchvalidationcomponent_067["Parquet.SourceGenerator.Emitter.Components.BatchValidationComponent"]
     tparquetsourcegeneratoremittercomponentsbufferpoolcomponent_062["Parquet.SourceGenerator.Emitter.Components.BufferPoolComponent"]
@@ -31,9 +32,12 @@ graph TD
     tparquetsourcegeneratoremittersortedrowgrouppruningcomponent_062["Parquet.SourceGenerator.Emitter.SortedRowGroupPruningComponent"]
     tparquetsourcegeneratormodelsdiagnosticinfo_045["Parquet.SourceGenerator.Models.DiagnosticInfo"]
     tparquetsourcegeneratormodelsgeneratorconfiguration_053["Parquet.SourceGenerator.Models.GeneratorConfiguration"]
+    tparquetsourcegeneratormodelsinlineadaptermodel_049["Parquet.SourceGenerator.Models.InlineAdapterModel"]
     tparquetsourcegeneratormodelssortkeyeligibility_049["Parquet.SourceGenerator.Models.SortKeyEligibility"]
     tparquetsourcegeneratorparquetincrementalgenerator_051["Parquet.SourceGenerator.ParquetIncrementalGenerator"]
     tparquetsourcegeneratorparsertargetparser_043["Parquet.SourceGenerator.Parser.TargetParser"]
+    tparquetsourcegeneratorparsertypeadapterresolver_050["Parquet.SourceGenerator.Parser.TypeAdapterResolver"]
+    tparquetsourcegeneratorparsertypeadapterresolverregistry_059["Parquet.SourceGenerator.Parser.TypeAdapterResolver.Registry"]
     tparquetsourcegeneratoremitterarrowbridgeemitter_050 -->|2| tparquetsourcegeneratoremittercolumnarcolumnarbatchcomponent_063
     tparquetsourcegeneratoremitterarrowbridgeemitter_050 -->|6| tparquetsourcegeneratoremittercomponentsarrowmappingcomponent_064
     tparquetsourcegeneratoremitterarrowbridgeemitter_050 -->|3| tparquetsourcegeneratoremittercomponentsbufferpoolcomponent_062
@@ -63,6 +67,7 @@ graph TD
     tparquetsourcegeneratoremittercompoundcompoundbuffers_056 -->|4| tparquetsourcegeneratoremittercompoundemissionplan_053
     tparquetsourcegeneratoremittercompoundcompoundmapping_056 -->|2| tparquetsourcegeneratoremittercomponentspropertymappingcomponent_067
     tparquetsourcegeneratoremittercompoundcompoundmapping_056 -->|3| tparquetsourcegeneratoremittercompoundemissionplan_053
+    tparquetsourcegeneratoremittercompoundcompoundmapping_056 -->|8| tparquetsourcegeneratormodelsinlineadaptermodel_049
     tparquetsourcegeneratoremittercompoundcompoundschema_055 -->|1| tparquetsourcegeneratoremittercomponentsschemacomponent_058
     tparquetsourcegeneratoremittercompoundcompoundschema_055 -->|1| tparquetsourcegeneratoremittercompoundemissionplan_053
     tparquetsourcegeneratoremitterreadbuildercomponent_052 -->|1| tparquetsourcegeneratoremittercolumnbatchcomponent_052
@@ -72,8 +77,12 @@ graph TD
     tparquetsourcegeneratoremittersortedrowgrouppruningcomponent_062 -->|1| tparquetsourcegeneratormodelssortkeyeligibility_049
     tparquetsourcegeneratorparquetincrementalgenerator_051 -->|2| tparquetsourcegeneratoremitterarrowbridgeemitter_050
     tparquetsourcegeneratorparquetincrementalgenerator_051 -->|1| tparquetsourcegeneratoremittercodeemitter_043
+    tparquetsourcegeneratorparquetincrementalgenerator_051 -->|1| tparquetsourcegeneratoremittercomponentsadaptershadowcomponent_065
     tparquetsourcegeneratorparquetincrementalgenerator_051 -->|1| tparquetsourcegeneratormodelsdiagnosticinfo_045
     tparquetsourcegeneratorparquetincrementalgenerator_051 -->|1| tparquetsourcegeneratormodelsgeneratorconfiguration_053
     tparquetsourcegeneratorparquetincrementalgenerator_051 -->|1| tparquetsourcegeneratorparsertargetparser_043
     tparquetsourcegeneratorparsertargetparser_043 -->|1| tparquetsourcegeneratormodelssortkeyeligibility_049
+    tparquetsourcegeneratorparsertargetparser_043 -->|4| tparquetsourcegeneratorparsertypeadapterresolver_050
+    tparquetsourcegeneratorparsertypeadapterresolverregistry_059 -->|1| tparquetsourcegeneratorparsertypeadapterresolver_050
+    tparquetsourcegeneratorparsertypeadapterresolver_050 -->|2| tparquetsourcegeneratorparsertypeadapterresolverregistry_059
 ```

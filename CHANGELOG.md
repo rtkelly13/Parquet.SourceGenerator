@@ -11,6 +11,48 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 Changes since `0.0.4`; this section becomes the next release entry when one is cut.
 
 ### Added
+- **Compile-time type adapters** (`ParquetTypeAdapterAttribute`, `ParquetAdapterAttribute`,
+  `docs/44-TYPE-ADAPTERS.md`). A domain type the generator has no mapping for is serialized
+  through a static `ToStorage` / `FromStorage` pair to a surrogate it already maps — a scalar, or a
+  struct/class planned as a Parquet group without `[ParquetSerializable]`. Adapters are registered
+  explicitly (`[assembly: ParquetTypeAdapter(typeof(...))]` on the project or on an adapter
+  package) or chosen per member (`[ParquetAdapter(typeof(...))]`, the only way to override a
+  built-in mapping), resolved at compile time with deterministic precedence, and reached from
+  generated code through an internal storage property on the partial type — two direct static
+  calls, no reflection, no runtime registry, Native AOT verified. Nullability stays with the
+  generator. New diagnostics: **PARQ016** (invalid adapter), **PARQ017** (ambiguous defaults),
+  **PARQ018** (unrepresentable surrogate), **PARQ019** (built-in override ignored, warning).
+  Scalar surrogates work on the legacy 4.x/5.x backend too; group surrogates need Parquet.Net 6.
+- **Generic type adapters and adapted collection elements** (`docs/44-TYPE-ADAPTERS.md` §A.4a,
+  §A.4b). A descriptor may name an open generic source (`typeof(Id<>)`) served by generic
+  conversion methods or a generic adapter class, with a closed or same-arity generic surrogate;
+  the resolver closes it per member type, checks generic constraints, and lets an exact closed
+  registration specialise it. Collection members — `T[]`, `List<T>`, `IList<T>`,
+  `IReadOnlyList<T>`, `IEnumerable<T>` and the rest — adapt their elements inline in the list
+  emitter (one static call per element, no collection copies), with scalar or group surrogates,
+  nullable elements, and `[ParquetAdapter]` on the collection member selecting the element
+  adapter. Plain `List<SomeStruct>` / `SomeStruct?[]` members now work too: value-type list
+  elements were previously rejected.
+- **Serialization shapes reference** (`docs/46-SERIALIZATION-SHAPES.md`): every supported and
+  rejected model shape — leaves, nested types, lists and their element ladder, adapted types —
+  with the exact depth limits, worked examples and the Parquet schemas they produce. Each
+  statement is a case in `SerializationShapeMatrixTests`, so the page fails CI when it drifts.
+- **Adapted members inside custom types** (`docs/44-TYPE-ADAPTERS.md` §A.4c). A NodaTime (or any
+  adapted) field of a nested `[ParquetSerializable]` type, of a list element type, or of an
+  application surrogate converts inline where its parent is read and rebuilt — no shadow, no
+  extra `partial` requirement — so `List<Measurement>` with `Measurement.At : Instant`, and a
+  surrogate record holding `Instant` fields, both round-trip. List elements may now contain one
+  level of groups (nested types or adapted group surrogates), which also makes `ZonedDateTime`,
+  `Interval` and `DateInterval` usable as list elements.
+- **`Parquet.SourceGenerator.NodaTime`** — a new, independently published package
+  (`docs/45-NODATIME.md`). Referencing it makes `Instant`, `Duration`, `LocalDate`, `LocalTime`,
+  `LocalDateTime`, `Offset`, `OffsetDateTime`, `OffsetDate`, `OffsetTime`, `ZonedDateTime`,
+  `Interval`, `DateInterval`, `YearMonth`, `AnnualDate` and `Period` serializable with lossless
+  defaults: nanosecond precision over the full NodaTime range, calendar and offset identity,
+  unnormalized periods, and TZDB-validated zones that fail loudly on read if the installed zone
+  rules disagree with the offset observed at write time. Explicit interop adapters map to native
+  `DateTime` / `DateOnly` / `TimeOnly` / Unix-nanosecond columns and throw rather than truncate.
+  Supports NodaTime 3.2.0 and later; tested against 3.3.4.
 - **Code metrics baselines and a complexity ratchet** (`metrics/*.metrics.txt`,
   `docs/21-CODE-METRICS.md`). Roslyn's maintainability index, cyclomatic complexity, class
   coupling, inheritance depth and line counts are now recorded per namespace, type and member for
