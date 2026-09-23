@@ -70,6 +70,43 @@ public sealed class ArrowDecimalExactnessTests
         error.Message.ShouldContain("System.Decimal", Case.Sensitive);
     }
 
+    /// <summary>
+    /// Regression: an unscaled integer wider than 96 bits can still be exact once its trailing
+    /// decimal zeros are stripped. At Decimal128(38, 18), 10^19 is stored as 10^37.
+    /// </summary>
+    [Theory]
+    [InlineData("10000000000000000000.000000000000000000", "10000000000000000000")]
+    [InlineData("-12345678901234567890.000000000000000000", "-12345678901234567890")]
+    [InlineData("12345678901234567890.123400000000000000", "12345678901234567890.1234")]
+    public async Task WideValueWithTrailingZerosIsAcceptedExactly(string stored, string expected)
+    {
+        var builder = new Decimal128Array.Builder(Wide);
+        builder.Append(SqlDecimal.Parse(stored));
+        using RecordBatch batch = Batch(builder.Build());
+
+        List<ArrowWideDecimalRow> rows = await RoundTripAsync(batch);
+
+        rows.Single()
+            .Value.ShouldBe(
+                decimal.Parse(expected, System.Globalization.CultureInfo.InvariantCulture)
+            );
+    }
+
+    [Fact]
+    public async Task ValueStillTooWideAfterStrippingZerosIsRejected()
+    {
+        // 30 significant digits once the trailing zeros go: one more than System.Decimal holds.
+        var builder = new Decimal128Array.Builder(Wide);
+        builder.Append(SqlDecimal.Parse("12345678901234567890.123456789100000000"));
+        using RecordBatch batch = Batch(builder.Build());
+
+        InvalidDataException error = await Should.ThrowAsync<InvalidDataException>(async () =>
+            await RoundTripAsync(batch)
+        );
+
+        error.Message.ShouldContain("System.Decimal", Case.Sensitive);
+    }
+
     [Fact]
     public async Task ValuesAtTheSystemDecimalLimitsRoundTripExactly()
     {

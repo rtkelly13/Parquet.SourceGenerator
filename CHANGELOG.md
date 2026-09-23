@@ -155,9 +155,10 @@ Changes since `0.0.4`; this section becomes the next release entry when one is c
   read `Decimal128` values with Apache.Arrow's `Decimal128Array.GetValue`, which silently rounds a
   value with more significant digits than `System.Decimal` holds — so a 38-digit value in a
   `Decimal128(38, 18)` column (the default mapping) reached the Parquet file rounded, with no error.
-  The bridge now decodes the unscaled 128-bit integer itself, accepts it only when it fits
-  `System.Decimal`'s 96-bit mantissa, and otherwise throws `InvalidDataException` naming the column
-  and row. Found while building Arrow.SourceGenerator.
+  The bridge now decodes the unscaled 128-bit integer itself, strips trailing decimal zeros (so
+  `10^19` at scale 18, stored as `10^37`, is still read exactly), accepts the value only when it is
+  then exactly representable in `System.Decimal`, and otherwise throws `InvalidDataException` naming
+  the column and row. Found while building Arrow.SourceGenerator.
 - **Coexistence of the two row-group pruning mechanisms is now pinned by a behavioural
   test** (`PredicatePushdownAndSortedLookupCoexistOnOneModel`, completes #264's coverage).
   `SortedEvent` carries both the predicate zone-map path and three sort-key binary-search

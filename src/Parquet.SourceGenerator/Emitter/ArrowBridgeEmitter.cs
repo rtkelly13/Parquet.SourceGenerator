@@ -814,7 +814,7 @@ internal static class ArrowBridgeEmitter
             "    /// Reads one Decimal128 value exactly: the 128-bit two's-complement unscaled integer is"
         );
         builder.AppendLine(
-            "    /// accepted only when its magnitude fits System.Decimal's 96-bit mantissa. Never rounds."
+            "    /// accepted only when it is exactly representable in System.Decimal. Never rounds."
         );
         builder.AppendLine("    /// </summary>");
         builder.AppendLine("    private static decimal ArrowDecimalExact(");
@@ -841,12 +841,37 @@ internal static class ArrowBridgeEmitter
         builder.AppendLine("            high = ~high + (low == 0UL ? 1UL : 0UL);");
         builder.AppendLine("        }");
         builder.AppendLine();
-        builder.AppendLine("        if ((high >> 32) != 0UL)");
-        builder.AppendLine("        {");
-        builder.AppendLine("            throw new global::System.IO.InvalidDataException(");
         builder.AppendLine(
-            "                column + \": row \" + index + \" holds a Decimal128 value outside the range of System.Decimal; it is refused rather than rounded.\");"
+            "        // A wide unscaled integer can still be exact: strip trailing decimal zeros (reducing the"
         );
+        builder.AppendLine(
+            "        // scale) until the magnitude fits 96 bits and the scale fits 28; 10^19 at scale 18 is 10^37."
+        );
+        builder.AppendLine("        while ((high >> 32) != 0UL || scale > 28)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            ulong remainder = high >> 32;");
+        builder.AppendLine("            ulong q3 = remainder / 10UL;");
+        builder.AppendLine(
+            "            remainder = ((remainder % 10UL) << 32) | (high & 0xFFFFFFFFUL);"
+        );
+        builder.AppendLine("            ulong q2 = remainder / 10UL;");
+        builder.AppendLine("            remainder = ((remainder % 10UL) << 32) | (low >> 32);");
+        builder.AppendLine("            ulong q1 = remainder / 10UL;");
+        builder.AppendLine(
+            "            remainder = ((remainder % 10UL) << 32) | (low & 0xFFFFFFFFUL);"
+        );
+        builder.AppendLine("            ulong q0 = remainder / 10UL;");
+        builder.AppendLine("            if (scale == 0 || remainder % 10UL != 0UL)");
+        builder.AppendLine("            {");
+        builder.AppendLine("                throw new global::System.IO.InvalidDataException(");
+        builder.AppendLine(
+            "                    column + \": row \" + index + \" holds a Decimal128 value outside the range of System.Decimal; it is refused rather than rounded.\");"
+        );
+        builder.AppendLine("            }");
+        builder.AppendLine();
+        builder.AppendLine("            high = (q3 << 32) | q2;");
+        builder.AppendLine("            low = (q1 << 32) | q0;");
+        builder.AppendLine("            scale--;");
         builder.AppendLine("        }");
         builder.AppendLine();
         builder.AppendLine(
