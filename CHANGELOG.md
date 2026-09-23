@@ -151,6 +151,13 @@ Changes since `0.0.4`; this section becomes the next release entry when one is c
   only for code that referenced the Attributes helpers directly.
 
 ### Fixed
+- **Arrow bridge validation checks structure, not just the schema.** Before any column is cast or
+  sliced, `WriteParquetRowGroupAsync(writer, RecordBatch)` now also rejects: a field name that
+  appears more than once (it previously resolved silently to the first occurrence); a schema whose
+  declared type disagrees with the array it describes (previously an `InvalidCastException` from
+  inside the bridge); and Utf8/Binary offsets that decrease or run past the value buffer
+  (previously an `ArgumentOutOfRangeException` while slicing). Each is reported with the other
+  validation errors in the one `InvalidDataException`. Backported from Arrow.SourceGenerator.
 - **Arrow bridge no longer rounds wide decimals.** `WriteParquetRowGroupAsync(writer, RecordBatch)`
   read `Decimal128` values with Apache.Arrow's `Decimal128Array.GetValue`, which silently rounds a
   value with more significant digits than `System.Decimal` holds — so a 38-digit value in a
