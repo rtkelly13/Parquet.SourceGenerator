@@ -51,12 +51,14 @@ internal static class ArrowBridgeEmitter
 
         bool needsEpoch = false;
         bool needsGuid = false;
+        bool needsDecimal = false;
         bool needsFixedWidthView = false;
         for (int i = 0; i < model.Properties.Length; i++)
         {
             ArrowLeafMapping map = ArrowMappingComponent.TryMap(model.Properties[i])!;
             needsEpoch |= map.ConvertExpression?.Contains("_arrowUnixEpoch") == true;
             needsGuid |= map.ConvertExpression?.Contains("ArrowGuidFromBigEndian") == true;
+            needsDecimal |= map.ConvertExpression?.Contains("ArrowDecimalExact") == true;
             needsFixedWidthView |=
                 map.Mode == ArrowExtractionMode.Direct && !model.Properties[i].IsNullable;
         }
@@ -92,6 +94,12 @@ internal static class ArrowBridgeEmitter
         {
             builder.AppendLine();
             EmitGuidHelper(builder);
+        }
+
+        if (needsDecimal)
+        {
+            builder.AppendLine();
+            EmitDecimalHelper(builder);
         }
 
         builder.AppendLine("}");
@@ -792,6 +800,59 @@ internal static class ArrowBridgeEmitter
         builder.AppendLine("        }");
         builder.AppendLine("    }");
         builder.AppendLine("#endif");
+    }
+
+    /// <summary>
+    /// Emits the exact Decimal128 reader. Portable by construction — plain shifts over the 16
+    /// little-endian bytes, no <c>Int128</c> and no <c>BinaryPrimitives</c> — because the bridge is
+    /// emitted into any compilation that references Apache.Arrow, netstandard2.0 included.
+    /// </summary>
+    private static void EmitDecimalHelper(StringBuilder builder)
+    {
+        builder.AppendLine("    /// <summary>");
+        builder.AppendLine(
+            "    /// Reads one Decimal128 value exactly: the 128-bit two's-complement unscaled integer is"
+        );
+        builder.AppendLine(
+            "    /// accepted only when its magnitude fits System.Decimal's 96-bit mantissa. Never rounds."
+        );
+        builder.AppendLine("    /// </summary>");
+        builder.AppendLine("    private static decimal ArrowDecimalExact(");
+        builder.AppendLine("        global::Apache.Arrow.Decimal128Array array,");
+        builder.AppendLine("        int index,");
+        builder.AppendLine("        int scale,");
+        builder.AppendLine("        string column)");
+        builder.AppendLine("    {");
+        builder.AppendLine(
+            "        global::System.ReadOnlySpan<byte> bytes = array.GetBytes(index);"
+        );
+        builder.AppendLine("        ulong low = 0;");
+        builder.AppendLine("        ulong high = 0;");
+        builder.AppendLine("        for (int k = 7; k >= 0; k--)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            low = (low << 8) | bytes[k];");
+        builder.AppendLine("            high = (high << 8) | bytes[k + 8];");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        bool negative = (high & 0x8000000000000000UL) != 0;");
+        builder.AppendLine("        if (negative)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            low = ~low + 1UL;");
+        builder.AppendLine("            high = ~high + (low == 0UL ? 1UL : 0UL);");
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine("        if ((high >> 32) != 0UL)");
+        builder.AppendLine("        {");
+        builder.AppendLine("            throw new global::System.IO.InvalidDataException(");
+        builder.AppendLine(
+            "                column + \": row \" + index + \" holds a Decimal128 value outside the range of System.Decimal; it is refused rather than rounded.\");"
+        );
+        builder.AppendLine("        }");
+        builder.AppendLine();
+        builder.AppendLine(
+            "        return new decimal((int)(uint)low, (int)(uint)(low >> 32), (int)(uint)high, negative, (byte)scale);"
+        );
+        builder.AppendLine("    }");
     }
 
     private static void EmitGuidHelper(StringBuilder builder)
