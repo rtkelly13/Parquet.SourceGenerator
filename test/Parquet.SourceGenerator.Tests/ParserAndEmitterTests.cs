@@ -109,7 +109,7 @@ public sealed class ParserAndEmitterTests
         source.ShouldContain("TimeDataField");
         source.ShouldContain("WriteParquetRowGroupAsync");
         source.ShouldContain("WriteAllPartsAsync");
-        source.ShouldContain("ReadParquetParallelAsync");
+        source.ShouldContain("ReadParallelListCoreAsync");
         source.ShouldContain("if (missing_1 || chunkStats_1?.NullCount == rowCount)");
         source.ShouldContain("global::System.Array.Clear(buffer_1, 0, rowCount);");
         source.ShouldContain(
@@ -245,20 +245,10 @@ public sealed class ParserAndEmitterTests
     }
 
     [Fact]
-    public async Task ReadParquetAsyncNullStreamThrowsArgumentNullException()
+    public async Task ToListAsyncNullStreamThrowsArgumentNullException()
     {
         await Should.ThrowAsync<ArgumentNullException>(() =>
-            TypeCoverageRecordParquetExtensions.ReadParquetAsync((Stream)null!)
-        );
-    }
-
-    [Fact]
-    public async Task ReadParquetParallelAsyncNullStreamThrowsArgumentNullException()
-    {
-        // Cast required: ReadOnlyMemory<byte> has an implicit conversion from byte[], so a bare
-        // `null` is convertible to the buffer overload as well as the stream one.
-        await Should.ThrowAsync<ArgumentNullException>(() =>
-            TypeCoverageRecordParquetExtensions.ReadParquetParallelAsync((Stream)null!)
+            TypeCoverageRecordParquet.From((Stream)null!).ToListAsync()
         );
     }
 }

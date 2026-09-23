@@ -55,14 +55,14 @@ public sealed class SpanStringDeduplicationTests
     {
         byte[] bytes = await WriteAsync(items);
 
-        var deduplicated = await SpanDedupRecordParquetExtensions.ReadParquetAsync(
-            new MemoryStream(bytes),
-            Deduplicating
-        );
-        var plain = await SpanDedupRecordParquetExtensions.ReadParquetAsync(
-            new MemoryStream(bytes),
-            NotDeduplicating
-        );
+        var deduplicated = await SpanDedupRecordParquet
+            .From(new MemoryStream(bytes))
+            .WithOptions(Deduplicating)
+            .ToListAsync();
+        var plain = await SpanDedupRecordParquet
+            .From(new MemoryStream(bytes))
+            .WithOptions(NotDeduplicating)
+            .ToListAsync();
 
         deduplicated.Count.ShouldBe(items.Count);
         plain.Count.ShouldBe(items.Count);
@@ -108,10 +108,10 @@ public sealed class SpanStringDeduplicationTests
         await AssertRoundTripsAsync(items);
 
         byte[] bytes = await WriteAsync(items);
-        var read = await SpanDedupRecordParquetExtensions.ReadParquetAsync(
-            new MemoryStream(bytes),
-            Deduplicating
-        );
+        var read = await SpanDedupRecordParquet
+            .From(new MemoryStream(bytes))
+            .WithOptions(Deduplicating)
+            .ToListAsync();
 
         // An empty string must never be conflated with a null.
         read[0].OptionalCategory.ShouldBeNull();
@@ -139,10 +139,10 @@ public sealed class SpanStringDeduplicationTests
         await AssertRoundTripsAsync(items);
 
         byte[] bytes = await WriteAsync(items);
-        var read = await SpanDedupRecordParquetExtensions.ReadParquetAsync(
-            new MemoryStream(bytes),
-            Deduplicating
-        );
+        var read = await SpanDedupRecordParquet
+            .From(new MemoryStream(bytes))
+            .WithOptions(Deduplicating)
+            .ToListAsync();
 
         // A NUL must terminate nothing: full length has to be preserved.
         read[0].RequiredCategory.Length.ShouldBe(withNul.Length);
@@ -182,10 +182,10 @@ public sealed class SpanStringDeduplicationTests
         await AssertRoundTripsAsync(items);
 
         byte[] bytes = await WriteAsync(items);
-        var read = await SpanDedupRecordParquetExtensions.ReadParquetAsync(
-            new MemoryStream(bytes),
-            Deduplicating
-        );
+        var read = await SpanDedupRecordParquet
+            .From(new MemoryStream(bytes))
+            .WithOptions(Deduplicating)
+            .ToListAsync();
 
         // Two values sharing a 200,000-character prefix must not be conflated.
         read[0].RequiredCategory.ShouldBe(veryLong);
@@ -258,10 +258,10 @@ public sealed class SpanStringDeduplicationTests
         }
 
         byte[] bytes = await WriteAsync(items);
-        var read = await SpanDedupRecordParquetExtensions.ReadParquetAsync(
-            new MemoryStream(bytes),
-            Deduplicating
-        );
+        var read = await SpanDedupRecordParquet
+            .From(new MemoryStream(bytes))
+            .WithOptions(Deduplicating)
+            .ToListAsync();
 
         var distinctRequired = read.Select(r => r.RequiredCategory)
             .Distinct(ReferenceEqualityComparer.Instance)
@@ -306,14 +306,14 @@ public sealed class SpanStringDeduplicationTests
         // xUnit running collections in parallel an unrelated test's allocation lands inside the
         // window: the comparative form passed in isolation and failed in the full suite. Instance
         // identity is what deduplication actually promises, and it is deterministic.
-        var deduplicatedRead = await SpanDedupRecordParquetExtensions.ReadParquetAsync(
-            new MemoryStream(bytes),
-            Deduplicating
-        );
-        var plainRead = await SpanDedupRecordParquetExtensions.ReadParquetAsync(
-            new MemoryStream(bytes),
-            NotDeduplicating
-        );
+        var deduplicatedRead = await SpanDedupRecordParquet
+            .From(new MemoryStream(bytes))
+            .WithOptions(Deduplicating)
+            .ToListAsync();
+        var plainRead = await SpanDedupRecordParquet
+            .From(new MemoryStream(bytes))
+            .WithOptions(NotDeduplicating)
+            .ToListAsync();
 
         deduplicatedRead.Count.ShouldBe(items.Count);
         plainRead.Count.ShouldBe(items.Count);

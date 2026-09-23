@@ -110,10 +110,10 @@ public sealed class ParquetSerializerOptions
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Applies to <c>ReadParquetParallelAsync</c> over a <c>ReadOnlyMemory&lt;byte&gt;</c>, where
-    /// each worker gets its own reader over its own view of the buffer. The <c>Stream</c> overload
-    /// reads sequentially and ignores this: a stream cannot be shared between readers. The effective
-    /// worker count is capped at the file's row-group count.
+    /// Applies to the generated <c>From(ReadOnlyMemory&lt;byte&gt;).Parallel()</c> read, where each
+    /// worker gets its own reader over its own view of the buffer. Stream reads are sequential and
+    /// ignore this: a stream cannot be shared between readers, so the stream source offers no
+    /// <c>Parallel()</c>. The effective worker count is capped at the file's row-group count.
     /// </para>
     /// <para>
     /// This is the only place the degree of parallelism can be set. The parallel read methods carried

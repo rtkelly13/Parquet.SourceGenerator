@@ -53,25 +53,25 @@ public sealed class NullBypassReadTests
         }
 
         List<NullBypassRecord> sequential = await ReadSequentialAsync(parquet);
-        NullBypassRecord[] array = await NullBypassRecordParquetExtensions.ReadParquetArrayAsync(
-            new MemoryStream(parquet)
-        );
-        List<NullBypassRecord> parallel =
-            await NullBypassRecordParquetExtensions.ReadParquetParallelAsync(
-                new MemoryStream(parquet),
-                new ParquetSerializerOptions { MaxDegreeOfParallelism = 2 }
-            );
-        NullBypassRecord[] parallelArray =
-            await NullBypassRecordParquetExtensions.ReadParquetParallelArrayAsync(
-                parquet,
-                new ParquetSerializerOptions { MaxDegreeOfParallelism = 2 }
-            );
+        NullBypassRecord[] array = await NullBypassRecordParquet
+            .From(new MemoryStream(parquet))
+            .ToArrayAsync();
+        List<NullBypassRecord> parallel = await NullBypassRecordParquet
+            .From(parquet)
+            .WithOptions(new ParquetSerializerOptions { MaxDegreeOfParallelism = 2 })
+            .Parallel()
+            .ToListAsync();
+        NullBypassRecord[] parallelArray = await NullBypassRecordParquet
+            .From(parquet)
+            .WithOptions(new ParquetSerializerOptions { MaxDegreeOfParallelism = 2 })
+            .Parallel()
+            .ToArrayAsync();
 
         var streamed = new List<NullBypassRecord>();
         await foreach (
-            NullBypassRecord item in NullBypassRecordParquetExtensions.ReadParquetStreamAsync(
-                new MemoryStream(parquet)
-            )
+            NullBypassRecord item in NullBypassRecordParquet
+                .From(new MemoryStream(parquet))
+                .AsAsyncEnumerable()
         )
         {
             streamed.Add(item);
@@ -148,7 +148,7 @@ public sealed class NullBypassReadTests
 
     private static async Task<List<NullBypassRecord>> ReadSequentialAsync(byte[] parquet)
     {
-        return await NullBypassRecordParquetExtensions.ReadParquetAsync(new MemoryStream(parquet));
+        return await NullBypassRecordParquet.From(new MemoryStream(parquet)).ToListAsync();
     }
 
     private static void AssertAllNull(IEnumerable<NullBypassRecord> items)

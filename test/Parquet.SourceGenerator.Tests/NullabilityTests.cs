@@ -89,9 +89,7 @@ public sealed class NullabilityTests
         await written.WriteParquetAsync(stream);
         stream.Position = 0;
 
-        List<NullabilityModel> read = await NullabilityModelParquetExtensions.ReadParquetAsync(
-            stream
-        );
+        List<NullabilityModel> read = await NullabilityModelParquet.From(stream).ToListAsync();
 
         read.Count.ShouldBe(2);
         read[0].OptionalId.ShouldBeNull();

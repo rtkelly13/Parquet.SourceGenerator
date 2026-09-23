@@ -112,7 +112,7 @@ internal static class Program
         }
 
         stream.Position = 0;
-        List<Reading> actual = await ReadingParquetExtensions.ReadParquetAsync(stream);
+        List<Reading> actual = await ReadingParquet.From(stream).ToListAsync();
 
         if (actual.Count != expected.Count)
         {
@@ -205,27 +205,28 @@ internal static class Program
         byte[] bytes = mem.ToArray();
 
         // 1. Sequential buffer read
-        List<Reading> sequentialRead = await ReadingParquetExtensions.ReadParquetAsync(
-            new ReadOnlyMemory<byte>(bytes)
-        );
+        List<Reading> sequentialRead = await ReadingParquet
+            .From(new ReadOnlyMemory<byte>(bytes))
+            .ToListAsync();
         if (sequentialRead.Count != totalCount)
         {
             Console.Error.WriteLine(
-                $"FAILED: ReadParquetAsync(buffer) expected {totalCount} rows, got {sequentialRead.Count}."
+                $"FAILED: From(buffer).ToListAsync() expected {totalCount} rows, got {sequentialRead.Count}."
             );
             return false;
         }
 
         // 2. Parallel buffer read with degree of parallelism = 4
-        List<Reading> parallelRead = await ReadingParquetExtensions.ReadParquetParallelAsync(
-            new ReadOnlyMemory<byte>(bytes),
-            new ParquetSerializerOptions { MaxDegreeOfParallelism = 4 }
-        );
+        List<Reading> parallelRead = await ReadingParquet
+            .From(new ReadOnlyMemory<byte>(bytes))
+            .WithOptions(new ParquetSerializerOptions { MaxDegreeOfParallelism = 4 })
+            .Parallel()
+            .ToListAsync();
 
         if (parallelRead.Count != totalCount)
         {
             Console.Error.WriteLine(
-                $"FAILED: ReadParquetParallelAsync(buffer) expected {totalCount} rows, got {parallelRead.Count}."
+                $"FAILED: From(buffer).Parallel().ToListAsync() expected {totalCount} rows, got {parallelRead.Count}."
             );
             return false;
         }
@@ -260,9 +261,7 @@ internal static class Program
         await CrossVersionInteropDriver.CanonicalRows.WriteParquetAsync(stream);
         stream.Position = 0;
 
-        List<InteropRowEvolved> read = await InteropRowEvolvedParquetExtensions.ReadParquetAsync(
-            stream
-        );
+        List<InteropRowEvolved> read = await InteropRowEvolvedParquet.From(stream).ToListAsync();
 
         string? failure = InteropVerification.Verify(read, CrossVersionInteropDriver.CanonicalRows);
         if (failure is not null)
@@ -278,7 +277,7 @@ internal static class Program
     {
         using var stream = new MemoryStream(bytes);
         int count = 0;
-        await foreach (var item in ReadingParquetExtensions.ReadParquetStreamAsync(stream))
+        await foreach (var item in ReadingParquet.From(stream).AsAsyncEnumerable())
         {
             count++;
         }
@@ -286,7 +285,7 @@ internal static class Program
         if (count != expectedCount)
         {
             Console.Error.WriteLine(
-                $"FAILED: ReadParquetStreamAsync streamed {count} records, expected {expectedCount}."
+                $"FAILED: AsAsyncEnumerable() streamed {count} records, expected {expectedCount}."
             );
             return false;
         }

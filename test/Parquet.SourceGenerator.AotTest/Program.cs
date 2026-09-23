@@ -347,7 +347,7 @@ internal static class Program
         Expect(stream.Length > 0, "write produced an empty stream");
 
         stream.Position = 0;
-        List<AotWideRecord> read = await AotWideRecordParquetExtensions.ReadParquetAsync(stream);
+        List<AotWideRecord> read = await AotWideRecordParquet.From(stream).ToListAsync();
 
         Expect(read.Count == written.Count, $"expected {written.Count} rows, read {read.Count}");
         for (int i = 0; i < written.Count; i++)
@@ -388,9 +388,7 @@ internal static class Program
         using var stream = new MemoryStream();
         await written.WriteParquetAsync(stream);
         stream.Position = 0;
-        List<AotNullableRecord> read = await AotNullableRecordParquetExtensions.ReadParquetAsync(
-            stream
-        );
+        List<AotNullableRecord> read = await AotNullableRecordParquet.From(stream).ToListAsync();
 
         Expect(read.Count == 3, $"expected 3 rows, read {read.Count}");
 
@@ -448,10 +446,10 @@ internal static class Program
         stream.Position = 0;
 
         var options = new ParquetSerializerOptions { DeduplicateStrings = true };
-        List<AotNullableRecord> read = await AotNullableRecordParquetExtensions.ReadParquetAsync(
-            stream,
-            options
-        );
+        List<AotNullableRecord> read = await AotNullableRecordParquet
+            .From(stream)
+            .WithOptions(options)
+            .ToListAsync();
 
         Expect(read.Count == written.Count, $"expected {written.Count} rows, read {read.Count}");
 
@@ -500,7 +498,7 @@ internal static class Program
         using var stream = new MemoryStream();
         await written.WriteParquetAsync(stream);
         stream.Position = 0;
-        List<AotWideRecord> read = await AotWideRecordParquetExtensions.ReadParquetAsync(stream);
+        List<AotWideRecord> read = await AotWideRecordParquet.From(stream).ToListAsync();
 
         Expect(
             read[0].NotPersisted == "ignored",
@@ -519,7 +517,7 @@ internal static class Program
         using var stream = new MemoryStream();
         await new List<AotWideRecord> { sample }.WriteParquetAsync(stream);
         stream.Position = 0;
-        List<AotWideRecord> read = await AotWideRecordParquetExtensions.ReadParquetAsync(stream);
+        List<AotWideRecord> read = await AotWideRecordParquet.From(stream).ToListAsync();
 
         const long ticksPerMicrosecond = TimeSpan.TicksPerMillisecond / 1000;
         long expected = sample.MicrosecondValue.Ticks / ticksPerMicrosecond;
@@ -544,7 +542,7 @@ internal static class Program
             new ParquetSerializerOptions { RowGroupSize = 25 }
         );
         stream.Position = 0;
-        List<AotWideRecord> read = await AotWideRecordParquetExtensions.ReadParquetAsync(stream);
+        List<AotWideRecord> read = await AotWideRecordParquet.From(stream).ToListAsync();
 
         Expect(read.Count == 120, $"expected 120 rows across row groups, read {read.Count}");
         ExpectWideEqual(written[0], read[0], 0);
@@ -574,9 +572,9 @@ internal static class Program
         int groups = 0;
         string? lastLabel = null;
         await foreach (
-            AotNarrowRecordParquetExtensions.ColumnBatch batch in AotNarrowRecordParquetExtensions.ReadParquetBatchesAsync(
-                stream
-            )
+            AotNarrowRecordParquetExtensions.ColumnBatch batch in AotNarrowRecordParquet
+                .From(stream)
+                .Batches()
         )
         {
             Expect(batch.RowGroupIndex == groups, $"row group index out of order at {groups}");
@@ -617,11 +615,13 @@ internal static class Program
         stream.Position = 0;
 
         // Exercises the threaded path as well as the converters, since row groups decode
-        // concurrently.
-        List<AotWideRecord> read = await AotWideRecordParquetExtensions.ReadParquetParallelAsync(
-            stream,
-            new ParquetSerializerOptions { MaxDegreeOfParallelism = 4 }
-        );
+        // concurrently. Parallel() exists only on the buffer source: one reader over one stream
+        // cannot decode row groups concurrently.
+        List<AotWideRecord> read = await AotWideRecordParquet
+            .From(stream.ToArray())
+            .WithOptions(new ParquetSerializerOptions { MaxDegreeOfParallelism = 4 })
+            .Parallel()
+            .ToListAsync();
 
         Expect(read.Count == 120, $"expected 120 rows from the parallel reader, read {read.Count}");
         for (int i = 0; i < written.Count; i++)
@@ -639,7 +639,7 @@ internal static class Program
         await written.WriteParquetAsync(stream);
         ReadOnlyMemory<byte> buffer = stream.ToArray();
 
-        List<AotWideRecord> read = await AotWideRecordParquetExtensions.ReadParquetAsync(buffer);
+        List<AotWideRecord> read = await AotWideRecordParquet.From(buffer).ToListAsync();
 
         Expect(read.Count == 2, $"expected 2 rows from the buffer overload, read {read.Count}");
         ExpectWideEqual(written[0], read[0], 0);
@@ -662,9 +662,7 @@ internal static class Program
             .WriteParquetAsync(stream, new ParquetSerializerOptions { RowGroupSize = 16 });
         stream.Position = 0;
 
-        List<AotNarrowRecord> read = await AotNarrowRecordParquetExtensions.ReadParquetAsync(
-            stream
-        );
+        List<AotNarrowRecord> read = await AotNarrowRecordParquet.From(stream).ToListAsync();
 
         Expect(read.Count == 60, $"expected 60 streamed rows, read {read.Count}");
         Expect(read[0].Label == "streamed-0", "first streamed row is wrong");
@@ -681,9 +679,7 @@ internal static class Program
         await written.WriteParquetAsync(stream);
         stream.Position = 0;
 
-        List<AotReorderedRecord> read = await AotReorderedRecordParquetExtensions.ReadParquetAsync(
-            stream
-        );
+        List<AotReorderedRecord> read = await AotReorderedRecordParquet.From(stream).ToListAsync();
 
         Expect(read.Count == 1, $"expected 1 row, read {read.Count}");
         Expect(
@@ -790,9 +786,7 @@ internal static class Program
         Expect(stream.Length > 0, "columnar hand-off produced an empty stream");
 
         stream.Position = 0;
-        List<AotNullableRecord> read = await AotNullableRecordParquetExtensions.ReadParquetAsync(
-            stream
-        );
+        List<AotNullableRecord> read = await AotNullableRecordParquet.From(stream).ToListAsync();
 
         Expect(read.Count == rows, $"columnar hand-off: expected {rows} rows, read {read.Count}");
         for (int i = 0; i < rows; i++)
@@ -882,9 +876,7 @@ internal static class Program
             Expect(stream.Length > 0, $"{method}: write produced an empty stream");
 
             stream.Position = 0;
-            List<AotWideRecord> read = await AotWideRecordParquetExtensions.ReadParquetAsync(
-                stream
-            );
+            List<AotWideRecord> read = await AotWideRecordParquet.From(stream).ToListAsync();
 
             Expect(read.Count == 2, $"{method}: expected 2 rows, read {read.Count}");
             ExpectWideEqual(written[0], read[0], 0);
@@ -932,7 +924,7 @@ internal static class Program
         }
 
         stream.Position = 0;
-        List<AotArrowRecord> read = await AotArrowRecordParquetExtensions.ReadParquetAsync(stream);
+        List<AotArrowRecord> read = await AotArrowRecordParquet.From(stream).ToListAsync();
 
         Expect(read.Count == 3, $"expected 3 Arrow rows, read {read.Count}");
         Expect(read[0].Id == 11 && read[0].Label == "one", "Arrow row 0 mismatch");

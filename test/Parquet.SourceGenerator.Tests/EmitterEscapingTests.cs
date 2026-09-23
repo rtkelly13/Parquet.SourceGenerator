@@ -63,9 +63,7 @@ public sealed class EmitterEscapingTests
         await written.WriteParquetAsync(stream);
         stream.Position = 0;
 
-        List<AwkwardColumnNames> read = await AwkwardColumnNamesParquetExtensions.ReadParquetAsync(
-            stream
-        );
+        List<AwkwardColumnNames> read = await AwkwardColumnNamesParquet.From(stream).ToListAsync();
 
         read.ShouldHaveSingleItem();
         read[0].Quoted.ShouldBe(7);

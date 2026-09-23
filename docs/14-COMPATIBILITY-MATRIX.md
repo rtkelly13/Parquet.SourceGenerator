@@ -39,6 +39,11 @@ batched write, and row-group write. It does not promise the modern backend's bui
 parallel, streaming, column-batch, or Arrow members. Those capabilities remain modern-only until a
 separate compatibility decision is made.
 
+The two backends therefore read differently on purpose. The modern backend's only read surface is
+the builder (`<Model>Parquet.From(...)`); its flat `ReadParquet*Async` methods were removed before
+`0.1.0` (#480, [document 48](48-FLAT-READ-REMOVAL-480.md)). The classic backend has no builder, so its
+flat `ReadParquetAsync` and `ReadParquetArrayAsync` stay: they are its declared read subset.
+
 This is a product boundary, not an accidental emitter gap. `BackendCompatibilityPolicyTests` checks
 every checked-in classic `.api.txt` baseline and fails if a modern-only member name appears there or
 if a required core member disappears. A future feature must either stay within the declared core or

@@ -117,10 +117,10 @@ public static class FuzzRunner
         );
 
         using var stream = new MemoryStream(bytes, writable: false);
-        List<FuzzWideRecord> actual = await FuzzWideRecordParquetExtensions.ReadParquetAsync(
-            stream,
-            BuildOptions(fuzzCase)
-        );
+        List<FuzzWideRecord> actual = await FuzzWideRecordParquet
+            .From(stream)
+            .WithOptions(BuildOptions(fuzzCase))
+            .ToListAsync();
 
         if (actual.Count != rows.Count)
         {
@@ -150,10 +150,10 @@ public static class FuzzRunner
         byte[] bytes = await WriteWithGeneratedWriterAsync(rows, fuzzCase);
 
         using var stream = new MemoryStream(bytes, writable: false);
-        List<FuzzWideRecord> actual = await FuzzWideRecordParquetExtensions.ReadParquetAsync(
-            stream,
-            BuildOptions(fuzzCase)
-        );
+        List<FuzzWideRecord> actual = await FuzzWideRecordParquet
+            .From(stream)
+            .WithOptions(BuildOptions(fuzzCase))
+            .ToListAsync();
 
         if (actual.Count != rows.Count)
         {

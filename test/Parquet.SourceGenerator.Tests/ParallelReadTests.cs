@@ -65,9 +65,10 @@ public sealed class ParallelReadTests
         // the last group is a different size from the rest.
         byte[] bytes = await WriteAsync(rowCount: 1_050, rowGroupSize: 100);
 
-        List<ParallelRow> read = await ParallelRowParquetExtensions.ReadParquetParallelAsync(
-            new ReadOnlyMemory<byte>(bytes)
-        );
+        List<ParallelRow> read = await ParallelRowParquet
+            .From(new ReadOnlyMemory<byte>(bytes))
+            .Parallel()
+            .ToListAsync();
 
         read.Count.ShouldBe(1_050);
         read.Select(r => r.Id).ShouldBe(Enumerable.Range(1, 1_050));
@@ -78,12 +79,13 @@ public sealed class ParallelReadTests
     {
         byte[] bytes = await WriteAsync(rowCount: 1_050, rowGroupSize: 100);
 
-        List<ParallelRow> sequential = await ParallelRowParquetExtensions.ReadParquetAsync(
-            new ReadOnlyMemory<byte>(bytes)
-        );
-        List<ParallelRow> parallel = await ParallelRowParquetExtensions.ReadParquetParallelAsync(
-            new ReadOnlyMemory<byte>(bytes)
-        );
+        List<ParallelRow> sequential = await ParallelRowParquet
+            .From(new ReadOnlyMemory<byte>(bytes))
+            .ToListAsync();
+        List<ParallelRow> parallel = await ParallelRowParquet
+            .From(new ReadOnlyMemory<byte>(bytes))
+            .Parallel()
+            .ToListAsync();
 
         // Records compare structurally, so this covers the nullable column and the string column
         // as well as ordering — a buffer handed between workers would show up as a shifted value.
@@ -102,10 +104,13 @@ public sealed class ParallelReadTests
         // would otherwise mean readers opened for no work.
         byte[] bytes = await WriteAsync(rowCount: 500, rowGroupSize: 50);
 
-        List<ParallelRow> read = await ParallelRowParquetExtensions.ReadParquetParallelAsync(
-            new ReadOnlyMemory<byte>(bytes),
-            new ParquetSerializerOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism }
-        );
+        List<ParallelRow> read = await ParallelRowParquet
+            .From(new ReadOnlyMemory<byte>(bytes))
+            .WithOptions(
+                new ParquetSerializerOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism }
+            )
+            .Parallel()
+            .ToListAsync();
 
         read.Count.ShouldBe(500);
         read.Select(r => r.Id).ShouldBe(Enumerable.Range(1, 500));
@@ -120,10 +125,11 @@ public sealed class ParallelReadTests
         // instead of paying for a thread-pool hop and a second reader.
         byte[] bytes = await WriteAsync(rowCount: 25, rowGroupSize: 1_000);
 
-        List<ParallelRow> read = await ParallelRowParquetExtensions.ReadParquetParallelAsync(
-            new ReadOnlyMemory<byte>(bytes),
-            new ParquetSerializerOptions { MaxDegreeOfParallelism = 16 }
-        );
+        List<ParallelRow> read = await ParallelRowParquet
+            .From(new ReadOnlyMemory<byte>(bytes))
+            .WithOptions(new ParquetSerializerOptions { MaxDegreeOfParallelism = 16 })
+            .Parallel()
+            .ToListAsync();
 
         read.Count.ShouldBe(25);
         read.Select(r => r.Id).ShouldBe(Enumerable.Range(1, 25));
@@ -134,10 +140,11 @@ public sealed class ParallelReadTests
     {
         byte[] bytes = await WriteAsync(rowCount: 300, rowGroupSize: 50);
 
-        List<ParallelRow> read = await ParallelRowParquetExtensions.ReadParquetParallelAsync(
-            new ReadOnlyMemory<byte>(bytes),
-            new ParquetSerializerOptions { MaxDegreeOfParallelism = 2 }
-        );
+        List<ParallelRow> read = await ParallelRowParquet
+            .From(new ReadOnlyMemory<byte>(bytes))
+            .WithOptions(new ParquetSerializerOptions { MaxDegreeOfParallelism = 2 })
+            .Parallel()
+            .ToListAsync();
 
         read.Count.ShouldBe(300);
         read.Select(r => r.Id).ShouldBe(Enumerable.Range(1, 300));
@@ -152,11 +159,11 @@ public sealed class ParallelReadTests
         cts.Cancel();
 
         await Should.ThrowAsync<OperationCanceledException>(() =>
-            ParallelRowParquetExtensions.ReadParquetParallelAsync(
-                new ReadOnlyMemory<byte>(bytes),
-                new ParquetSerializerOptions { MaxDegreeOfParallelism = 4 },
-                cancellationToken: cts.Token
-            )
+            ParallelRowParquet
+                .From(new ReadOnlyMemory<byte>(bytes))
+                .WithOptions(new ParquetSerializerOptions { MaxDegreeOfParallelism = 4 })
+                .Parallel()
+                .ToListAsync(cts.Token)
         );
     }
 
@@ -169,9 +176,10 @@ public sealed class ParallelReadTests
         byte[] padded = new byte[bytes.Length + 16];
         bytes.CopyTo(padded, 8);
 
-        List<ParallelRow> read = await ParallelRowParquetExtensions.ReadParquetParallelAsync(
-            new ReadOnlyMemory<byte>(padded, 8, bytes.Length)
-        );
+        List<ParallelRow> read = await ParallelRowParquet
+            .From(new ReadOnlyMemory<byte>(padded, 8, bytes.Length))
+            .Parallel()
+            .ToListAsync();
 
         read.Count.ShouldBe(400);
         read.Select(r => r.Id).ShouldBe(Enumerable.Range(1, 400));
@@ -202,10 +210,11 @@ public sealed class ParallelReadTests
                 "The buffer must not be array-backed, or this test exercises the wrong branch."
             );
 
-        List<ParallelRow> read = await ParallelRowParquetExtensions.ReadParquetParallelAsync(
-            memory,
-            new ParquetSerializerOptions { MaxDegreeOfParallelism = 4 }
-        );
+        List<ParallelRow> read = await ParallelRowParquet
+            .From(memory)
+            .WithOptions(new ParquetSerializerOptions { MaxDegreeOfParallelism = 4 })
+            .Parallel()
+            .ToListAsync();
 
         read.Count.ShouldBe(400);
         read.Select(r => r.Id).ShouldBe(Enumerable.Range(1, 400));
@@ -307,10 +316,13 @@ public sealed class ParallelReadTests
                 Enumerable
                     .Range(0, 4)
                     .Select(_ =>
-                        ParallelRowParquetExtensions.ReadParquetParallelAsync(
-                            new ReadOnlyMemory<byte>(bytes),
-                            new ParquetSerializerOptions { MaxDegreeOfParallelism = 4 }
-                        )
+                        ParallelRowParquet
+                            .From(new ReadOnlyMemory<byte>(bytes))
+                            .WithOptions(
+                                new ParquetSerializerOptions { MaxDegreeOfParallelism = 4 }
+                            )
+                            .Parallel()
+                            .ToListAsync()
                     )
             );
 
@@ -322,41 +334,36 @@ public sealed class ParallelReadTests
     }
 
     [Fact]
-    public async Task ReadParquetArrayAsyncStreamAndBufferReturnsNativeArray()
+    public async Task ToArrayAsyncStreamAndBufferReturnsNativeArray()
     {
         byte[] bytes = await WriteAsync(rowCount: 50, rowGroupSize: 20);
 
         using var stream = new MemoryStream(bytes);
-        ParallelRow[] fromStream = await ParallelRowParquetExtensions.ReadParquetArrayAsync(stream);
+        ParallelRow[] fromStream = await ParallelRowParquet.From(stream).ToArrayAsync();
         fromStream.Length.ShouldBe(50);
         fromStream[0].Id.ShouldBe(1);
         fromStream[49].Id.ShouldBe(50);
 
-        ParallelRow[] fromBuffer = await ParallelRowParquetExtensions.ReadParquetArrayAsync(
-            new ReadOnlyMemory<byte>(bytes)
-        );
+        ParallelRow[] fromBuffer = await ParallelRowParquet
+            .From(new ReadOnlyMemory<byte>(bytes))
+            .ToArrayAsync();
         fromBuffer.Length.ShouldBe(50);
         fromBuffer[0].Id.ShouldBe(1);
         fromBuffer[49].Id.ShouldBe(50);
     }
 
     [Fact]
-    public async Task ReadParquetParallelArrayAsyncStreamAndBufferReturnsNativeArray()
+    public async Task ParallelToArrayAsyncReturnsNativeArray()
     {
+        // The stream half of this test covered the removed stream "parallel" overload, which read
+        // sequentially; the builder offers Parallel() only on a buffer (#480, docs/48).
         byte[] bytes = await WriteAsync(rowCount: 100, rowGroupSize: 25);
 
-        using var stream = new MemoryStream(bytes);
-        ParallelRow[] fromStream = await ParallelRowParquetExtensions.ReadParquetParallelArrayAsync(
-            stream
-        );
-        fromStream.Length.ShouldBe(100);
-        fromStream[0].Id.ShouldBe(1);
-        fromStream[99].Id.ShouldBe(100);
-
-        ParallelRow[] fromBuffer = await ParallelRowParquetExtensions.ReadParquetParallelArrayAsync(
-            new ReadOnlyMemory<byte>(bytes),
-            new ParquetSerializerOptions { MaxDegreeOfParallelism = 4 }
-        );
+        ParallelRow[] fromBuffer = await ParallelRowParquet
+            .From(new ReadOnlyMemory<byte>(bytes))
+            .WithOptions(new ParquetSerializerOptions { MaxDegreeOfParallelism = 4 })
+            .Parallel()
+            .ToArrayAsync();
         fromBuffer.Length.ShouldBe(100);
         fromBuffer[0].Id.ShouldBe(1);
         fromBuffer[99].Id.ShouldBe(100);
@@ -390,8 +397,8 @@ public sealed class ParallelReadTests
         string source = CodeEmitter.EmitSource(model);
 
         // Direct array reader overloads
-        source.ShouldContain("Task<TestEntity[]> ReadParquetArrayAsync(");
-        source.ShouldContain("Task<TestEntity[]> ReadParquetParallelArrayAsync(");
+        source.ShouldContain("Task<TestEntity[]> ReadArrayCoreAsync(");
+        source.ShouldContain("Task<TestEntity[]> ReadParallelArrayCoreAsync(");
 
         // Threshold fast paths
         source.ShouldContain(

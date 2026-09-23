@@ -98,7 +98,7 @@ public sealed class JsonSerializationAttributesTests
 
         // Read list
         ms.Position = 0;
-        var readList = await JsonAnnotatedModelParquetExtensions.ReadParquetAsync(ms);
+        var readList = await JsonAnnotatedModelParquet.From(ms).ToListAsync();
         readList.Count.ShouldBe(count);
         for (int i = 0; i < count; i++)
         {
@@ -111,24 +111,20 @@ public sealed class JsonSerializationAttributesTests
 
         // Read array
         ms.Position = 0;
-        var readArray = await JsonAnnotatedModelParquetExtensions.ReadParquetArrayAsync(ms);
+        var readArray = await JsonAnnotatedModelParquet.From(ms).ToArrayAsync();
         readArray.Length.ShouldBe(count);
         readArray[0].Name.ShouldBe(items[0].Name);
 
         // Read parallel
         byte[] bytes = ms.ToArray();
-        var parallelList = await JsonAnnotatedModelParquetExtensions.ReadParquetParallelAsync(
-            bytes
-        );
+        var parallelList = await JsonAnnotatedModelParquet.From(bytes).Parallel().ToListAsync();
         parallelList.Count.ShouldBe(count);
         parallelList[10].Score.ShouldBe(items[10].Score);
 
         // Read stream
         using var streamMs = new MemoryStream(bytes);
         int streamCount = 0;
-        await foreach (
-            var item in JsonAnnotatedModelParquetExtensions.ReadParquetStreamAsync(streamMs)
-        )
+        await foreach (var item in JsonAnnotatedModelParquet.From(streamMs).AsAsyncEnumerable())
         {
             item.Id.ShouldBe(items[streamCount].Id);
             streamCount++;
@@ -179,9 +175,7 @@ public sealed class JsonSerializationAttributesTests
         await Parquet.Serialization.ParquetSerializer.SerializeAsync(data, msReflection);
         msReflection.Position = 0;
 
-        var generatorResult = await JsonAnnotatedModelParquetExtensions.ReadParquetAsync(
-            msReflection
-        );
+        var generatorResult = await JsonAnnotatedModelParquet.From(msReflection).ToListAsync();
         generatorResult.Count.ShouldBe(2);
         generatorResult[1].Id.ShouldBe(102);
         generatorResult[1].Name.ShouldBe("Bob");

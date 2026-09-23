@@ -70,8 +70,9 @@ public sealed class BenchmarkBaselineEquivalenceTests
 
         // 1. Verify Source Generator deserializes every single field correctly
         using var sgStream = new MemoryStream(bytes);
-        List<BenchmarkScaleModel> sgResult =
-            await BenchmarkScaleModelParquetExtensions.ReadParquetAsync(sgStream);
+        List<BenchmarkScaleModel> sgResult = await BenchmarkScaleModelParquet
+            .From(sgStream)
+            .ToListAsync();
 
         sgResult.Count.ShouldBe(count);
         for (int i = 0; i < count; i++)
@@ -121,8 +122,9 @@ public sealed class BenchmarkBaselineEquivalenceTests
 
         // Source generator read
         using var sgStream = new MemoryStream(bytes);
-        List<BenchmarkGuidModel> sgResult =
-            await BenchmarkGuidModelParquetExtensions.ReadParquetAsync(sgStream);
+        List<BenchmarkGuidModel> sgResult = await BenchmarkGuidModelParquet
+            .From(sgStream)
+            .ToListAsync();
 
         // Reflection baseline read
         using var baselineStream = new MemoryStream(bytes);
@@ -170,7 +172,7 @@ public sealed class BenchmarkBaselineEquivalenceTests
         using (var s = new MemoryStream(bytes))
         {
             await ParquetSerializer.DeserializeAsync<BenchmarkScaleModel>(s);
-            await BenchmarkScaleModelParquetExtensions.ReadParquetAsync(s);
+            await BenchmarkScaleModelParquet.From(s).ToListAsync();
         }
 
         // Measure reflection baseline
@@ -189,7 +191,7 @@ public sealed class BenchmarkBaselineEquivalenceTests
             await AllocationMeasurement.MeasureAsync(async () =>
             {
                 using var s = new MemoryStream(bytes);
-                return await BenchmarkScaleModelParquetExtensions.ReadParquetArrayAsync(s);
+                return await BenchmarkScaleModelParquet.From(s).ToArrayAsync();
             });
         BenchmarkScaleModel[] generatedResult = generated.Result;
         generatedResult.Length.ShouldBe(count);

@@ -82,9 +82,7 @@ public sealed class ReaderAllocationTests
         );
         stream.Position = 0;
 
-        List<MultiRowGroupModel> read = await MultiRowGroupModelParquetExtensions.ReadParquetAsync(
-            stream
-        );
+        List<MultiRowGroupModel> read = await MultiRowGroupModelParquet.From(stream).ToListAsync();
 
         read.Count.ShouldBe(7);
         read.Select(x => x.Id).ShouldBe(written.Select(x => x.Id));
@@ -106,12 +104,15 @@ public sealed class ReaderAllocationTests
         );
 
         stream.Position = 0;
-        List<MultiRowGroupModel> sequential =
-            await MultiRowGroupModelParquetExtensions.ReadParquetAsync(stream);
+        List<MultiRowGroupModel> sequential = await MultiRowGroupModelParquet
+            .From(stream)
+            .ToListAsync();
 
         stream.Position = 0;
-        List<MultiRowGroupModel> parallel =
-            await MultiRowGroupModelParquetExtensions.ReadParquetParallelAsync(stream);
+        List<MultiRowGroupModel> parallel = await MultiRowGroupModelParquet
+            .From(stream.ToArray())
+            .Parallel()
+            .ToListAsync();
 
         parallel.Select(x => x.Id).ShouldBe(sequential.Select(x => x.Id));
         parallel.Select(x => x.Name).ShouldBe(sequential.Select(x => x.Name));

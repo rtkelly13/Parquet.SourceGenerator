@@ -154,13 +154,13 @@ public sealed class BenchmarkDatasetsIntegrationTests
     );
 
     [Fact]
-    public async Task ReadParquetAsyncDeserializesTpchLineitemDataset()
+    public async Task ToListAsyncDeserializesTpchLineitemDataset()
     {
         string filePath = Path.Combine(BenchmarkDataRoot, "tpch_lineitem_sf001.parquet");
         System.IO.File.Exists(filePath).ShouldBeTrue($"File not found: {filePath}");
 
         await using var stream = System.IO.File.OpenRead(filePath);
-        var records = await TpchLineItemRecordParquetExtensions.ReadParquetAsync(stream);
+        var records = await TpchLineItemRecordParquet.From(stream).ToListAsync();
 
         records.Count.ShouldBe(60175);
 
@@ -189,13 +189,13 @@ public sealed class BenchmarkDatasetsIntegrationTests
     }
 
     [Fact]
-    public async Task ReadParquetAsyncDeserializesAdultCensusIncomeDataset()
+    public async Task ToListAsyncDeserializesAdultCensusIncomeDataset()
     {
         string filePath = Path.Combine(BenchmarkDataRoot, "adult_census_income.parquet");
         System.IO.File.Exists(filePath).ShouldBeTrue($"File not found: {filePath}");
 
         await using var stream = System.IO.File.OpenRead(filePath);
-        var records = await AdultCensusRecordParquetExtensions.ReadParquetAsync(stream);
+        var records = await AdultCensusRecordParquet.From(stream).ToListAsync();
 
         records.Count.ShouldBe(32561);
 
@@ -218,13 +218,13 @@ public sealed class BenchmarkDatasetsIntegrationTests
     }
 
     [Fact]
-    public async Task ReadParquetAsyncDeserializesDiamondsDataset()
+    public async Task ToListAsyncDeserializesDiamondsDataset()
     {
         string filePath = Path.Combine(BenchmarkDataRoot, "diamonds.parquet");
         System.IO.File.Exists(filePath).ShouldBeTrue($"File not found: {filePath}");
 
         await using var stream = System.IO.File.OpenRead(filePath);
-        var records = await DiamondRecordParquetExtensions.ReadParquetAsync(stream);
+        var records = await DiamondRecordParquet.From(stream).ToListAsync();
 
         records.Count.ShouldBe(53940);
 
@@ -245,7 +245,7 @@ public sealed class BenchmarkDatasetsIntegrationTests
     {
         string filePath = Path.Combine(BenchmarkDataRoot, "tpch_lineitem_sf001.parquet");
         await using var stream = System.IO.File.OpenRead(filePath);
-        var original = await TpchLineItemRecordParquetExtensions.ReadParquetAsync(stream);
+        var original = await TpchLineItemRecordParquet.From(stream).ToListAsync();
 
         // Round-trip with Snappy
         using var snappyStream = new MemoryStream();
@@ -257,9 +257,7 @@ public sealed class BenchmarkDatasetsIntegrationTests
         await original.WriteParquetAsync(snappyStream, options: snappyOptions);
         snappyStream.Position = 0;
 
-        var roundtrippedSnappy = await TpchLineItemRecordParquetExtensions.ReadParquetAsync(
-            snappyStream
-        );
+        var roundtrippedSnappy = await TpchLineItemRecordParquet.From(snappyStream).ToListAsync();
         roundtrippedSnappy.Count.ShouldBe(original.Count);
         roundtrippedSnappy[0].OrderKey.ShouldBe(original[0].OrderKey);
         roundtrippedSnappy[0].Quantity.ShouldBe(original[0].Quantity);
@@ -276,9 +274,7 @@ public sealed class BenchmarkDatasetsIntegrationTests
         await original.WriteParquetAsync(zstdStream, options: zstdOptions);
         zstdStream.Position = 0;
 
-        var roundtrippedZstd = await TpchLineItemRecordParquetExtensions.ReadParquetAsync(
-            zstdStream
-        );
+        var roundtrippedZstd = await TpchLineItemRecordParquet.From(zstdStream).ToListAsync();
         roundtrippedZstd.Count.ShouldBe(original.Count);
         roundtrippedZstd[100].ExtendedPrice.ShouldBe(original[100].ExtendedPrice);
         roundtrippedZstd[100].ShipInstruct.ShouldBe(original[100].ShipInstruct);
@@ -289,7 +285,7 @@ public sealed class BenchmarkDatasetsIntegrationTests
     {
         string filePath = Path.Combine(BenchmarkDataRoot, "adult_census_income.parquet");
         await using var stream = System.IO.File.OpenRead(filePath);
-        var original = await AdultCensusRecordParquetExtensions.ReadParquetAsync(stream);
+        var original = await AdultCensusRecordParquet.From(stream).ToListAsync();
 
         using var outputStream = new MemoryStream();
         await original.WriteParquetBatchedAsync(
@@ -298,10 +294,11 @@ public sealed class BenchmarkDatasetsIntegrationTests
         );
         byte[] bytes = outputStream.ToArray();
 
-        var roundtripped = await AdultCensusRecordParquetExtensions.ReadParquetParallelAsync(
-            new ReadOnlyMemory<byte>(bytes),
-            new ParquetSerializerOptions { MaxDegreeOfParallelism = 4 }
-        );
+        var roundtripped = await AdultCensusRecordParquet
+            .From(new ReadOnlyMemory<byte>(bytes))
+            .WithOptions(new ParquetSerializerOptions { MaxDegreeOfParallelism = 4 })
+            .Parallel()
+            .ToListAsync();
 
         roundtripped.Count.ShouldBe(original.Count);
         for (int i = 0; i < 50; i++)
@@ -317,7 +314,7 @@ public sealed class BenchmarkDatasetsIntegrationTests
     {
         string filePath = Path.Combine(BenchmarkDataRoot, "tpch_lineitem_sf001.parquet");
         await using var stream1 = System.IO.File.OpenRead(filePath);
-        var sgRecords = await TpchLineItemRecordParquetExtensions.ReadParquetAsync(stream1);
+        var sgRecords = await TpchLineItemRecordParquet.From(stream1).ToListAsync();
 
         await using var stream2 = System.IO.File.OpenRead(filePath);
         var reflectionResult = await ParquetSerializer.DeserializeAsync<TpchLineItemRecord>(
@@ -352,7 +349,7 @@ public sealed class BenchmarkDatasetsIntegrationTests
     {
         string filePath = Path.Combine(BenchmarkDataRoot, "adult_census_income.parquet");
         await using var stream1 = System.IO.File.OpenRead(filePath);
-        var sgRecords = await AdultCensusRecordParquetExtensions.ReadParquetAsync(stream1);
+        var sgRecords = await AdultCensusRecordParquet.From(stream1).ToListAsync();
 
         await using var stream2 = System.IO.File.OpenRead(filePath);
         var reflectionResult = await ParquetSerializer.DeserializeAsync<AdultCensusRecord>(stream2);
@@ -384,7 +381,7 @@ public sealed class BenchmarkDatasetsIntegrationTests
     {
         string filePath = Path.Combine(BenchmarkDataRoot, "diamonds.parquet");
         await using var stream1 = System.IO.File.OpenRead(filePath);
-        var sgRecords = await DiamondRecordParquetExtensions.ReadParquetAsync(stream1);
+        var sgRecords = await DiamondRecordParquet.From(stream1).ToListAsync();
 
         await using var stream2 = System.IO.File.OpenRead(filePath);
         var reflectionResult = await ParquetSerializer.DeserializeAsync<DiamondRecord>(stream2);

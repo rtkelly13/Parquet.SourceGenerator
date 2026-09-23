@@ -189,6 +189,12 @@ The documentation is organized into three distinct tiers based on audience and i
 23. **[36 - Feature Profiles and Per-Type Overrides](./36-FEATURE-PROFILES-SCOPE-225.md)**
      - Scope decision for named profiles and per-type configuration overrides.
 
+24. **[48 - Flat-Read Removal Before 0.1 (#480)](./48-FLAT-READ-REMOVAL-480.md)**
+     - Removes the flat `ReadParquet*Async` methods from the modern emitter; the builder is the only
+       modern read surface. Supersedes [document 41](./41-FLAT-READ-FREEZE-SCOPE-262.md) (#262).
+     - The legacy emitter keeps its flat reads as its declared subset (#246); no `[Obsolete]` release.
+     - Measured shrinkage (−66 members, −222 parameter slots) and the flat → builder migration table.
+
 ---
 
 ## ⚡ Quick Summary of Intent

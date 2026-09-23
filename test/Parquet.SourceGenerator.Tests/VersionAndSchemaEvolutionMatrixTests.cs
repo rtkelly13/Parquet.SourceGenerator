@@ -601,7 +601,7 @@ public sealed class VersionAndSchemaEvolutionMatrixTests
         using MemoryStream stream = await WriteBaselineAsync();
         (string createdBy, string formatVersion) = await ReadFooterAsync(stream);
 
-        List<EvoBaseline> read = await EvoBaselineParquetExtensions.ReadParquetAsync(stream);
+        List<EvoBaseline> read = await EvoBaselineParquet.From(stream).ToListAsync();
         ParquetCompatibilityOracle.AssertEquivalent(BaselineRows(), read);
 
         return new MatrixObservation(
@@ -619,7 +619,7 @@ public sealed class VersionAndSchemaEvolutionMatrixTests
         using MemoryStream stream = await WriteBaselineAsync();
         (string createdBy, string formatVersion) = await ReadFooterAsync(stream);
 
-        List<EvoExtended> read = await EvoExtendedParquetExtensions.ReadParquetAsync(stream);
+        List<EvoExtended> read = await EvoExtendedParquet.From(stream).ToListAsync();
         AssertBaselineColumnsSurvived(read);
 
         return new MatrixObservation(
@@ -652,9 +652,10 @@ public sealed class VersionAndSchemaEvolutionMatrixTests
         using MemoryStream stream = await WriteBaselineAsync(rowGroupSize: 40);
         (string createdBy, string formatVersion) = await ReadFooterAsync(stream);
 
-        List<EvoExtended> read = await EvoExtendedParquetExtensions.ReadParquetParallelAsync(
-            stream
-        );
+        List<EvoExtended> read = await EvoExtendedParquet
+            .From(stream.ToArray())
+            .Parallel()
+            .ToListAsync();
         read.Count.ShouldBe(250);
         AssertAddedColumnsAreNull(read);
         read.OrderBy(r => r.Id).Select(r => r.Id).ShouldBe(Enumerable.Range(0, 250));
@@ -698,7 +699,7 @@ public sealed class VersionAndSchemaEvolutionMatrixTests
         stream.Position = 0;
         (string createdBy, string formatVersion) = await ReadFooterAsync(stream);
 
-        List<EvoSubset> read = await EvoSubsetParquetExtensions.ReadParquetAsync(stream);
+        List<EvoSubset> read = await EvoSubsetParquet.From(stream).ToListAsync();
 
         read.Count.ShouldBe(2);
         read.Select(r => r.Id).ShouldBe([1, 2]);
@@ -718,7 +719,7 @@ public sealed class VersionAndSchemaEvolutionMatrixTests
         (string createdBy, string formatVersion) = await ReadFooterAsync(stream);
 
         InvalidDataException exception = await Should.ThrowAsync<InvalidDataException>(() =>
-            EvoRequiresAbsentColumnParquetExtensions.ReadParquetAsync(stream)
+            EvoRequiresAbsentColumnParquet.From(stream).ToListAsync()
         );
         AssertClearMissingColumnError(exception, "absent_required");
 
@@ -766,7 +767,7 @@ public sealed class VersionAndSchemaEvolutionMatrixTests
         stream.Position = 0;
 
         (string createdBy, string formatVersion) = await ReadFooterAsync(stream);
-        List<EvoBaseline> read = await EvoBaselineParquetExtensions.ReadParquetAsync(stream);
+        List<EvoBaseline> read = await EvoBaselineParquet.From(stream).ToListAsync();
         ParquetCompatibilityOracle.AssertEquivalent(BaselineRows(), read);
 
         return new MatrixObservation(
@@ -802,7 +803,7 @@ public sealed class VersionAndSchemaEvolutionMatrixTests
             stream.Position = 0;
             (createdBy, formatVersion) = await ReadFooterAsync(stream);
 
-            List<EvoExtended> read = await EvoExtendedParquetExtensions.ReadParquetAsync(stream);
+            List<EvoExtended> read = await EvoExtendedParquet.From(stream).ToListAsync();
             AssertBaselineColumnsSurvived(read);
             AssertAddedColumnsAreNull(read);
         }
@@ -834,7 +835,7 @@ public sealed class VersionAndSchemaEvolutionMatrixTests
         await using FileStream stream = OpenFixture(path);
         (string createdBy, string formatVersion) = await ReadFooterAsync(stream);
 
-        List<TestUserRecord> read = await TestUserRecordParquetExtensions.ReadParquetAsync(stream);
+        List<TestUserRecord> read = await TestUserRecordParquet.From(stream).ToListAsync();
         read.Count.ShouldBe(expectedRows);
         read[0].Name.ShouldBe("user_0");
 
@@ -854,8 +855,9 @@ public sealed class VersionAndSchemaEvolutionMatrixTests
         await using FileStream stream = OpenFixture(path);
         (string createdBy, string formatVersion) = await ReadFooterAsync(stream);
 
-        List<EvoReversedFixtureUser> read =
-            await EvoReversedFixtureUserParquetExtensions.ReadParquetAsync(stream);
+        List<EvoReversedFixtureUser> read = await EvoReversedFixtureUserParquet
+            .From(stream)
+            .ToListAsync();
 
         read.Count.ShouldBe(expectedRows);
         // Positional resolution would transpose id and created_at_ms, which differ by orders of
@@ -883,13 +885,14 @@ public sealed class VersionAndSchemaEvolutionMatrixTests
 
         List<EvoFixtureUser> read = consumer switch
         {
-            ParallelReader => await EvoFixtureUserParquetExtensions.ReadParquetParallelAsync(
-                stream
-            ),
+            ParallelReader => await EvoFixtureUserParquet
+                .From(await BufferAsync(stream))
+                .Parallel()
+                .ToListAsync(),
             StreamingReader => await CollectAsync(
-                EvoFixtureUserParquetExtensions.ReadParquetStreamAsync(stream)
+                EvoFixtureUserParquet.From(stream).AsAsyncEnumerable()
             ),
-            _ => await EvoFixtureUserParquetExtensions.ReadParquetAsync(stream),
+            _ => await EvoFixtureUserParquet.From(stream).ToListAsync(),
         };
 
         read.Count.ShouldBe(expectedRows);
@@ -917,7 +920,7 @@ public sealed class VersionAndSchemaEvolutionMatrixTests
         await using FileStream stream = OpenFixture(path);
         (string createdBy, string formatVersion) = await ReadFooterAsync(stream);
 
-        List<EvoSubset> read = await EvoSubsetParquetExtensions.ReadParquetAsync(stream);
+        List<EvoSubset> read = await EvoSubsetParquet.From(stream).ToListAsync();
         read.Count.ShouldBe(expectedRows);
         read[0].Id.ShouldBe(0);
         read[0].Name.ShouldBe("user_0");
@@ -939,7 +942,7 @@ public sealed class VersionAndSchemaEvolutionMatrixTests
         (string createdBy, string formatVersion) = await ReadFooterAsync(stream);
 
         List<EvoSubset> read = await CollectAsync(
-            EvoSubsetParquetExtensions.ReadParquetStreamAsync(stream)
+            EvoSubsetParquet.From(stream).AsAsyncEnumerable()
         );
         read.Count.ShouldBe(expectedRows);
         read[0].Name.ShouldBe("user_0");
@@ -961,7 +964,7 @@ public sealed class VersionAndSchemaEvolutionMatrixTests
         (string createdBy, string formatVersion) = await ReadFooterAsync(stream);
 
         InvalidDataException exception = await Should.ThrowAsync<InvalidDataException>(() =>
-            EvoRequiresAbsentColumnParquetExtensions.ReadParquetAsync(stream)
+            EvoRequiresAbsentColumnParquet.From(stream).ToListAsync()
         );
         AssertClearMissingColumnError(exception, missingColumn);
 
@@ -983,7 +986,7 @@ public sealed class VersionAndSchemaEvolutionMatrixTests
         (string createdBy, string formatVersion) = await ReadFooterAsync(stream);
 
         InvalidDataException exception = await Should.ThrowAsync<InvalidDataException>(() =>
-            EvoNestedProbeParquetExtensions.ReadParquetAsync(stream)
+            EvoNestedProbeParquet.From(stream).ToListAsync()
         );
         AssertClearMissingColumnError(exception, "tags");
 
@@ -1002,9 +1005,7 @@ public sealed class VersionAndSchemaEvolutionMatrixTests
         );
         (string createdBy, string formatVersion) = await ReadFooterAsync(stream);
 
-        List<TpchLineItemRecord> read = await TpchLineItemRecordParquetExtensions.ReadParquetAsync(
-            stream
-        );
+        List<TpchLineItemRecord> read = await TpchLineItemRecordParquet.From(stream).ToListAsync();
 
         read.Count.ShouldBe(60175);
         read[0].OrderKey.ShouldBe(1L);
@@ -1055,17 +1056,32 @@ public sealed class VersionAndSchemaEvolutionMatrixTests
         }
     }
 
+    /// <summary>
+    /// The parallel consumer reads a buffer: <c>Parallel()</c> exists only on the in-memory source,
+    /// because one reader over one stream cannot decode row groups concurrently (#480).
+    /// </summary>
+    private static async Task<byte[]> BufferAsync(Stream stream)
+    {
+        stream.Position = 0;
+        using var buffer = new MemoryStream();
+        await stream.CopyToAsync(buffer);
+        return buffer.ToArray();
+    }
+
     private static async Task<List<EvoExtended>> ReadExtendedAsync(
         Stream stream,
         string consumer
     ) =>
         consumer switch
         {
-            ParallelReader => await EvoExtendedParquetExtensions.ReadParquetParallelAsync(stream),
+            ParallelReader => await EvoExtendedParquet
+                .From(await BufferAsync(stream))
+                .Parallel()
+                .ToListAsync(),
             StreamingReader => await CollectAsync(
-                EvoExtendedParquetExtensions.ReadParquetStreamAsync(stream)
+                EvoExtendedParquet.From(stream).AsAsyncEnumerable()
             ),
-            _ => await EvoExtendedParquetExtensions.ReadParquetAsync(stream),
+            _ => await EvoExtendedParquet.From(stream).ToListAsync(),
         };
 
     private static async Task<List<T>> CollectAsync<T>(IAsyncEnumerable<T> source)
