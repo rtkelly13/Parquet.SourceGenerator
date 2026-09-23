@@ -90,6 +90,33 @@ public sealed class ArrowBatchStructuralValidationTests
     }
 
     [Fact]
+    public async Task ArrayWhoseTypeParametersDisagreeWithTheSchemaIsRejected()
+    {
+        // Same type id, different parameters: the schema claims the mapped Decimal128(38, 18) but
+        // the array holds Decimal128(38, 4). Decoding it at scale 18 would silently shift every
+        // value by 14 decimal places.
+        var schema = new Apache.Arrow.Schema.Builder()
+            .Field(f => f.Name("value").DataType(new Decimal128Type(38, 18)).Nullable(false))
+            .Build();
+        var values = new Decimal128Array.Builder(new Decimal128Type(38, 4)).Append(1.5m).Build();
+        using var batch = new RecordBatch(schema, new IArrowArray[] { values }, 1);
+
+        using var stream = new MemoryStream();
+        await using ParquetWriter writer = await ParquetWriter.CreateAsync(
+            ArrowWideDecimalRowParquetExtensions.Schema,
+            stream
+        );
+        InvalidDataException error = await Should.ThrowAsync<InvalidDataException>(async () =>
+            await ArrowWideDecimalRowParquetExtensions.WriteParquetRowGroupAsync(writer, batch)
+        );
+
+        error.Message.ShouldContain(
+            "value: the column's array disagrees with its schema field: decimal precision/scale mismatch",
+            Case.Sensitive
+        );
+    }
+
+    [Fact]
     public async Task MalformedOffsetsAreRejectedBeforeAnyValueIsSliced()
     {
         // Offsets 0, 5, 2: decreasing, and 5 runs past a 3-byte value buffer.

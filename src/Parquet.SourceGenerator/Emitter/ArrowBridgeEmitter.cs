@@ -206,6 +206,16 @@ internal static class ArrowBridgeEmitter
                     $"                    errors.Add({label} + {map.ParameterMessage});"
                 );
                 builder.AppendLine("                }");
+                // Same type id is not same type: the values are decoded with the array's own
+                // parameters (unit, scale, width), so those must match too, not just the schema's.
+                builder.AppendLine(
+                    $"                else if (!({OnArrayType(map.ParameterCheck)}))"
+                );
+                builder.AppendLine("                {");
+                builder.AppendLine(
+                    $"                    errors.Add({label} + \"the column's array disagrees with its schema field: \" + {OnArrayType(map.ParameterMessage!)});"
+                );
+                builder.AppendLine("                }");
             }
 
             builder.AppendLine("                else if (column.Length != batch.Length)");
@@ -261,6 +271,13 @@ internal static class ArrowBridgeEmitter
     /// Helpers for the structural checks validation performs before any column is cast or sliced.
     /// Offset soundness is emitted only for models with a Utf8 or Binary column.
     /// </summary>
+    /// <summary>
+    /// Rewrites a parameter check (or its message) written against the schema field's
+    /// <c>dataType</c> to read the array's own <c>column.Data.DataType</c> instead.
+    /// </summary>
+    private static string OnArrayType(string expression) =>
+        expression.Replace(")dataType)", ")column.Data.DataType)");
+
     private static void EmitStructuralHelpers(StringBuilder builder, TargetClassModel model)
     {
         builder.AppendLine("    private static int ArrowFieldOccurrences(");
