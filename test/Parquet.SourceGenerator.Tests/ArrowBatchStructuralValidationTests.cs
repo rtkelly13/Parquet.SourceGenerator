@@ -117,6 +117,29 @@ public sealed class ArrowBatchStructuralValidationTests
     }
 
     [Fact]
+    public async Task NullCountThatDisagreesWithTheValidityBitmapIsRejected()
+    {
+        // "id" is required. Bit 0 unset (row 0 null), bit 1 set, yet the array claims no nulls:
+        // trusting NullCount would write row 0's undefined slot as a value.
+        var validity = new ArrowBuffer(new byte[] { 0b10, 0, 0, 0, 0, 0, 0, 0 });
+        var hostile = new Int64Array(new ArrowBuffer(new byte[16]), validity, 2, 0, 0);
+        var schema = new Apache.Arrow.Schema.Builder()
+            .Field(f => f.Name("id").DataType(Int64Type.Default).Nullable(false))
+            .Field(f => f.Name("name").DataType(StringType.Default).Nullable(true))
+            .Build();
+        using var batch = new RecordBatch(
+            schema,
+            new IArrowArray[] { hostile, Names("a", "b") },
+            2
+        );
+
+        (await RejectAsync(batch)).Message.ShouldContain(
+            "id: the Arrow column's validity bitmap marks nulls that its null count does not declare",
+            Case.Sensitive
+        );
+    }
+
+    [Fact]
     public async Task MalformedOffsetsAreRejectedBeforeAnyValueIsSliced()
     {
         // Offsets 0, 5, 2: decreasing, and 5 runs past a 3-byte value buffer.

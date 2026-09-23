@@ -157,7 +157,9 @@ Changes since `0.0.4`; this section becomes the next release entry when one is c
   declared type disagrees with the array it describes (previously an `InvalidCastException` from
   inside the bridge); an array whose type parameters (decimal precision/scale, time unit,
   fixed-size width) disagree with its schema field, which previously passed and was decoded with
-  the schema's parameters, silently shifting every value; and Utf8/Binary offsets that decrease or run past the value buffer
+  the schema's parameters, silently shifting every value; a required column whose validity bitmap
+  marks nulls its `NullCount` does not declare (the null check trusted `NullCount`, so the undefined
+  slots were written as values); and Utf8/Binary offsets that decrease or run past the value buffer
   (previously an `ArgumentOutOfRangeException` while slicing). Each is reported with the other
   validation errors in the one `InvalidDataException`. Backported from Arrow.SourceGenerator.
 - **Arrow bridge no longer rounds wide decimals.** `WriteParquetRowGroupAsync(writer, RecordBatch)`
