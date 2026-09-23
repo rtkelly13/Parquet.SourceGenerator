@@ -1,7 +1,7 @@
 name: Stack
 
-# Links a chain of pull requests into a GitHub native stack. Label the BOTTOM pull request
-# `stack:link`:
+# Links a chain of pull requests into a GitHub native stack (CONTRIBUTING.md, "Stacked pull
+# requests"). Label the BOTTOM pull request `stack:link`:
 # the job walks upward through the open pull requests whose base is the previous one's head branch,
 # requires the chain to be strictly linear, and runs `gh stack link` over it bottom to top. It can
 # also be dispatched by hand with explicit pull request numbers.

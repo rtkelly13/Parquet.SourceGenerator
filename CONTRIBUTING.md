@@ -90,6 +90,18 @@ If you publish numbers anywhere, include the machine and runtime they came from.
    `docs:`, `style:`, `refactor:`, `test:`, `chore:`, `ci:`, `build:`).
 5. **Commit Message**: Use Conventional Commit messages too.
 
+### Stacked pull requests
+
+Dependent work lands as a GitHub native stack: the bottom pull request targets `main`, each one
+above targets the branch of the one below, and every layer has its own green CI.
+
+- **Link** an existing chain by labelling its bottom pull request `stack:link`. The `stack`
+  workflow walks the chain upward and runs `gh stack link` (or dispatch it with explicit numbers).
+  Locally: `gh stack link <bottom> ... <top>`.
+- **Keep layers linear.** Edit the layer that owns a change, then `gh stack rebase --upstack`.
+- **Merge** with `gh stack merge <top> --squash --yes`. `gh pr merge` and auto-merge are refused
+  for stacked pull requests.
+
 ---
 
 ## 🚀 Releasing
