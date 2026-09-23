@@ -109,7 +109,7 @@ This document details all diagnostic codes, their severity, rationale, and remed
 ### PARQ007: Parquet Member Is Not Assignable
 - **Severity**: Error
 - **Cause**: A member is get-only (no setter or init) or marked `readonly`.
-- **Why**: The generated `ReadParquetAsync` method uses an object initializer to construct records and classes. If a member has no setter or `init` accessor, the generated code fails to compile.
+- **Why**: The generated read methods use an object initializer to construct records and classes. If a member has no setter or `init` accessor, the generated code fails to compile.
 - **Remediation**:
   ```csharp
   // ❌ Incorrect: get-only

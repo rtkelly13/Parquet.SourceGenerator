@@ -62,16 +62,19 @@ await eventStream.WriteParquetAsync(
 using var stream = File.OpenRead("events.parquet");
 
 // Sequential read
-List<UserEvent> events = await UserEventParquetExtensions.ReadParquetAsync(stream);
-
-// Multi-core parallel read across row groups
-List<UserEvent> parallelEvents = await UserEventParquetExtensions.ReadParquetParallelAsync(
-    stream,
-    new ParquetSerializerOptions { MaxDegreeOfParallelism = 4 });
+List<UserEvent> events = await UserEventParquet.From(stream).ToListAsync();
 
 // Read from in-memory byte buffer
 ReadOnlyMemory<byte> buffer = File.ReadAllBytes("events.parquet");
-List<UserEvent> memEvents = await UserEventParquetExtensions.ReadParquetAsync(buffer);
+List<UserEvent> memEvents = await UserEventParquet.From(buffer).ToListAsync();
+
+// Multi-core parallel read across row groups (buffer source only: one reader over one
+// stream cannot decode row groups concurrently)
+List<UserEvent> parallelEvents = await UserEventParquet
+    .From(buffer)
+    .WithOptions(new ParquetSerializerOptions { MaxDegreeOfParallelism = 4 })
+    .Parallel()
+    .ToListAsync();
 ```
 
 ### Custom Configuration (`ParquetSerializerOptions`)

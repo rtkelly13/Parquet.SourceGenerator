@@ -102,9 +102,7 @@ public class SortedPruningBenchmark
     [Benchmark(Baseline = true)]
     public async Task<int> FullScanPointLookup()
     {
-        List<SortedSeriesEvent> all = await SortedSeriesEventParquetExtensions.ReadParquetAsync(
-            Open()
-        );
+        List<SortedSeriesEvent> all = await SortedSeriesEventParquet.From(Open()).ToListAsync();
         return all.Count(r => r.SequenceNumber == _pointKey);
     }
 
@@ -122,9 +120,7 @@ public class SortedPruningBenchmark
     [Benchmark]
     public async Task<int> FullScanRangeSlice()
     {
-        List<SortedSeriesEvent> all = await SortedSeriesEventParquetExtensions.ReadParquetAsync(
-            Open()
-        );
+        List<SortedSeriesEvent> all = await SortedSeriesEventParquet.From(Open()).ToListAsync();
         return all.Count(r => r.SequenceNumber >= _rangeStart && r.SequenceNumber <= _rangeEnd);
     }
 

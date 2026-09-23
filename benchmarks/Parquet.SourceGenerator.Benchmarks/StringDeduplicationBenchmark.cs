@@ -58,14 +58,17 @@ public class StringDeduplicationReadBenchmark
     public async Task<List<BenchmarkAdultCensus>> CensusReadWithoutDeduplication()
     {
         using var stream = new MemoryStream(_rawBytes);
-        return await BenchmarkAdultCensusParquetExtensions.ReadParquetAsync(stream, _plain);
+        return await BenchmarkAdultCensusParquet.From(stream).WithOptions(_plain).ToListAsync();
     }
 
     [Benchmark]
     public async Task<List<BenchmarkAdultCensus>> CensusReadWithSpanDeduplication()
     {
         using var stream = new MemoryStream(_rawBytes);
-        return await BenchmarkAdultCensusParquetExtensions.ReadParquetAsync(stream, _deduplicating);
+        return await BenchmarkAdultCensusParquet
+            .From(stream)
+            .WithOptions(_deduplicating)
+            .ToListAsync();
     }
 }
 

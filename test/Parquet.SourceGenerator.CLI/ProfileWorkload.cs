@@ -52,7 +52,7 @@ public static class ProfileWorkload
             totalBytesWritten += ms.Length;
 
             ms.Position = 0;
-            List<ProfileEvent> readItems = await ProfileEventParquetExtensions.ReadParquetAsync(ms);
+            List<ProfileEvent> readItems = await ProfileEventParquet.From(ms).ToListAsync();
             if (readItems.Count != rowCount)
             {
                 throw new InvalidOperationException(

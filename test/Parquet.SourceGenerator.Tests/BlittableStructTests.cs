@@ -52,7 +52,7 @@ public sealed class BlittableStructTests
 
         // Read into List
         ms.Position = 0;
-        var readList = await SingleLongStructParquetExtensions.ReadParquetAsync(ms);
+        var readList = await SingleLongStructParquet.From(ms).ToListAsync();
         readList.Count.ShouldBe(count);
         for (int i = 0; i < count; i++)
         {
@@ -61,7 +61,7 @@ public sealed class BlittableStructTests
 
         // Read into Array
         ms.Position = 0;
-        var readArray = await SingleLongStructParquetExtensions.ReadParquetArrayAsync(ms);
+        var readArray = await SingleLongStructParquet.From(ms).ToArrayAsync();
         readArray.Length.ShouldBe(count);
         for (int i = 0; i < count; i++)
         {
@@ -73,16 +73,14 @@ public sealed class BlittableStructTests
         await readArray.WriteParquetAsync(ms2);
         var bytes = ms2.ToArray();
 
-        var parallelArray = await SingleLongStructParquetExtensions.ReadParquetParallelArrayAsync(
-            bytes
-        );
+        var parallelArray = await SingleLongStructParquet.From(bytes).Parallel().ToArrayAsync();
         parallelArray.Length.ShouldBe(count);
         for (int i = 0; i < count; i++)
         {
             parallelArray[i].Value.ShouldBe(i * 42L);
         }
 
-        var parallelList = await SingleLongStructParquetExtensions.ReadParquetParallelAsync(bytes);
+        var parallelList = await SingleLongStructParquet.From(bytes).Parallel().ToListAsync();
         parallelList.Count.ShouldBe(count);
         for (int i = 0; i < count; i++)
         {
@@ -104,7 +102,7 @@ public sealed class BlittableStructTests
         await array.WriteParquetAsync(ms);
 
         ms.Position = 0;
-        var readArray = await SingleDoubleStructParquetExtensions.ReadParquetArrayAsync(ms);
+        var readArray = await SingleDoubleStructParquet.From(ms).ToArrayAsync();
         readArray.Length.ShouldBe(count);
         for (int i = 0; i < count; i++)
         {
@@ -112,9 +110,10 @@ public sealed class BlittableStructTests
         }
 
         // Parallel read
-        var parallelArray = await SingleDoubleStructParquetExtensions.ReadParquetParallelArrayAsync(
-            ms.ToArray()
-        );
+        var parallelArray = await SingleDoubleStructParquet
+            .From(ms.ToArray())
+            .Parallel()
+            .ToArrayAsync();
         parallelArray.Length.ShouldBe(count);
         for (int i = 0; i < count; i++)
         {
@@ -143,7 +142,7 @@ public sealed class BlittableStructTests
         await items.WriteParquetAsync(ms);
 
         ms.Position = 0;
-        var readArray = await Point3DStructParquetExtensions.ReadParquetArrayAsync(ms);
+        var readArray = await Point3DStructParquet.From(ms).ToArrayAsync();
         readArray.Length.ShouldBe(count);
         for (int i = 0; i < count; i++)
         {
@@ -153,9 +152,7 @@ public sealed class BlittableStructTests
         }
 
         var bytes = ms.ToArray();
-        var parallelRead = await Point3DStructParquetExtensions.ReadParquetParallelArrayAsync(
-            bytes
-        );
+        var parallelRead = await Point3DStructParquet.From(bytes).Parallel().ToArrayAsync();
         parallelRead.Length.ShouldBe(count);
         for (int i = 0; i < count; i++)
         {

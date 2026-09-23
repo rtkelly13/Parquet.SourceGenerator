@@ -45,7 +45,7 @@ public sealed class DecimalAndBinaryTests
         await written.WriteParquetAsync(stream);
         stream.Position = 0;
 
-        List<MoneyRecord> read = await MoneyRecordParquetExtensions.ReadParquetAsync(stream);
+        List<MoneyRecord> read = await MoneyRecordParquet.From(stream).ToListAsync();
 
         read.Count.ShouldBe(3);
         // Scale 4 is declared, so all three values are representable exactly; anything lost here is
@@ -68,7 +68,7 @@ public sealed class DecimalAndBinaryTests
         await written.WriteParquetAsync(stream);
         stream.Position = 0;
 
-        List<MoneyRecord> read = await MoneyRecordParquetExtensions.ReadParquetAsync(stream);
+        List<MoneyRecord> read = await MoneyRecordParquet.From(stream).ToListAsync();
 
         read.Count.ShouldBe(2);
         // High bytes and 0x00 are the values most likely to be mangled by an accidental

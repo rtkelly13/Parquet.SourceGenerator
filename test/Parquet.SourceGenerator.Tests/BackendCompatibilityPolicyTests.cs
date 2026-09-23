@@ -90,9 +90,42 @@ public sealed class BackendCompatibilityPolicyTests
         lines.ShouldContain(line => line.Contains("Where(", StringComparison.Ordinal));
         lines.ShouldContain(line => line.Contains("Parallel()", StringComparison.Ordinal));
         lines.ShouldContain(line => line.Contains("ColumnBatch", StringComparison.Ordinal));
-        lines.ShouldContain(line =>
-            line.Contains("ReadParquetStreamAsync", StringComparison.Ordinal)
-        );
+        lines.ShouldContain(line => line.Contains("AsAsyncEnumerable(", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// #480: the builder is the only modern read surface. The flat <c>ReadParquet*Async</c>
+    /// methods are gone from every modern baseline, while the classic backend — which has no
+    /// builder — keeps its flat reads as its declared subset (checked above).
+    /// </summary>
+    [Fact]
+    public void ModernBaselinesExposeNoFlatReadMethods()
+    {
+        string[] flatReads =
+        [
+            "ReadParquetAsync(",
+            "ReadParquetArrayAsync(",
+            "ReadParquetBatchesAsync(",
+            "ReadParquetParallelAsync(",
+            "ReadParquetParallelArrayAsync(",
+            "ReadParquetStreamAsync(",
+        ];
+
+        string[] paths = Directory
+            .GetFiles(GoldenFilesDir, "*.api.txt")
+            .Where(path => !path.EndsWith("LegacyExtensions.api.txt", StringComparison.Ordinal))
+            .ToArray();
+        paths.Length.ShouldBeGreaterThan(0);
+
+        foreach (string path in paths)
+        {
+            foreach (string line in ReadMembers(path))
+            {
+                flatReads
+                    .Where(name => line.Contains("Extensions." + name, StringComparison.Ordinal))
+                    .ShouldBeEmpty($"{Path.GetFileName(path)} still exposes a flat read: {line}");
+            }
+        }
     }
 
     private static string[] ReadMembers(string path) =>

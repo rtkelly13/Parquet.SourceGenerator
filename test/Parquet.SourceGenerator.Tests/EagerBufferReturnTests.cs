@@ -80,7 +80,7 @@ public class EagerBufferReturnTests
         await items.WriteParquetAsync(ms);
 
         ms.Position = 0;
-        var readBack = await EagerBufferModelParquetExtensions.ReadParquetAsync(ms);
+        var readBack = await EagerBufferModelParquet.From(ms).ToListAsync();
 
         readBack.Count.ShouldBe(3);
         readBack[0].Id.ShouldBe(items[0].Id);

@@ -88,9 +88,7 @@ public sealed class ColumnEncodingTests
         }
 
         stream.Position = 0;
-        List<DeltaEncodedRecord> read = await DeltaEncodedRecordParquetExtensions.ReadParquetAsync(
-            stream
-        );
+        List<DeltaEncodedRecord> read = await DeltaEncodedRecordParquet.From(stream).ToListAsync();
         read.Count.ShouldBe(written.Count);
         for (int i = 0; i < written.Count; i++)
         {
@@ -133,8 +131,9 @@ public sealed class ColumnEncodingTests
         }
 
         stream.Position = 0;
-        List<DictionaryEncodedRecord> read =
-            await DictionaryEncodedRecordParquetExtensions.ReadParquetAsync(stream);
+        List<DictionaryEncodedRecord> read = await DictionaryEncodedRecordParquet
+            .From(stream)
+            .ToListAsync();
         read.Count.ShouldBe(written.Count);
         for (int i = 0; i < written.Count; i++)
         {
@@ -175,9 +174,7 @@ public sealed class ColumnEncodingTests
         }
 
         stream.Position = 0;
-        List<ByteSplitRecord> read = await ByteSplitRecordParquetExtensions.ReadParquetAsync(
-            stream
-        );
+        List<ByteSplitRecord> read = await ByteSplitRecordParquet.From(stream).ToListAsync();
         read.Count.ShouldBe(written.Count);
         for (int i = 0; i < written.Count; i++)
         {
@@ -225,8 +222,9 @@ public sealed class ColumnEncodingTests
         }
 
         stream.Position = 0;
-        List<UnannotatedEncodingRecord> read =
-            await UnannotatedEncodingRecordParquetExtensions.ReadParquetAsync(stream);
+        List<UnannotatedEncodingRecord> read = await UnannotatedEncodingRecordParquet
+            .From(stream)
+            .ToListAsync();
         read.Count.ShouldBe(written.Count);
         for (int i = 0; i < written.Count; i++)
         {
@@ -275,9 +273,7 @@ public sealed class ColumnEncodingTests
         }
 
         stream.Position = 0;
-        List<DeltaEncodedRecord> read = await DeltaEncodedRecordParquetExtensions.ReadParquetAsync(
-            stream
-        );
+        List<DeltaEncodedRecord> read = await DeltaEncodedRecordParquet.From(stream).ToListAsync();
         read.Count.ShouldBe(written.Count);
     }
 
@@ -303,8 +299,9 @@ public sealed class ColumnEncodingTests
         await written.WriteParquetAsync(stream, options);
         stream.Position = 0;
 
-        List<DictionaryEncodedRecord> read =
-            await DictionaryEncodedRecordParquetExtensions.ReadParquetAsync(stream);
+        List<DictionaryEncodedRecord> read = await DictionaryEncodedRecordParquet
+            .From(stream)
+            .ToListAsync();
         read.Count.ShouldBe(written.Count);
     }
 

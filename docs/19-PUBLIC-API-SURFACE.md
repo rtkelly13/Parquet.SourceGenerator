@@ -3,8 +3,10 @@
 > **Status**: decision record for issue #216, part of the `0.1.0` API freeze (#230).
 > The surface described here is the one emitted by `Parquet.SourceGenerator` for a flat model;
 > it is reproduced verbatim in `test/Parquet.SourceGenerator.Tests/GoldenFiles/*.api.txt`.
-> The read builder is proposed for the freeze; a symmetric write builder remains a post-freeze
-> proposal tracked by #219, and the current write entry points remain in the compatibility window.
+> The read builder is the only modern read surface (#480, [document 48](48-FLAT-READ-REMOVAL-480.md));
+> a symmetric write builder remains a post-freeze proposal tracked by #219, and the current write
+> entry points remain in the compatibility window. The grid and defects below describe the flat read
+> methods as they were when this audit was written; they are the reason those methods were removed.
 
 ## Why this document exists
 
@@ -197,10 +199,19 @@ types belongs with #220's column catalog, and the positional columnar write form
 
 ### D3 — Fate of the existing flat methods
 
-They remain as forwarders through the `0.1.0` compatibility window. Remove them only after a later
-release provides the replacement seams and migration path described in [document 41](41-FLAT-READ-FREEZE-SCOPE-262.md).
-The package is `0.0.x` with a stated continuous-release cadence, so the compatibility window can
-close after callers have a supported migration path.
+**Removed from the modern emitter before `0.1.0` (#480).** The builder is the only modern read
+surface; every flat `ReadParquet*Async` method and its `predicate` parameter is gone from the emitted
+contract, and the migration is a 1:1 mapping onto a builder chain (`CHANGELOG.md`, Unreleased). The
+implementations the builder delegates to remain as `internal` `Read*CoreAsync` members outside the
+contract; the stream "parallel" overloads, which nothing delegated to, were deleted. No `[Obsolete]`
+release preceded the removal, because `0.0.x` has no published consumers to warn. The legacy emitter
+has no builder and keeps its flat reads as its declared subset (#246). Measured effect: 66 fewer
+emitted members and 222 fewer parameter slots across the six modern golden models.
+
+The full decision, including how document 41's removal gate was answered, is
+[document 48](48-FLAT-READ-REMOVAL-480.md). It supersedes
+[document 41](41-FLAT-READ-FREEZE-SCOPE-262.md) (#262), which recorded the earlier decision to keep
+the methods through the `0.1.0` window and is retained unedited as history.
 
 ### D4 — The decision is kept honest by the baselines
 

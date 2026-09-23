@@ -11,7 +11,7 @@ namespace Parquet.SourceGenerator.Emitter;
 /// <para>
 /// For every flat model the generator emits a nested <c>ColumnBatch</c> readonly struct exposing
 /// one <see cref="System.ReadOnlySpan{T}"/> per column, plus a
-/// <c>ReadParquetBatchesAsync</c> async iterator yielding one batch per row group. The batch holds
+/// <c>ReadBatchesCoreAsync</c> async iterator yielding one batch per row group. The batch holds
 /// the pooled column buffers directly, so an analytical consumer scans decoded columns without a
 /// single domain-object allocation.
 /// </para>
@@ -156,7 +156,7 @@ internal static class ColumnBatchComponent
     }
 
     /// <summary>
-    /// Emits <c>ReadParquetBatchesAsync</c> — one <c>ColumnBatch</c> per row group, no domain
+    /// Emits <c>ReadBatchesCoreAsync</c> — one <c>ColumnBatch</c> per row group, no domain
     /// object ever constructed. <paramref name="emitColumnRead"/> is the shared per-column decode
     /// the POCO readers use, so there is no second copy of the buffer logic here.
     /// </summary>
@@ -185,7 +185,7 @@ internal static class ColumnBatchComponent
         );
         builder.AppendLine("    /// </remarks>");
         builder.AppendLine(
-            $"    public static async global::System.Collections.Generic.IAsyncEnumerable<{BatchTypeName}> ReadParquetBatchesAsync("
+            $"    internal static async global::System.Collections.Generic.IAsyncEnumerable<{BatchTypeName}> ReadBatchesCoreAsync("
         );
         builder.AppendLine("        global::System.IO.Stream stream,");
         builder.AppendLine(
@@ -277,7 +277,7 @@ internal static class ColumnBatchComponent
         );
         builder.AppendLine("    /// </summary>");
         builder.AppendLine(
-            $"    public static async global::System.Collections.Generic.IAsyncEnumerable<{BatchTypeName}> ReadParquetBatchesAsync("
+            $"    internal static async global::System.Collections.Generic.IAsyncEnumerable<{BatchTypeName}> ReadBatchesCoreAsync("
         );
         builder.AppendLine("        global::System.ReadOnlyMemory<byte> parquetBytes,");
         builder.AppendLine(
@@ -289,7 +289,7 @@ internal static class ColumnBatchComponent
         builder.AppendLine("    {");
         builder.AppendLine("        using var stream = CreateBufferStream(parquetBytes);");
         builder.AppendLine(
-            "        await foreach (var batch in ReadParquetBatchesAsync(stream, options, cancellationToken))"
+            "        await foreach (var batch in ReadBatchesCoreAsync(stream, options, cancellationToken))"
         );
         builder.AppendLine("        {");
         builder.AppendLine("            yield return batch;");

@@ -137,19 +137,19 @@ internal static class ReadBuilderComponent
             builder,
             $"global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<{model.ClassName}>>",
             "ToListAsync",
-            $"{ext}.ReadParquetAsync(_stream, _options, cancellationToken)"
+            $"{ext}.ReadListCoreAsync(_stream, _options, cancellationToken)"
         );
         EmitTerminal(
             builder,
             $"global::System.Threading.Tasks.Task<{model.ClassName}[]>",
             "ToArrayAsync",
-            $"{ext}.ReadParquetArrayAsync(_stream, _options, cancellationToken)"
+            $"{ext}.ReadArrayCoreAsync(_stream, _options, cancellationToken)"
         );
         EmitTerminal(
             builder,
             $"global::System.Collections.Generic.IAsyncEnumerable<{model.ClassName}>",
             "AsAsyncEnumerable",
-            $"{ext}.ReadParquetStreamAsync(_stream, _options, cancellationToken)"
+            $"{ext}.ReadEnumerableCoreAsync(_stream, _options, cancellationToken)"
         );
         if (batches)
         {
@@ -157,7 +157,7 @@ internal static class ReadBuilderComponent
                 builder,
                 $"global::System.Collections.Generic.IAsyncEnumerable<{ext}.ColumnBatch>",
                 "Batches",
-                $"{ext}.ReadParquetBatchesAsync(_stream, _options, cancellationToken)"
+                $"{ext}.ReadBatchesCoreAsync(_stream, _options, cancellationToken)"
             );
         }
         builder.AppendLine("}");
@@ -221,19 +221,19 @@ internal static class ReadBuilderComponent
             builder,
             $"global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<{model.ClassName}>>",
             "ToListAsync",
-            $"{ext}.ReadParquetAsync(_bytes, _options, cancellationToken)"
+            $"{ext}.ReadListCoreAsync(_bytes, _options, cancellationToken)"
         );
         EmitTerminal(
             builder,
             $"global::System.Threading.Tasks.Task<{model.ClassName}[]>",
             "ToArrayAsync",
-            $"{ext}.ReadParquetArrayAsync(_bytes, _options, cancellationToken)"
+            $"{ext}.ReadArrayCoreAsync(_bytes, _options, cancellationToken)"
         );
         EmitTerminal(
             builder,
             $"global::System.Collections.Generic.IAsyncEnumerable<{model.ClassName}>",
             "AsAsyncEnumerable",
-            $"{ext}.ReadParquetStreamAsync(_bytes, _options, cancellationToken)"
+            $"{ext}.ReadEnumerableCoreAsync(_bytes, _options, cancellationToken)"
         );
         if (batches)
         {
@@ -241,7 +241,7 @@ internal static class ReadBuilderComponent
                 builder,
                 $"global::System.Collections.Generic.IAsyncEnumerable<{ext}.ColumnBatch>",
                 "Batches",
-                $"{ext}.ReadParquetBatchesAsync(_bytes, _options, cancellationToken)"
+                $"{ext}.ReadBatchesCoreAsync(_bytes, _options, cancellationToken)"
             );
         }
         builder.AppendLine("}");
@@ -249,8 +249,8 @@ internal static class ReadBuilderComponent
 
     /// <summary>
     /// The filtered source. Pushdown reaches every shape here, including the buffer + <c>List</c>
-    /// and buffer + array cells the flat methods never grew a predicate for: those route through
-    /// the streaming overload that does accept one and collect, which is the same rows by the same
+    /// and buffer + array cells the removed flat methods never grew a predicate for: those route
+    /// through the streaming core that does accept one and collect, which is the same rows by the same
     /// pruning, rather than leaving the grid unevenly populated (defect 3 in docs/17).
     /// </summary>
     private static void EmitFilteredSource(StringBuilder builder, TargetClassModel model)
@@ -306,7 +306,7 @@ internal static class ReadBuilderComponent
         builder.AppendLine("    {");
         builder.AppendLine($"        if (_stream is not null)");
         builder.AppendLine(
-            $"            return await {ext}.ReadParquetAsync(_stream, _options, cancellationToken, _predicate).ConfigureAwait(false);"
+            $"            return await {ext}.ReadListCoreAsync(_stream, _options, cancellationToken, _predicate).ConfigureAwait(false);"
         );
         builder.AppendLine();
         builder.AppendLine(
@@ -316,7 +316,7 @@ internal static class ReadBuilderComponent
         // System.Threading.Tasks, and the emitted file carries no usings. The existing read
         // emitters omit it on `await foreach` for the same reason.
         builder.AppendLine(
-            $"        await foreach (var item in {ext}.ReadParquetStreamAsync(_bytes, _options, cancellationToken, _predicate))"
+            $"        await foreach (var item in {ext}.ReadEnumerableCoreAsync(_bytes, _options, cancellationToken, _predicate))"
         );
         builder.AppendLine("            results.Add(item);");
         builder.AppendLine("        return results;");
@@ -332,7 +332,7 @@ internal static class ReadBuilderComponent
         builder.AppendLine("    {");
         builder.AppendLine($"        if (_stream is not null)");
         builder.AppendLine(
-            $"            return await {ext}.ReadParquetArrayAsync(_stream, _options, cancellationToken, _predicate).ConfigureAwait(false);"
+            $"            return await {ext}.ReadArrayCoreAsync(_stream, _options, cancellationToken, _predicate).ConfigureAwait(false);"
         );
         builder.AppendLine();
         builder.AppendLine(
@@ -349,10 +349,10 @@ internal static class ReadBuilderComponent
         );
         builder.AppendLine($"        => _stream is not null");
         builder.AppendLine(
-            $"            ? {ext}.ReadParquetStreamAsync(_stream, _options, cancellationToken, _predicate)"
+            $"            ? {ext}.ReadEnumerableCoreAsync(_stream, _options, cancellationToken, _predicate)"
         );
         builder.AppendLine(
-            $"            : {ext}.ReadParquetStreamAsync(_bytes, _options, cancellationToken, _predicate);"
+            $"            : {ext}.ReadEnumerableCoreAsync(_bytes, _options, cancellationToken, _predicate);"
         );
         builder.AppendLine("}");
     }
@@ -396,13 +396,13 @@ internal static class ReadBuilderComponent
             builder,
             $"global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<{model.ClassName}>>",
             "ToListAsync",
-            $"{ext}.ReadParquetParallelAsync(_bytes, _options, cancellationToken)"
+            $"{ext}.ReadParallelListCoreAsync(_bytes, _options, cancellationToken)"
         );
         EmitTerminal(
             builder,
             $"global::System.Threading.Tasks.Task<{model.ClassName}[]>",
             "ToArrayAsync",
-            $"{ext}.ReadParquetParallelArrayAsync(_bytes, _options, cancellationToken)"
+            $"{ext}.ReadParallelArrayCoreAsync(_bytes, _options, cancellationToken)"
         );
         builder.AppendLine("}");
     }

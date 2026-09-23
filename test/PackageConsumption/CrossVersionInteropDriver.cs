@@ -66,9 +66,7 @@ internal static class CrossVersionInteropDriver
         }
 
         using var stream = File.OpenRead(path);
-        List<InteropRowEvolved> read = await InteropRowEvolvedParquetExtensions.ReadParquetAsync(
-            stream
-        );
+        List<InteropRowEvolved> read = await InteropRowEvolvedParquet.From(stream).ToListAsync();
 
         string? failure = InteropVerification.Verify(read, CanonicalRows);
         if (failure is not null)

@@ -485,7 +485,8 @@ public sealed class GoldenCodeGenRegressionTests
 
         emittedCode.ShouldContain("public static partial class GoldenModelParquetExtensions");
         emittedCode.ShouldContain("WriteParquetAsync");
-        emittedCode.ShouldContain("ReadParquetParallelAsync");
+        emittedCode.ShouldContain("ReadParallelListCoreAsync");
+        emittedCode.ShouldNotContain("ReadParquetParallelAsync");
     }
 
     [Fact]

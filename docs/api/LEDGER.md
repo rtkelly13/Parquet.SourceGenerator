@@ -87,6 +87,102 @@ The rule, the three surfaces and the author process are in
   itself, so the models and their callers are always one assembly.
 - **Note:** pre-1.0 break; `0.0.x` permits it without a major bump.
 
+### 2026-09-22 — removed `ReadParquetAsync(Stream, ParquetSerializerOptions?, CancellationToken, Func<{T}RowGroupMetadata, bool>?)` and `ReadParquetAsync(ReadOnlyMemory<byte>, ParquetSerializerOptions?, CancellationToken)`
+
+- **Surface:** emitted
+- **Semver:** breaking-major
+- **Issue:** [#480](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/480)
+- **Rationale:** Removed from every modern model; the builder already expresses this cell as
+  `<Model>Parquet.From(source).ToListAsync(ct)`, with `.WithOptions(options)` and `.Where(predicate)` as members. The builder's stream and memory terminals already delegated here; the bodies stay as the `internal` `ReadListCoreAsync`, outside the contract.
+  Keeping both surfaces into `0.1.0` would make the first stable contract the widest one; see
+  [docs/48](../48-FLAT-READ-REMOVAL-480.md), which supersedes docs/41. Measured across the six modern
+  golden models, #480 removes 66 members and 222 parameter slots in total. The legacy emitter keeps
+  its flat reads (#246 declared subset).
+- **Alternatives considered:** keep as forwarders through `0.1.0` (docs/41) — rejected by the #477
+  contract-narrowing direction; ship one `[Obsolete]` release first — rejected, `0.0.x` has no
+  published consumers to warn; keep the members under the same names as `internal` — rejected, a
+  consumer's own assembly could keep calling them and the removal would not be visible to it.
+
+### 2026-09-22 — removed `ReadParquetArrayAsync(Stream, ParquetSerializerOptions?, CancellationToken, Func<{T}RowGroupMetadata, bool>?)` and `ReadParquetArrayAsync(ReadOnlyMemory<byte>, ParquetSerializerOptions?, CancellationToken)`
+
+- **Surface:** emitted
+- **Semver:** breaking-major
+- **Issue:** [#480](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/480)
+- **Rationale:** Removed from every modern model; the builder already expresses this cell as
+  `<Model>Parquet.From(source).ToArrayAsync(ct)`. The bodies stay as the `internal` `ReadArrayCoreAsync`.
+  Keeping both surfaces into `0.1.0` would make the first stable contract the widest one; see
+  [docs/48](../48-FLAT-READ-REMOVAL-480.md), which supersedes docs/41. Measured across the six modern
+  golden models, #480 removes 66 members and 222 parameter slots in total. The legacy emitter keeps
+  its flat reads (#246 declared subset).
+- **Alternatives considered:** keep as forwarders through `0.1.0` (docs/41) — rejected by the #477
+  contract-narrowing direction; ship one `[Obsolete]` release first — rejected, `0.0.x` has no
+  published consumers to warn; keep the members under the same names as `internal` — rejected, a
+  consumer's own assembly could keep calling them and the removal would not be visible to it.
+
+### 2026-09-22 — removed `ReadParquetStreamAsync(Stream, ParquetSerializerOptions?, CancellationToken, Func<{T}RowGroupMetadata, bool>?)` and `ReadParquetStreamAsync(ReadOnlyMemory<byte>, ParquetSerializerOptions?, CancellationToken, Func<{T}RowGroupMetadata, bool>?)`
+
+- **Surface:** emitted
+- **Semver:** breaking-major
+- **Issue:** [#480](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/480)
+- **Rationale:** Removed from every modern model; the builder already expresses this cell as
+  `<Model>Parquet.From(source).AsAsyncEnumerable(ct)`; the name also carried defect 1 of docs/19 ("Stream" denoting both source and shape). The bodies stay as the `internal` `ReadEnumerableCoreAsync`.
+  Keeping both surfaces into `0.1.0` would make the first stable contract the widest one; see
+  [docs/48](../48-FLAT-READ-REMOVAL-480.md), which supersedes docs/41. Measured across the six modern
+  golden models, #480 removes 66 members and 222 parameter slots in total. The legacy emitter keeps
+  its flat reads (#246 declared subset).
+- **Alternatives considered:** keep as forwarders through `0.1.0` (docs/41) — rejected by the #477
+  contract-narrowing direction; ship one `[Obsolete]` release first — rejected, `0.0.x` has no
+  published consumers to warn; keep the members under the same names as `internal` — rejected, a
+  consumer's own assembly could keep calling them and the removal would not be visible to it.
+
+### 2026-09-22 — removed `ReadParquetBatchesAsync(Stream, ParquetSerializerOptions?, CancellationToken)` and `ReadParquetBatchesAsync(ReadOnlyMemory<byte>, ParquetSerializerOptions?, CancellationToken)`
+
+- **Surface:** emitted
+- **Semver:** breaking-major
+- **Issue:** [#480](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/480)
+- **Rationale:** Removed from every modern model; the builder already expresses this cell as
+  `<Model>Parquet.From(source).Batches(ct)`, unchanged (batch read ownership is #369). Flat models only. The bodies stay as the `internal` `ReadBatchesCoreAsync`.
+  Keeping both surfaces into `0.1.0` would make the first stable contract the widest one; see
+  [docs/48](../48-FLAT-READ-REMOVAL-480.md), which supersedes docs/41. Measured across the six modern
+  golden models, #480 removes 66 members and 222 parameter slots in total. The legacy emitter keeps
+  its flat reads (#246 declared subset).
+- **Alternatives considered:** keep as forwarders through `0.1.0` (docs/41) — rejected by the #477
+  contract-narrowing direction; ship one `[Obsolete]` release first — rejected, `0.0.x` has no
+  published consumers to warn; keep the members under the same names as `internal` — rejected, a
+  consumer's own assembly could keep calling them and the removal would not be visible to it.
+
+### 2026-09-22 — removed `ReadParquetParallelAsync(Stream, ParquetSerializerOptions?, CancellationToken)` and `ReadParquetParallelAsync(ReadOnlyMemory<byte>, ParquetSerializerOptions?, CancellationToken)`
+
+- **Surface:** emitted
+- **Semver:** breaking-major
+- **Issue:** [#480](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/480)
+- **Rationale:** Removed from every modern model; the builder already expresses this cell as
+  `<Model>Parquet.From(bytes).Parallel().ToListAsync(ct)`. The memory body stays as the `internal` `ReadParallelListCoreAsync`. The `Stream` overload is deleted with its body: it read sequentially (defect 5 of docs/19), nothing delegated to it, and the builder already states the same fact by offering no `Parallel()` on the stream source.
+  Keeping both surfaces into `0.1.0` would make the first stable contract the widest one; see
+  [docs/48](../48-FLAT-READ-REMOVAL-480.md), which supersedes docs/41. Measured across the six modern
+  golden models, #480 removes 66 members and 222 parameter slots in total. The legacy emitter keeps
+  its flat reads (#246 declared subset).
+- **Alternatives considered:** keep as forwarders through `0.1.0` (docs/41) — rejected by the #477
+  contract-narrowing direction; ship one `[Obsolete]` release first — rejected, `0.0.x` has no
+  published consumers to warn; keep the members under the same names as `internal` — rejected, a
+  consumer's own assembly could keep calling them and the removal would not be visible to it.
+
+### 2026-09-22 — removed `ReadParquetParallelArrayAsync(Stream, ParquetSerializerOptions?, CancellationToken)` and `ReadParquetParallelArrayAsync(ReadOnlyMemory<byte>, ParquetSerializerOptions?, CancellationToken)`
+
+- **Surface:** emitted
+- **Semver:** breaking-major
+- **Issue:** [#480](https://github.com/rtkelly13/Parquet.SourceGenerator/issues/480)
+- **Rationale:** Removed from every modern model; the builder already expresses this cell as
+  `<Model>Parquet.From(bytes).Parallel().ToArrayAsync(ct)`. The memory body stays as the `internal` `ReadParallelArrayCoreAsync`; the sequential `Stream` overload is deleted, as for `ReadParquetParallelAsync`.
+  Keeping both surfaces into `0.1.0` would make the first stable contract the widest one; see
+  [docs/48](../48-FLAT-READ-REMOVAL-480.md), which supersedes docs/41. Measured across the six modern
+  golden models, #480 removes 66 members and 222 parameter slots in total. The legacy emitter keeps
+  its flat reads (#246 declared subset).
+- **Alternatives considered:** keep as forwarders through `0.1.0` (docs/41) — rejected by the #477
+  contract-narrowing direction; ship one `[Obsolete]` release first — rejected, `0.0.x` has no
+  published consumers to warn; keep the members under the same names as `internal` — rejected, a
+  consumer's own assembly could keep calling them and the removal would not be visible to it.
+
 ### 2026-09-22 — `NullableColumnExtractor` and `VectorizedColumnTransforms` internalised (#461)
 
 - **Surface:** package

@@ -460,9 +460,9 @@ public sealed class ArrowRecordBatchBridgeTests
         byte[] bytes = await WriteArrowAsync(batch);
 
         using var readStream = new MemoryStream(bytes);
-        List<ArrowPrimitiveRow> actual = await ArrowPrimitiveRowParquetExtensions.ReadParquetAsync(
-            readStream
-        );
+        List<ArrowPrimitiveRow> actual = await ArrowPrimitiveRowParquet
+            .From(readStream)
+            .ToListAsync();
 
         List<ArrowPrimitiveRow> expected = ExpectedPrimitiveRows();
         actual.Count.ShouldBe(expected.Count);
@@ -610,9 +610,9 @@ public sealed class ArrowRecordBatchBridgeTests
         }
 
         using var readStream = new MemoryStream(stream.ToArray());
-        List<ArrowNullableRow> actual = await ArrowNullableRowParquetExtensions.ReadParquetAsync(
-            readStream
-        );
+        List<ArrowNullableRow> actual = await ArrowNullableRowParquet
+            .From(readStream)
+            .ToListAsync();
 
         List<ArrowNullableRow> expected = NullableRows();
         actual.Count.ShouldBe(expected.Count);
@@ -889,9 +889,7 @@ public sealed class ArrowRecordBatchBridgeTests
         }
 
         using var readStream = new MemoryStream(stream.ToArray());
-        List<ArrowNullableRow> rows = await ArrowNullableRowParquetExtensions.ReadParquetAsync(
-            readStream
-        );
+        List<ArrowNullableRow> rows = await ArrowNullableRowParquet.From(readStream).ToListAsync();
         rows.ShouldBeEmpty();
     }
 }

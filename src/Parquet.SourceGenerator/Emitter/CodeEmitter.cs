@@ -105,10 +105,6 @@ internal static class CodeEmitter
         EmitReadArrayAsync(builder, model);
         builder.AppendLine();
 
-        // Parallel Read API — multi-core parallel object instantiation
-        EmitReadParallelAsync(builder, model);
-        builder.AppendLine();
-
         // Streaming Read API — IAsyncEnumerable streaming
         EmitReadStreamAsync(builder, model);
         builder.AppendLine();
@@ -157,8 +153,9 @@ internal static class CodeEmitter
         }
 
         // Read entry point and builder structs (#217). Each axis of the read grid becomes a
-        // member rather than a name segment; see docs/19-PUBLIC-API-SURFACE.md. The flat Read*
-        // methods above remain and are what these delegate to, for one release (decision D3).
+        // member rather than a name segment; see docs/19-PUBLIC-API-SURFACE.md. The builder is the
+        // only public read surface (#480, docs/48): the internal Read*CoreAsync methods above are
+        // the implementations its terminals delegate to, and are not part of the consumer contract.
         ReadBuilderComponent.Emit(builder, model);
 
         return builder.ToString();
@@ -1264,7 +1261,7 @@ internal static class CodeEmitter
         );
         builder.AppendLine("    /// </summary>");
         builder.AppendLine(
-            $"    public static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<{model.ClassName}>> ReadParquetAsync("
+            $"    internal static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<{model.ClassName}>> ReadListCoreAsync("
         );
         builder.AppendLine($"        global::System.IO.Stream stream,");
         builder.AppendLine(
@@ -1470,7 +1467,7 @@ internal static class CodeEmitter
         );
         builder.AppendLine("    /// </summary>");
         builder.AppendLine(
-            $"    public static async global::System.Threading.Tasks.Task<{model.ClassName}[]> ReadParquetArrayAsync("
+            $"    internal static async global::System.Threading.Tasks.Task<{model.ClassName}[]> ReadArrayCoreAsync("
         );
         builder.AppendLine($"        global::System.IO.Stream stream,");
         builder.AppendLine(
@@ -1583,7 +1580,7 @@ internal static class CodeEmitter
         );
         builder.AppendLine("    /// </summary>");
         builder.AppendLine(
-            $"    public static async global::System.Collections.Generic.IAsyncEnumerable<{model.ClassName}> ReadParquetStreamAsync("
+            $"    internal static async global::System.Collections.Generic.IAsyncEnumerable<{model.ClassName}> ReadEnumerableCoreAsync("
         );
         builder.AppendLine($"        global::System.IO.Stream stream,");
         builder.AppendLine(
@@ -1694,7 +1691,7 @@ internal static class CodeEmitter
         );
         builder.AppendLine("    /// </summary>");
         builder.AppendLine(
-            $"    public static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<{model.ClassName}>> ReadParquetAsync("
+            $"    internal static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<{model.ClassName}>> ReadListCoreAsync("
         );
         builder.AppendLine($"        global::System.ReadOnlyMemory<byte> parquetBytes,");
         builder.AppendLine(
@@ -1719,7 +1716,7 @@ internal static class CodeEmitter
         );
         builder.AppendLine("    /// </summary>");
         builder.AppendLine(
-            $"    public static async global::System.Threading.Tasks.Task<{model.ClassName}[]> ReadParquetArrayAsync("
+            $"    internal static async global::System.Threading.Tasks.Task<{model.ClassName}[]> ReadArrayCoreAsync("
         );
         builder.AppendLine($"        global::System.ReadOnlyMemory<byte> parquetBytes,");
         builder.AppendLine(
@@ -1747,7 +1744,7 @@ internal static class CodeEmitter
         );
         builder.AppendLine("    /// </summary>");
         builder.AppendLine(
-            $"    public static async global::System.Collections.Generic.IAsyncEnumerable<{model.ClassName}> ReadParquetStreamAsync("
+            $"    internal static async global::System.Collections.Generic.IAsyncEnumerable<{model.ClassName}> ReadEnumerableCoreAsync("
         );
         builder.AppendLine($"        global::System.ReadOnlyMemory<byte> parquetBytes,");
         builder.AppendLine(
@@ -1759,7 +1756,7 @@ internal static class CodeEmitter
         builder.AppendLine("    {");
         builder.AppendLine("        using var stream = CreateBufferStream(parquetBytes);");
         builder.AppendLine(
-            $"        await foreach (var item in ReadParquetStreamAsync(stream, options, cancellationToken{RowGroupPruningComponent.ForwardArgument(model)}))"
+            $"        await foreach (var item in ReadEnumerableCoreAsync(stream, options, cancellationToken{RowGroupPruningComponent.ForwardArgument(model)}))"
         );
         builder.AppendLine("        {");
         builder.AppendLine("            yield return item;");
@@ -2098,181 +2095,6 @@ internal static class CodeEmitter
     //  PARALLEL READ METHODS
     // ──────────────────────────────────────────────────────────
 
-    private static void EmitReadParallelAsync(StringBuilder builder, TargetClassModel model)
-    {
-        builder.AppendLine("    /// <summary>");
-        builder.AppendLine(
-            $"    /// Asynchronously deserializes all <c>{model.ClassName}</c> objects from a Parquet stream directly into an array."
-        );
-        builder.AppendLine("    /// </summary>");
-        builder.AppendLine("    /// <remarks>");
-        builder.AppendLine("    /// <para>");
-        builder.AppendLine(
-            "    /// This overload reads row groups sequentially. A single <c>ParquetReader</c> over one"
-        );
-        builder.AppendLine(
-            "    /// <c>Stream</c> cannot be read concurrently — the reader seeks within the stream, so overlapping"
-        );
-        builder.AppendLine(
-            "    /// row-group reads corrupt each other — and an arbitrary <c>Stream</c> cannot be handed to more"
-        );
-        builder.AppendLine("    /// than one reader.");
-        builder.AppendLine("    /// </para>");
-        builder.AppendLine("    /// <para>");
-        builder.AppendLine(
-            "    /// For genuine decode parallelism use the <c>ReadOnlyMemory&lt;byte&gt;</c> overload, which gives"
-        );
-        builder.AppendLine(
-            "    /// every worker its own reader over its own view of the same bytes."
-        );
-        builder.AppendLine("    /// </para>");
-        builder.AppendLine("    /// </remarks>");
-        builder.AppendLine(
-            $"    public static async global::System.Threading.Tasks.Task<{model.ClassName}[]> ReadParquetParallelArrayAsync("
-        );
-        builder.AppendLine($"        global::System.IO.Stream stream,");
-        builder.AppendLine(
-            $"        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,"
-        );
-        builder.AppendLine(
-            $"        global::System.Threading.CancellationToken cancellationToken = default)"
-        );
-        builder.AppendLine("    {");
-        builder.AppendLine(
-            "        if (stream == null) throw new global::System.ArgumentNullException(nameof(stream));"
-        );
-        builder.AppendLine();
-        builder.AppendLine(
-            "        options ??= global::Parquet.SourceGenerator.ParquetSerializerOptions.Default;"
-        );
-        builder.AppendLine();
-        builder.AppendLine(
-            "        using var guardedStream = CreateGuardedReadStream(stream, options);"
-        );
-        builder.AppendLine(
-            "        await using var reader = await global::Parquet.ParquetReader.CreateAsync("
-        );
-        builder.AppendLine("            guardedStream,");
-        builder.AppendLine("            BuildFormatOptions(options),");
-        builder.AppendLine("            cancellationToken: cancellationToken);");
-        builder.AppendLine("        guardedStream.Activate();");
-        builder.AppendLine(
-            "        await ValidateReaderAsync(reader, stream, options, cancellationToken).ConfigureAwait(false);"
-        );
-        builder.AppendLine("        int rgCount = reader.RowGroupCount;");
-        builder.AppendLine(
-            $"        if (rgCount == 0) return global::System.Array.Empty<{model.ClassName}>();"
-        );
-        builder.AppendLine();
-        builder.AppendLine("        long totalRowsLong = 0;");
-        builder.AppendLine("        var rowOffsets = new int[rgCount];");
-        builder.AppendLine("        for (int r = 0; r < rgCount; r++)");
-        builder.AppendLine("        {");
-        builder.AppendLine("            long rcLong = reader.RowGroups[r].RowCount;");
-        builder.AppendLine("            if (rcLong < 0 || rcLong > options.MaxAllocationValues)");
-        builder.AppendLine("            {");
-        builder.AppendLine(
-            "                throw new global::System.IO.InvalidDataException($\"Row group {r} row count {rcLong} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.\");"
-        );
-        builder.AppendLine("            }");
-        builder.AppendLine("            rowOffsets[r] = checked((int)totalRowsLong);");
-        builder.AppendLine("            totalRowsLong = checked(totalRowsLong + rcLong);");
-        builder.AppendLine("        }");
-        builder.AppendLine("        if (totalRowsLong > options.MaxAllocationValues)");
-        builder.AppendLine("        {");
-        builder.AppendLine(
-            "            throw new global::System.IO.InvalidDataException($\"Total row count {totalRowsLong} exceeds maximum allowed {options.MaxAllocationValues}.\");"
-        );
-        builder.AppendLine("        }");
-        builder.AppendLine("        int totalRows = checked((int)totalRowsLong);");
-        builder.AppendLine($"        var resultArray = new {model.ClassName}[totalRows];");
-        builder.AppendLine("        var fileFields = reader.Schema.DataFields;");
-        builder.AppendLine();
-        if (model.Properties.Length > 0)
-        {
-            builder.AppendLine(
-                "        global::System.Collections.Generic.Dictionary<string, global::Parquet.Schema.DataField>? fieldsByName = null;"
-            );
-            foreach (LeafColumn col in EmissionPlan.For(model).Columns)
-            {
-                builder.AppendLine(EmitResolveFieldLine(col, "        "));
-            }
-
-            builder.AppendLine();
-        }
-
-        StringDeduplicatorComponent.EmitDeduplicatorDeclaration(builder, model);
-
-        builder.AppendLine("        for (int r = 0; r < rgCount; r++)");
-        builder.AppendLine("        {");
-        builder.AppendLine("            cancellationToken.ThrowIfCancellationRequested();");
-        builder.AppendLine("            using var groupReader = reader.OpenRowGroupReader(r);");
-        builder.AppendLine("            int rowCount = checked((int)groupReader.RowCount);");
-        builder.AppendLine(
-            "            if (rowCount < 0 || rowCount > options.MaxAllocationValues)"
-        );
-        builder.AppendLine("            {");
-        builder.AppendLine(
-            "                throw new global::System.IO.InvalidDataException($\"Row group {r} row count {rowCount} is invalid or exceeds maximum allowed {options.MaxAllocationValues}.\");"
-        );
-        builder.AppendLine("            }");
-        builder.AppendLine("            int startIdx = rowOffsets[r];");
-        builder.AppendLine();
-        EmitRentalsFor(builder, model, "rowCount", indent: "            ");
-        builder.AppendLine();
-        builder.AppendLine("            try");
-        builder.AppendLine("            {");
-        foreach (LeafColumn col in EmissionPlan.For(model).Columns)
-        {
-            EmitReadWithNullBypass(builder, col, $"field_{col.Slot}", $"buffer_{col.Slot}");
-        }
-        builder.AppendLine();
-        EmitArrayMaterializationFor(
-            builder,
-            model,
-            "resultArray",
-            "startIdx",
-            indent: "                "
-        );
-        builder.AppendLine("            }");
-        builder.AppendLine("            finally");
-        builder.AppendLine("            {");
-        EmitReturnsFor(builder, model, indent: "                ");
-        builder.AppendLine("            }");
-        builder.AppendLine("        }");
-        builder.AppendLine();
-        builder.AppendLine("        return resultArray;");
-        builder.AppendLine("    }");
-        builder.AppendLine();
-
-        builder.AppendLine("    /// <summary>");
-        builder.AppendLine(
-            $"    /// Asynchronously deserializes all <c>{model.ClassName}</c> objects from a Parquet stream, materialising"
-        );
-        builder.AppendLine(
-            "    /// into a single pre-sized list indexed by row-group offset rather than growing a list."
-        );
-        builder.AppendLine("    /// </summary>");
-        builder.AppendLine(
-            $"    public static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<{model.ClassName}>> ReadParquetParallelAsync("
-        );
-        builder.AppendLine($"        global::System.IO.Stream stream,");
-        builder.AppendLine(
-            $"        global::Parquet.SourceGenerator.ParquetSerializerOptions? options = null,"
-        );
-        builder.AppendLine(
-            $"        global::System.Threading.CancellationToken cancellationToken = default)"
-        );
-        builder.AppendLine("    {");
-        builder.AppendLine(
-            $"        var resultArray = await ReadParquetParallelArrayAsync(stream, options, cancellationToken);"
-        );
-        builder.AppendLine(
-            $"        return new global::System.Collections.Generic.List<{model.ClassName}>(resultArray);"
-        );
-        builder.AppendLine("    }");
-    }
-
     private static void EmitReadParallelBufferAsync(StringBuilder builder, TargetClassModel model)
     {
         builder.AppendLine("    /// <summary>");
@@ -2284,7 +2106,7 @@ internal static class CodeEmitter
         );
         builder.AppendLine("    /// </summary>");
         builder.AppendLine(
-            $"    public static async global::System.Threading.Tasks.Task<{model.ClassName}[]> ReadParquetParallelArrayAsync("
+            $"    internal static async global::System.Threading.Tasks.Task<{model.ClassName}[]> ReadParallelArrayCoreAsync("
         );
         builder.AppendLine($"        global::System.ReadOnlyMemory<byte> parquetBytes,");
         builder.AppendLine(
@@ -2426,7 +2248,7 @@ internal static class CodeEmitter
         builder.AppendLine("    /// decoding row groups across multiple workers.");
         builder.AppendLine("    /// </summary>");
         builder.AppendLine(
-            $"    public static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<{model.ClassName}>> ReadParquetParallelAsync("
+            $"    internal static async global::System.Threading.Tasks.Task<global::System.Collections.Generic.List<{model.ClassName}>> ReadParallelListCoreAsync("
         );
         builder.AppendLine($"        global::System.ReadOnlyMemory<byte> parquetBytes,");
         builder.AppendLine(
@@ -2437,7 +2259,7 @@ internal static class CodeEmitter
         );
         builder.AppendLine("    {");
         builder.AppendLine(
-            $"        var resultArray = await ReadParquetParallelArrayAsync(parquetBytes, options, cancellationToken);"
+            $"        var resultArray = await ReadParallelArrayCoreAsync(parquetBytes, options, cancellationToken);"
         );
         builder.AppendLine(
             $"        return new global::System.Collections.Generic.List<{model.ClassName}>(resultArray);"

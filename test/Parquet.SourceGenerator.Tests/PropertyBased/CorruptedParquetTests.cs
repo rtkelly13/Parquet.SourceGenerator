@@ -326,10 +326,9 @@ public sealed class CorruptedParquetTests
         try
         {
             using var stream = new MemoryStream(bytes, writable: false);
-            List<FuzzWideRecord> rows = await FuzzWideRecordParquetExtensions.ReadParquetAsync(
-                stream,
-                cancellationToken: cancellationToken
-            );
+            List<FuzzWideRecord> rows = await FuzzWideRecordParquet
+                .From(stream)
+                .ToListAsync(cancellationToken);
             return new ReadOutcome(rows, null, TimedOut: false, 0);
         }
         catch (Exception ex)

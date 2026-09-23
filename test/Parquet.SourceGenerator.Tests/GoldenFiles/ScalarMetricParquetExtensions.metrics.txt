@@ -9,7 +9,7 @@
 # ELOC_PER_MEMBER emitted executable lines per emitted public member.
 # Ordinal-sorted. CC, CL, SLOC, ELOC, DIT, ERRORS and MEMBERS are gated exactly; MI is
 # REPORTED BUT NOT GATED for generated code. See docs/22-GENERATED-CODE-METRICS.md.
-S:ScalarMetricParquetExtensions | EMITTER=v6 MEMBERS=76 CC=745 CL=83 SLOC=3780 ELOC=1590 ERRORS=0 METHODS=106 MAXCC=79 ELOC_PER_MEMBER=20.9
+S:ScalarMetricParquetExtensions | EMITTER=v6 MEMBERS=64 CC=674 CL=83 SLOC=3471 ELOC=1439 ERRORS=0 METHODS=104 MAXCC=79 ELOC_PER_MEMBER=22.5
 M:SampleDomain.Models.ScalarMetricParquet.From(System.IO.Stream) | MI=90 CC=2 CL=5 DIT=- SLOC=3 ELOC=1
 M:SampleDomain.Models.ScalarMetricParquet.From(System.ReadOnlyMemory<byte>) | MI=94 CC=1 CL=3 DIT=- SLOC=3 ELOC=1
 M:SampleDomain.Models.ScalarMetricParquetExtensions.AcceptRowGroup(System.Func<SampleDomain.Models.ScalarMetricRowGroupMetadata, bool>, Parquet.ParquetRowGroupReader, int, Parquet.Schema.DataField, Parquet.Schema.DataField, Parquet.Schema.DataField, Parquet.Schema.DataField) | MI=57 CC=14 CL=8 DIT=- SLOC=46 ELOC=9
@@ -50,24 +50,22 @@ M:SampleDomain.Models.ScalarMetricParquetExtensions.DecompressionGuardStream.Val
 M:SampleDomain.Models.ScalarMetricParquetExtensions.DecompressionGuardStream.Write(byte[], int, int) | MI=100 CC=1 CL=2 DIT=- SLOC=1 ELOC=1
 M:SampleDomain.Models.ScalarMetricParquetExtensions.GetFieldDepth(Parquet.Schema.Field) | MI=60 CC=6 CL=6 DIT=- SLOC=22 ELOC=11
 M:SampleDomain.Models.ScalarMetricParquetExtensions.GetFooterStartAsync(System.IO.Stream, System.Threading.CancellationToken) | MI=52 CC=7 CL=6 DIT=- SLOC=34 ELOC=18
+M:SampleDomain.Models.ScalarMetricParquetExtensions.ReadArrayCoreAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.ScalarMetricRowGroupMetadata, bool>) | MI=13 CC=79 CL=31 DIT=- SLOC=317 ELOC=164
+M:SampleDomain.Models.ScalarMetricParquetExtensions.ReadArrayCoreAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=76 CC=1 CL=4 DIT=- SLOC=10 ELOC=3
+M:SampleDomain.Models.ScalarMetricParquetExtensions.ReadBatchesCoreAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=19 CC=63 CL=28 DIT=- SLOC=249 ELOC=128
+M:SampleDomain.Models.ScalarMetricParquetExtensions.ReadBatchesCoreAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=70 CC=2 CL=8 DIT=- SLOC=14 ELOC=5
 M:SampleDomain.Models.ScalarMetricParquetExtensions.ReadBufferSequentialArrayAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=15 CC=73 CL=30 DIT=- SLOC=289 ELOC=152
 M:SampleDomain.Models.ScalarMetricParquetExtensions.ReadCompactI32(System.IO.Stream) | MI=80 CC=2 CL=2 DIT=- SLOC=5 ELOC=2
 M:SampleDomain.Models.ScalarMetricParquetExtensions.ReadCompactVarUInt(System.IO.Stream) | MI=65 CC=4 CL=2 DIT=- SLOC=12 ELOC=7
 M:SampleDomain.Models.ScalarMetricParquetExtensions.ReadDictionaryEntryCount(Parquet.ParquetRowGroupReader, System.IO.Stream, Parquet.Schema.DataField) | MI=62 CC=8 CL=7 DIT=- SLOC=20 ELOC=8
 M:SampleDomain.Models.ScalarMetricParquetExtensions.ReadDictionaryPageHeader(System.IO.Stream) | MI=70 CC=5 CL=2 DIT=- SLOC=11 ELOC=5
 M:SampleDomain.Models.ScalarMetricParquetExtensions.ReadDictionaryPageHeaderBody(System.IO.Stream) | MI=62 CC=7 CL=2 DIT=- SLOC=16 ELOC=9
-M:SampleDomain.Models.ScalarMetricParquetExtensions.ReadParquetArrayAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.ScalarMetricRowGroupMetadata, bool>) | MI=13 CC=79 CL=31 DIT=- SLOC=317 ELOC=164
-M:SampleDomain.Models.ScalarMetricParquetExtensions.ReadParquetArrayAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=76 CC=1 CL=4 DIT=- SLOC=10 ELOC=3
-M:SampleDomain.Models.ScalarMetricParquetExtensions.ReadParquetAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.ScalarMetricRowGroupMetadata, bool>) | MI=13 CC=79 CL=33 DIT=- SLOC=344 ELOC=168
-M:SampleDomain.Models.ScalarMetricParquetExtensions.ReadParquetAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=72 CC=1 CL=7 DIT=- SLOC=11 ELOC=4
-M:SampleDomain.Models.ScalarMetricParquetExtensions.ReadParquetBatchesAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=19 CC=63 CL=28 DIT=- SLOC=249 ELOC=128
-M:SampleDomain.Models.ScalarMetricParquetExtensions.ReadParquetBatchesAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=70 CC=2 CL=8 DIT=- SLOC=14 ELOC=5
-M:SampleDomain.Models.ScalarMetricParquetExtensions.ReadParquetParallelArrayAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=16 CC=70 CL=29 DIT=- SLOC=295 ELOC=147
-M:SampleDomain.Models.ScalarMetricParquetExtensions.ReadParquetParallelArrayAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=39 CC=15 CL=22 DIT=- SLOC=118 ELOC=47
-M:SampleDomain.Models.ScalarMetricParquetExtensions.ReadParquetParallelAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=72 CC=1 CL=7 DIT=- SLOC=12 ELOC=4
-M:SampleDomain.Models.ScalarMetricParquetExtensions.ReadParquetParallelAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=72 CC=1 CL=7 DIT=- SLOC=12 ELOC=4
-M:SampleDomain.Models.ScalarMetricParquetExtensions.ReadParquetStreamAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.ScalarMetricRowGroupMetadata, bool>) | MI=18 CC=66 CL=32 DIT=- SLOC=261 ELOC=133
-M:SampleDomain.Models.ScalarMetricParquetExtensions.ReadParquetStreamAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.ScalarMetricRowGroupMetadata, bool>) | MI=67 CC=2 CL=10 DIT=- SLOC=15 ELOC=6
+M:SampleDomain.Models.ScalarMetricParquetExtensions.ReadEnumerableCoreAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.ScalarMetricRowGroupMetadata, bool>) | MI=18 CC=66 CL=32 DIT=- SLOC=261 ELOC=133
+M:SampleDomain.Models.ScalarMetricParquetExtensions.ReadEnumerableCoreAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.ScalarMetricRowGroupMetadata, bool>) | MI=67 CC=2 CL=10 DIT=- SLOC=15 ELOC=6
+M:SampleDomain.Models.ScalarMetricParquetExtensions.ReadListCoreAsync(System.IO.Stream, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken, System.Func<SampleDomain.Models.ScalarMetricRowGroupMetadata, bool>) | MI=13 CC=79 CL=33 DIT=- SLOC=344 ELOC=168
+M:SampleDomain.Models.ScalarMetricParquetExtensions.ReadListCoreAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=72 CC=1 CL=7 DIT=- SLOC=11 ELOC=4
+M:SampleDomain.Models.ScalarMetricParquetExtensions.ReadParallelArrayCoreAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=39 CC=15 CL=22 DIT=- SLOC=118 ELOC=47
+M:SampleDomain.Models.ScalarMetricParquetExtensions.ReadParallelListCoreAsync(System.ReadOnlyMemory<byte>, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationToken) | MI=72 CC=1 CL=7 DIT=- SLOC=12 ELOC=4
 M:SampleDomain.Models.ScalarMetricParquetExtensions.ReadRowGroupsIntoAsync(System.ReadOnlyMemory<byte>, Parquet.ParquetOptions, SampleDomain.Models.ScalarMetric[], int[], int[], int, int, Parquet.SourceGenerator.ParquetSerializerOptions, System.Threading.CancellationTokenSource, System.Threading.CancellationToken) | MI=18 CC=65 CL=31 DIT=- SLOC=281 ELOC=133
 M:SampleDomain.Models.ScalarMetricParquetExtensions.ResolveSchemaField(Parquet.Schema.DataField[], int, Parquet.Schema.DataField, ref System.Collections.Generic.Dictionary<string, Parquet.Schema.DataField>, out bool) | MI=51 CC=10 CL=8 DIT=- SLOC=61 ELOC=19
 M:SampleDomain.Models.ScalarMetricParquetExtensions.TryReadCompactField(System.IO.Stream, ref int, out int, out int) | MI=57 CC=6 CL=2 DIT=- SLOC=21 ELOC=14
@@ -140,7 +138,7 @@ P:SampleDomain.Models.ScalarMetricRowGroupMetadata.ShortNum | MI=100 CC=1 CL=1 D
 P:SampleDomain.Models.ScalarMetricRowGroupMetadata.TinyNum | MI=100 CC=1 CL=1 DIT=- SLOC=2 ELOC=0
 T:SampleDomain.Models.ScalarMetricColumnarBatch | MI=100 CC=1 CL=1 DIT=1 SLOC=44 ELOC=0
 T:SampleDomain.Models.ScalarMetricParquet | MI=91 CC=3 CL=7 DIT=1 SLOC=13 ELOC=2
-T:SampleDomain.Models.ScalarMetricParquetExtensions | MI=40 CC=699 CL=78 DIT=1 SLOC=3496 ELOC=1534
+T:SampleDomain.Models.ScalarMetricParquetExtensions | MI=41 CC=628 CL=78 DIT=1 SLOC=3187 ELOC=1383
 T:SampleDomain.Models.ScalarMetricParquetExtensions.ColumnBatch | MI=79 CC=19 CL=2 DIT=1 SLOC=88 ELOC=26
 T:SampleDomain.Models.ScalarMetricParquetExtensions.DecompressionGuardStream | MI=79 CC=32 CL=9 DIT=3 SLOC=117 ELOC=37
 T:SampleDomain.Models.ScalarMetricParquetExtensions.DecompressionGuardStream.CompactProtocolReader | MI=70 CC=12 CL=1 DIT=1 SLOC=40 ELOC=19

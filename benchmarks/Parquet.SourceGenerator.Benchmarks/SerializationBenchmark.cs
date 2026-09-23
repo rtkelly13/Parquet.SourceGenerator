@@ -178,19 +178,7 @@ public class ScalingDeserializationBenchmark
     public async Task<List<ScaleEvent>> SourceGeneratorReadAsync()
     {
         using var stream = new MemoryStream(_parquetBytes);
-        return await ScaleEventParquetExtensions.ReadParquetAsync(stream);
-    }
-
-    /// <summary>
-    /// Source generator array-backed deserializer over a <c>Stream</c>. Reads row groups
-    /// sequentially — a stream cannot be shared between readers — and materialises into a pre-sized
-    /// array rather than a growing list.
-    /// </summary>
-    [Benchmark]
-    public async Task<List<ScaleEvent>> SourceGeneratorReadParallelAsync()
-    {
-        using var stream = new MemoryStream(_parquetBytes);
-        return await ScaleEventParquetExtensions.ReadParquetParallelAsync(stream);
+        return await ScaleEventParquet.From(stream).ToListAsync();
     }
 
     /// <summary>
@@ -199,9 +187,7 @@ public class ScalingDeserializationBenchmark
     [Benchmark]
     public async Task<List<ScaleEvent>> SourceGeneratorReadBufferAsync()
     {
-        return await ScaleEventParquetExtensions.ReadParquetAsync(
-            new ReadOnlyMemory<byte>(_parquetBytes)
-        );
+        return await ScaleEventParquet.From(new ReadOnlyMemory<byte>(_parquetBytes)).ToListAsync();
     }
 
     /// <summary>
@@ -217,10 +203,11 @@ public class ScalingDeserializationBenchmark
     [Benchmark]
     public async Task<List<ScaleEvent>> SourceGeneratorReadParallelBufferAsync()
     {
-        return await ScaleEventParquetExtensions.ReadParquetParallelAsync(
-            new ReadOnlyMemory<byte>(_parquetBytes),
-            new ParquetSerializerOptions { MaxDegreeOfParallelism = 4 }
-        );
+        return await ScaleEventParquet
+            .From(new ReadOnlyMemory<byte>(_parquetBytes))
+            .WithOptions(new ParquetSerializerOptions { MaxDegreeOfParallelism = 4 })
+            .Parallel()
+            .ToListAsync();
     }
 
     /// <summary>
@@ -230,7 +217,7 @@ public class ScalingDeserializationBenchmark
     public async Task<ScaleEvent[]> SourceGeneratorReadArrayAsync()
     {
         using var stream = new MemoryStream(_parquetBytes);
-        return await ScaleEventParquetExtensions.ReadParquetArrayAsync(stream);
+        return await ScaleEventParquet.From(stream).ToArrayAsync();
     }
 
     /// <summary>
@@ -239,9 +226,7 @@ public class ScalingDeserializationBenchmark
     [Benchmark]
     public async Task<ScaleEvent[]> SourceGeneratorReadBufferArrayAsync()
     {
-        return await ScaleEventParquetExtensions.ReadParquetArrayAsync(
-            new ReadOnlyMemory<byte>(_parquetBytes)
-        );
+        return await ScaleEventParquet.From(new ReadOnlyMemory<byte>(_parquetBytes)).ToArrayAsync();
     }
 
     /// <summary>
@@ -250,10 +235,11 @@ public class ScalingDeserializationBenchmark
     [Benchmark]
     public async Task<ScaleEvent[]> SourceGeneratorReadParallelBufferArrayAsync()
     {
-        return await ScaleEventParquetExtensions.ReadParquetParallelArrayAsync(
-            new ReadOnlyMemory<byte>(_parquetBytes),
-            new ParquetSerializerOptions { MaxDegreeOfParallelism = 4 }
-        );
+        return await ScaleEventParquet
+            .From(new ReadOnlyMemory<byte>(_parquetBytes))
+            .WithOptions(new ParquetSerializerOptions { MaxDegreeOfParallelism = 4 })
+            .Parallel()
+            .ToArrayAsync();
     }
 
     /// <summary>
@@ -264,7 +250,7 @@ public class ScalingDeserializationBenchmark
     {
         using var stream = new MemoryStream(_parquetBytes);
         int count = 0;
-        await foreach (var item in ScaleEventParquetExtensions.ReadParquetStreamAsync(stream))
+        await foreach (var item in ScaleEventParquet.From(stream).AsAsyncEnumerable())
         {
             count++;
         }

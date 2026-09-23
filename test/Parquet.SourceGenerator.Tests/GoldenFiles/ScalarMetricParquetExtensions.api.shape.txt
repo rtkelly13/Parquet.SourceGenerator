@@ -1,2 +1,2 @@
 # generated API shape summary
-MEMBERS=76 PARAMETERS=77
+MEMBERS=64 PARAMETERS=37

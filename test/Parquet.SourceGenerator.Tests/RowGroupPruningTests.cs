@@ -127,10 +127,10 @@ public sealed class RowGroupPruningTests
     {
         byte[] bytes = await WriteAsync();
 
-        List<PrunedOrder> pruned = await PrunedOrderParquetExtensions.ReadParquetAsync(
-            new MemoryStream(bytes),
-            predicate: meta => meta.OrderKey.MayContainAtLeast(4_000)
-        );
+        List<PrunedOrder> pruned = await PrunedOrderParquet
+            .From(new MemoryStream(bytes))
+            .Where(meta => meta.OrderKey.MayContainAtLeast(4_000))
+            .ToListAsync();
 
         // Groups 8 and 9 hold keys 4000..4999; every earlier group's max is below the threshold.
         pruned.Count.ShouldBe(2 * RowsPerGroup);
@@ -143,10 +143,10 @@ public sealed class RowGroupPruningTests
     {
         byte[] bytes = await WriteAsync();
 
-        List<PrunedOrder> pruned = await PrunedOrderParquetExtensions.ReadParquetAsync(
-            new MemoryStream(bytes),
-            predicate: meta => meta.OrderKey.Max >= 1_000
-        );
+        List<PrunedOrder> pruned = await PrunedOrderParquet
+            .From(new MemoryStream(bytes))
+            .Where(meta => meta.OrderKey.Max >= 1_000)
+            .ToListAsync();
 
         // Group 1's max is 999, so the first group the raw comparison admits is group 2.
         pruned.Count.ShouldBe(8 * RowsPerGroup);
@@ -158,10 +158,10 @@ public sealed class RowGroupPruningTests
     {
         byte[] bytes = await WriteAsync();
 
-        List<PrunedOrder> pruned = await PrunedOrderParquetExtensions.ReadParquetAsync(
-            new MemoryStream(bytes),
-            predicate: meta => meta.OrderKey.MayContainAtMost(999)
-        );
+        List<PrunedOrder> pruned = await PrunedOrderParquet
+            .From(new MemoryStream(bytes))
+            .Where(meta => meta.OrderKey.MayContainAtMost(999))
+            .ToListAsync();
 
         pruned.Count.ShouldBe(2 * RowsPerGroup);
         pruned[0].OrderKey.ShouldBe(0);
@@ -173,10 +173,10 @@ public sealed class RowGroupPruningTests
     {
         byte[] bytes = await WriteAsync();
 
-        List<PrunedOrder> pruned = await PrunedOrderParquetExtensions.ReadParquetAsync(
-            new MemoryStream(bytes),
-            predicate: meta => meta.OrderKey.MayContain(2_222)
-        );
+        List<PrunedOrder> pruned = await PrunedOrderParquet
+            .From(new MemoryStream(bytes))
+            .Where(meta => meta.OrderKey.MayContain(2_222))
+            .ToListAsync();
 
         pruned.Count.ShouldBe(RowsPerGroup);
         pruned.ShouldContain(o => o.OrderKey == 2_222);
@@ -189,11 +189,12 @@ public sealed class RowGroupPruningTests
         byte[] bytes = await WriteAsync();
 
         // The key range admits groups 4..9; the region equality admits only group 4.
-        List<PrunedOrder> pruned = await PrunedOrderParquetExtensions.ReadParquetAsync(
-            new MemoryStream(bytes),
-            predicate: meta =>
+        List<PrunedOrder> pruned = await PrunedOrderParquet
+            .From(new MemoryStream(bytes))
+            .Where(meta =>
                 meta.OrderKey.MayContainAtLeast(2_000) && meta.Region.MayContain("region_4")
-        );
+            )
+            .ToListAsync();
 
         pruned.Count.ShouldBe(RowsPerGroup);
         pruned.ShouldAllBe(o => o.Region == "region_4");
@@ -204,10 +205,10 @@ public sealed class RowGroupPruningTests
     {
         byte[] bytes = await WriteAsync();
 
-        List<PrunedOrder> pruned = await PrunedOrderParquetExtensions.ReadParquetAsync(
-            new MemoryStream(bytes),
-            predicate: meta => meta.OrderKey.MayContainAtLeast(1_000_000)
-        );
+        List<PrunedOrder> pruned = await PrunedOrderParquet
+            .From(new MemoryStream(bytes))
+            .Where(meta => meta.OrderKey.MayContainAtLeast(1_000_000))
+            .ToListAsync();
 
         pruned.ShouldBeEmpty();
     }
@@ -217,15 +218,15 @@ public sealed class RowGroupPruningTests
     {
         byte[] bytes = await WriteAsync();
 
-        List<PrunedOrder> all = await PrunedOrderParquetExtensions.ReadParquetAsync(
-            new MemoryStream(bytes)
-        );
+        List<PrunedOrder> all = await PrunedOrderParquet
+            .From(new MemoryStream(bytes))
+            .ToListAsync();
         List<PrunedOrder> expected = all.Where(o => o.OrderKey >= 3_100).ToList();
 
-        List<PrunedOrder> pruned = await PrunedOrderParquetExtensions.ReadParquetAsync(
-            new MemoryStream(bytes),
-            predicate: meta => meta.OrderKey.MayContainAtLeast(3_100)
-        );
+        List<PrunedOrder> pruned = await PrunedOrderParquet
+            .From(new MemoryStream(bytes))
+            .Where(meta => meta.OrderKey.MayContainAtLeast(3_100))
+            .ToListAsync();
 
         // Pruning is a superset filter: whole groups only, so the surviving set still contains
         // every row the row-level predicate would keep.
@@ -240,13 +241,13 @@ public sealed class RowGroupPruningTests
         byte[] bytes = await WriteAsync();
 
         using var fullStream = new CountingStream(bytes);
-        List<PrunedOrder> all = await PrunedOrderParquetExtensions.ReadParquetAsync(fullStream);
+        List<PrunedOrder> all = await PrunedOrderParquet.From(fullStream).ToListAsync();
 
         using var prunedStream = new CountingStream(bytes);
-        List<PrunedOrder> pruned = await PrunedOrderParquetExtensions.ReadParquetAsync(
-            prunedStream,
-            predicate: meta => meta.OrderKey.MayContainAtLeast(4_500)
-        );
+        List<PrunedOrder> pruned = await PrunedOrderParquet
+            .From(prunedStream)
+            .Where(meta => meta.OrderKey.MayContainAtLeast(4_500))
+            .ToListAsync();
 
         all.Count.ShouldBe(RowsPerGroup * GroupCount);
         pruned.Count.ShouldBe(RowsPerGroup);
@@ -263,10 +264,10 @@ public sealed class RowGroupPruningTests
     {
         byte[] bytes = await WriteAsync();
 
-        PrunedOrder[] pruned = await PrunedOrderParquetExtensions.ReadParquetArrayAsync(
-            new MemoryStream(bytes),
-            predicate: meta => meta.OrderKey.MayContainAtLeast(4_500)
-        );
+        PrunedOrder[] pruned = await PrunedOrderParquet
+            .From(new MemoryStream(bytes))
+            .Where(meta => meta.OrderKey.MayContainAtLeast(4_500))
+            .ToArrayAsync();
 
         pruned.Length.ShouldBe(RowsPerGroup);
         pruned[0].OrderKey.ShouldBe(4_500);
@@ -279,10 +280,10 @@ public sealed class RowGroupPruningTests
 
         var streamed = new List<PrunedOrder>();
         await foreach (
-            PrunedOrder item in PrunedOrderParquetExtensions.ReadParquetStreamAsync(
-                new MemoryStream(bytes),
-                predicate: meta => meta.OrderKey.MayContainAtLeast(4_500)
-            )
+            PrunedOrder item in PrunedOrderParquet
+                .From(new MemoryStream(bytes))
+                .Where(meta => meta.OrderKey.MayContainAtLeast(4_500))
+                .AsAsyncEnumerable()
         )
         {
             streamed.Add(item);
@@ -299,10 +300,10 @@ public sealed class RowGroupPruningTests
 
         var streamed = new List<PrunedOrder>();
         await foreach (
-            PrunedOrder item in PrunedOrderParquetExtensions.ReadParquetStreamAsync(
-                new ReadOnlyMemory<byte>(bytes),
-                predicate: meta => meta.OrderKey.MayContainAtLeast(4_500)
-            )
+            PrunedOrder item in PrunedOrderParquet
+                .From(new ReadOnlyMemory<byte>(bytes))
+                .Where(meta => meta.OrderKey.MayContainAtLeast(4_500))
+                .AsAsyncEnumerable()
         )
         {
             streamed.Add(item);
@@ -316,9 +317,9 @@ public sealed class RowGroupPruningTests
     {
         byte[] bytes = await WriteAsync();
 
-        List<PrunedOrder> all = await PrunedOrderParquetExtensions.ReadParquetAsync(
-            new MemoryStream(bytes)
-        );
+        List<PrunedOrder> all = await PrunedOrderParquet
+            .From(new MemoryStream(bytes))
+            .ToListAsync();
 
         all.Count.ShouldBe(RowsPerGroup * GroupCount);
         all.Select(o => o.OrderKey)
@@ -331,9 +332,9 @@ public sealed class RowGroupPruningTests
         byte[] bytes = await WriteAsync();
 
         var seen = new List<(int Index, long RowCount, long? Min, long? Max, long? Nulls)>();
-        await PrunedOrderParquetExtensions.ReadParquetAsync(
-            new MemoryStream(bytes),
-            predicate: meta =>
+        await PrunedOrderParquet
+            .From(new MemoryStream(bytes))
+            .Where(meta =>
             {
                 seen.Add(
                     (
@@ -345,8 +346,8 @@ public sealed class RowGroupPruningTests
                     )
                 );
                 return false;
-            }
-        );
+            })
+            .ToListAsync();
 
         seen.Count.ShouldBe(GroupCount);
         seen.Select(s => s.Index).ShouldBe(Enumerable.Range(0, GroupCount));
@@ -365,14 +366,14 @@ public sealed class RowGroupPruningTests
         byte[] bytes = await WriteAsync();
 
         int calls = 0;
-        await PrunedOrderParquetExtensions.ReadParquetAsync(
-            new MemoryStream(bytes),
-            predicate: meta =>
+        await PrunedOrderParquet
+            .From(new MemoryStream(bytes))
+            .Where(meta =>
             {
                 calls++;
                 return meta.RowGroupIndex == 0;
-            }
-        );
+            })
+            .ToListAsync();
 
         calls.ShouldBe(GroupCount);
     }

@@ -161,22 +161,24 @@ Models with struct, list or map members keep the row-oriented API only.
 using var stream = File.OpenRead("events.parquet");
 
 // Sequential read
-List<UserEvent> events = await UserEventParquetExtensions.ReadParquetAsync(stream);
+List<UserEvent> events = await UserEventParquet.From(stream).ToListAsync();
 
 // Multi-core parallel read over an in-memory byte buffer
 ReadOnlyMemory<byte> buffer = File.ReadAllBytes("events.parquet");
-List<UserEvent> fast = await UserEventParquetExtensions.ReadParquetParallelAsync(
-    buffer,
-    new ParquetSerializerOptions { MaxDegreeOfParallelism = 8 });
+List<UserEvent> fast = await UserEventParquet
+    .From(buffer)
+    .WithOptions(new ParquetSerializerOptions { MaxDegreeOfParallelism = 8 })
+    .Parallel()
+    .ToListAsync();
 
 // Low-memory streaming reader
-await foreach (var e in UserEventParquetExtensions.ReadParquetStreamAsync(buffer))
+await foreach (var e in UserEventParquet.From(buffer).AsAsyncEnumerable())
 {
     // Process item by item with O(1) memory
 }
 
 // Columnar (struct-of-arrays) batches — one per row group, no UserEvent ever constructed
-await foreach (var batch in UserEventParquetExtensions.ReadParquetBatchesAsync(buffer))
+await foreach (var batch in UserEventParquet.From(buffer).Batches())
 {
     ReadOnlySpan<long> ids = batch.UserIdSpan;
     ReadOnlySpan<double> amounts = batch.AmountSpan;
@@ -184,27 +186,37 @@ await foreach (var batch in UserEventParquetExtensions.ReadParquetBatchesAsync(b
 }
 ```
 
-`ReadParquetBatchesAsync` is emitted for flat models only (no nested structs, lists or maps) and
+`<Model>Parquet.From(...)` is the only generated read entry point: the source (`Stream` or
+`ReadOnlyMemory<byte>`), the execution (`.Parallel()`, buffer only), pushdown (`.Where(...)`) and
+options (`.WithOptions(...)`) are members of the builder, and the terminal (`ToListAsync`,
+`ToArrayAsync`, `AsAsyncEnumerable`, `Batches`) picks the shape. The flat `ReadParquet*Async` methods
+were removed before `0.1.0`; the mapping is in [CHANGELOG.md](CHANGELOG.md) and the decision in
+[docs/48](docs/48-FLAT-READ-REMOVAL-480.md). The `Parquet.SourceGenerator.Legacy` package has no
+builder and keeps its flat `ReadParquetAsync` / `ReadParquetArrayAsync`.
+
+`Batches()` is emitted for flat models only (no nested structs, lists or maps) and
 allocates no domain objects; the pooled column buffers are returned when the enumerator advances
 or is disposed, so nothing in a batch may outlive the loop body.
 
 ### 5. Row-Group Pruning with Min/Max Statistics
 
-The stream, array and streaming readers take an optional predicate over the statistics Parquet records
-in the file footer. A row group the zone map rules out is never opened: no page read, no decompression,
+`.Where(...)` on the read builder takes a predicate over the statistics Parquet records in the file
+footer, from either source and for every materializing or streaming shape. A row group the zone map rules out is never opened: no page read, no decompression,
 no buffer rental.
 
 ```csharp
 // Only the row groups whose [min, max] range can still hold a key >= 1000 are read.
-List<OrderEvent> recent = await OrderEventParquetExtensions.ReadParquetAsync(
-    stream,
-    predicate: meta => meta.OrderKey.MayContainAtLeast(1_000));
+List<OrderEvent> recent = await OrderEventParquet
+    .From(stream)
+    .Where(meta => meta.OrderKey.MayContainAtLeast(1_000))
+    .ToListAsync();
 
 // Conjunctive filters compose; any column that cannot match prunes the whole group.
-List<OrderEvent> narrow = await OrderEventParquetExtensions.ReadParquetAsync(
-    stream,
-    predicate: meta => meta.OrderKey.MayContainBetween(1_000, 2_000)
-                    && meta.Region.MayContain("emea"));
+List<OrderEvent> narrow = await OrderEventParquet
+    .From(stream)
+    .Where(meta => meta.OrderKey.MayContainBetween(1_000, 2_000)
+                && meta.Region.MayContain("emea"))
+    .ToListAsync();
 ```
 
 The generated `<Model>RowGroupMetadata` struct exposes `RowGroupIndex`, `RowCount` and one
