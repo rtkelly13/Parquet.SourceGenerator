@@ -322,7 +322,7 @@ internal static class ColumnarBatchComponent
             );
             builder.AppendLine("    /// </summary>");
             builder.AppendLine(
-                "    public static global::System.ReadOnlyMemory<char>? AsColumnarText(string? value)"
+                "    internal static global::System.ReadOnlyMemory<char>? AsColumnarText(string? value)"
             );
             builder.AppendLine(
                 "        => value is null ? (global::System.ReadOnlyMemory<char>?)null : global::System.MemoryExtensions.AsMemory(value);"
@@ -338,7 +338,7 @@ internal static class ColumnarBatchComponent
             );
             builder.AppendLine("    /// </summary>");
             builder.AppendLine(
-                "    public static global::System.ReadOnlyMemory<byte>? AsColumnarBinary(byte[]? value)"
+                "    internal static global::System.ReadOnlyMemory<byte>? AsColumnarBinary(byte[]? value)"
             );
             builder.AppendLine(
                 "        => value is null ? (global::System.ReadOnlyMemory<byte>?)null : global::System.MemoryExtensions.AsMemory(value);"
@@ -360,7 +360,7 @@ internal static class ColumnarBatchComponent
         );
         builder.AppendLine("    /// </summary>");
         builder.AppendLine(
-            "    public static async global::System.Threading.Tasks.Task WriteParquetRowGroupAsync("
+            "    internal static async global::System.Threading.Tasks.Task WriteParquetRowGroupAsync("
         );
         builder.AppendLine("        this global::Parquet.ParquetWriter writer,");
         builder.AppendLine($"        {batchType} batch,");
@@ -449,7 +449,7 @@ internal static class ColumnarBatchComponent
         );
         builder.AppendLine("    /// </summary>");
         builder.AppendLine(
-            "    public static global::System.Threading.Tasks.Task WriteParquetRowGroupColumnarAsync("
+            "    internal static global::System.Threading.Tasks.Task WriteParquetRowGroupColumnarAsync("
         );
         builder.AppendLine("        this global::Parquet.ParquetWriter writer,");
         builder.AppendLine("        int rowCount,");

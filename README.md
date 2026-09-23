@@ -221,8 +221,9 @@ List<OrderEvent> narrow = await OrderEventParquet
 
 The generated `<Model>RowGroupMetadata` struct exposes `RowGroupIndex`, `RowCount` and one
 `ParquetColumnStatistics<T>` per integral, floating-point or string column, carrying `Min`, `Max`,
-`NullCount`, `DistinctCount` and the `May*` range helpers. Pruning is conservative: a row group whose
-statistics are incomplete is always read.
+`NullCount`, `DistinctCount` and the `May*` range helpers. Only the generated reader constructs it
+(its constructor is `internal`); a predicate just reads it. Pruning is conservative: a row group
+whose statistics are incomplete is always read.
 
 ### 6. Custom Configuration (`ParquetSerializerOptions`)
 

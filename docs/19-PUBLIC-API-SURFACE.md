@@ -47,7 +47,11 @@ fourth is expressed as a parameter, on some cells and not others.
 Writes add a fifth shape axis of their own — `IReadOnlyCollection<T>`, `IEnumerable<T>`,
 `IAsyncEnumerable<T>`, `{T}ColumnarBatch`, and a raw per-column form — across
 `WriteParquetAsync`, `WriteParquetBatchedAsync`, `WriteParquetRowGroupAsync` and
-`WriteParquetRowGroupColumnarAsync`.
+`WriteParquetRowGroupColumnarAsync`. Since #481 the two `ParquetWriter`-taking row-group writers
+(and the `AsColumnarText` / `AsColumnarBinary` helpers) are `internal`: they describe an
+implementation strategy, and `WriteParquetAsync` over a collection, an `IAsyncEnumerable<T>` or a
+`{T}ColumnarBatch` expresses the same intents publicly. Defect 8 below therefore no longer
+reaches consumers of a model assembly.
 
 With #146 (prefetch), #148 (file path / MMF) and #178 (Arrow export) still open, the read grid is
 on track for 3 x 5 x 3 = 45 cells before feature flags (#225) multiply it again.

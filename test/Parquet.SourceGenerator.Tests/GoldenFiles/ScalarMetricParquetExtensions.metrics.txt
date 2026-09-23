@@ -9,7 +9,7 @@
 # ELOC_PER_MEMBER emitted executable lines per emitted public member.
 # Ordinal-sorted. CC, CL, SLOC, ELOC, DIT, ERRORS and MEMBERS are gated exactly; MI is
 # REPORTED BUT NOT GATED for generated code. See docs/22-GENERATED-CODE-METRICS.md.
-S:ScalarMetricParquetExtensions | EMITTER=v6 MEMBERS=68 CC=674 CL=83 SLOC=3470 ELOC=1439 ERRORS=0 METHODS=104 MAXCC=79 ELOC_PER_MEMBER=21.2
+S:ScalarMetricParquetExtensions | EMITTER=v6 MEMBERS=64 CC=674 CL=83 SLOC=3471 ELOC=1439 ERRORS=0 METHODS=104 MAXCC=79 ELOC_PER_MEMBER=22.5
 M:SampleDomain.Models.ScalarMetricParquet.From(System.IO.Stream) | MI=90 CC=2 CL=5 DIT=- SLOC=3 ELOC=1
 M:SampleDomain.Models.ScalarMetricParquet.From(System.ReadOnlyMemory<byte>) | MI=94 CC=1 CL=3 DIT=- SLOC=3 ELOC=1
 M:SampleDomain.Models.ScalarMetricParquetExtensions.AcceptRowGroup(System.Func<SampleDomain.Models.ScalarMetricRowGroupMetadata, bool>, Parquet.ParquetRowGroupReader, int, Parquet.Schema.DataField, Parquet.Schema.DataField, Parquet.Schema.DataField, Parquet.Schema.DataField) | MI=57 CC=14 CL=8 DIT=- SLOC=46 ELOC=9
@@ -111,7 +111,7 @@ M:SampleDomain.Models.ScalarMetricRowGroupMetadata.HasStatistics.get | MI=100 CC
 M:SampleDomain.Models.ScalarMetricRowGroupMetadata.RowCount.get | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
 M:SampleDomain.Models.ScalarMetricRowGroupMetadata.RowGroupIndex.get | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
 M:SampleDomain.Models.ScalarMetricRowGroupMetadata.RowId.get | MI=100 CC=1 CL=1 DIT=- SLOC=1 ELOC=0
-M:SampleDomain.Models.ScalarMetricRowGroupMetadata.ScalarMetricRowGroupMetadata(int, long, bool, Parquet.SourceGenerator.ParquetColumnStatistics<long>, Parquet.SourceGenerator.ParquetColumnStatistics<byte>, Parquet.SourceGenerator.ParquetColumnStatistics<short>, Parquet.SourceGenerator.ParquetColumnStatistics<float>) | MI=67 CC=1 CL=1 DIT=- SLOC=18 ELOC=7
+M:SampleDomain.Models.ScalarMetricRowGroupMetadata.ScalarMetricRowGroupMetadata(int, long, bool, Parquet.SourceGenerator.ParquetColumnStatistics<long>, Parquet.SourceGenerator.ParquetColumnStatistics<byte>, Parquet.SourceGenerator.ParquetColumnStatistics<short>, Parquet.SourceGenerator.ParquetColumnStatistics<float>) | MI=67 CC=1 CL=1 DIT=- SLOC=19 ELOC=7
 M:SampleDomain.Models.ScalarMetricRowGroupMetadata.ShortNum.get | MI=100 CC=1 CL=1 DIT=- SLOC=1 ELOC=0
 M:SampleDomain.Models.ScalarMetricRowGroupMetadata.TinyNum.get | MI=100 CC=1 CL=1 DIT=- SLOC=1 ELOC=0
 P:SampleDomain.Models.ScalarMetricParquetExtensions.ColumnBatch.FlagSpan | MI=92 CC=2 CL=1 DIT=- SLOC=5 ELOC=2
@@ -146,4 +146,4 @@ T:SampleDomain.Models.ScalarMetricParquetFilteredSource | MI=73 CC=10 CL=14 DIT=
 T:SampleDomain.Models.ScalarMetricParquetMemorySource | MI=82 CC=10 CL=16 DIT=1 SLOC=49 ELOC=13
 T:SampleDomain.Models.ScalarMetricParquetParallelSource | MI=82 CC=5 CL=9 DIT=1 SLOC=31 ELOC=7
 T:SampleDomain.Models.ScalarMetricParquetStreamSource | MI=81 CC=9 CL=15 DIT=1 SLOC=45 ELOC=12
-T:SampleDomain.Models.ScalarMetricRowGroupMetadata | MI=92 CC=8 CL=1 DIT=1 SLOC=48 ELOC=7
+T:SampleDomain.Models.ScalarMetricRowGroupMetadata | MI=92 CC=8 CL=1 DIT=1 SLOC=49 ELOC=7

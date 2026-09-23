@@ -849,7 +849,7 @@ public static partial class SortedShipmentParquetExtensions
     /// <summary>
     /// Writes a single row group chunk using Parquet.Net low-level primitives for maximum speed and Native AOT compatibility.
     /// </summary>
-    public static async global::System.Threading.Tasks.Task WriteParquetRowGroupAsync(
+    internal static async global::System.Threading.Tasks.Task WriteParquetRowGroupAsync(
         this global::Parquet.ParquetWriter writer,
         global::System.Collections.Generic.IReadOnlyCollection<SortedShipment> chunk,
         global::System.Threading.CancellationToken cancellationToken = default)
@@ -985,13 +985,13 @@ public static partial class SortedShipmentParquetExtensions
     /// A bare <c>cond ? null : value.AsMemory()</c> does not: the conditional's natural type is the
     /// non-nullable memory, so the null branch stores an empty value instead.
     /// </summary>
-    public static global::System.ReadOnlyMemory<char>? AsColumnarText(string? value)
+    internal static global::System.ReadOnlyMemory<char>? AsColumnarText(string? value)
         => value is null ? (global::System.ReadOnlyMemory<char>?)null : global::System.MemoryExtensions.AsMemory(value);
 
     /// <summary>
     /// Writes one row group directly from caller-owned column buffers, with no row traversal and no pooled rentals.
     /// </summary>
-    public static async global::System.Threading.Tasks.Task WriteParquetRowGroupAsync(
+    internal static async global::System.Threading.Tasks.Task WriteParquetRowGroupAsync(
         this global::Parquet.ParquetWriter writer,
         SortedShipmentColumnarBatch batch,
         global::System.Threading.CancellationToken cancellationToken = default)
@@ -1032,7 +1032,7 @@ public static partial class SortedShipmentParquetExtensions
     /// Positional form of the columnar hand-off: one parameter per schema column, in schema order.
     /// Prefer the <c>SortedShipmentColumnarBatch</c> overload — it binds buffers to columns by name.
     /// </summary>
-    public static global::System.Threading.Tasks.Task WriteParquetRowGroupColumnarAsync(
+    internal static global::System.Threading.Tasks.Task WriteParquetRowGroupColumnarAsync(
         this global::Parquet.ParquetWriter writer,
         int rowCount,
         global::System.ReadOnlyMemory<long> sequence,
@@ -3072,8 +3072,9 @@ public static partial class SortedShipmentParquetExtensions
 /// </summary>
 public readonly struct SortedShipmentRowGroupMetadata
 {
-    /// <summary>Creates a row-group zone map.</summary>
-    public SortedShipmentRowGroupMetadata(
+    /// <summary>Creates a row-group zone map. Only the generated reader constructs one; the
+    /// parameters are emitter column slots, so the constructor is not public API.</summary>
+    internal SortedShipmentRowGroupMetadata(
         int rowGroupIndex,
         long rowCount,
         bool hasStatistics,

@@ -645,7 +645,7 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
     /// <summary>
     /// Writes a single row group chunk using Parquet.Net low-level primitives for maximum speed and Native AOT compatibility.
     /// </summary>
-    public static async global::System.Threading.Tasks.Task WriteParquetRowGroupAsync(
+    internal static async global::System.Threading.Tasks.Task WriteParquetRowGroupAsync(
         this global::Parquet.ParquetWriter writer,
         global::System.Collections.Generic.IReadOnlyCollection<NestedOrder> chunk,
         global::System.Threading.CancellationToken cancellationToken = default)
@@ -3704,8 +3704,9 @@ new global::Parquet.Schema.DataField("Y", typeof(int), isNullable: false)
 /// </summary>
 public readonly struct NestedOrderRowGroupMetadata
 {
-    /// <summary>Creates a row-group zone map.</summary>
-    public NestedOrderRowGroupMetadata(
+    /// <summary>Creates a row-group zone map. Only the generated reader constructs one; the
+    /// parameters are emitter column slots, so the constructor is not public API.</summary>
+    internal NestedOrderRowGroupMetadata(
         int rowGroupIndex,
         long rowCount,
         bool hasStatistics,

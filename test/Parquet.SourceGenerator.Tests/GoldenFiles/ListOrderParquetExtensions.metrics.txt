@@ -9,7 +9,7 @@
 # ELOC_PER_MEMBER emitted executable lines per emitted public member.
 # Ordinal-sorted. CC, CL, SLOC, ELOC, DIT, ERRORS and MEMBERS are gated exactly; MI is
 # REPORTED BUT NOT GATED for generated code. See docs/22-GENERATED-CODE-METRICS.md.
-S:ListOrderParquetExtensions | EMITTER=v6 MEMBERS=37 CC=730 CL=84 SLOC=3848 ELOC=2006 ERRORS=0 METHODS=83 MAXCC=97 ELOC_PER_MEMBER=54.2
+S:ListOrderParquetExtensions | EMITTER=v6 MEMBERS=35 CC=730 CL=84 SLOC=3849 ELOC=2006 ERRORS=0 METHODS=83 MAXCC=97 ELOC_PER_MEMBER=57.3
 M:SampleDomain.Models.ListOrderParquet.From(System.IO.Stream) | MI=90 CC=2 CL=5 DIT=- SLOC=3 ELOC=1
 M:SampleDomain.Models.ListOrderParquet.From(System.ReadOnlyMemory<byte>) | MI=94 CC=1 CL=3 DIT=- SLOC=3 ELOC=1
 M:SampleDomain.Models.ListOrderParquetExtensions.AcceptRowGroup(System.Func<SampleDomain.Models.ListOrderRowGroupMetadata, bool>, Parquet.ParquetRowGroupReader, int, Parquet.Schema.DataField) | MI=65 CC=5 CL=8 DIT=- SLOC=34 ELOC=6
@@ -90,7 +90,7 @@ M:SampleDomain.Models.ListOrderParquetStreamSource.Where(System.Func<SampleDomai
 M:SampleDomain.Models.ListOrderParquetStreamSource.WithOptions(Parquet.SourceGenerator.ParquetSerializerOptions) | MI=90 CC=2 CL=4 DIT=- SLOC=3 ELOC=1
 M:SampleDomain.Models.ListOrderRowGroupMetadata.HasStatistics.get | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
 M:SampleDomain.Models.ListOrderRowGroupMetadata.Id.get | MI=100 CC=1 CL=1 DIT=- SLOC=1 ELOC=0
-M:SampleDomain.Models.ListOrderRowGroupMetadata.ListOrderRowGroupMetadata(int, long, bool, Parquet.SourceGenerator.ParquetColumnStatistics<int>) | MI=75 CC=1 CL=1 DIT=- SLOC=12 ELOC=4
+M:SampleDomain.Models.ListOrderRowGroupMetadata.ListOrderRowGroupMetadata(int, long, bool, Parquet.SourceGenerator.ParquetColumnStatistics<int>) | MI=75 CC=1 CL=1 DIT=- SLOC=13 ELOC=4
 M:SampleDomain.Models.ListOrderRowGroupMetadata.RowCount.get | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
 M:SampleDomain.Models.ListOrderRowGroupMetadata.RowGroupIndex.get | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
 P:SampleDomain.Models.ListOrderParquetExtensions.DecompressionGuardStream.CanRead | MI=96 CC=2 CL=1 DIT=- SLOC=1 ELOC=2
@@ -110,4 +110,4 @@ T:SampleDomain.Models.ListOrderParquetFilteredSource | MI=73 CC=10 CL=14 DIT=1 S
 T:SampleDomain.Models.ListOrderParquetMemorySource | MI=82 CC=9 CL=15 DIT=1 SLOC=45 ELOC=11
 T:SampleDomain.Models.ListOrderParquetParallelSource | MI=82 CC=5 CL=9 DIT=1 SLOC=31 ELOC=7
 T:SampleDomain.Models.ListOrderParquetStreamSource | MI=82 CC=8 CL=14 DIT=1 SLOC=41 ELOC=10
-T:SampleDomain.Models.ListOrderRowGroupMetadata | MI=93 CC=5 CL=1 DIT=1 SLOC=33 ELOC=4
+T:SampleDomain.Models.ListOrderRowGroupMetadata | MI=93 CC=5 CL=1 DIT=1 SLOC=34 ELOC=4

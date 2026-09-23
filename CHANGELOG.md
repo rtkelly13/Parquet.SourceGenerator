@@ -79,6 +79,18 @@ Changes since `0.0.4`; this section becomes the next release entry when one is c
   number is known is vacuous or permanently red.
 
 ### Changed
+- **BREAKING: generated implementation plumbing is no longer public (#459, #481, part of #477).**
+  The `{T}RowGroupMetadata` constructor (whose parameters were emitter slot indices such as
+  `column_0, column_2`) is now `internal`; the struct and its properties stay public for pruning
+  predicates. The `ParquetWriter`-taking row-group writers `WriteParquetRowGroupAsync(writer, chunk)`,
+  `WriteParquetRowGroupAsync(writer, {T}ColumnarBatch)`, the positional
+  `WriteParquetRowGroupColumnarAsync(writer, rowCount, …)`, the `AsColumnarText` /
+  `AsColumnarBinary` helpers, and the classic backend's `WriteRowGroupAsync(writer, items)` are
+  `internal` too. Use `items.WriteParquetAsync(stream)`, `asyncItems.WriteParquetAsync(stream)`,
+  `items.WriteParquetBatchedAsync(stream)` or `batch.WriteParquetAsync(stream)` instead. Code in
+  the model's own assembly can still call them. The Arrow `WriteParquetRowGroupAsync(writer,
+  RecordBatch)` bridge stays public. Emitted public surface across the seven golden models drops
+  from 384 to 362 members and from 559 to 462 parameters.
 - **`CHANGELOG.md` is now the release authority (#248).** `scripts/ParseChangelog.cs` validates the
   changelog structure in CI and, in `--release` mode, is the only source of the release version and
   notes. `release.yml` lost its `version` input: a `prepare` job reads the first cut
