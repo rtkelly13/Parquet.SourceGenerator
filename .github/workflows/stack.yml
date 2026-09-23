@@ -42,8 +42,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
+      - name: Setup Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version: '1.26'
+          cache: false
+
+      # Built from source at the commit behind v0.1.0, not `--pin v0.1.0`: a tag and its release
+      # binary can be replaced, and this job holds a write token. `go install` of a commit is
+      # verified against the Go checksum database, so the code that runs is fixed by content.
       - name: Install gh-stack
-        run: gh extension install github/gh-stack --pin v0.1.0
+        env:
+          GH_STACK_COMMIT: a1b4a3d4d0bcde9ec3a78ab99b2d63af121857a9 # v0.1.0
+        run: |
+          set -euo pipefail
+          export GOBIN="$RUNNER_TEMP/gh-stack"
+          go install "github.com/github/gh-stack@$GH_STACK_COMMIT"
+          cd "$GOBIN"
+          gh extension install .
 
       - name: Resolve the chain
         id: chain
