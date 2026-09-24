@@ -6,7 +6,7 @@
 #        components-must-not-call-the-emitter-hub layering.
 # Unresolved call sites (delegates, virtuals, framework): measured in the
 # header below so the blind spot is visible, never silently absent.
-# stats: nodes=228 edges=387 call-sites=3922 unresolved=3461
+# stats: nodes=229 edges=389 call-sites=3940 unresolved=3477
 E:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.CanEmit/(TargetClassModel) | Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.IsSupported/(TargetClassModel)
 E:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitColumn/(StringBuilder,PropertyModel,int) | Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitBinary/(StringBuilder,PropertyModel,ArrowLeafMapping,string,int)
 E:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitColumn/(StringBuilder,PropertyModel,int) | Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitConvertRequired/(StringBuilder,ArrowLeafMapping,string,string,int)
@@ -376,6 +376,7 @@ E:Parquet.SourceGenerator.Parser.TargetParser.GetTargetModelCore/(INamedTypeSymb
 E:Parquet.SourceGenerator.Parser.TargetParser.GetTargetModelCore/(INamedTypeSymbol,TypeDeclarationSyntax?,ParquetApiLevel,CompoundKinds) | Parquet.SourceGenerator.Parser.TargetParser.ComputeHasSingleInstanceField/(INamedTypeSymbol)
 E:Parquet.SourceGenerator.Parser.TargetParser.GetTargetModelCore/(INamedTypeSymbol,TypeDeclarationSyntax?,ParquetApiLevel,CompoundKinds) | Parquet.SourceGenerator.Parser.TargetParser.GetNestedQualifiedTypeName/(ITypeSymbol)
 E:Parquet.SourceGenerator.Parser.TargetParser.GetTargetModelCore/(INamedTypeSymbol,TypeDeclarationSyntax?,ParquetApiLevel,CompoundKinds) | Parquet.SourceGenerator.Parser.TargetParser.HasParameterlessConstructor/(INamedTypeSymbol)
+E:Parquet.SourceGenerator.Parser.TargetParser.GetTargetModelCore/(INamedTypeSymbol,TypeDeclarationSyntax?,ParquetApiLevel,CompoundKinds) | Parquet.SourceGenerator.Parser.TargetParser.ReportGeneratedNameCollision/(INamedTypeSymbol,string,string,Location,List<DiagnosticInfo>)
 E:Parquet.SourceGenerator.Parser.TargetParser.GetTargetModelCore/(INamedTypeSymbol,TypeDeclarationSyntax?,ParquetApiLevel,CompoundKinds) | Parquet.SourceGenerator.Parser.TargetParser.ValidateTargetDeclaration/(INamedTypeSymbol,TypeDeclarationSyntax?,List<DiagnosticInfo>)
 E:Parquet.SourceGenerator.Parser.TargetParser.HasAttribute/(ISymbol,string[],string[]) | Parquet.SourceGenerator.Parser.TargetParser.FindAttribute/(ISymbol,string[],string[])
 E:Parquet.SourceGenerator.Parser.TargetParser.HasParameterlessConstructor/(INamedTypeSymbol) | Parquet.SourceGenerator.Parser.TargetParser.IsReachableFromGeneratedCode/(Accessibility)
@@ -384,6 +385,7 @@ E:Parquet.SourceGenerator.Parser.TargetParser.ReadColumnOptions/(ISymbol) | Parq
 E:Parquet.SourceGenerator.Parser.TargetParser.ReadColumnOptions/(ISymbol) | Parquet.SourceGenerator.Parser.TargetParser.HasAttribute/(ISymbol,string[],string[])
 E:Parquet.SourceGenerator.Parser.TargetParser.ReadDecimalOptions/(ISymbol,MemberScope,Location) | Parquet.SourceGenerator.Parser.TargetParser.FindAttribute/(ISymbol,string[],string[])
 E:Parquet.SourceGenerator.Parser.TargetParser.ReadTimestampUnit/(ISymbol) | Parquet.SourceGenerator.Parser.TargetParser.FindAttribute/(ISymbol,string[],string[])
+E:Parquet.SourceGenerator.Parser.TargetParser.ReportGeneratedNameCollision/(INamedTypeSymbol,string,string,Location,List<DiagnosticInfo>) | Parquet.SourceGenerator.Parser.TargetParser.GetNestedQualifiedTypeName/(ITypeSymbol)
 E:Parquet.SourceGenerator.Parser.TargetParser.ReportIneligibleSortKey/(bool,PropertyModel,ISymbol,string,Location,List<DiagnosticInfo>) | Parquet.SourceGenerator.Models.SortKeyEligibility.IsEligible/(PropertyModel,string)
 E:Parquet.SourceGenerator.Parser.TargetParser.ReportNonPublicColumn/(ISymbol,MemberScope,Location) | Parquet.SourceGenerator.Parser.TargetParser.HasAttribute/(ISymbol,string[],string[])
 E:Parquet.SourceGenerator.Parser.TargetParser.TryCollectCompoundMember/(ISymbol,ITypeSymbol,ITypeSymbol,ColumnOptions,bool,Location,MemberScope,MemberSink) | Parquet.SourceGenerator.Parser.TargetParser.BuildCompoundModel/(PropertyKind,ITypeSymbol,string,ITypeSymbol,string,int,bool,ParquetApiLevel,string,Location,List<DiagnosticInfo>,HashSet<INamedTypeSymbol>,int,CompoundKinds,bool)

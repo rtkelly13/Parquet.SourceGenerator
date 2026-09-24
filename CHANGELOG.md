@@ -151,6 +151,12 @@ Changes since `0.0.4`; this section becomes the next release entry when one is c
   only for code that referenced the Attributes helpers directly.
 
 ### Fixed
+- **Colliding nested targets are diagnosed (PARQ016) instead of failing with CS0101.** Generated
+  types are named after the containing-type path with the dots removed, so `A.BC` and `AB.C` (or a
+  nested `A.BC` and a top-level `ABC`) both emitted `ABCParquetExtensions`, `ABCRowGroupMetadata`
+  and the rest into one namespace, and the build failed on a cascade of CS0101 errors inside
+  generated files. Each colliding target now reports PARQ016, naming both types, and emits nothing.
+  Found while building Arrow.SourceGenerator.
 - **Coexistence of the two row-group pruning mechanisms is now pinned by a behavioural
   test** (`PredicatePushdownAndSortedLookupCoexistOnOneModel`, completes #264's coverage).
   `SortedEvent` carries both the predicate zone-map path and three sort-key binary-search
