@@ -11,6 +11,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 Changes since `0.0.4`; this section becomes the next release entry when one is cut.
 
 ### Added
+- **`stack` workflow for GitHub native stacked pull requests.** Labelling the bottom pull request of
+  a chain `stack:link` (or dispatching the workflow with explicit numbers) walks the open pull
+  requests upward, requires the chain to be linear, and runs `gh stack link` over it. Merge a linked
+  stack with `gh stack merge <top> --squash --yes`; `gh pr merge` refuses stacked pull requests.
 - **Code metrics baselines and a complexity ratchet** (`metrics/*.metrics.txt`,
   `docs/21-CODE-METRICS.md`). Roslyn's maintainability index, cyclomatic complexity, class
   coupling, inheritance depth and line counts are now recorded per namespace, type and member for
