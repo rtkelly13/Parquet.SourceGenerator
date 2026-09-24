@@ -514,8 +514,24 @@ jobs:
           echo "label=$BASE_REF @ ${base:0:7}" >> "$GITHUB_OUTPUT"
           out="$RUNNER_TEMP/derived/base"
           name="derived-baseline-$base"
-          run_id=$(gh api "repos/$REPO/actions/artifacts?name=$name" \
-            --jq '[.artifacts[] | select(.expired | not)][0].workflow_run.id // empty' || true)
+          # The name alone proves nothing: any workflow run — a pull request that edits this file,
+          # a fork's run — can upload an artifact called derived-baseline-<sha>. Accept only one
+          # uploaded from this repository by a push run of ci.yml on main, at exactly this commit.
+          candidates=$(gh api --paginate "repos/$REPO/actions/artifacts?name=$name" --jq ".artifacts[]
+            | select((.expired | not)
+                and .workflow_run.head_sha == \"$base\"
+                and .workflow_run.head_branch == \"main\"
+                and .workflow_run.head_repository_id == .workflow_run.repository_id)
+            | .workflow_run.id" || true)
+          run_id=""
+          for candidate in $candidates; do
+            origin=$(gh api "repos/$REPO/actions/runs/$candidate" --jq '"\(.event) \(.path)"' || true)
+            if [ "$origin" = "push .github/workflows/ci.yml" ]; then
+              run_id=$candidate
+              break
+            fi
+            echo "Ignoring $name from run $candidate ($origin): not a push run of ci.yml."
+          done
           if [ -n "$run_id" ] && gh run download "$run_id" --repo "$REPO" --name "$name" --dir "$out"; then
             echo "source=\`$name\` from run $run_id" >> "$GITHUB_OUTPUT"
           else
@@ -572,8 +588,16 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
+          # A re-run keeps its original event, so an old run re-run after a newer push would
+          # otherwise replace the current head's diff with its own. Only the current head posts.
+          current=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq .head.sha)
+          if [ "$current" != "$HEAD_SHA" ]; then
+            echo "The PR head is now ${current:0:7}; this run is for ${HEAD_SHA:0:7}. Leaving the comment alone."
+            exit 0
+          fi
           body="$RUNNER_TEMP/derived/review-diff.md"
           if [ ! -s "$body" ]; then
             mkdir -p "$(dirname "$body")"

@@ -171,7 +171,8 @@ passes only when both succeed, so the gates below block a merge:
    `derived-baseline-<sha>` (kept 90 days). Every main commit gets one: main runs have a
    concurrency group per commit and are never cancelled.
 2. On a pull request the merge base's tree is downloaded from its `derived-baseline-<sha>`
-   artifact. Only when there is none — the base is another branch of a stack, its main run has not
+   artifact, accepted only when it was uploaded from this repository by a push run of `ci.yml` on
+   `main` at exactly that commit (the name alone proves nothing: any run can upload one). Only when there is none — the base is another branch of a stack, its main run has not
    finished, or the artifact expired — is it regenerated here in a `git worktree`. Outputs are
    byte-identical across runs and between Linux and macOS, so the two are interchangeable; the
    comment's footer says which was used. A base commit that predates this change has no
@@ -190,7 +191,8 @@ passes only when both succeed, so the gates below block a merge:
 5. The job creates, or edits in place, **one** sticky comment on the pull request, marked
    `<!-- derived-review-diff -->`. It is updated on every run, including failed ones: a head that
    failed its gates, or a base that could not be produced, replaces the previous diff with a
-   statement saying so, so a stale diff never stands as current. A fork's token cannot write
+   statement saying so, so a stale diff never stands as current. Only a run for the PR's current
+   head posts: an older run re-run after a newer push leaves the comment alone. A fork's token cannot write
    comments; that step is `continue-on-error`, and the result is still in the step summary and the
    artifact.
 
