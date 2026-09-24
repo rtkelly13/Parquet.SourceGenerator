@@ -5,7 +5,7 @@
 # MI maintainability index 0-100 (higher is better), CC cyclomatic complexity,
 # CL class coupling, DIT depth of inheritance, SLOC source lines, ELOC executable lines.
 # Ordinal-sorted. MI is compared with a +/-2 tolerance; every other metric exactly.
-A:Parquet.SourceGenerator.Legacy | MI=77 CC=539 CL=120 DIT=1 SLOC=5887 ELOC=1885
+A:Parquet.SourceGenerator.Legacy | MI=77 CC=539 CL=120 DIT=1 SLOC=5898 ELOC=1885
 M:Parquet.SourceGenerator.Emitter.Components.ArrowLeafMapping.ArrowArrayType.get | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
 M:Parquet.SourceGenerator.Emitter.Components.ArrowLeafMapping.ArrowArrayType.set | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
 M:Parquet.SourceGenerator.Emitter.Components.ArrowLeafMapping.ArrowTypeId.get | MI=100 CC=1 CL=0 DIT=- SLOC=1 ELOC=0
@@ -27,7 +27,7 @@ M:Parquet.SourceGenerator.Emitter.Components.ArrowLeafMapping.UsesValuesSpan.set
 M:Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.Fixed(string, string, string, string) | MI=87 CC=1 CL=2 DIT=- SLOC=16 ELOC=1
 M:Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.IsSupported(Parquet.SourceGenerator.Models.TargetClassModel) | MI=68 CC=4 CL=4 DIT=- SLOC=21 ELOC=6
 M:Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.MapIntegral(string) | MI=82 CC=1 CL=1 DIT=- SLOC=15 ELOC=1
-M:Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.TryMap(Parquet.SourceGenerator.Models.PropertyModel) | MI=50 CC=25 CL=5 DIT=- SLOC=185 ELOC=10
+M:Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.TryMap(Parquet.SourceGenerator.Models.PropertyModel) | MI=50 CC=25 CL=8 DIT=- SLOC=196 ELOC=10
 M:Parquet.SourceGenerator.Emitter.Components.BatchValidationComponent.EmitRowGroupSizeResolution(System.Text.StringBuilder, string) | MI=71 CC=1 CL=1 DIT=- SLOC=18 ELOC=5
 M:Parquet.SourceGenerator.Emitter.Components.BufferPoolComponent.EmitRentals(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel, string, string, string, bool) | MI=62 CC=3 CL=4 DIT=- SLOC=21 ELOC=7
 M:Parquet.SourceGenerator.Emitter.Components.BufferPoolComponent.EmitReturns(System.Text.StringBuilder, Parquet.SourceGenerator.Models.TargetClassModel, string, string, bool) | MI=59 CC=4 CL=4 DIT=- SLOC=22 ELOC=9
@@ -164,7 +164,7 @@ M:Parquet.SourceGenerator.Parser.TargetParser.UnwrapNullable(Microsoft.CodeAnaly
 M:Parquet.SourceGenerator.Parser.TargetParser.ValidateTargetDeclaration(Microsoft.CodeAnalysis.INamedTypeSymbol, Microsoft.CodeAnalysis.CSharp.Syntax.TypeDeclarationSyntax, System.Collections.Generic.List<Parquet.SourceGenerator.Models.DiagnosticInfo>) | MI=55 CC=11 CL=19 DIT=- SLOC=68 ELOC=12
 M:Parquet.SourceGenerator.Parser.TargetParserResult.TargetParserResult(Parquet.SourceGenerator.Models.TargetClassModel, Parquet.SourceGenerator.Models.EquatableArray<Parquet.SourceGenerator.Models.DiagnosticInfo>) | MI=100 CC=1 CL=3 DIT=- SLOC=7 ELOC=0
 N:Parquet.SourceGenerator.Diagnostics | MI=83 CC=0 CL=2 DIT=1 SLOC=238 ELOC=4
-N:Parquet.SourceGenerator.Emitter.Components | MI=58 CC=161 CL=15 DIT=1 SLOC=2269 ELOC=1027
+N:Parquet.SourceGenerator.Emitter.Components | MI=58 CC=161 CL=17 DIT=1 SLOC=2280 ELOC=1027
 N:Parquet.SourceGenerator.Legacy | MI=59 CC=9 CL=32 DIT=1 SLOC=75 ELOC=21
 N:Parquet.SourceGenerator.Legacy.Emitter | MI=51 CC=46 CL=15 DIT=1 SLOC=917 ELOC=443
 N:Parquet.SourceGenerator.Models | MI=87 CC=88 CL=45 DIT=1 SLOC=498 ELOC=104
@@ -232,7 +232,7 @@ P:Parquet.SourceGenerator.Parser.TargetParserResult.Model | MI=100 CC=0 CL=1 DIT
 T:Parquet.SourceGenerator.Diagnostics.DiagnosticDescriptors | MI=83 CC=0 CL=2 DIT=1 SLOC=236 ELOC=4
 T:Parquet.SourceGenerator.Emitter.Components.ArrowExtractionMode | MI=100 CC=1 CL=0 DIT=1 SLOC=21 ELOC=0
 T:Parquet.SourceGenerator.Emitter.Components.ArrowLeafMapping | MI=100 CC=18 CL=1 DIT=1 SLOC=37 ELOC=4
-T:Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent | MI=67 CC=31 CL=7 DIT=1 SLOC=255 ELOC=20
+T:Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent | MI=67 CC=31 CL=10 DIT=1 SLOC=266 ELOC=20
 T:Parquet.SourceGenerator.Emitter.Components.BatchValidationComponent | MI=71 CC=1 CL=1 DIT=1 SLOC=24 ELOC=5
 T:Parquet.SourceGenerator.Emitter.Components.BufferPoolComponent | MI=62 CC=37 CL=5 DIT=1 SLOC=236 ELOC=67
 T:Parquet.SourceGenerator.Emitter.Components.DecompressionGuardComponent | MI=30 CC=1 CL=1 DIT=1 SLOC=172 ELOC=119

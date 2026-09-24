@@ -6,7 +6,7 @@
 #        components-must-not-call-the-emitter-hub layering.
 # Unresolved call sites (delegates, virtuals, framework): measured in the
 # header below so the blind spot is visible, never silently absent.
-# stats: nodes=228 edges=387 call-sites=3922 unresolved=3461
+# stats: nodes=229 edges=388 call-sites=3978 unresolved=3516
 E:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.CanEmit/(TargetClassModel) | Parquet.SourceGenerator.Emitter.Components.ArrowMappingComponent.IsSupported/(TargetClassModel)
 E:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitColumn/(StringBuilder,PropertyModel,int) | Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitBinary/(StringBuilder,PropertyModel,ArrowLeafMapping,string,int)
 E:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitColumn/(StringBuilder,PropertyModel,int) | Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitConvertRequired/(StringBuilder,ArrowLeafMapping,string,string,int)
@@ -21,6 +21,7 @@ E:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitColumnWrite/(StringBuil
 E:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitColumnWrite/(StringBuilder,PropertyModel,int) | Parquet.SourceGenerator.Emitter.Components.BufferPoolComponent.UsesWriteAllParts/(PropertyModel)
 E:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitConvertRequired/(StringBuilder,ArrowLeafMapping,string,string,int) | Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.Substitute/(string,string,string,string)
 E:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitPackedNullable/(StringBuilder,ArrowLeafMapping,string,string,int) | Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.Substitute/(string,string,string,string)
+E:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitSource/(TargetClassModel) | Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitDecimalHelper/(StringBuilder)
 E:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitSource/(TargetClassModel) | Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitFixedWidthView/(StringBuilder)
 E:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitSource/(TargetClassModel) | Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitGuidHelper/(StringBuilder)
 E:Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitSource/(TargetClassModel) | Parquet.SourceGenerator.Emitter.ArrowBridgeEmitter.EmitValidation/(StringBuilder,TargetClassModel)
