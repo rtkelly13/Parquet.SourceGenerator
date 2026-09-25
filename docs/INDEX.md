@@ -200,6 +200,12 @@ The documentation is organized into three distinct tiers based on audience and i
      - The legacy emitter keeps its flat reads as its declared subset (#246); no `[Obsolete]` release.
      - Measured shrinkage (−66 members, −222 parameter slots) and the flat → builder migration table.
 
+25. **[49 - Legacy Backend Parity (#490)](./49-LEGACY-PARITY-490.md)**
+     - The legacy (net472) backend exposes the same generated API as modern; differences live in a
+       shrinking allowlist. Supersedes the #246 declared-subset policy.
+     - Parquet.Net 4.25 evidence, the shared-surface / per-backend column-I/O split, and the
+       one-package end state.
+
 ---
 
 ## ⚡ Quick Summary of Intent
