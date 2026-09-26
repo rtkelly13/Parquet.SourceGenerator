@@ -97,10 +97,12 @@ Changes since `0.0.4`; this section becomes the next release entry when one is c
   with Razor components and the official `HtmlRenderer`. The comment is updated on every run, and
   says so when the head failed or the base was unavailable instead of leaving a stale diff; a base
   that cannot be produced never fails the check. The required `build` check is now an aggregate of
-  the `test` job (the former `build`) and `derived`, so both block a merge. Each full release attaches its derived outputs as
-  `derived-outputs.tar.gz` and dispatches the docs site with the tag, so the API grid renders what
-  that version shipped. The golden models now live in
-  `GoldenCorpus`; `GoldenCodeGenRegressionTests` checks their invariants and publishes them to
+  the `test` job (the former `build`) and `derived`, so both block a merge. Each full release
+  attaches its derived outputs as `derived-outputs.tar.gz` and its state page as
+  `derived-state.html`, and dispatches the docs site with the tag, so the API grid renders what that
+  version shipped. Main's derived outputs and state page are also kept permanently on the
+  `derived-history` orphan branch (Git LFS): a weekly snapshot when they change, and one per full
+  release tagged `derived/<tag>`. The golden models now live in `GoldenCorpus`; `GoldenCodeGenRegressionTests` checks their invariants and publishes them to
   `artifacts/golden/`. The remaining gates are unchanged in intent: golden models must parse and
   compile, emitted code must compile against `GoldenModels/` (ERRORS=0), `CodeMetricsConfig.txt`
   must be valid, the call graph must satisfy its cycle, fan-out and layering rules, and

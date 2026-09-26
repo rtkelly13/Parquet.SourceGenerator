@@ -1,0 +1,140 @@
+name: Derived History
+
+# The permanent record of the derived outputs (docs/17-GENERATED-API-BASELINES.md). None of them are
+# checked in on main and PR artifacts expire, so this is where their history lives: an orphan
+# branch, `derived-history`, whose `snapshot/` holds one commit's outputs plus the state page
+# (scripts/DerivedReport `state`), stored in Git LFS so ordinary clones stay light.
+#
+#   - Weekly, and by hand: snapshot main's head, committed only when it changed. The same run
+#     refreshes main's `derived-baseline-<sha>` artifact, so pull requests based on main's head
+#     find a baseline to download for another 90 days.
+#   - On every full release (release.yml calls this after publishing): snapshot the released
+#     commit and tag it `derived/<tag>`, whether or not the outputs changed.
+#
+# Only this workflow writes the branch. The main ruleset does not cover it, so GITHUB_TOKEN with
+# contents: write can push; nothing else should.
+
+on:
+  schedule:
+    - cron: '17 5 * * 1' # Mondays, 05:17 UTC
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: Commit to snapshot
+        type: string
+        required: true
+      tag:
+        description: Release tag to record, e.g. v0.1.0
+        type: string
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+# Snapshots queue rather than cancel: a release must never lose its snapshot to a weekly run.
+concurrency:
+  group: derived-history
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    name: snapshot
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ inputs.ref || 'main' }}
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore Parquet.SourceGenerator.slnx
+
+      - name: Produce Derived Outputs
+        id: produce
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          sha=$(git rev-parse HEAD)
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          dotnet run scripts/DerivedOutputs.cs -- --out "$RUNNER_TEMP/derived"
+          dotnet run scripts/DerivedReport/DerivedReport.cs -- state --tree "$RUNNER_TEMP/derived" \
+            --label "${TAG:-main @ ${sha:0:7}}" --html "$RUNNER_TEMP/state.html"
+
+      # Accepted by ci.yml's baseline lookup (a schedule or dispatch run of this file, on main).
+      - name: Refresh Main Baseline
+        if: inputs.tag == ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: derived-baseline-${{ steps.produce.outputs.sha }}
+          path: ${{ runner.temp }}/derived/
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Commit Snapshot
+        env:
+          SHA: ${{ steps.produce.outputs.sha }}
+          TAG: ${{ inputs.tag }}
+          TRIGGER: ${{ inputs.tag != '' && 'release' || github.event_name }}
+          # The previous snapshot is replaced wholesale, so its LFS content is never needed here;
+          # unchanged files still compare equal by their LFS pointers.
+          GIT_LFS_SKIP_SMUDGE: '1'
+        run: |
+          set -euo pipefail
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          hist="$RUNNER_TEMP/history"
+          if git ls-remote --exit-code --heads origin derived-history > /dev/null; then
+            git fetch --depth=1 origin derived-history
+            git worktree add -B derived-history "$hist" FETCH_HEAD
+          else
+            echo "Creating the derived-history orphan branch."
+            git worktree add --detach "$hist"
+            git -C "$hist" checkout --orphan derived-history
+            git -C "$hist" rm -rfq .
+          fi
+          cd "$hist"
+          git lfs install --local
+
+          printf '%s\n' 'snapshot/** filter=lfs diff=lfs merge=lfs -text' > .gitattributes
+          cat > README.md <<'EOF'
+          # derived-history
+
+          Written only by `.github/workflows/derived-history.yml`; never merged into main.
+          `snapshot/` is one commit's derived outputs (docs/17-GENERATED-API-BASELINES.md) plus
+          `state.html`, the state view of them, and `manifest.json` naming the commit. Everything under
+          `snapshot/` is in Git LFS. One commit per weekly change of main, and one per full release,
+          tagged `derived/<tag>`. Compare two snapshots with `git diff <a> <b> -- snapshot/`.
+          EOF
+
+          rm -rf snapshot
+          mkdir snapshot
+          cp -R "$RUNNER_TEMP/derived/." snapshot/
+          cp "$RUNNER_TEMP/state.html" snapshot/state.html
+          printf '{"commit":"%s","tag":"%s","trigger":"%s"}\n' "$SHA" "$TAG" "$TRIGGER" > snapshot/manifest.json
+
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Snapshot unchanged since the last commit on derived-history."
+          else
+            git commit -q -m "derived: ${TAG:-main} @ ${SHA:0:7} ($TRIGGER)" -m "Source: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$SHA"
+          fi
+          git push origin derived-history
+          if [ -n "$TAG" ]; then
+            git tag -f "derived/$TAG"
+            git push -f origin "refs/tags/derived/$TAG"
+          fi
+          {
+            echo "### derived-history"
+            echo
+            echo "\`$(git log -1 --format='%h %s')\`"
+          } >> "$GITHUB_STEP_SUMMARY"

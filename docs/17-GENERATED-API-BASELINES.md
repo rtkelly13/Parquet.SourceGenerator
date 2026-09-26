@@ -243,6 +243,21 @@ the emitted consumer API, and reads exactly as the old baseline diff did:
 An empty section on a pull request that only retunes a loop is the evidence that it changed no
 signature. [18](./18-API-CHANGE-CONTRACT.md) states what the reviewer is expected to do with it.
 
+## Permanent history
+
+PR artifacts expire with the repository's retention, and that is intended: they are review aids,
+and they clean themselves up. What must outlive them is main's state, and it lives in two places:
+
+- **Releases.** Every full release attaches `derived-outputs.tar.gz` (the trees and a
+  `manifest.json`) and `derived-state.html` (the state view) to its GitHub release.
+- **The `derived-history` branch.** An orphan branch, never merged into main, written only by
+  `.github/workflows/derived-history.yml`. Its `snapshot/` holds one commit's outputs, the state
+  page and a manifest, all in Git LFS, so an ordinary clone fetches only pointers. The workflow
+  runs weekly (committing only when main's outputs changed, and refreshing main's
+  `derived-baseline-<sha>` artifact for another 90 days) and on every full release, where
+  `release.yml` calls it as the last step and it tags the commit `derived/<tag>`. Drift between any
+  two points is `git diff <a> <b> -- snapshot/` (with `git lfs` installed).
+
 ## Historical snapshot: what the baselines said when this page was written
 
 The table below was read from the checked-in baselines while they existed. It is not maintained;

@@ -527,7 +527,8 @@ jobs:
           name="derived-baseline-$BASE"
           # The name alone proves nothing: any workflow run — a pull request that edits this file,
           # a fork's run — can upload an artifact called derived-baseline-<sha>. Accept only one
-          # uploaded from this repository by a push run of ci.yml on main, at exactly this commit.
+          # uploaded from this repository on main, at exactly this commit, by a trusted run: a push
+          # run of ci.yml, or the weekly (or manual) refresh in derived-history.yml.
           candidates=$(gh api --paginate "repos/$REPO/actions/artifacts?name=$name" --jq ".artifacts[]
             | select((.expired | not)
                 and .workflow_run.head_sha == \"$BASE\"
@@ -537,11 +538,15 @@ jobs:
           run_id=""
           for candidate in $candidates; do
             origin=$(gh api "repos/$REPO/actions/runs/$candidate" --jq '"\(.event) \(.path)"' || true)
-            if [ "$origin" = "push .github/workflows/ci.yml" ]; then
-              run_id=$candidate
-              break
-            fi
-            echo "Ignoring $name from run $candidate ($origin): not a push run of ci.yml."
+            case "$origin" in
+              "push .github/workflows/ci.yml" \
+              | "schedule .github/workflows/derived-history.yml" \
+              | "workflow_dispatch .github/workflows/derived-history.yml")
+                run_id=$candidate
+                break
+                ;;
+            esac
+            echo "Ignoring $name from run $candidate ($origin): not a trusted baseline run."
           done
           if [ -n "$run_id" ] && gh run download "$run_id" --repo "$REPO" --name "$name" --dir "$out"; then
             echo "source=\`$name\` from run $run_id" >> "$GITHUB_OUTPUT"
